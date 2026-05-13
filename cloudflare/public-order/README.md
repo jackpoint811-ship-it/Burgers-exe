@@ -1,4 +1,4 @@
-# Burgers.exe Public Order (Cloudflare) — UX Fase 1
+# Burgers.exe Public Order (Cloudflare) — UX Fase 2
 
 ## Estado actual
 Flujo frontend rediseñado como wizard por pasos:
@@ -25,5 +25,23 @@ state = {
 
 Ejemplo: dos burgers con `Tocino` extra en cada una -> `items` contiene `{ sku: "EXTRA_TOCINO", qty: 2 }`.
 
-## Nota UX Fase 2
-Pendiente: persistencia fina de extras por burger dentro de `Pedidos Master` / `Chekeo` en backend Apps Script. En esta fase solo se captura y envía en `personalizations` sin cambiar backend operativo.
+## UX Fase 2 (backend Apps Script)
+El backend ahora persiste detalle por burger en columnas existentes:
+- `Burger OG`
+- `BBQ Burger`
+- `Describe como quieres tus Burgers`
+
+Formato esperado por burger:
+- `OG #1: Con todo | Extras: Sin extras`
+- `OG #1: Quitar: Sin Pepinillos | Extras: Tocino +$5`
+
+Validaciones aplicadas en backend:
+- `personalizations.burgers[].extras` debe ser array (si se envía).
+- Solo se permiten extras en allowlist:
+  - `Pepinillos`, `Queso americano`, `Queso manchego`, `Tocino`, `Catsup`, `Mostaza`, `Tomate`.
+- Se rechazan textos restringidos (`Chequeo Manual`, `(+1)`).
+- Se valida consistencia entre extras por burger y `items` globales por SKU (`EXTRA_*`), rechazando payload inconsistente con:
+  - `Extras por burger no coinciden con items globales.`
+
+Importante:
+- El cálculo de precio no toma `personalizations.extras`; el total sigue calculándose desde `items` globales.
