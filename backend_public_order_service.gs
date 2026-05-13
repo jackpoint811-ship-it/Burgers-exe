@@ -59,10 +59,10 @@ function bogCreatePublicOrderFromCloudflare_(requestBody) {
     'Ubicación': bogTrim_(payload.location),
     'Total': total,
     'Precio Manual total': '',
-    'Nota': bogTrim_(payload.note),
+    'Nota': bogBuildPublicOrderNote_(payload.note),
     'Confirmado': '',
     'Pagado?': 'No',
-    'Tipo': 'Burgers.exe Cloudflare'
+    'Tipo': ''
   };
 
   var normalizedItems = bogBuildNormalizedItemsMap_(items);
@@ -105,4 +105,11 @@ function bogBuildNormalizedItemsMap_(items) {
     map[sku] = (map[sku] || 0) + qty;
   });
   return map;
+}
+
+
+function bogBuildPublicOrderNote_(clientNote) {
+  var note = bogTrim_(clientNote);
+  var channel = 'Canal: Burgers.exe Cloudflare';
+  return note ? (note + ' | ' + channel) : channel;
 }

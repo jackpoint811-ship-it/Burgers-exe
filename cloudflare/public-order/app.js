@@ -57,7 +57,11 @@
         body: JSON.stringify({ payload: payload })
       });
       var data = await response.json();
-      setStatus('Respuesta /api/order', data);
+      if (data && data.ok && data.data && data.data.mode === 'dry-run') {
+        setStatus('Validación local completada (dry-run, sin escritura)', data);
+      } else {
+        setStatus('Respuesta /api/order', data);
+      }
     } catch (err) {
       setStatus('Error de red en simulación', { message: err.message });
     }

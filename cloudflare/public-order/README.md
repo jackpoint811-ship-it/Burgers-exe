@@ -18,16 +18,14 @@ Preparar una estructura separada para desplegar una página pública estática e
 ## Flujo Fase 1
 1. Frontend envía `POST /api/order` (mismo origen).
 2. `functions/api/order.js` valida payload mínimo y recalcula total con tabla fija.
-3. Function prepara request server-to-server hacia Apps Script:
-   - `action: "createPublicOrder"`
-   - `payload: <normalizado>`
-   - `auth: { secret, scheme }` dentro del body JSON.
-4. Apps Script valida auth en body (no headers) y procesa.
+3. Si `PUBLIC_ORDER_WRITE_ENABLED !== "true"`: responde en **modo dry-run** (`mode: "dry-run"`) y **no llama Apps Script**.
+4. Solo si `PUBLIC_ORDER_WRITE_ENABLED === "true"`: hace request server-to-server a Apps Script con `action`, `payload` y `auth` en body JSON.
 
 ## Variables de entorno en Cloudflare (NO commitear valores reales)
 Configurar en el proyecto Pages:
-- `APPS_SCRIPT_ORDER_ENDPOINT`
-- `APPS_SCRIPT_SHARED_SECRET`
+- `PUBLIC_ORDER_WRITE_ENABLED` (`false` por defecto; solo `true` permite escritura real)
+- `APPS_SCRIPT_ORDER_ENDPOINT` (requerida solo si `PUBLIC_ORDER_WRITE_ENABLED=true`)
+- `APPS_SCRIPT_SHARED_SECRET` (requerida solo si `PUBLIC_ORDER_WRITE_ENABLED=true`)
 
 ## Script Properties en Apps Script
 Configurar en Apps Script:

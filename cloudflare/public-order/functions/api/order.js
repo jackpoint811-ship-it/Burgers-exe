@@ -61,31 +61,46 @@ export async function onRequest(context) {
     total
   };
 
+
+  const writeEnabled = env.PUBLIC_ORDER_WRITE_ENABLED === 'true';
+  const preparedPayload = {
+    action: 'createPublicOrder',
+    payload: normalized,
+    auth: {
+      secret: env.APPS_SCRIPT_SHARED_SECRET || '',
+      scheme: 'shared-secret-body-v1'
+    }
+  };
+
+  if (!writeEnabled) {
+    return jsonResponse(200, {
+      ok: true,
+      data: {
+        mode: 'dry-run',
+        preparedPayload: {
+          action: preparedPayload.action,
+          payload: preparedPayload.payload,
+          auth: { scheme: preparedPayload.auth.scheme }
+        }
+      }
+    });
+  }
+
   if (!env.APPS_SCRIPT_ORDER_ENDPOINT || !env.APPS_SCRIPT_SHARED_SECRET) {
     return jsonResponse(500, {
       ok: false,
       error: {
         code: 'MISSING_ENV',
-        message: 'Configura APPS_SCRIPT_ORDER_ENDPOINT y APPS_SCRIPT_SHARED_SECRET en Cloudflare.'
-      },
-      data: { preparedPayload: normalized }
+        message: 'Configura APPS_SCRIPT_ORDER_ENDPOINT y APPS_SCRIPT_SHARED_SECRET en Cloudflare para modo write.'
+      }
     });
   }
-
-  const upstreamPayload = {
-    action: 'createPublicOrder',
-    payload: normalized,
-    auth: {
-      secret: env.APPS_SCRIPT_SHARED_SECRET,
-      scheme: 'shared-secret-body-v1'
-    }
-  };
 
   try {
     const upstreamResp = await fetch(env.APPS_SCRIPT_ORDER_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(upstreamPayload)
+      body: JSON.stringify(preparedPayload)
     });
 
     const upstreamData = await upstreamResp.json();
