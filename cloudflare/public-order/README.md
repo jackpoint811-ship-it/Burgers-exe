@@ -1,71 +1,48 @@
-# Burgers.exe Public Order (Cloudflare) — Fase 2
+# Burgers.exe Public Order (Cloudflare) — Fase 3
 
 ## Estado actual
-La página pública ya funciona como flujo real de pedido (mobile-first), con submit a `POST /api/order` y modo seguro **dry-run por defecto**.
+La página pública funciona en flujo real de captura y envío, con validaciones en Cloudflare + Apps Script y con **dry-run por defecto**.
 
-## Funcionalidad Fase 2
-- Captura datos de cliente: nombre, teléfono, ubicación fija (Torre GGA / Torre Valcob), forma de pago y nota.
-- Armado de carrito con productos, guarniciones y extras con precios fijos.
-- Personalización individual por hamburguesa (`OG` y `BBQ`) para cada unidad pedida.
-- Resumen desglosado con cantidad, unitario, subtotal y total general.
-- Draft robusto en `localStorage` con:
-  - datos cliente
-  - pago
-  - items
-  - personalizaciones
-  - nota
-  - timestamp
-- Botones:
-  - `LOAD LAST ORDER` (restaura)
-  - `NEW ORDER / CLEAR SAVE` (limpia draft y estado)
-- Pantalla de éxito estilo terminal: `ORDER COMPILED` con resumen.
-- Bloque de pago:
-  - `Pagar Antes` => intenta `GET /api/bank-config`; si el endpoint sigue stub, muestra `Datos bancarios pendientes de conectar`.
-  - `Pago mismo dia` => muestra mensaje operativo de pago en entrega.
+> `PUBLIC_ORDER_WRITE_ENABLED` debe permanecer en `false` hasta una prueba controlada de escritura real.
 
-## Payload frontend → /api/order (propuesto y documentado)
-```json
-{
-  "payload": {
-    "customerName": "Nombre Cliente",
-    "phone": "5512345678",
-    "location": "Torre GGA",
-    "paymentMethod": "Pagar Antes",
-    "note": "Sin mostaza en OG #2",
-    "timestamp": "2026-05-13T00:00:00.000Z",
-    "items": [
-      { "sku": "OG", "qty": 2 },
-      { "sku": "BBQ", "qty": 1 },
-      { "sku": "PAPAS_OG", "qty": 1 },
-      { "sku": "EXTRA_TOCINO", "qty": 1 }
-    ],
-    "personalizations": {
-      "burgers": [
-        { "sku": "OG", "burgerIndex": 1, "without": [] },
-        { "sku": "OG", "burgerIndex": 2, "without": ["Sin Pepinillos", "Sin Mostaza"] },
-        { "sku": "BBQ", "burgerIndex": 1, "without": ["Sin Salsa bbq"] }
-      ]
-    }
-  }
-}
-```
+## Funcionalidad Fase 3
+- Captura completa de cliente: nombre, teléfono, ubicación (`Torre GGA` / `Torre Valcob`), forma de pago (`Pago mismo dia` / `Pagar Antes`) y nota.
+- Carrito con SKUs permitidos y total calculado server-side.
+- Personalización por unidad de burger (`OG`/`BBQ`) persistible en columnas operativas existentes de `Pedidos Master`.
+- `/api/order` conserva modo seguro:
+  - `PUBLIC_ORDER_WRITE_ENABLED !== "true"` => `dry-run` (sin escribir).
+  - Solo en `true` y con secrets configurados llama a Apps Script.
+- `/api/bank-config` con configuración segura por variables de entorno (sin hardcode en frontend).
 
-## Cloudflare Function /api/order
-- Mantiene validación y cálculo server-side.
-- Normaliza `items` contra SKUs permitidos.
-- Conserva `personalizations` dentro de `preparedPayload.payload` (incluyendo dry-run).
-- Mantiene control de escritura:
-  - `PUBLIC_ORDER_WRITE_ENABLED !== "true"` => `mode: "dry-run"`, sin escribir ni llamar upstream.
-  - Solo con `PUBLIC_ORDER_WRITE_ENABLED === "true"` + secrets configurados intenta proxy a Apps Script.
+## Variables de entorno Cloudflare
+### Orden pública
+- `PUBLIC_ORDER_WRITE_ENABLED` (`false` por defecto)
+- `APPS_SCRIPT_ORDER_ENDPOINT` (solo requerido para write real)
+- `APPS_SCRIPT_SHARED_SECRET` (solo requerido para write real)
 
-## Reglas preservadas
-- No se usa `google.script.run` en Cloudflare.
-- No se toca `legacy/`.
-- No se modifica `BOG_ACTIVE_ENV`.
-- No se agregan columnas ni se altera contrato de Sheets en esta fase.
-- No se activa escritura real por defecto.
+### Datos bancarios
+- `BANK_ENABLED`
+- `BANK_NAME`
+- `BANK_ACCOUNT_HOLDER`
+- `BANK_ACCOUNT_NUMBER`
 
-## Pendiente para Fase 3
-- Persistencia completa de personalizaciones en Apps Script (si se decide mapearlas en columnas/estructura operativa).
-- Integración real de datos bancarios en `/api/bank-config` (sin exponer secretos).
-- Pulido visual final (assets finales brand board, microanimaciones, accesibilidad avanzada).
+Respuesta esperada de `/api/bank-config`:
+- Si `BANK_ENABLED !== "true"`:
+  - `{ ok: true, data: { enabled: false } }`
+- Si `BANK_ENABLED === "true"`:
+  - `{ ok: true, data: { enabled: true, bankName, accountHolder, accountNumber } }`
+
+## Frontend: reglas de visualización bancaria
+- `paymentMethod === "Pagar Antes"` + `enabled: true`:
+  - Muestra banco, titular y cuenta.
+- `paymentMethod === "Pagar Antes"` + `enabled: false`:
+  - Muestra `Datos bancarios pendientes de conectar`.
+- `paymentMethod === "Pago mismo dia"`:
+  - Oculta datos bancarios y muestra `Pagas el día de entrega: efectivo o transferencia.`
+
+## Nota de activación write real
+La activación de escritura real **no** forma parte de esta fase. Se hará manualmente después de una prueba controlada con:
+1. Endpoint Apps Script productivo validado.
+2. Secret compartido validado.
+3. Casos de prueba con payloads válidos/ inválidos.
+4. Verificación de persistencia en `Pedidos Master` y continuidad del flujo `Chekeo/Chekeo Nuevo`.

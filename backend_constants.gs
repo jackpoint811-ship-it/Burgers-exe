@@ -97,6 +97,23 @@ var BurgerOGConstants = (function () {
     PROD: 'PROD'
   };
 
+
+  var PUBLIC_ORDER_PRICE_TABLE = {
+    OG: 85,
+    BBQ: 85,
+    PAPAS_OG: 20,
+    PAPAS_ESPECIALES: 25,
+    PAPAS_LEMON_PEPPER: 25,
+    AROS_CEBOLLA: 30,
+    EXTRA_PEPINILLOS: 5,
+    EXTRA_QUESO_AMERICANO: 5,
+    EXTRA_QUESO_MANCHEGO: 5,
+    EXTRA_TOCINO: 5,
+    EXTRA_CATSUP: 5,
+    EXTRA_MOSTAZA: 5,
+    EXTRA_TOMATE: 5
+  };
+
   return {
     SHEETS: SHEETS,
     CHEKEO_COLUMNS: CHEKEO_COLUMNS,
@@ -110,6 +127,7 @@ var BurgerOGConstants = (function () {
     ENUMS: ENUMS,
     DEFAULTS: DEFAULTS,
     ENVIRONMENTS: ENVIRONMENTS,
+    PUBLIC_ORDER_PRICE_TABLE: PUBLIC_ORDER_PRICE_TABLE,
     SPECIAL_FLAGS_REGEX: /(\(\+1\)|Chequeo Manual)/i
   };
 })();
