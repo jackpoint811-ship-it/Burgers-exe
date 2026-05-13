@@ -1,327 +1,59 @@
 (function () {
-  var STORAGE_KEY = 'bog_public_order_draft_v2';
-  var MENU = [
-    { sku: 'OG', name: 'OG', price: 85, category: 'burger' },
-    { sku: 'BBQ', name: 'BBQ', price: 85, category: 'burger' },
-    { sku: 'PAPAS_OG', name: 'Papas a la francesa OG', price: 20, category: 'side' },
-    { sku: 'PAPAS_ESPECIALES', name: 'Papas a la francesa Especiales', price: 25, category: 'side' },
-    { sku: 'PAPAS_LEMON_PEPPER', name: 'Papas a la francesa Lemon&Pepper', price: 25, category: 'side' },
-    { sku: 'AROS_CEBOLLA', name: 'Aros de Cebolla', price: 30, category: 'side' },
-    { sku: 'EXTRA_PEPINILLOS', name: 'Pepinillos', price: 5, category: 'extra' },
-    { sku: 'EXTRA_QUESO_AMERICANO', name: 'Queso americano', price: 5, category: 'extra' },
-    { sku: 'EXTRA_QUESO_MANCHEGO', name: 'Queso manchego', price: 5, category: 'extra' },
-    { sku: 'EXTRA_TOCINO', name: 'Tocino', price: 5, category: 'extra' },
-    { sku: 'EXTRA_CATSUP', name: 'Catsup', price: 5, category: 'extra' },
-    { sku: 'EXTRA_MOSTAZA', name: 'Mostaza', price: 5, category: 'extra' },
-    { sku: 'EXTRA_TOMATE', name: 'Tomate', price: 5, category: 'extra' }
-  ];
-  var CUSTOM_OPTIONS = {
-    OG: ['Sin Tocino', 'Sin Queso americano', 'Sin Queso manchego', 'Sin Jitomate', 'Sin Lechuga', 'Sin Pepinillos', 'Sin Catsup', 'Sin Mostaza', 'Sin Mayonesa'],
-    BBQ: ['Sin Tocino', 'Sin Queso americano', 'Sin Queso manchego', 'Sin Aros de cebolla', 'Sin Salsa bbq']
+  var STORAGE_KEY = 'bog_public_order_draft_v3';
+  var LEGACY_KEY = 'bog_public_order_draft_v2';
+  var STEPS = ['MENU', 'BURGERS', 'CUSTOM', 'EXTRAS', 'GUARNICIONES', 'DATOS', 'RESUMEN'];
+  var MENU = {
+    burgers: [
+      { sku: 'OG', name: 'OG', price: 85, description: 'Carne "Especial" 250g aprox, tocino, queso americano, queso manchego, jitomate, lechuga, pepinillos, catsup, mostaza y mayonesa.' },
+      { sku: 'BBQ', name: 'BBQ', price: 85, description: 'Carne "Especial" 250g aprox, tocino, queso americano, queso manchego, aros de cebolla, pepinillos y salsa BBQ.' }
+    ],
+    sides: [
+      { sku: 'PAPAS_OG', name: 'Papas a la francesa OG', price: 20, description: 'papas clásicas, sal y crunch.' },
+      { sku: 'PAPAS_ESPECIALES', name: 'Papas a la francesa Especiales', price: 25, description: 'papas con sazón especial de la casa.' },
+      { sku: 'PAPAS_LEMON_PEPPER', name: 'Papas a la francesa Lemon&Pepper', price: 25, description: 'papas con toque cítrico y pimienta.' },
+      { sku: 'AROS_CEBOLLA', name: 'Aros de Cebolla', price: 30, description: 'aros crujientes estilo burger joint.' }
+    ],
+    extras: [
+      { sku: 'EXTRA_PEPINILLOS', name: 'Pepinillos', price: 5, description: 'toque ácido/crunch.' },{ sku: 'EXTRA_QUESO_AMERICANO', name: 'Queso americano', price: 5, description: 'extra cremoso clásico.' },{ sku: 'EXTRA_QUESO_MANCHEGO', name: 'Queso manchego', price: 5, description: 'extra fundido intenso.' },{ sku: 'EXTRA_TOCINO', name: 'Tocino', price: 5, description: 'crunch ahumado.' },{ sku: 'EXTRA_CATSUP', name: 'Catsup', price: 5, description: 'dulce clásica.' },{ sku: 'EXTRA_MOSTAZA', name: 'Mostaza', price: 5, description: 'punch ácido.' },{ sku: 'EXTRA_TOMATE', name: 'Tomate', price: 5, description: 'frescura extra.' }
+    ]
   };
-
-  var SKU_ICONS = {
-    OG: './assets/icon-burger-og.png',
-    BBQ: './assets/icon-burger-bbq.png',
-    PAPAS_OG: './assets/icon-fries-og.png',
-    PAPAS_ESPECIALES: './assets/icon-fries-special.png',
-    PAPAS_LEMON_PEPPER: './assets/icon-fries-lemon-pepper.png',
-    AROS_CEBOLLA: './assets/icon-onion-rings.png',
-    EXTRA_PEPINILLOS: './assets/icon-extra-pickles.png',
-    EXTRA_QUESO_AMERICANO: './assets/icon-extra-american-cheese.png',
-    EXTRA_QUESO_MANCHEGO: './assets/icon-extra-manchego.png',
-    EXTRA_TOCINO: './assets/icon-extra-bacon.png',
-    EXTRA_CATSUP: './assets/icon-extra-ketchup.png',
-    EXTRA_MOSTAZA: './assets/icon-extra-mustard.png',
-    EXTRA_TOMATE: './assets/icon-extra-tomato.png'
-  };
-
-  var state = { itemsQty: {}, customizations: { OG: [], BBQ: [] } };
-
-  function money(n) { return '$' + Number(n || 0).toFixed(2); }
-  function safeText(value) {
-    return String(value == null ? '' : value);
+  var WITHOUT = { OG: ['Sin Tocino','Sin Queso americano','Sin Queso manchego','Sin Jitomate','Sin Lechuga','Sin Pepinillos','Sin Catsup','Sin Mostaza','Sin Mayonesa'], BBQ: ['Sin Tocino','Sin Queso americano','Sin Queso manchego','Sin Aros de cebolla','Sin Pepinillos','Sin Salsa bbq'] };
+  var state = { step: 0, burgerUnits: [], sidesQty: {}, customer: { customerName: '', phone: '', location: '', paymentMethod: 'Pago mismo dia', note: '' }, ts: Date.now() };
+  function bySku(list, sku) { return list.find(function (x) { return x.sku === sku; }); }
+  function money(v) { return '$' + Number(v || 0).toFixed(2); }
+  function burgerPrice(sku) { return bySku(MENU.burgers, sku).price; }
+  function extraPrice(name) { return bySku(MENU.extras, 'EXTRA_' + name.toUpperCase().replace(/ /g, '_').replace('Ñ', 'N')) || { price: 5 }; }
+  function syncUnits(counts) { var units = []; ['OG','BBQ'].forEach(function (sku) { for (var i = 1; i <= (counts[sku] || 0); i += 1) { var old = state.burgerUnits.find(function (u) { return u.id === sku + '-' + i; }); units.push(old || { id: sku + '-' + i, sku: sku, label: sku + ' #' + i, without: [], extras: [] }); } }); state.burgerUnits = units; }
+  function countBurgers() { return state.burgerUnits.length; }
+  function calcTotal() { var t = 0; state.burgerUnits.forEach(function (u) { t += burgerPrice(u.sku) + (u.extras || []).length * 5; }); MENU.sides.forEach(function (s) { t += (state.sidesQty[s.sku] || 0) * s.price; }); return t; }
+  function renderStepper() { document.getElementById('stepper').innerHTML = STEPS.map(function (s, i) { return '<span class="step ' + (i === state.step ? 'active' : i < state.step ? 'done' : '') + '">' + s + '</span>'; }).join(''); }
+  function cardList(items, qtyObj, prefix) { return items.map(function (x) { var q = qtyObj ? Number(qtyObj[x.sku] || 0) : 0; return '<article class="menu-item"><h3>' + x.name + '</h3><p>' + money(x.price) + '</p><small>' + x.description + '</small>' + (qtyObj ? '<div class="qty"><button data-op="minus" data-sku="' + x.sku + '">-</button><span>' + q + '</span><button data-op="plus" data-sku="' + x.sku + '">+</button></div>' : '') + '</article>'; }).join(''); }
+  function renderStep() { var el = document.getElementById('stepContent'); var s = STEPS[state.step];
+    if (s === 'MENU') el.innerHTML = '<h2>MENÚ</h2><h3>Burgers</h3><div class="menu-grid">' + cardList(MENU.burgers) + '</div><h3>Extras</h3><div class="menu-grid">' + cardList(MENU.extras) + '</div><h3>Guarniciones</h3><div class="menu-grid">' + cardList(MENU.sides) + '</div><button id="startBtn" class="primary">INICIAR PEDIDO</button>';
+    if (s === 'BURGERS') { var counts = { OG: state.burgerUnits.filter(function (u) { return u.sku === 'OG'; }).length, BBQ: state.burgerUnits.filter(function (u) { return u.sku === 'BBQ'; }).length }; el.innerHTML = '<h2>BURGERS</h2><div class="menu-grid">' + cardList(MENU.burgers, counts) + '</div>'; }
+    if (s === 'CUSTOM') el.innerHTML = '<h2>CUSTOM</h2>' + (state.burgerUnits.length ? state.burgerUnits.map(function (u, i) { return '<div class="custom-card"><h4>' + u.label + '</h4>' + WITHOUT[u.sku].map(function (opt) { return '<label><input type="checkbox" data-kind="without" data-i="' + i + '" value="' + opt + '" ' + (u.without.indexOf(opt) >= 0 ? 'checked' : '') + '>' + opt + '</label>'; }).join('') + '</div>'; }).join('') : '<p class="muted">No hay burgers.</p>');
+    if (s === 'EXTRAS') el.innerHTML = '<h2>EXTRAS</h2>' + (state.burgerUnits.length ? state.burgerUnits.map(function (u, i) { return '<div class="custom-card"><h4>Extras para esta burger: ' + u.label + '</h4>' + MENU.extras.map(function (x) { return '<label><input type="checkbox" data-kind="extra" data-i="' + i + '" value="' + x.name + '" ' + (u.extras.indexOf(x.name) >= 0 ? 'checked' : '') + '>' + x.name + ' (+$5)</label>'; }).join('') + '</div>'; }).join('') : '<p class="muted">No hay burgers.</p>');
+    if (s === 'GUARNICIONES') el.innerHTML = '<h2>GUARNICIONES</h2><div class="menu-grid">' + cardList(MENU.sides, state.sidesQty) + '</div>';
+    if (s === 'DATOS') el.innerHTML = '<h2>DATOS</h2><label>Nombre<input id="name" value="' + state.customer.customerName + '"></label><label>Teléfono<input id="phone" value="' + state.customer.phone + '"></label><label>Ubicación<select id="location"><option value="">Selecciona</option><option ' + (state.customer.location === 'Torre GGA' ? 'selected' : '') + '>Torre GGA</option><option ' + (state.customer.location === 'Torre Valcob' ? 'selected' : '') + '>Torre Valcob</option></select></label><fieldset><legend>Forma de pago</legend><label><input type="radio" name="pay" value="Pago mismo dia" ' + (state.customer.paymentMethod === 'Pago mismo dia' ? 'checked' : '') + '>Pago mismo dia</label><label><input type="radio" name="pay" value="Pagar Antes" ' + (state.customer.paymentMethod === 'Pagar Antes' ? 'checked' : '') + '>Pagar Antes</label></fieldset><label>Nota<textarea id="note">' + state.customer.note + '</textarea></label>';
+    if (s === 'RESUMEN') { var lines = state.burgerUnits.map(function (u) { var ex = (u.extras || []).map(function (n) { return n + ' +$5'; }).join(', ') || 'Sin extras'; return '<div class="ticket-line"><strong>' + u.label + ' — ' + money(burgerPrice(u.sku)) + '</strong><p>Quitar: ' + ((u.without || []).join(', ') || 'Sin cambios') + '</p><p>Extras: ' + ex + '</p><p>Subtotal burger: ' + money(burgerPrice(u.sku) + (u.extras || []).length * 5) + '</p></div>'; }).join(''); var sides = MENU.sides.map(function (s2) { var q = state.sidesQty[s2.sku] || 0; return q ? '<p>' + s2.name + ' x' + q + ' — ' + money(q * s2.price) + '</p>' : ''; }).join('') || '<p>Sin guarniciones</p>'; el.innerHTML = '<h2>RESUMEN</h2>' + (lines || '<p class="muted">Carrito vacío.</p>') + '<h3>Guarniciones</h3>' + sides + '<h3>TOTAL: ' + money(calcTotal()) + '</h3><p>Nombre: ' + state.customer.customerName + '</p><p>Teléfono: ' + state.customer.phone + '</p><p>Ubicación: ' + state.customer.location + '</p><p>Forma de pago: ' + state.customer.paymentMethod + '</p><p>Nota: ' + (state.customer.note || '(sin nota)') + '</p><div id="paymentInfo"></div><button id="submitBtn" class="primary">VALIDAR PEDIDO / COMPILAR ORDEN</button>'; renderPaymentInfo(); }
+    toggleNav();
   }
-
-  function getPaymentMethod() {
-    var checked = document.querySelector('input[name="payment"]:checked');
-    return checked ? checked.value : 'Pago mismo dia';
-  }
-
-  function renderMenu() {
-    var menuGrid = document.getElementById('menuGrid');
-    menuGrid.innerHTML = MENU.map(function (item) {
-      var qty = Number(state.itemsQty[item.sku] || 0);
-      var icon = SKU_ICONS[item.sku] ? '<img class="menu-icon" src="' + SKU_ICONS[item.sku] + '" alt="Icono de ' + item.name + '" loading="lazy" />' : '';
-      return '<article class="menu-item">' + icon + '<h3>' + item.name + '</h3><p>' + money(item.price) + '</p><div class="qty"><button aria-label="Quitar uno de ' + item.name + '" data-sku="' + item.sku + '" data-op="minus">-</button><span id="qty_' + item.sku + '">' + qty + '</span><button aria-label="Agregar uno de ' + item.name + '" data-sku="' + item.sku + '" data-op="plus">+</button></div></article>';
-    }).join('');
-  }
-
-  function syncBurgerCustomizationLength() {
-    ['OG', 'BBQ'].forEach(function (sku) {
-      var qty = Number(state.itemsQty[sku] || 0);
-      if (!Array.isArray(state.customizations[sku])) state.customizations[sku] = [];
-      while (state.customizations[sku].length < qty) state.customizations[sku].push([]);
-      if (state.customizations[sku].length > qty) state.customizations[sku] = state.customizations[sku].slice(0, qty);
-    });
-  }
-
-  function renderCustomizations() {
-    syncBurgerCustomizationLength();
-    var wrap = document.getElementById('burgerCustomizations');
-    var html = '';
-    ['OG', 'BBQ'].forEach(function (sku) {
-      var burgers = state.customizations[sku] || [];
-      burgers.forEach(function (mods, idx) {
-        html += '<div class="custom-card"><h4>' + sku + ' #' + (idx + 1) + '</h4>' + CUSTOM_OPTIONS[sku].map(function (opt) {
-          var checked = mods.indexOf(opt) >= 0 ? 'checked' : '';
-          return '<label><input type="checkbox" data-sku="' + sku + '" data-burger="' + idx + '" data-opt="' + opt + '" ' + checked + '/>' + opt + '</label>';
-        }).join('') + '</div>';
-      });
-    });
-    wrap.innerHTML = html || '<p class="muted">Agrega OG o BBQ para personalizar cada burger individualmente.</p>';
-  }
-
-  function buildItemsFromState() {
-    return MENU.map(function (item) { return { sku: item.sku, qty: Number(state.itemsQty[item.sku] || 0) }; }).filter(function (it) { return it.qty > 0; });
-  }
-
-  function buildPayload() {
-    var burgerPersonalizations = [];
-    ['OG', 'BBQ'].forEach(function (sku) {
-      (state.customizations[sku] || []).forEach(function (without, idx) {
-        burgerPersonalizations.push({ sku: sku, burgerIndex: idx + 1, without: without.slice() });
-      });
-    });
-    return {
-      customerName: document.getElementById('name').value.trim(),
-      phone: document.getElementById('phone').value.trim(),
-      location: document.getElementById('location').value,
-      paymentMethod: getPaymentMethod(),
-      note: document.getElementById('note').value.trim(),
-      items: buildItemsFromState(),
-      personalizations: { burgers: burgerPersonalizations },
-      timestamp: new Date().toISOString()
-    };
-  }
-
-  function renderSummary() {
-    var payload = buildPayload();
-    var summary = document.getElementById('summary');
-    if (!payload.items.length) { summary.innerHTML = '<div class="state-card"><img src="./assets/empty-cart-terminal.png" alt="Carrito vacío en terminal" loading="lazy" /><p class="muted">Carrito vacío.</p></div>'; return; }
-    var map = {};
-    MENU.forEach(function (x) { map[x.sku] = x; });
-    var total = 0;
-    var lines = payload.items.map(function (it) {
-      var m = map[it.sku];
-      var sub = m.price * it.qty;
-      total += sub;
-      return '<tr><td>' + m.name + '</td><td>' + it.qty + '</td><td>' + money(m.price) + '</td><td>' + money(sub) + '</td></tr>';
-    }).join('');
-    summary.innerHTML = '<table><thead><tr><th>Producto</th><th>Cant</th><th>Unit</th><th>Subtotal</th></tr></thead><tbody>' + lines + '</tbody></table><p class="total">TOTAL: ' + money(total) + '</p>';
-
-    var pay = document.getElementById('paymentInfo');
-    if (payload.paymentMethod === 'Pagar Antes') {
-      pay.innerHTML = '<p><strong>Datos para transferencia:</strong></p><p id="bankStatus">Cargando /api/bank-config...</p>';
-      loadBankData();
-    } else {
-      pay.innerHTML = '<p>Pagas el día de entrega: efectivo o transferencia.</p>';
-    }
-  }
-
-  async function loadBankData() {
-    var status = document.getElementById('bankStatus');
-    if (!status) return;
-    try {
-      var resp = await fetch('/api/bank-config');
-      var data = await resp.json();
-      if (data && data.ok && data.data && data.data.enabled === false) {
-        status.textContent = 'Datos bancarios pendientes de conectar';
-      } else if (data && data.ok && data.data && data.data.enabled === true) {
-        var bankName = safeText(data.data.bankName || 'Banco pendiente');
-        var holder = safeText(data.data.accountHolder || 'Titular pendiente');
-        var account = safeText(data.data.accountNumber || 'Cuenta pendiente');
-        status.textContent = 'Banco: ' + bankName + '\nTitular: ' + holder + '\nCuenta: ' + account;
-      } else {
-        status.textContent = 'Datos bancarios pendientes de conectar';
-      }
-    } catch (_err) {
-      status.textContent = 'Datos bancarios pendientes de conectar';
-    }
-  }
-
-  function saveDraft() {
-    var payload = buildPayload();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ts: Date.now(), state: state, payload: payload }));
-  }
-
-  function loadDraft() {
-    var raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    try { return JSON.parse(raw); } catch (_err) { return null; }
-  }
-
-  function hydrateFromSaved(saved) {
-    if (!saved || !saved.payload) return;
-    var p = saved.payload;
-    document.getElementById('name').value = p.customerName || '';
-    document.getElementById('phone').value = p.phone || '';
-    document.getElementById('location').value = p.location || '';
-    document.getElementById('note').value = p.note || '';
-    var radio = document.querySelector('input[name="payment"][value="' + (p.paymentMethod || 'Pago mismo dia') + '"]');
-    if (radio) radio.checked = true;
-    state.itemsQty = {};
-    (p.items || []).forEach(function (it) { state.itemsQty[it.sku] = Number(it.qty || 0); });
-    state.customizations = { OG: [], BBQ: [] };
-    if (p.personalizations && Array.isArray(p.personalizations.burgers)) {
-      p.personalizations.burgers.forEach(function (b) {
-        var idx = Number(b.burgerIndex || 1) - 1;
-        if (!state.customizations[b.sku]) state.customizations[b.sku] = [];
-        state.customizations[b.sku][idx] = Array.isArray(b.without) ? b.without : [];
-      });
-    }
-    syncBurgerCustomizationLength();
-    redrawAll();
-  }
-
-  function setStatus(message, data, imagePath) {
-    var icon = imagePath ? '[image] ' + imagePath + '\n' : '';
-    document.getElementById('status').textContent = icon + message + (data ? '\n\n' + JSON.stringify(data, null, 2) : '');
-  }
-
-  function validate(payload) {
-    if (!payload.customerName || !payload.phone || !payload.location || !payload.paymentMethod) return 'Completa datos cliente y pago.';
-    if (!payload.items.length) return 'Agrega al menos un producto.';
-    return '';
-  }
-
-  async function submitOrder() {
-    var payload = buildPayload();
-    var err = validate(payload);
-    if (err) return setStatus('Validación fallida', { message: err });
-    saveDraft();
-    setStatus('Enviando /api/order en modo seguro...', payload);
-    try {
-      var response = await fetch('/api/order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ payload: payload }) });
-      var data = await response.json();
-      if (!response.ok || !data.ok) return setStatus('Error en /api/order', data, './assets/error-terminal.png');
-      renderSuccess(payload, data);
-      setStatus('ORDER COMPILED', data, './assets/success-order-terminal.png');
-    } catch (networkErr) {
-      setStatus('Error de red', { message: networkErr.message }, './assets/error-terminal.png');
-    }
-  }
-
-  function renderSuccess(payload, apiResp) {
-    var el = document.getElementById('successPanel');
-    var total = (apiResp.data && apiResp.data.total) || 0;
-    el.classList.remove('hidden');
-    el.textContent = '';
-
-    var badge = document.createElement('img');
-    badge.src = './assets/order-compiled-badge.svg';
-    badge.alt = 'Insignia ORDER COMPILED';
-    badge.className = 'success-badge';
-    el.appendChild(badge);
-
-    var title = document.createElement('h2');
-    title.textContent = 'ORDER COMPILED';
-    el.appendChild(title);
-
-    var successImage = document.createElement('img');
-    successImage.src = './assets/success-order-terminal.png';
-    successImage.alt = 'Terminal de orden completada';
-    successImage.className = 'success-image';
-    successImage.loading = 'lazy';
-    el.appendChild(successImage);
-
-    var totalP = document.createElement('p');
-    var totalStrong = document.createElement('strong');
-    totalP.appendChild(document.createTextNode('Total: '));
-    totalStrong.textContent = money(total);
-    totalP.appendChild(totalStrong);
-    el.appendChild(totalP);
-
-    var paymentP = document.createElement('p');
-    paymentP.textContent = 'Pago: ' + safeText(payload.paymentMethod);
-    el.appendChild(paymentP);
-
-    var locationP = document.createElement('p');
-    locationP.textContent = 'Ubicación: ' + safeText(payload.location);
-    el.appendChild(locationP);
-
-    var noteP = document.createElement('p');
-    noteP.textContent = 'Nota: ' + safeText(payload.note || '(sin nota)');
-    el.appendChild(noteP);
-
-    var details = document.createElement('details');
-    var summary = document.createElement('summary');
-    summary.textContent = 'Resumen desglosado';
-    var pre = document.createElement('pre');
-    pre.textContent = JSON.stringify(payload, null, 2);
-    details.appendChild(summary);
-    details.appendChild(pre);
-    el.appendChild(details);
-  }
-
-  function clearAll() {
-    localStorage.removeItem(STORAGE_KEY);
-    document.getElementById('name').value = '';
-    document.getElementById('phone').value = '';
-    document.getElementById('location').value = '';
-    document.getElementById('note').value = '';
-    var radio = document.querySelector('input[name="payment"][value="Pago mismo dia"]'); if (radio) radio.checked = true;
-    state = { itemsQty: {}, customizations: { OG: [], BBQ: [] } };
-    redrawAll();
-    document.getElementById('successPanel').classList.add('hidden');
-    setStatus('Nueva orden iniciada. Draft eliminado.');
-  }
-
-  function redrawAll() { renderMenu(); renderCustomizations(); renderSummary(); }
-
-  document.getElementById('menuGrid').addEventListener('click', function (e) {
-    var btn = e.target.closest('button[data-sku]');
-    if (!btn) return;
-    var sku = btn.getAttribute('data-sku');
-    var op = btn.getAttribute('data-op');
-    var next = Number(state.itemsQty[sku] || 0) + (op === 'plus' ? 1 : -1);
-    state.itemsQty[sku] = Math.max(0, next);
-    redrawAll();
-    saveDraft();
-  });
-
-  document.getElementById('burgerCustomizations').addEventListener('change', function (e) {
-    var input = e.target;
-    if (!input.matches('input[type="checkbox"]')) return;
-    var sku = input.getAttribute('data-sku');
-    var idx = Number(input.getAttribute('data-burger'));
-    var opt = input.getAttribute('data-opt');
-    var arr = state.customizations[sku][idx] || [];
-    var pos = arr.indexOf(opt);
-    if (input.checked && pos < 0) arr.push(opt);
-    if (!input.checked && pos >= 0) arr.splice(pos, 1);
-    state.customizations[sku][idx] = arr;
-    saveDraft();
-  });
-
-  ['name', 'phone', 'location', 'note'].forEach(function (id) {
-    document.getElementById(id).addEventListener('input', function () { renderSummary(); saveDraft(); });
-    document.getElementById(id).addEventListener('change', function () { renderSummary(); saveDraft(); });
-  });
-  document.querySelectorAll('input[name="payment"]').forEach(function (r) {
-    r.addEventListener('change', function () { renderSummary(); saveDraft(); });
-  });
-
-  document.getElementById('loadLastBtn').addEventListener('click', function () {
-    var saved = loadDraft();
-    if (!saved) return setStatus('No existe orden previa guardada.');
-    hydrateFromSaved(saved);
-    setStatus('Orden previa cargada.', { ts: saved.ts });
-  });
-  document.getElementById('clearBtn').addEventListener('click', clearAll);
-  document.getElementById('submitBtn').addEventListener('click', submitOrder);
-
-  redrawAll();
-  var previous = loadDraft();
-  if (previous) setStatus('Orden previa detectada. Usa LOAD LAST ORDER para restaurar.', { ts: previous.ts }, './assets/save-file-found.png');
+  async function renderPaymentInfo() { var node = document.getElementById('paymentInfo'); if (!node) return; if (state.customer.paymentMethod === 'Pago mismo dia') { node.textContent = 'Pagas el día de entrega: efectivo o transferencia.'; return; } node.textContent = 'Cargando /api/bank-config...'; try { var r = await fetch('/api/bank-config'); var d = await r.json(); node.textContent = d.ok && d.data && d.data.enabled ? ('Banco: ' + (d.data.bankName || '') + ' | Titular: ' + (d.data.accountHolder || '') + ' | Cuenta: ' + (d.data.accountNumber || '')) : 'Datos bancarios pendientes de conectar'; } catch (_e) { node.textContent = 'Datos bancarios pendientes de conectar'; } }
+  function buildPayload() { var items = {}; state.burgerUnits.forEach(function (u) { items[u.sku] = (items[u.sku] || 0) + 1; (u.extras || []).forEach(function (ex) { var sku = 'EXTRA_' + ex.toUpperCase().replace(/ /g, '_').replace('Ñ', 'N'); items[sku] = (items[sku] || 0) + 1; }); }); Object.keys(state.sidesQty).forEach(function (sku) { if (state.sidesQty[sku] > 0) items[sku] = (items[sku] || 0) + state.sidesQty[sku]; }); return { customerName: state.customer.customerName.trim(), phone: state.customer.phone.trim(), location: state.customer.location, paymentMethod: state.customer.paymentMethod, note: state.customer.note.trim(), items: Object.keys(items).map(function (sku) { return { sku: sku, qty: items[sku] }; }), personalizations: { burgers: state.burgerUnits.map(function (u, i) { return { sku: u.sku, burgerIndex: Number(u.id.split('-')[1] || (i + 1)), without: (u.without || []).slice(), extras: (u.extras || []).slice() }; }) }, timestamp: new Date().toISOString() }; }
+  function validate(stepOnly) { if (!countBurgers() && state.step >= 1 && stepOnly !== 'submit') return 'Agrega al menos 1 burger.'; if ((state.step === 5 || stepOnly === 'submit') && (!state.customer.customerName.trim() || !state.customer.phone.trim() || !state.customer.location || !state.customer.paymentMethod)) return 'Completa datos requeridos.'; if (stepOnly === 'submit' && !buildPayload().items.length) return 'Carrito vacío.'; return ''; }
+  function saveDraft() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  function loadDraft() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_KEY) || 'null'); } catch (_e) { return null; } }
+  function restore(d) { if (!d) return; if (d.burgerUnits && d.customer) { state = d; return; } if (d.payload) { var counts = { OG: 0, BBQ: 0 }; (d.payload.items || []).forEach(function (it) { if (it.sku === 'OG' || it.sku === 'BBQ') counts[it.sku] = it.qty; }); syncUnits(counts); state.customer = { customerName: d.payload.customerName || '', phone: d.payload.phone || '', location: d.payload.location || '', paymentMethod: d.payload.paymentMethod || 'Pago mismo dia', note: d.payload.note || '' }; state.step = 0; } }
+  function toggleNav() { document.getElementById('backBtn').disabled = state.step === 0; document.getElementById('nextBtn').style.display = state.step >= STEPS.length - 1 ? 'none' : 'inline-flex'; }
+  function redraw() { renderStepper(); renderStep(); saveDraft(); }
+  document.getElementById('stepContent').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; if (b.id === 'startBtn') { state.step = 1; return redraw(); } if (b.id === 'submitBtn') return submit(); var sku = b.getAttribute('data-sku'); if (!sku) return; var op = b.getAttribute('data-op'); if (STEPS[state.step] === 'BURGERS') { var counts = { OG: state.burgerUnits.filter(function (u) { return u.sku === 'OG'; }).length, BBQ: state.burgerUnits.filter(function (u) { return u.sku === 'BBQ'; }).length }; counts[sku] = Math.max(0, (counts[sku] || 0) + (op === 'plus' ? 1 : -1)); syncUnits(counts); } else if (STEPS[state.step] === 'GUARNICIONES') state.sidesQty[sku] = Math.max(0, Number(state.sidesQty[sku] || 0) + (op === 'plus' ? 1 : -1)); redraw(); });
+  document.getElementById('stepContent').addEventListener('change', function (e) { var t = e.target; var i = Number(t.getAttribute('data-i')); if (t.getAttribute('data-kind') === 'without') { var a = state.burgerUnits[i].without; var p = a.indexOf(t.value); if (t.checked && p < 0) a.push(t.value); if (!t.checked && p >= 0) a.splice(p, 1); } if (t.getAttribute('data-kind') === 'extra') { var earr = state.burgerUnits[i].extras; var ep = earr.indexOf(t.value); if (t.checked && ep < 0) earr.push(t.value); if (!t.checked && ep >= 0) earr.splice(ep, 1); } if (t.name === 'pay') state.customer.paymentMethod = t.value; if (t.id === 'location') state.customer.location = t.value; saveDraft(); });
+  document.getElementById('stepContent').addEventListener('input', function (e) { var t = e.target; if (t.id === 'name') state.customer.customerName = t.value; if (t.id === 'phone') state.customer.phone = t.value; if (t.id === 'note') state.customer.note = t.value; saveDraft(); });
+  document.getElementById('backBtn').addEventListener('click', function () { state.step = Math.max(0, state.step - 1); redraw(); });
+  document.getElementById('nextBtn').addEventListener('click', function () { var err = validate(); if (err) return setStatus(err); state.step = Math.min(STEPS.length - 1, state.step + 1); redraw(); });
+  document.getElementById('clearBtn').addEventListener('click', function () { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(LEGACY_KEY); state = { step: 0, burgerUnits: [], sidesQty: {}, customer: { customerName: '', phone: '', location: '', paymentMethod: 'Pago mismo dia', note: '' }, ts: Date.now() }; redraw(); setStatus('Nueva orden iniciada.'); });
+  document.getElementById('loadLastBtn').addEventListener('click', function () { restore(loadDraft()); redraw(); setStatus('Draft cargado.'); });
+  function setStatus(m, d) { document.getElementById('status').textContent = m + (d ? '\n\n' + JSON.stringify(d, null, 2) : ''); }
+  async function submit() { var err = validate('submit'); if (err) return setStatus('Validación fallida: ' + err); var payload = buildPayload(); setStatus('Enviando /api/order...', payload); var r = await fetch('/api/order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ payload: payload }) }); var d = await r.json(); setStatus((d.ok ? 'ORDER COMPILED' : 'Error en /api/order'), d); }
+  restore(loadDraft()); redraw();
 })();
