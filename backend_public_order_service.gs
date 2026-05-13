@@ -24,8 +24,17 @@ function bogCreatePublicOrderFromCloudflare_(requestBody) {
 
   bogValidatePublicOrderPayload_(payload);
 
-  var items = Array.isArray(payload.items) ? payload.items : [];
+  if (!Array.isArray(payload.items)) {
+    throw new Error('Items inválidos: se esperaba array.');
+  }
+  var items = payload.items;
+  if (!items.length) {
+    throw new Error('Items inválidos: agrega al menos un producto.');
+  }
   var normalizedItems = bogBuildNormalizedItemsMap_(items);
+  if (!Object.keys(normalizedItems).length) {
+    throw new Error('Items inválidos: no hay productos válidos para procesar.');
+  }
   var computedTotal = bogComputePublicOrderTotal_(normalizedItems);
   var providedTotal = Number(payload.total || 0);
   if (isNaN(providedTotal) || providedTotal < 0) {
@@ -101,9 +110,15 @@ function bogValidatePublicOrderPayload_(payload) {
 function bogBuildNormalizedItemsMap_(items) {
   var map = {};
   items.forEach(function (item) {
-    var sku = bogTrim_(item && item.sku);
+    if (!item || typeof item !== 'object') {
+      throw new Error('Item inválido: estructura no válida.');
+    }
+    if (!Object.prototype.hasOwnProperty.call(item, 'sku')) {
+      throw new Error('Item inválido: falta sku.');
+    }
+    var sku = bogTrim_(item.sku);
     if (!sku) {
-      return;
+      throw new Error('Item inválido: sku vacío.');
     }
     if (!Object.prototype.hasOwnProperty.call(BurgerOGConstants.PUBLIC_ORDER_PRICE_TABLE, sku)) {
       throw new Error('SKU inválido: ' + sku);
@@ -122,6 +137,27 @@ function bogComputePublicOrderTotal_(normalizedItems) {
     return acc + (normalizedItems[sku] * BurgerOGConstants.PUBLIC_ORDER_PRICE_TABLE[sku]);
   }, 0);
 }
+
+var BOG_PUBLIC_ORDER_WITHOUT_ALLOWED = {
+  OG: {
+    'Sin Tocino': true,
+    'Sin Queso americano': true,
+    'Sin Queso manchego': true,
+    'Sin Jitomate': true,
+    'Sin Lechuga': true,
+    'Sin Pepinillos': true,
+    'Sin Catsup': true,
+    'Sin Mostaza': true,
+    'Sin Mayonesa': true
+  },
+  BBQ: {
+    'Sin Tocino': true,
+    'Sin Queso americano': true,
+    'Sin Queso manchego': true,
+    'Sin Aros de cebolla': true,
+    'Sin Salsa bbq': true
+  }
+};
 
 function bogBuildPublicOrderPersonalizationsSummary_(rawPersonalizations, normalizedItems) {
   var burgers = rawPersonalizations && Array.isArray(rawPersonalizations.burgers) ? rawPersonalizations.burgers : [];
@@ -144,6 +180,14 @@ function bogBuildPublicOrderPersonalizationsSummary_(rawPersonalizations, normal
     }
     var without = Array.isArray(entry && entry.without) ? entry.without : [];
     var cleanedWithout = without.map(function (label) { return bogTrim_(label); }).filter(Boolean);
+    cleanedWithout.forEach(function (label) {
+      if (BurgerOGConstants.SPECIAL_FLAGS_REGEX.test(label)) {
+        throw new Error('Personalización inválida: contiene texto restringido.');
+      }
+      if (!BOG_PUBLIC_ORDER_WITHOUT_ALLOWED[sku][label]) {
+        throw new Error('Personalización inválida para ' + sku + ': ' + label);
+      }
+    });
     var description = cleanedWithout.length ? cleanedWithout.join(', ') : 'Con todo';
     lines[sku].push({
       idx: burgerIndex,
