@@ -1,44 +1,71 @@
-# Burgers.exe Public Order (Cloudflare) — Fase 1
+# Burgers.exe Public Order (Cloudflare) — Fase 2
 
-## Objetivo
-Preparar una estructura separada para desplegar una página pública estática en Cloudflare Pages con Functions como proxy seguro hacia Apps Script.
+## Estado actual
+La página pública ya funciona como flujo real de pedido (mobile-first), con submit a `POST /api/order` y modo seguro **dry-run por defecto**.
 
-## Root de deploy recomendado
-- **Project root en Cloudflare Pages:** `cloudflare/public-order`
-- Esto permite que `functions/` sea detectada automáticamente por Pages Functions.
+## Funcionalidad Fase 2
+- Captura datos de cliente: nombre, teléfono, ubicación fija (Torre GGA / Torre Valcob), forma de pago y nota.
+- Armado de carrito con productos, guarniciones y extras con precios fijos.
+- Personalización individual por hamburguesa (`OG` y `BBQ`) para cada unidad pedida.
+- Resumen desglosado con cantidad, unitario, subtotal y total general.
+- Draft robusto en `localStorage` con:
+  - datos cliente
+  - pago
+  - items
+  - personalizaciones
+  - nota
+  - timestamp
+- Botones:
+  - `LOAD LAST ORDER` (restaura)
+  - `NEW ORDER / CLEAR SAVE` (limpia draft y estado)
+- Pantalla de éxito estilo terminal: `ORDER COMPILED` con resumen.
+- Bloque de pago:
+  - `Pagar Antes` => intenta `GET /api/bank-config`; si el endpoint sigue stub, muestra `Datos bancarios pendientes de conectar`.
+  - `Pago mismo dia` => muestra mensaje operativo de pago en entrega.
 
-## Estructura
-- `index.html`: landing/order minimal mobile-first (placeholder visual Burgers.exe).
-- `styles.css`: estilo retro terminal (negro + verde neón `#39FF14`).
-- `app.js`: draft mínimo en `localStorage`, detección de draft y simulación de submit a `/api/order`.
-- `functions/api/order.js`: endpoint POST proxy/validador con recalculo de total.
-- `functions/api/bank-config.js`: stub GET para futura entrega de datos bancarios.
-- `assets/README.md`: inventario de assets pendientes.
+## Payload frontend → /api/order (propuesto y documentado)
+```json
+{
+  "payload": {
+    "customerName": "Nombre Cliente",
+    "phone": "5512345678",
+    "location": "Torre GGA",
+    "paymentMethod": "Pagar Antes",
+    "note": "Sin mostaza en OG #2",
+    "timestamp": "2026-05-13T00:00:00.000Z",
+    "items": [
+      { "sku": "OG", "qty": 2 },
+      { "sku": "BBQ", "qty": 1 },
+      { "sku": "PAPAS_OG", "qty": 1 },
+      { "sku": "EXTRA_TOCINO", "qty": 1 }
+    ],
+    "personalizations": {
+      "burgers": [
+        { "sku": "OG", "burgerIndex": 1, "without": [] },
+        { "sku": "OG", "burgerIndex": 2, "without": ["Sin Pepinillos", "Sin Mostaza"] },
+        { "sku": "BBQ", "burgerIndex": 1, "without": ["Sin Salsa bbq"] }
+      ]
+    }
+  }
+}
+```
 
-## Flujo Fase 1
-1. Frontend envía `POST /api/order` (mismo origen).
-2. `functions/api/order.js` valida payload mínimo y recalcula total con tabla fija.
-3. Si `PUBLIC_ORDER_WRITE_ENABLED !== "true"`: responde en **modo dry-run** (`mode: "dry-run"`) y **no llama Apps Script**.
-4. Solo si `PUBLIC_ORDER_WRITE_ENABLED === "true"`: hace request server-to-server a Apps Script con `action`, `payload` y `auth` en body JSON.
+## Cloudflare Function /api/order
+- Mantiene validación y cálculo server-side.
+- Normaliza `items` contra SKUs permitidos.
+- Conserva `personalizations` dentro de `preparedPayload.payload` (incluyendo dry-run).
+- Mantiene control de escritura:
+  - `PUBLIC_ORDER_WRITE_ENABLED !== "true"` => `mode: "dry-run"`, sin escribir ni llamar upstream.
+  - Solo con `PUBLIC_ORDER_WRITE_ENABLED === "true"` + secrets configurados intenta proxy a Apps Script.
 
-## Variables de entorno en Cloudflare (NO commitear valores reales)
-Configurar en el proyecto Pages:
-- `PUBLIC_ORDER_WRITE_ENABLED` (`false` por defecto; solo `true` permite escritura real)
-- `APPS_SCRIPT_ORDER_ENDPOINT` (requerida solo si `PUBLIC_ORDER_WRITE_ENABLED=true`)
-- `APPS_SCRIPT_SHARED_SECRET` (requerida solo si `PUBLIC_ORDER_WRITE_ENABLED=true`)
+## Reglas preservadas
+- No se usa `google.script.run` en Cloudflare.
+- No se toca `legacy/`.
+- No se modifica `BOG_ACTIVE_ENV`.
+- No se agregan columnas ni se altera contrato de Sheets en esta fase.
+- No se activa escritura real por defecto.
 
-## Script Properties en Apps Script
-Configurar en Apps Script:
-- `PUBLIC_ORDER_SHARED_SECRET`
-
-## Deploy rápido (referencia)
-1. Crear proyecto Pages conectado al repo.
-2. Setear **Root directory**: `cloudflare/public-order`.
-3. Build command: vacío (sitio estático sin build).
-4. Output directory: `/` (root del project).
-5. Cargar env vars en entorno Preview/Production.
-
-## Estado de Fase 1
-- Estructura base lista.
-- UI completa y personalización individual quedan para Fase 2.
-- Persistencia final/mapeo completo de columnas quedan para Fase 2.
+## Pendiente para Fase 3
+- Persistencia completa de personalizaciones en Apps Script (si se decide mapearlas en columnas/estructura operativa).
+- Integración real de datos bancarios en `/api/bank-config` (sin exponer secretos).
+- Pulido visual final (assets finales brand board, microanimaciones, accesibilidad avanzada).
