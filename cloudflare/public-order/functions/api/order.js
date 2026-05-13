@@ -36,13 +36,25 @@ function computeTotal(items) {
 }
 
 function normalizePersonalizations(raw) {
+  const ALLOWED_EXTRAS = {
+    Pepinillos: true,
+    'Queso americano': true,
+    'Queso manchego': true,
+    Tocino: true,
+    Catsup: true,
+    Mostaza: true,
+    Tomate: true
+  };
   const burgers = raw && Array.isArray(raw.burgers) ? raw.burgers : [];
   return {
     burgers: burgers
       .map((b) => ({
         sku: String(b && b.sku ? b.sku : '').trim(),
         burgerIndex: Number(b && b.burgerIndex ? b.burgerIndex : 0),
-        without: Array.isArray(b && b.without) ? b.without.map((x) => String(x).trim()).filter(Boolean) : []
+        without: Array.isArray(b && b.without) ? b.without.map((x) => String(x).trim()).filter(Boolean) : [],
+        extras: Array.isArray(b && b.extras)
+          ? b.extras.map((x) => String(x).trim()).filter((x) => x && ALLOWED_EXTRAS[x])
+          : []
       }))
       .filter((b) => (b.sku === 'OG' || b.sku === 'BBQ') && b.burgerIndex > 0)
   };

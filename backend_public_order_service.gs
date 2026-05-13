@@ -155,6 +155,7 @@ var BOG_PUBLIC_ORDER_WITHOUT_ALLOWED = {
     'Sin Queso americano': true,
     'Sin Queso manchego': true,
     'Sin Aros de cebolla': true,
+    'Sin Pepinillos': true,
     'Sin Salsa bbq': true
   }
 };
