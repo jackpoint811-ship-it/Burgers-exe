@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 220" role="img" aria-label="Burgers OG horizontal logo">
+<rect width="900" height="220" fill="#0D0D0D"/>
+<g fill="none" stroke="#39FF14" stroke-width="7" shape-rendering="crispEdges">
+<path d="M62 122h130M48 140h158M40 158h174M58 176h140M80 194h96"/>
+<path d="M74 98h106M54 112h146"/>
+<path d="M94 72h72M82 58h96"/>
+</g>
+<text x="250" y="92" fill="#FFFFFF" font-family="monospace" font-size="58" font-weight="700">BURGERS OG</text>
+<text x="253" y="142" fill="#39FF14" font-family="monospace" font-size="24">C:\&gt; EXECUTING FLAVOR...</text>
+</svg>

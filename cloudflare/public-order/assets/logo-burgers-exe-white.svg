@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 220" role="img" aria-label="Burgers.exe logo">
+<rect width="640" height="220" fill="#0D0D0D"/>
+<g fill="none" stroke="#FFFFFF" stroke-width="8" shape-rendering="crispEdges">
+<path d="M72 116h120M60 132h144M52 148h160M64 164h136M80 180h104"/>
+<path d="M76 96h112M60 108h144"/>
+<path d="M92 82h80M84 70h96M100 58h64"/>
+<path d="M100 86h8M132 78h8M164 88h8"/>
+</g>
+<text x="235" y="95" fill="#FFFFFF" font-family="monospace" font-size="56" font-weight="700">Burgers.exe</text>
+<text x="236" y="140" fill="#FFFFFF" font-family="monospace" font-size="22">&gt; EXECUTING FLAVOR...</text>
+<rect x="236" y="158" width="254" height="26" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+<rect x="244" y="165" width="188" height="12" fill="#FFFFFF"/>
+</svg>
