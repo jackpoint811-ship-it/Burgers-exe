@@ -105,7 +105,7 @@
 
     var pay = document.getElementById('paymentInfo');
     if (payload.paymentMethod === 'Pagar Antes') {
-      pay.innerHTML = '<p><strong>PAYMENT DATA LOADED</strong></p><p id="bankStatus">Cargando /api/bank-config...</p>';
+      pay.innerHTML = '<p><strong>Datos para transferencia:</strong></p><p id="bankStatus">Cargando /api/bank-config...</p>';
       loadBankData();
     } else {
       pay.innerHTML = '<p>Pagas el día de entrega: efectivo o transferencia.</p>';
@@ -121,7 +121,10 @@
       if (data && data.ok && data.data && data.data.enabled === false) {
         status.textContent = 'Datos bancarios pendientes de conectar';
       } else if (data && data.ok && data.data && data.data.enabled === true) {
-        status.textContent = safeText(data.data.message || 'Datos bancarios cargados');
+        var bankName = safeText(data.data.bankName || 'Banco pendiente');
+        var holder = safeText(data.data.accountHolder || 'Titular pendiente');
+        var account = safeText(data.data.accountNumber || 'Cuenta pendiente');
+        status.textContent = 'Banco: ' + bankName + '\nTitular: ' + holder + '\nCuenta: ' + account;
       } else {
         status.textContent = 'Datos bancarios pendientes de conectar';
       }
