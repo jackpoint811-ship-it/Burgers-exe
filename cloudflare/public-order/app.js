@@ -23,6 +23,9 @@
   var state = { itemsQty: {}, customizations: { OG: [], BBQ: [] } };
 
   function money(n) { return '$' + Number(n || 0).toFixed(2); }
+  function safeText(value) {
+    return String(value == null ? '' : value);
+  }
 
   function getPaymentMethod() {
     var checked = document.querySelector('input[name="payment"]:checked');
@@ -115,10 +118,10 @@
     try {
       var resp = await fetch('/api/bank-config');
       var data = await resp.json();
-      if (data && data.ok && data.data && data.data.stub === true) {
+      if (data && data.ok && data.data && data.data.enabled === false) {
         status.textContent = 'Datos bancarios pendientes de conectar';
-      } else if (data && data.ok && data.data) {
-        status.textContent = JSON.stringify(data.data);
+      } else if (data && data.ok && data.data && data.data.enabled === true) {
+        status.textContent = safeText(data.data.message || 'Datos bancarios cargados');
       } else {
         status.textContent = 'Datos bancarios pendientes de conectar';
       }
@@ -192,7 +195,39 @@
     var el = document.getElementById('successPanel');
     var total = (apiResp.data && apiResp.data.total) || 0;
     el.classList.remove('hidden');
-    el.innerHTML = '<h2>ORDER COMPILED</h2><p>Total: <strong>' + money(total) + '</strong></p><p>Pago: ' + payload.paymentMethod + '</p><p>Ubicación: ' + payload.location + '</p><p>Nota: ' + (payload.note || '(sin nota)') + '</p><details><summary>Resumen desglosado</summary><pre>' + JSON.stringify(payload, null, 2) + '</pre></details>';
+    el.textContent = '';
+
+    var title = document.createElement('h2');
+    title.textContent = 'ORDER COMPILED';
+    el.appendChild(title);
+
+    var totalP = document.createElement('p');
+    var totalStrong = document.createElement('strong');
+    totalP.appendChild(document.createTextNode('Total: '));
+    totalStrong.textContent = money(total);
+    totalP.appendChild(totalStrong);
+    el.appendChild(totalP);
+
+    var paymentP = document.createElement('p');
+    paymentP.textContent = 'Pago: ' + safeText(payload.paymentMethod);
+    el.appendChild(paymentP);
+
+    var locationP = document.createElement('p');
+    locationP.textContent = 'Ubicación: ' + safeText(payload.location);
+    el.appendChild(locationP);
+
+    var noteP = document.createElement('p');
+    noteP.textContent = 'Nota: ' + safeText(payload.note || '(sin nota)');
+    el.appendChild(noteP);
+
+    var details = document.createElement('details');
+    var summary = document.createElement('summary');
+    summary.textContent = 'Resumen desglosado';
+    var pre = document.createElement('pre');
+    pre.textContent = JSON.stringify(payload, null, 2);
+    details.appendChild(summary);
+    details.appendChild(pre);
+    el.appendChild(details);
   }
 
   function clearAll() {
