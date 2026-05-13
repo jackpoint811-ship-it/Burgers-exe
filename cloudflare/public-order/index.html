@@ -3,51 +3,69 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>BURGERS.EXE</title>
+    <title>BURGERS.EXE // ORDER FLOW</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <main class="app">
-      <header class="panel">
-        <p class="boot">EXECUTING FLAVOR...</p>
+      <header class="panel hero">
+        <p class="boot">BOOT.SEQ :: FLAVOR DAEMON ONLINE</p>
         <h1>BURGERS.EXE</h1>
-        <p class="tag">FATAL ERROR: DIETA NOT FOUND</p>
+        <p class="tag">COMPILA TU ORDEN // TERMINAL MODE</p>
       </header>
 
-      <section class="panel">
-        <h2>PRODUCTOS (PLACEHOLDER)</h2>
-        <p>OG $85 · BBQ $85 · FRIES · EXTRAS</p>
-      </section>
-
-      <section class="panel">
-        <h2>RESUMEN (PLACEHOLDER)</h2>
-        <p id="summaryText">+999 HAMBRE DETECTED</p>
-      </section>
-
-      <section class="panel">
-        <h2>DATOS CLIENTE (PLACEHOLDER)</h2>
-        <label>Nombre <input id="name" type="text" placeholder="Nombre" /></label>
-        <label>Teléfono <input id="phone" type="tel" placeholder="10 dígitos" /></label>
-        <label>Ubicación
-          <select id="location">
-            <option value="">Selecciona</option>
-            <option value="Torre GGA">Torre GGA</option>
-            <option value="Torre Valcob">Torre Valcob</option>
-          </select>
+      <section class="panel" id="customerPanel">
+        <h2>1) DATOS CLIENTE</h2>
+        <div class="grid two">
+          <label>Nombre
+            <input id="name" type="text" maxlength="80" placeholder="Tu nombre" />
+          </label>
+          <label>Teléfono
+            <input id="phone" type="tel" maxlength="20" placeholder="10 dígitos" />
+          </label>
+        </div>
+        <div class="grid two">
+          <label>Ubicación
+            <select id="location">
+              <option value="">Selecciona</option>
+              <option value="Torre GGA">Torre GGA</option>
+              <option value="Torre Valcob">Torre Valcob</option>
+            </select>
+          </label>
+          <fieldset>
+            <legend>Forma de pago</legend>
+            <label><input type="radio" name="payment" value="Pago mismo dia" checked /> Pago mismo dia</label>
+            <label><input type="radio" name="payment" value="Pagar Antes" /> Pagar Antes</label>
+          </fieldset>
+        </div>
+        <label>Nota para cocina / entrega
+          <textarea id="note" rows="2" placeholder="Ej. Sin prisa, estoy en lobby."></textarea>
         </label>
       </section>
 
-      <section class="panel">
-        <h2>PAGO (PLACEHOLDER)</h2>
-        <label><input type="radio" name="payment" value="Pago mismo dia" checked /> Pago mismo dia</label>
-        <label><input type="radio" name="payment" value="Pagar Antes" /> Pagar Antes</label>
+      <section class="panel" id="productsPanel">
+        <h2>2) ARMA TU PEDIDO</h2>
+        <div id="menuGrid" class="menu-grid"></div>
       </section>
 
-      <section class="actions panel">
+      <section class="panel" id="customPanel">
+        <h2>3) PERSONALIZACIONES POR BURGER</h2>
+        <div id="burgerCustomizations" class="stack"></div>
+      </section>
+
+      <section class="panel" id="summaryPanel">
+        <h2>4) RESUMEN</h2>
+        <div id="summary" class="summary"></div>
+        <div id="paymentInfo" class="payment-info"></div>
+      </section>
+
+      <section class="panel actions">
         <button id="loadLastBtn" type="button" class="ghost">LOAD LAST ORDER</button>
-        <button id="simulateBtn" type="button">Validar pedido</button>
+        <button id="clearBtn" type="button" class="danger">NEW ORDER / CLEAR SAVE</button>
+        <button id="submitBtn" type="button" class="primary">VALIDAR PEDIDO</button>
       </section>
 
+      <section id="successPanel" class="panel success hidden"></section>
       <pre id="status" class="panel status">READY</pre>
     </main>
 
