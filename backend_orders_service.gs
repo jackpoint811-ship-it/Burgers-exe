@@ -166,7 +166,13 @@ function bogCollectDynamicOrderParts_(masterRecord) {
 
   if (generalPersonalization.length) {
     notes.push('Personalización general: ' + generalPersonalization.join(' / '));
-    if (hamburguesas.length > 1 || hamburguesas.length === 0) {
+    var globalNotePreview = bogTrim_(bogSafeGetByAliases_(masterRecord, ['Nota']));
+    var isCloudflareOrder = globalNotePreview.indexOf('Canal: Burgers.exe Cloudflare') !== -1;
+    var hasStructuredBurgerPersonalizations =
+      bogHasUsefulValue_(bogSafeGetByAliases_(masterRecord, ['Burger OG'])) ||
+      bogHasUsefulValue_(bogSafeGetByAliases_(masterRecord, ['BBQ Burger']));
+    var shouldSkipAmbiguousAlert = isCloudflareOrder && hasStructuredBurgerPersonalizations;
+    if ((hamburguesas.length > 1 || hamburguesas.length === 0) && !shouldSkipAmbiguousAlert) {
       alertReasons.push('personalización ambigua');
     }
   }

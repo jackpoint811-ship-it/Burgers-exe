@@ -160,6 +160,16 @@ var BOG_PUBLIC_ORDER_WITHOUT_ALLOWED = {
   }
 };
 
+var BOG_PUBLIC_ORDER_EXTRAS_ALLOWED = {
+  'Pepinillos': 'EXTRA_PEPINILLOS',
+  'Queso americano': 'EXTRA_QUESO_AMERICANO',
+  'Queso manchego': 'EXTRA_QUESO_MANCHEGO',
+  'Tocino': 'EXTRA_TOCINO',
+  'Catsup': 'EXTRA_CATSUP',
+  'Mostaza': 'EXTRA_MOSTAZA',
+  'Tomate': 'EXTRA_TOMATE'
+};
+
 function bogBuildPublicOrderPersonalizationsSummary_(rawPersonalizations, normalizedItems) {
   var burgers = rawPersonalizations && Array.isArray(rawPersonalizations.burgers) ? rawPersonalizations.burgers : [];
   var skuLimits = {
@@ -168,6 +178,7 @@ function bogBuildPublicOrderPersonalizationsSummary_(rawPersonalizations, normal
   };
 
   var lines = { OG: [], BBQ: [] };
+  var extrasBySkuFromPersonalizations = {};
 
   burgers.forEach(function (entry) {
     var sku = bogTrim_(entry && entry.sku);
@@ -189,11 +200,37 @@ function bogBuildPublicOrderPersonalizationsSummary_(rawPersonalizations, normal
         throw new Error('Personalización inválida para ' + sku + ': ' + label);
       }
     });
-    var description = cleanedWithout.length ? cleanedWithout.join(', ') : 'Con todo';
+    if (entry && Object.prototype.hasOwnProperty.call(entry, 'extras') && !Array.isArray(entry.extras)) {
+      throw new Error('Personalización inválida: extras debe ser array.');
+    }
+    var extras = Array.isArray(entry && entry.extras) ? entry.extras : [];
+    var cleanedExtras = extras.map(function (label) { return bogTrim_(label); }).filter(Boolean);
+    cleanedExtras.forEach(function (label) {
+      if (BurgerOGConstants.SPECIAL_FLAGS_REGEX.test(label)) {
+        throw new Error('Personalización inválida: contiene texto restringido.');
+      }
+      if (!Object.prototype.hasOwnProperty.call(BOG_PUBLIC_ORDER_EXTRAS_ALLOWED, label)) {
+        throw new Error('Extra inválido para ' + sku + ': ' + label);
+      }
+      var extraSku = BOG_PUBLIC_ORDER_EXTRAS_ALLOWED[label];
+      extrasBySkuFromPersonalizations[extraSku] = (extrasBySkuFromPersonalizations[extraSku] || 0) + 1;
+    });
+
+    var withoutText = cleanedWithout.length ? ('Quitar: ' + cleanedWithout.join(', ')) : 'Con todo';
+    var extrasText = cleanedExtras.length ? cleanedExtras.map(function (label) { return label + ' +$5'; }).join(', ') : 'Sin extras';
     lines[sku].push({
       idx: burgerIndex,
-      text: sku + ' #' + burgerIndex + ': ' + description
+      text: sku + ' #' + burgerIndex + ': ' + withoutText + ' | Extras: ' + extrasText
     });
+  });
+
+  Object.keys(BOG_PUBLIC_ORDER_EXTRAS_ALLOWED).forEach(function (extraName) {
+    var extraSku = BOG_PUBLIC_ORDER_EXTRAS_ALLOWED[extraName];
+    var fromPersonalizations = Number(extrasBySkuFromPersonalizations[extraSku] || 0);
+    var fromItems = Number(normalizedItems[extraSku] || 0);
+    if (fromPersonalizations !== fromItems) {
+      throw new Error('Extras por burger no coinciden con items globales.');
+    }
   });
 
   lines.OG.sort(function (a, b) { return a.idx - b.idx; });
