@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="es-MX">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>BURGERS.EXE</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="panel">
+        <p class="boot">EXECUTING FLAVOR...</p>
+        <h1>BURGERS.EXE</h1>
+        <p class="tag">FATAL ERROR: DIETA NOT FOUND</p>
+      </header>
+
+      <section class="panel">
+        <h2>PRODUCTOS (PLACEHOLDER)</h2>
+        <p>OG $85 · BBQ $85 · FRIES · EXTRAS</p>
+      </section>
+
+      <section class="panel">
+        <h2>RESUMEN (PLACEHOLDER)</h2>
+        <p id="summaryText">+999 HAMBRE DETECTED</p>
+      </section>
+
+      <section class="panel">
+        <h2>DATOS CLIENTE (PLACEHOLDER)</h2>
+        <label>Nombre <input id="name" type="text" placeholder="Nombre" /></label>
+        <label>Teléfono <input id="phone" type="tel" placeholder="10 dígitos" /></label>
+        <label>Ubicación
+          <select id="location">
+            <option value="">Selecciona</option>
+            <option value="Torre GGA">Torre GGA</option>
+            <option value="Torre Valcob">Torre Valcob</option>
+          </select>
+        </label>
+      </section>
+
+      <section class="panel">
+        <h2>PAGO (PLACEHOLDER)</h2>
+        <label><input type="radio" name="payment" value="Pago mismo dia" checked /> Pago mismo dia</label>
+        <label><input type="radio" name="payment" value="Pagar Antes" /> Pagar Antes</label>
+      </section>
+
+      <section class="actions panel">
+        <button id="loadLastBtn" type="button" class="ghost">LOAD LAST ORDER</button>
+        <button id="simulateBtn" type="button">Simular pedido</button>
+      </section>
+
+      <pre id="status" class="panel status">READY</pre>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

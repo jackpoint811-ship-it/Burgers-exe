@@ -13,6 +13,39 @@ function doGet(e) {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
+
+
+function doPost(e) {
+  return bogHandleJsonPost_(e);
+}
+
+function bogHandleJsonPost_(e) {
+  try {
+    var bodyText = e && e.postData && e.postData.contents ? e.postData.contents : '';
+    if (!bodyText) {
+      return bogJsonResponse_({ ok: false, error: { message: 'Body vacío.' } });
+    }
+
+    var requestBody = JSON.parse(bodyText);
+    if (!requestBody || requestBody.action !== 'createPublicOrder') {
+      return bogJsonResponse_({ ok: false, error: { message: 'Acción no soportada.' } });
+    }
+
+    var data = bogPublicWrite_(function () {
+      return bogCreatePublicOrderFromCloudflare_(requestBody);
+    }, 'Pedido público recibido.');
+
+    return bogJsonResponse_(data);
+  } catch (err) {
+    return bogJsonResponse_(bogErrorEnvelope_(err));
+  }
+}
+
+function bogJsonResponse_(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
 function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
