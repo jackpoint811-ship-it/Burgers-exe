@@ -4,14 +4,22 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>BURGERS.EXE // ORDER FLOW</title>
+    <meta name="description" content="Burgers.exe terminal order flow para compilar tu pedido." />
+    <meta property="og:title" content="BURGERS.EXE // ORDER FLOW" />
+    <meta property="og:description" content="Compila tu orden en modo terminal." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="./assets/og-image-burgers-exe.png" />
+    <link rel="icon" type="image/x-icon" href="./assets/favicon.ico" />
+    <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <main class="app">
       <header class="panel hero">
         <p class="boot">BOOT.SEQ :: FLAVOR DAEMON ONLINE</p>
-        <h1>BURGERS.EXE</h1>
+        <img class="hero-logo" src="./assets/logo-burgers-exe-neon.svg" alt="Logo BURGERS.EXE" />
         <p class="tag">COMPILA TU ORDEN // TERMINAL MODE</p>
+        <img class="hero-art" src="./assets/mascot-burger-terminal.png" alt="Mascota estilo terminal de Burgers.exe" />
       </header>
 
       <section class="panel" id="customerPanel">
@@ -60,9 +68,9 @@
       </section>
 
       <section class="panel actions">
-        <button id="loadLastBtn" type="button" class="ghost">LOAD LAST ORDER</button>
-        <button id="clearBtn" type="button" class="danger">NEW ORDER / CLEAR SAVE</button>
-        <button id="submitBtn" type="button" class="primary">VALIDAR PEDIDO</button>
+        <button id="loadLastBtn" type="button" class="ghost"><img src="./assets/icon-load-save.svg" alt="" aria-hidden="true" />LOAD LAST ORDER</button>
+        <button id="clearBtn" type="button" class="danger"><img src="./assets/icon-clear-save.svg" alt="" aria-hidden="true" />NEW ORDER / CLEAR SAVE</button>
+        <button id="submitBtn" type="button" class="primary"><img src="./assets/icon-success.svg" alt="" aria-hidden="true" />VALIDAR PEDIDO</button>
       </section>
 
       <section id="successPanel" class="panel success hidden"></section>

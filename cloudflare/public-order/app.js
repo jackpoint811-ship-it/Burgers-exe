@@ -20,6 +20,22 @@
     BBQ: ['Sin Tocino', 'Sin Queso americano', 'Sin Queso manchego', 'Sin Aros de cebolla', 'Sin Salsa bbq']
   };
 
+  var SKU_ICONS = {
+    OG: './assets/icon-burger-og.png',
+    BBQ: './assets/icon-burger-bbq.png',
+    PAPAS_OG: './assets/icon-fries-og.png',
+    PAPAS_ESPECIALES: './assets/icon-fries-special.png',
+    PAPAS_LEMON_PEPPER: './assets/icon-fries-lemon-pepper.png',
+    AROS_CEBOLLA: './assets/icon-onion-rings.png',
+    EXTRA_PEPINILLOS: './assets/icon-extra-pickles.png',
+    EXTRA_QUESO_AMERICANO: './assets/icon-extra-american-cheese.png',
+    EXTRA_QUESO_MANCHEGO: './assets/icon-extra-manchego.png',
+    EXTRA_TOCINO: './assets/icon-extra-bacon.png',
+    EXTRA_CATSUP: './assets/icon-extra-ketchup.png',
+    EXTRA_MOSTAZA: './assets/icon-extra-mustard.png',
+    EXTRA_TOMATE: './assets/icon-extra-tomato.png'
+  };
+
   var state = { itemsQty: {}, customizations: { OG: [], BBQ: [] } };
 
   function money(n) { return '$' + Number(n || 0).toFixed(2); }
@@ -36,7 +52,8 @@
     var menuGrid = document.getElementById('menuGrid');
     menuGrid.innerHTML = MENU.map(function (item) {
       var qty = Number(state.itemsQty[item.sku] || 0);
-      return '<article class="menu-item"><h3>' + item.name + '</h3><p>' + money(item.price) + '</p><div class="qty"><button data-sku="' + item.sku + '" data-op="minus">-</button><span id="qty_' + item.sku + '">' + qty + '</span><button data-sku="' + item.sku + '" data-op="plus">+</button></div></article>';
+      var icon = SKU_ICONS[item.sku] ? '<img class="menu-icon" src="' + SKU_ICONS[item.sku] + '" alt="Icono de ' + item.name + '" loading="lazy" />' : '';
+      return '<article class="menu-item">' + icon + '<h3>' + item.name + '</h3><p>' + money(item.price) + '</p><div class="qty"><button aria-label="Quitar uno de ' + item.name + '" data-sku="' + item.sku + '" data-op="minus">-</button><span id="qty_' + item.sku + '">' + qty + '</span><button aria-label="Agregar uno de ' + item.name + '" data-sku="' + item.sku + '" data-op="plus">+</button></div></article>';
     }).join('');
   }
 
@@ -91,7 +108,7 @@
   function renderSummary() {
     var payload = buildPayload();
     var summary = document.getElementById('summary');
-    if (!payload.items.length) { summary.innerHTML = '<p class="muted">Carrito vacío.</p>'; return; }
+    if (!payload.items.length) { summary.innerHTML = '<div class="state-card"><img src="./assets/empty-cart-terminal.png" alt="Carrito vacío en terminal" loading="lazy" /><p class="muted">Carrito vacío.</p></div>'; return; }
     var map = {};
     MENU.forEach(function (x) { map[x.sku] = x; });
     var total = 0;
@@ -167,8 +184,9 @@
     redrawAll();
   }
 
-  function setStatus(message, data) {
-    document.getElementById('status').textContent = message + (data ? '\n\n' + JSON.stringify(data, null, 2) : '');
+  function setStatus(message, data, imagePath) {
+    var icon = imagePath ? '[image] ' + imagePath + '\n' : '';
+    document.getElementById('status').textContent = icon + message + (data ? '\n\n' + JSON.stringify(data, null, 2) : '');
   }
 
   function validate(payload) {
@@ -186,11 +204,11 @@
     try {
       var response = await fetch('/api/order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ payload: payload }) });
       var data = await response.json();
-      if (!response.ok || !data.ok) return setStatus('Error en /api/order', data);
+      if (!response.ok || !data.ok) return setStatus('Error en /api/order', data, './assets/error-terminal.png');
       renderSuccess(payload, data);
-      setStatus('ORDER COMPILED', data);
+      setStatus('ORDER COMPILED', data, './assets/success-order-terminal.png');
     } catch (networkErr) {
-      setStatus('Error de red', { message: networkErr.message });
+      setStatus('Error de red', { message: networkErr.message }, './assets/error-terminal.png');
     }
   }
 
@@ -200,9 +218,22 @@
     el.classList.remove('hidden');
     el.textContent = '';
 
+    var badge = document.createElement('img');
+    badge.src = './assets/order-compiled-badge.svg';
+    badge.alt = 'Insignia ORDER COMPILED';
+    badge.className = 'success-badge';
+    el.appendChild(badge);
+
     var title = document.createElement('h2');
     title.textContent = 'ORDER COMPILED';
     el.appendChild(title);
+
+    var successImage = document.createElement('img');
+    successImage.src = './assets/success-order-terminal.png';
+    successImage.alt = 'Terminal de orden completada';
+    successImage.className = 'success-image';
+    successImage.loading = 'lazy';
+    el.appendChild(successImage);
 
     var totalP = document.createElement('p');
     var totalStrong = document.createElement('strong');
@@ -292,5 +323,5 @@
 
   redrawAll();
   var previous = loadDraft();
-  if (previous) setStatus('Orden previa detectada. Usa LOAD LAST ORDER para restaurar.', { ts: previous.ts });
+  if (previous) setStatus('Orden previa detectada. Usa LOAD LAST ORDER para restaurar.', { ts: previous.ts }, './assets/save-file-found.png');
 })();
