@@ -642,13 +642,12 @@
     setStatus('Enviando pedido...');
     console.debug('POST /api/order payload', payload);
 
-    var response = await fetch('/api/order', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ payload: payload })
-    });
-
     try {
+      var response = await fetch('/api/order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payload: payload })
+      });
       var data = await response.json();
       console.debug('POST /api/order response', data);
       if (response.ok && data && data.ok) {
@@ -658,8 +657,8 @@
       }
       console.error('No se pudo enviar el pedido', { status: response.status, data: data });
       setStatus('No se pudo enviar el pedido. Intenta de nuevo.');
-    } catch (parseError) {
-      console.error('Respuesta inválida en /api/order', parseError);
+    } catch (requestError) {
+      console.error('Error enviando /api/order', requestError);
       setStatus('No se pudo enviar el pedido. Intenta de nuevo.');
     }
   }
