@@ -57,6 +57,7 @@
 
   var state = createInitialState();
   var dataStepErrors = {};
+  var clearConfirmUntil = 0;
 
   function getCurrentStepName() { return STEPS[state.step]; }
   function countBurgers() { return state.burgerUnits.length; }
@@ -148,6 +149,16 @@
     state.burgerUnits.forEach(function (u) { total += burgerPrice(u.sku) + (u.extras || []).length * 5; });
     MENU.sides.forEach(function (s) { total += (state.sidesQty[s.sku] || 0) * s.price; });
     return total;
+  }
+
+  function calcOrderItemCount() {
+    var sideItems = 0;
+    MENU.sides.forEach(function (s) { sideItems += Number(state.sidesQty[s.sku] || 0); });
+    return countBurgers() + sideItems;
+  }
+
+  function hasDraftContent() {
+    return calcOrderItemCount() > 0 || Boolean(state.customer.customerName.trim() || state.customer.phone.trim() || state.customer.location || state.customer.note.trim());
   }
 
   function buildPayload() {
@@ -302,19 +313,31 @@
 
     var sides = MENU.sides.map(function (s) {
       var qty = state.sidesQty[s.sku] || 0;
-      return qty ? '<p>' + escapeHtml(s.name) + ' x' + qty + ' — ' + money(qty * s.price) + '</p>' : '';
-    }).join('') || '<p>Sin guarniciones</p>';
+      return qty ? '<div class="summary-row"><span>' + escapeHtml(s.name) + ' x' + qty + '</span><strong>' + money(qty * s.price) + '</strong></div>' : '';
+    }).join('') || '<p class="muted">Sin guarniciones</p>';
 
     return '<h2>RESUMEN</h2>' +
-      (lines || '<p class="muted">Carrito vacío.</p>') +
-      '<h3>Guarniciones</h3>' + sides +
-      '<h3>TOTAL: ' + money(calcTotal()) + '</h3>' +
-      '<p>Nombre: ' + escapeHtml(state.customer.customerName) + '</p>' +
-      '<p>Teléfono: ' + escapeHtml(state.customer.phone) + '</p>' +
-      '<p>Ubicación: ' + escapeHtml(state.customer.location) + '</p>' +
-      '<p>Forma de pago: ' + escapeHtml(state.customer.paymentMethod) + '</p>' +
-      '<p>Nota: ' + escapeHtml(state.customer.note || '(sin nota)') + '</p>' +
-      '<div id="paymentInfo"></div><button id="submitBtn" class="primary">VALIDAR PEDIDO / COMPILAR ORDEN</button>';
+      '<section class="summary-section"><h3>Burgers</h3>' + (lines || '<p class="muted">Sin burgers.</p>') + '</section>' +
+      '<section class="summary-section"><h3>Guarniciones</h3>' + sides + '</section>' +
+      '<section class="summary-section"><h3>Datos del cliente</h3>' +
+      '<p>Nombre: ' + escapeHtml(state.customer.customerName || '(pendiente)') + '</p>' +
+      '<p>Teléfono: ' + escapeHtml(state.customer.phone || '(pendiente)') + '</p>' +
+      '<p>Ubicación: ' + escapeHtml(state.customer.location || '(pendiente)') + '</p>' +
+      '<p>Nota: ' + escapeHtml(state.customer.note || '(sin nota)') + '</p></section>' +
+      '<section class="summary-section"><h3>Pago</h3><p>Forma de pago: ' + escapeHtml(state.customer.paymentMethod) + '</p><div id="paymentInfo"></div></section>' +
+      '<section class="summary-section summary-total"><h3>Total</h3><p>' + money(calcTotal()) + '</p></section>' +
+      '<button id="submitBtn" class="primary">VALIDAR PEDIDO / COMPILAR ORDEN</button>';
+  }
+
+  function renderMiniSummary() {
+    var node = document.getElementById('miniSummary');
+    if (!node) return;
+    var items = calcOrderItemCount();
+    if (!items) {
+      node.textContent = 'Pedido vacío';
+      return;
+    }
+    node.textContent = 'Pedido: ' + items + ' items · ' + money(calcTotal());
   }
 
   function renderCurrentStep() {
@@ -364,6 +387,7 @@
   function redraw() {
     renderStepper();
     renderCurrentStep();
+    renderMiniSummary();
     saveDraft();
   }
 
@@ -564,17 +588,23 @@
   }
 
   function onClearClick() {
+    if (hasDraftContent() && Date.now() > clearConfirmUntil) {
+      clearConfirmUntil = Date.now() + 5000;
+      setStatus('Toca otra vez "Reiniciar pedido" para confirmar. Este pedido se guarda solo en este dispositivo.');
+      return;
+    }
+    clearConfirmUntil = 0;
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(LEGACY_KEY);
     state = createInitialState();
     redraw();
-    setStatus('Nueva orden iniciada.');
+    setStatus('Pedido reiniciado. Se borró el guardado local.');
   }
 
   function onLoadLastClick() {
     restoreDraft(loadDraft());
     redraw();
-    setStatus('Draft cargado.');
+    setStatus('Pedido anterior cargado desde este dispositivo.');
   }
 
   async function submit() {
@@ -606,6 +636,19 @@
   document.getElementById('stepper').addEventListener('click', onStepperClick);
   document.getElementById('clearBtn').addEventListener('click', onClearClick);
   document.getElementById('loadLastBtn').addEventListener('click', onLoadLastClick);
+  document.getElementById('loadLastBtn').textContent = 'Cargar pedido guardado en este dispositivo';
+  document.getElementById('clearBtn').textContent = 'Reiniciar pedido y borrar guardado local';
+  var navPanel = document.querySelector('.nav-panel');
+  if (navPanel) {
+    var mini = document.createElement('p');
+    mini.id = 'miniSummary';
+    mini.className = 'mini-summary';
+    navPanel.insertBefore(mini, navPanel.firstChild);
+    var hint = document.createElement('p');
+    hint.className = 'mini-storage-hint';
+    hint.textContent = 'Se guarda en este dispositivo sin iniciar sesión.';
+    navPanel.insertBefore(hint, navPanel.children[1]);
+  }
 
   restoreDraft(loadDraft());
   redraw();
