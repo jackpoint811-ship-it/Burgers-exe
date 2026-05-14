@@ -205,6 +205,7 @@ small {
 
 .step {
   flex: 0 0 auto;
+  flex-shrink: 0;
   min-height: var(--tap-min);
   display: inline-flex;
   align-items: center;
@@ -397,6 +398,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .nav-panel button img { width: 15px; height: 15px; flex: 0 0 auto; }
 #nextBtn { min-height: 48px; font-size: 0.98rem; box-shadow: 0 0 0 1px color-mix(in srgb, var(--line) 35%, transparent), 0 0 18px var(--glow-soft); }
 #backBtn,#loadLastBtn,#clearBtn { background: #0b1118; border-color: #2f4f3d; color: var(--muted); min-height: 44px; }
+#backBtn,#loadLastBtn,#clearBtn:not(:focus-visible):not(:hover) { box-shadow: none; }
 #loadLastBtn,#clearBtn { font-size: 0.83rem; padding: 8px 10px; }
 .nav-panel button:active { transform: translateY(1px); }
 .step-content {
@@ -461,11 +463,31 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 @media (max-width: 430px) {
   .app { padding: var(--space-3); padding-bottom: calc(clamp(188px, 36vh, 242px) + env(safe-area-inset-bottom, 0px)); }
   .panel { padding: var(--space-3); }
+  .stepper-status { align-items: flex-start; flex-direction: column; }
+  .step-progress { font-size: 0.74rem; }
+  .step { min-height: 42px; padding: 0 9px; font-size: 0.77rem; }
+  .choice-row,.pay-option-card { grid-template-columns: 18px minmax(0, 1fr); grid-template-areas: "input content" "state state"; align-items: start; }
+  .choice-input,.pay-option-input { grid-area: input; margin-top: 2px; }
+  .choice-main,.pay-option-main { grid-area: content; }
+  .choice-state,.pay-option-state { grid-area: state; justify-self: start; white-space: normal; text-align: left; }
+  .summary-head { align-items: flex-start; flex-direction: column; }
+  .summary-edit-btn { width: 100%; }
+  .payment-value { font-size: 0.93rem; }
   .nav-panel { gap: 6px; }
   .mini-summary { font-size: 0.85rem; }
   .mini-storage-hint { font-size: 0.72rem; }
   .copy-btn { width: 100%; }
   #nextBtn { font-size: 1rem; }
+}
+
+@media (max-width: 389px) {
+  .app { padding: var(--space-2); }
+  .panel { padding: var(--space-2); }
+  .menu-item { padding: var(--space-3); }
+  .menu-item h3 { font-size: 0.98rem; }
+  .menu-price { font-size: 1rem; }
+  .menu-description,.data-step-help,.field-help { font-size: 0.76rem; }
+  #loadLastBtn,#clearBtn { font-size: 0.79rem; padding: 8px; }
 }
 
 @media (max-width: 320px) {

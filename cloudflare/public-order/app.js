@@ -114,7 +114,7 @@
     var itemCount = Number((data && data.data && data.data.upstream && data.data.upstream.itemCount) || calcOrderItemCount());
 
     panel.innerHTML =
-      '<h2>ORDER RECEIVED ✅</h2>' +
+      '<h2>PEDIDO RECIBIDO ✅</h2>' +
       '<p>Tu pedido ya entró al sistema.</p>' +
       '<div class="success-metrics" aria-label="Resumen de confirmación">' +
       '<p><strong>Total:</strong> ' + money(total) + '</p>' +
@@ -433,7 +433,7 @@
       '<p>Nota: ' + escapeHtml(state.customer.note || '(sin nota)') + '</p></section>' +
       '<section class="summary-section"><h3>Pago</h3><p>Forma de pago: ' + escapeHtml(state.customer.paymentMethod) + '</p><div id="paymentInfo"></div></section>' +
       '<section class="summary-section summary-total"><h3>Total del pedido</h3><p>' + money(calcTotal()) + '</p></section>' +
-      '<button id="submitBtn" class="primary">VALIDAR PEDIDO / COMPILAR ORDEN</button>';
+      '<button id="submitBtn" class="primary">Enviar pedido</button>';
   }
 
   function renderMiniSummary() {
