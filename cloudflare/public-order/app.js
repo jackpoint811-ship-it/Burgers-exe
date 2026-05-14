@@ -314,7 +314,6 @@
 
   function renderMenuStep() {
     return '<h2>MENÚ</h2><h3>Burgers</h3><div class="menu-grid">' + renderMenuCards(MENU.burgers) + '</div>' +
-      '<h3>Extras</h3><div class="menu-grid">' + renderMenuCards(MENU.extras) + '</div>' +
       '<h3>Guarniciones</h3><div class="menu-grid">' + renderMenuCards(MENU.sides) + '</div>' +
       '<button id="startBtn" class="primary">INICIAR PEDIDO</button>';
   }
