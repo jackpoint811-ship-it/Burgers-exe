@@ -398,7 +398,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .nav-panel button img { width: 15px; height: 15px; flex: 0 0 auto; }
 #nextBtn { min-height: 48px; font-size: 0.98rem; box-shadow: 0 0 0 1px color-mix(in srgb, var(--line) 35%, transparent), 0 0 18px var(--glow-soft); }
 #backBtn,#loadLastBtn,#clearBtn { background: #0b1118; border-color: #2f4f3d; color: var(--muted); min-height: 44px; }
-#backBtn,#loadLastBtn,#clearBtn:not(:focus-visible):not(:hover) { box-shadow: none; }
+#backBtn:not(:focus-visible):not(:hover),
+#loadLastBtn:not(:focus-visible):not(:hover),
+#clearBtn:not(:focus-visible):not(:hover) { box-shadow: none; }
 #loadLastBtn,#clearBtn { font-size: 0.83rem; padding: 8px 10px; }
 .nav-panel button:active { transform: translateY(1px); }
 .step-content {
@@ -465,7 +467,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   .panel { padding: var(--space-3); }
   .stepper-status { align-items: flex-start; flex-direction: column; }
   .step-progress { font-size: 0.74rem; }
-  .step { min-height: 42px; padding: 0 9px; font-size: 0.77rem; }
+  .step { min-height: var(--tap-min); padding: 0 9px; font-size: 0.77rem; }
   .choice-row,.pay-option-card { grid-template-columns: 18px minmax(0, 1fr); grid-template-areas: "input content" "state state"; align-items: start; }
   .choice-input,.pay-option-input { grid-area: input; margin-top: 2px; }
   .choice-main,.pay-option-main { grid-area: content; }
