@@ -464,6 +464,7 @@
     if (target.name === 'pay') state.customer.paymentMethod = target.value;
     if (target.id === 'location') state.customer.location = target.value;
 
+    renderMiniSummary();
     if (state.step === 5) refreshDataErrorsIfNeeded();
     saveDraft();
   }
