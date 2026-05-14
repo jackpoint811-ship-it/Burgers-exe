@@ -650,12 +650,15 @@
       });
       var data = await response.json();
       console.debug('POST /api/order response', data);
-      if (response.ok && data && data.ok) {
+      var upstream = data && data.data && data.data.upstream ? data.data.upstream : null;
+      var isDryRun = Boolean(data && data.data && data.data.mode === 'dry-run');
+      var isWriteAccepted = Boolean(upstream && upstream.mode === 'write' && upstream.accepted === true);
+      if (response.ok && data && data.ok && !isDryRun && isWriteAccepted) {
         showSuccessPanel(data);
         setStatus('Pedido recibido correctamente.');
         return;
       }
-      console.error('No se pudo enviar el pedido', { status: response.status, data: data });
+      console.warn('Respuesta no confirma escritura real del pedido', { status: response.status, data: data });
       setStatus('No se pudo enviar el pedido. Intenta de nuevo.');
     } catch (requestError) {
       console.error('Error enviando /api/order', requestError);
