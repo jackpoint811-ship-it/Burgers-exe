@@ -92,7 +92,10 @@
   }
 
   function setStatus(message, details) {
-    document.getElementById('status').textContent = message + (details ? '\n\n' + JSON.stringify(details, null, 2) : '');
+    var statusNode = document.getElementById('status');
+    statusNode.textContent = message + (details ? '\n\n' + JSON.stringify(details, null, 2) : '');
+    statusNode.setAttribute('tabindex', '-1');
+    statusNode.focus({ preventScroll: true });
   }
 
   // ---------------------------------------------------------------------------
@@ -193,9 +196,14 @@
   // Render helpers
   // ---------------------------------------------------------------------------
   function renderStepper() {
+    var progress = '<span class="step-progress">Paso ' + (state.step + 1) + ' de ' + STEPS.length + '</span>';
     document.getElementById('stepper').innerHTML = STEPS.map(function (stepName, i) {
-      return '<span class="step ' + (i === state.step ? 'active' : i < state.step ? 'done' : '') + '">' + stepName + '</span>';
-    }).join('');
+      var classes = 'step ' + (i === state.step ? 'active' : i < state.step ? 'done' : '');
+      var disabled = i > state.step ? 'disabled' : '';
+      var ariaCurrent = i === state.step ? 'aria-current="step"' : '';
+      var ariaLabel = 'aria-label="Ir al paso ' + (i + 1) + ': ' + stepName + '"';
+      return '<button type="button" class="' + classes + '" data-step-index="' + i + '" ' + disabled + ' ' + ariaCurrent + ' ' + ariaLabel + '>' + stepName + '</button>';
+    }).join('') + progress;
   }
 
   function renderMenuCards(items, qtyObj) {
@@ -329,6 +337,21 @@
     saveDraft();
   }
 
+  function moveStep(targetStep) {
+    var nextStep = Math.max(0, Math.min(STEPS.length - 1, targetStep));
+    if (nextStep > state.step) return;
+    state.step = nextStep;
+    redraw();
+    scrollToCurrentStep();
+  }
+
+  function scrollToCurrentStep() {
+    var scrollTarget = document.getElementById('stepContent');
+    if (!scrollTarget) return;
+    var prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    scrollTarget.scrollIntoView({ behavior: prefersReduced ? 'auto' : 'smooth', block: 'start' });
+  }
+
   // ---------------------------------------------------------------------------
   // Event handlers
   // ---------------------------------------------------------------------------
@@ -401,11 +424,19 @@
     if (err) return setStatus(err);
     state.step = Math.min(STEPS.length - 1, state.step + 1);
     redraw();
+    scrollToCurrentStep();
   }
 
   function onBackClick() {
     state.step = Math.max(0, state.step - 1);
     redraw();
+    scrollToCurrentStep();
+  }
+
+  function onStepperClick(e) {
+    var button = e.target.closest('[data-step-index]');
+    if (!button) return;
+    moveStep(Number(button.getAttribute('data-step-index')));
   }
 
   function onClearClick() {
@@ -448,6 +479,7 @@
 
   document.getElementById('nextBtn').addEventListener('click', onNextClick);
   document.getElementById('backBtn').addEventListener('click', onBackClick);
+  document.getElementById('stepper').addEventListener('click', onStepperClick);
   document.getElementById('clearBtn').addEventListener('click', onClearClick);
   document.getElementById('loadLastBtn').addEventListener('click', onLoadLastClick);
 
