@@ -505,6 +505,23 @@ textarea:focus-visible,
   overflow-wrap: anywhere;
 }
 
+.success {
+  border-color: var(--line);
+  background: linear-gradient(180deg, rgba(18, 53, 30, 0.55) 0%, rgba(10, 24, 18, 0.85) 100%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--line) 35%, transparent), 0 0 16px var(--glow-soft);
+}
+
+.success h2 {
+  margin-bottom: var(--space-2);
+  color: var(--line);
+  font-size: 1.1rem;
+  overflow-wrap: anywhere;
+}
+
+.success p {
+  overflow-wrap: anywhere;
+}
+
 .hidden {
   display: none;
 }
