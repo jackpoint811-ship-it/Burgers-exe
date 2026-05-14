@@ -222,7 +222,7 @@
       var dataErrors = getDataStepErrors();
       if (Object.keys(dataErrors).length) return 'Completa datos requeridos.';
     }
-    if (stepOnly === 'submit' && !buildPayload().items.length) return 'Carrito vacío.';
+    if (stepOnly === 'submit' && !buildPayload().items.length) return 'Pedido vacío.';
     return '';
   }
 
@@ -601,13 +601,13 @@
     localStorage.removeItem(LEGACY_KEY);
     state = createInitialState();
     redraw();
-    setStatus('Pedido reiniciado. Se borró el guardado local.');
+    setStatus('Pedido reiniciado y guardado local borrado.');
   }
 
   function onLoadLastClick() {
     restoreDraft(loadDraft());
     redraw();
-    setStatus('Pedido anterior cargado desde este dispositivo.');
+    setStatus('Pedido guardado cargado desde este dispositivo.');
   }
 
   async function submit() {

@@ -13,6 +13,8 @@
   --danger: #b54f4f;
   --danger-text: #ffd2d2;
   --focus: #72ff9f;
+  --glow-soft: rgba(60, 255, 123, 0.18);
+  --glow-strong: rgba(60, 255, 123, 0.36);
 
   --radius-sm: 10px;
   --radius-md: 12px;
@@ -88,7 +90,7 @@ small {
   width: min(100%, 980px);
   margin: 0 auto;
   padding: var(--space-4);
-  padding-bottom: calc(290px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(330px + env(safe-area-inset-bottom, 0px));
   display: grid;
   gap: var(--space-3);
 }
@@ -101,6 +103,7 @@ small {
   border: 1px solid var(--line-soft);
   border-radius: var(--radius-md);
   padding: var(--space-4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
 }
 
 .hero {
@@ -150,7 +153,7 @@ small {
 
 .step {
   flex: 0 0 auto;
-  min-height: 34px;
+  min-height: var(--tap-min);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -159,7 +162,7 @@ small {
   border-radius: 999px;
   background: var(--panel-soft);
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   letter-spacing: 0.02em;
   white-space: nowrap;
   width: auto;
@@ -167,7 +170,7 @@ small {
 
 .step.active {
   border-color: var(--line);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--line) 30%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--line) 30%, transparent), 0 0 14px var(--glow-soft);
   color: var(--line);
 }
 
@@ -196,6 +199,12 @@ small {
   border-radius: var(--radius-sm);
   background: rgba(11, 17, 24, 0.7);
   padding: var(--space-3);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.menu-item:hover,
+.custom-card:hover {
+  border-color: #3a7b58;
 }
 
 .custom-card {
@@ -212,6 +221,7 @@ small {
   margin-bottom: var(--space-1);
   font-weight: 700;
   color: var(--line);
+  text-shadow: 0 0 8px rgba(60, 255, 123, 0.14);
 }
 
 .menu-icon {
@@ -312,6 +322,7 @@ fieldset label {
   color: var(--danger-text);
   font-size: 0.84rem;
   line-height: 1.4;
+  font-weight: 700;
 }
 
 input[type="radio"],
@@ -341,6 +352,7 @@ button.primary {
   background: #12351e;
   border-color: var(--line);
   color: #e6ffef;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--line) 40%, transparent), 0 0 16px var(--glow-soft);
 }
 
 button.danger {
@@ -357,9 +369,11 @@ button:disabled {
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,
-textarea:focus-visible {
+textarea:focus-visible,
+.step:focus-visible {
   outline: 2px solid var(--focus);
-  outline-offset: 2px;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 3px rgba(7, 9, 15, 0.95), 0 0 0 5px var(--glow-strong);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -381,6 +395,7 @@ textarea:focus-visible {
   z-index: 3;
   background: rgba(17, 21, 33, 0.98);
   border: 1px solid var(--line-soft);
+  box-shadow: 0 -8px 22px rgba(0, 0, 0, 0.35);
   padding-bottom: calc(var(--space-2) + env(safe-area-inset-bottom, 0px));
 }
 
@@ -392,18 +407,19 @@ textarea:focus-visible {
 .mini-summary {
   grid-area: mini;
   font-weight: 700;
-  color: var(--line);
+  color: #d4ffe3;
   font-size: 0.92rem;
   border: 1px solid var(--line-soft);
   border-radius: var(--radius-sm);
-  background: #0b1118;
+  background: linear-gradient(180deg, #0f1822 0%, #0b1118 100%);
   padding: 8px 10px;
 }
 
 .mini-storage-hint {
   grid-area: hint;
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: 0.79rem;
+  line-height: 1.45;
 }
 
 #loadLastBtn { grid-area: load; }
@@ -427,7 +443,7 @@ textarea:focus-visible {
 #nextBtn {
   min-height: 52px;
   font-size: 1rem;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--line) 35%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--line) 35%, transparent), 0 0 18px var(--glow-soft);
 }
 
 #backBtn,
@@ -460,6 +476,11 @@ textarea:focus-visible {
   background: rgba(11, 17, 24, 0.55);
 }
 
+.summary-section h3 {
+  margin-bottom: var(--space-2);
+  color: #d7fbe3;
+}
+
 .summary-row {
   display: flex;
   justify-content: space-between;
@@ -481,6 +502,7 @@ textarea:focus-visible {
   color: #caefda;
   border-color: #3f8a61;
   background: #0f1c18;
+  overflow-wrap: anywhere;
 }
 
 .hidden {
@@ -507,6 +529,27 @@ textarea:focus-visible {
       "load clear back next next next";
     position: static;
     padding-bottom: var(--space-4);
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 390px) {
+  .app {
+    padding: var(--space-3);
+    padding-bottom: calc(340px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .panel {
+    padding: var(--space-3);
+  }
+
+  .boot,
+  .tag {
+    font-size: 0.76rem;
+  }
+
+  .mini-summary {
+    font-size: 0.87rem;
   }
 }
 
