@@ -323,18 +323,47 @@
   function renderCustomStep() {
     if (!state.burgerUnits.length) return '<h2>CUSTOM</h2><p class="muted">No hay burgers.</p>';
     return '<h2>CUSTOM</h2>' + state.burgerUnits.map(function (u, i) {
-      return '<div class="custom-card"><h4>' + u.label + '</h4>' + WITHOUT[u.sku].map(function (opt) {
-        return '<label><input type="checkbox" data-kind="without" data-i="' + i + '" value="' + opt + '" ' + (u.without.indexOf(opt) >= 0 ? 'checked' : '') + '>' + opt + '</label>';
-      }).join('') + '</div>';
+      var removedSummary = (u.without || []).map(function (opt) { return opt.replace(/^Sin\s+/i, ''); }).join(', ') || 'Sin cambios';
+      return '<div class="custom-card custom-card-edit" data-unit-card="' + escapeHtml(u.id) + '">' +
+        '<p class="custom-context">Personalizando: ' + escapeHtml(u.label) + '</p>' +
+        '<h4>Quitar ingredientes</h4>' +
+        '<p class="custom-help">Activa lo que NO quieres en tu burger.</p>' +
+        '<p class="custom-summary">Quitaste: ' + escapeHtml(removedSummary) + '</p>' +
+        '<div class="choice-list">' + WITHOUT[u.sku].map(function (opt) {
+          var isChecked = u.without.indexOf(opt) >= 0;
+          return '<label class="choice-row choice-row-without" data-choice-row="without">' +
+            '<input class="choice-input" type="checkbox" data-kind="without" data-i="' + i + '" value="' + opt + '" ' + (isChecked ? 'checked' : '') + '>' +
+            '<span class="choice-main">' +
+              '<span class="choice-text">' + escapeHtml(opt) + '</span>' +
+              '<span class="choice-state">' + (isChecked ? 'Quitado' : 'Disponible') + '</span>' +
+            '</span>' +
+          '</label>';
+        }).join('') + '</div>' +
+      '</div>';
     }).join('');
   }
 
   function renderExtrasStep() {
     if (!state.burgerUnits.length) return '<h2>EXTRAS</h2><p class="muted">No hay burgers.</p>';
     return '<h2>EXTRAS</h2>' + state.burgerUnits.map(function (u, i) {
-      return '<div class="custom-card"><h4>Extras para esta burger: ' + u.label + '</h4>' + MENU.extras.map(function (x) {
-        return '<label><input type="checkbox" data-kind="extra" data-i="' + i + '" value="' + x.name + '" ' + (u.extras.indexOf(x.name) >= 0 ? 'checked' : '') + '>' + x.name + ' (+$5)</label>';
-      }).join('') + '</div>';
+      var extrasSummary = (u.extras || []).join(', ') || 'Sin extras';
+      return '<div class="custom-card custom-card-edit" data-unit-card="' + escapeHtml(u.id) + '">' +
+        '<p class="custom-context">Extras para: ' + escapeHtml(u.label) + '</p>' +
+        '<h4>Agrega algo extra</h4>' +
+        '<p class="custom-help">Cada extra suma +$5.</p>' +
+        '<p class="custom-summary">Extras: ' + escapeHtml(extrasSummary) + '</p>' +
+        '<div class="choice-list">' + MENU.extras.map(function (x) {
+          var isChecked = u.extras.indexOf(x.name) >= 0;
+          return '<label class="choice-row choice-row-extra" data-choice-row="extra">' +
+            '<input class="choice-input" type="checkbox" data-kind="extra" data-i="' + i + '" value="' + x.name + '" ' + (isChecked ? 'checked' : '') + '>' +
+            '<span class="choice-main">' +
+              '<span class="choice-text">' + escapeHtml(x.name) + '</span>' +
+              '<span class="choice-price">+$5</span>' +
+            '</span>' +
+            '<span class="choice-state">' + (isChecked ? 'Agregado' : 'No agregado') + '</span>' +
+          '</label>';
+        }).join('') + '</div>' +
+      '</div>';
     }).join('');
   }
 
@@ -587,12 +616,14 @@
   function onStepContentChange(e) {
     var target = e.target;
     var index = Number(target.getAttribute('data-i'));
+    var optionChanged = false;
 
     if (target.getAttribute('data-kind') === 'without') {
       var without = state.burgerUnits[index].without;
       var withoutPos = without.indexOf(target.value);
       if (target.checked && withoutPos < 0) without.push(target.value);
       if (!target.checked && withoutPos >= 0) without.splice(withoutPos, 1);
+      optionChanged = true;
     }
 
     if (target.getAttribute('data-kind') === 'extra') {
@@ -600,6 +631,7 @@
       var extraPos = extras.indexOf(target.value);
       if (target.checked && extraPos < 0) extras.push(target.value);
       if (!target.checked && extraPos >= 0) extras.splice(extraPos, 1);
+      optionChanged = true;
     }
 
     if (target.name === 'pay') state.customer.paymentMethod = target.value;
@@ -608,6 +640,21 @@
     renderMiniSummary();
     if (state.step === 5) refreshDataErrorsIfNeeded();
     saveDraft();
+
+    if (optionChanged) {
+      var choiceRow = target.closest('.choice-row');
+      var customCard = target.closest('.custom-card-edit');
+      [choiceRow, customCard].forEach(function (node) {
+        if (!node) return;
+        node.classList.remove('option-pulse');
+        window.requestAnimationFrame(function () {
+          node.classList.add('option-pulse');
+          window.setTimeout(function () {
+            node.classList.remove('option-pulse');
+          }, 160);
+        });
+      });
+    }
   }
 
 
