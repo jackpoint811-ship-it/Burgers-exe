@@ -450,6 +450,15 @@
       : '<span>Enviar pedido</span>';
   }
 
+  function setSubmitSuccess() {
+    var button = document.getElementById('submitBtn');
+    if (!button) return;
+    button.disabled = true;
+    button.setAttribute('aria-busy', 'false');
+    button.classList.add('submit-success');
+    button.innerHTML = '<span>PEDIDO RECIBIDO ✅</span>';
+  }
+
   function renderMiniSummary() {
     var node = document.getElementById('miniSummary');
     if (!node) return;
@@ -919,6 +928,7 @@
       var isWriteAccepted = Boolean(upstream && upstream.mode === 'write' && upstream.accepted === true);
       if (response.ok && data && data.ok && !isDryRun && isWriteAccepted) {
         setStatus('Pedido recibido correctamente.');
+        setSubmitSuccess();
         showSuccessPanel(data);
         return;
       }
