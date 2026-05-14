@@ -286,15 +286,25 @@
   function renderMenuCards(items, qtyObj) {
     return items.map(function (x) {
       var qty = qtyObj ? Number(qtyObj[x.sku] || 0) : 0;
+      var selectedClass = qty > 0 ? ' is-selected' : '';
       var icon = SKU_ICONS[x.sku] ? '<img class="menu-icon" src="' + SKU_ICONS[x.sku] + '" alt="Icono de ' + escapeHtml(x.name) + '" loading="lazy">' : '';
-      return '<article class="menu-item">' +
-        icon +
+      var qtyBadge = qtyObj && qty > 0 ? '<span class="menu-badge" aria-hidden="true">x' + qty + '</span>' : '';
+      var qtyControls = '';
+
+      if (qtyObj) {
+        qtyControls = '<div class="qty">' +
+          '<button class="qty-btn qty-btn-minus" data-op="minus" data-sku="' + x.sku + '" aria-label="Quitar ' + escapeHtml(x.name) + '" ' + (qty === 0 ? 'disabled' : '') + '>-</button>' +
+          '<span class="qty-count" aria-live="polite">' + qty + '</span>' +
+          '<button class="qty-btn qty-btn-plus" data-op="plus" data-sku="' + x.sku + '" aria-label="Agregar ' + escapeHtml(x.name) + '">+</button>' +
+        '</div>' ;
+      }
+
+      return '<article class="menu-item' + selectedClass + '" data-sku-card="' + x.sku + '" data-selected="' + (qty > 0 ? 'true' : 'false') + '">' +
+        '<div class="menu-item-head">' + icon + qtyBadge + '</div>' +
         '<h3>' + escapeHtml(x.name) + '</h3>' +
-        '<p>' + money(x.price) + '</p>' +
-        '<small>' + escapeHtml(x.description) + '</small>' +
-        (qtyObj
-          ? '<div class="qty"><button data-op="minus" data-sku="' + x.sku + '">-</button><span>' + qty + '</span><button data-op="plus" data-sku="' + x.sku + '">+</button></div>'
-          : '') +
+        '<p class="menu-price">' + money(x.price) + '</p>' +
+        '<small class="menu-description">' + escapeHtml(x.description) + '</small>' +
+        qtyControls +
         '</article>';
     }).join('');
   }
@@ -378,11 +388,15 @@
     var node = document.getElementById('miniSummary');
     if (!node) return;
     var items = calcOrderItemCount();
+    node.classList.remove('mini-summary-updated');
     if (!items) {
       node.textContent = 'Pedido vacío';
       return;
     }
     node.textContent = 'Pedido: ' + items + ' items · ' + money(calcTotal());
+    window.requestAnimationFrame(function () {
+      node.classList.add('mini-summary-updated');
+    });
   }
 
   function renderCurrentStep() {
@@ -544,6 +558,7 @@
     if (!sku) return;
 
     var op = button.getAttribute('data-op');
+    if ((op === 'minus' || op === 'plus') && button.disabled) return;
     var stepName = getCurrentStepName();
 
     if (stepName === 'BURGERS') {
@@ -555,6 +570,17 @@
     }
 
     redraw();
+
+    var card = button.closest('.menu-item');
+    if (card) {
+      card.classList.remove('menu-item-pulse');
+      window.requestAnimationFrame(function () {
+        card.classList.add('menu-item-pulse');
+        window.setTimeout(function () {
+          card.classList.remove('menu-item-pulse');
+        }, 160);
+      });
+    }
   }
 
   function onStepContentChange(e) {
