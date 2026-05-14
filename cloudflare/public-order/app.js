@@ -152,9 +152,11 @@
   }
 
   function calcOrderItemCount() {
+    var extraItems = 0;
     var sideItems = 0;
+    state.burgerUnits.forEach(function (u) { extraItems += (u.extras || []).length; });
     MENU.sides.forEach(function (s) { sideItems += Number(state.sidesQty[s.sku] || 0); });
-    return countBurgers() + sideItems;
+    return countBurgers() + extraItems + sideItems;
   }
 
   function hasDraftContent() {
