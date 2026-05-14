@@ -116,12 +116,15 @@
     panel.innerHTML =
       '<h2>ORDER RECEIVED ✅</h2>' +
       '<p>Tu pedido ya entró al sistema.</p>' +
-      '<p>Tu orden fue registrada correctamente.</p>' +
+      '<div class="success-metrics" aria-label="Resumen de confirmación">' +
       '<p><strong>Total:</strong> ' + money(total) + '</p>' +
       '<p><strong>Items:</strong> ' + itemCount + '</p>' +
+      '</div>' +
       '<p class="muted">Te contactaremos para confirmar detalles si hace falta.</p>' +
       '<button id="backToMenuBtn" class="success-secondary-cta" type="button">Volver al menú</button>';
     panel.classList.remove('hidden');
+    panel.setAttribute('tabindex', '-1');
+    panel.focus({ preventScroll: true });
   }
 
   function goBackToMenuAfterSuccess() {
@@ -419,15 +422,17 @@
     }).join('') || '<p class="muted">Sin guarniciones</p>';
 
     return '<h2>RESUMEN</h2>' +
-      '<section class="summary-section"><h3>Burgers</h3>' + (lines || '<p class="muted">Sin burgers.</p>') + '</section>' +
-      '<section class="summary-section"><h3>Guarniciones</h3>' + sides + '</section>' +
-      '<section class="summary-section"><h3>Datos del cliente</h3>' +
+      '<p class="summary-intro">Revisa tu pedido antes de enviarlo.</p>' +
+      '<p class="summary-intro muted">Puedes regresar para editar cualquier paso.</p>' +
+      '<section class="summary-section"><div class="summary-head"><h3>Burgers, custom y extras</h3><button type="button" class="summary-edit-btn" data-edit-step="1" aria-label="Editar burgers, personalizaciones y extras">Editar</button></div>' + (lines || '<p class="muted">Sin burgers.</p>') + '</section>' +
+      '<section class="summary-section"><div class="summary-head"><h3>Guarniciones</h3><button type="button" class="summary-edit-btn" data-edit-step="4" aria-label="Editar guarniciones">Editar</button></div>' + sides + '</section>' +
+      '<section class="summary-section"><div class="summary-head"><h3>Datos del cliente</h3><button type="button" class="summary-edit-btn" data-edit-step="5" aria-label="Editar datos del cliente">Editar</button></div>' +
       '<p>Nombre: ' + escapeHtml(state.customer.customerName || '(pendiente)') + '</p>' +
       '<p>Teléfono: ' + escapeHtml(state.customer.phone || '(pendiente)') + '</p>' +
       '<p>Ubicación: ' + escapeHtml(state.customer.location || '(pendiente)') + '</p>' +
       '<p>Nota: ' + escapeHtml(state.customer.note || '(sin nota)') + '</p></section>' +
       '<section class="summary-section"><h3>Pago</h3><p>Forma de pago: ' + escapeHtml(state.customer.paymentMethod) + '</p><div id="paymentInfo"></div></section>' +
-      '<section class="summary-section summary-total"><h3>Total</h3><p>' + money(calcTotal()) + '</p></section>' +
+      '<section class="summary-section summary-total"><h3>Total del pedido</h3><p>' + money(calcTotal()) + '</p></section>' +
       '<button id="submitBtn" class="primary">VALIDAR PEDIDO / COMPILAR ORDEN</button>';
   }
 
@@ -440,7 +445,13 @@
       node.textContent = 'Pedido vacío';
       return;
     }
-    node.textContent = 'Pedido: ' + items + ' items · ' + money(calcTotal());
+    var firstBurger = state.burgerUnits[0];
+    if (firstBurger) {
+      var firstBurgerCount = state.burgerUnits.filter(function (u) { return u.sku === firstBurger.sku; }).length;
+      node.textContent = firstBurger.sku + ' x' + firstBurgerCount + ' · ' + items + ' items · ' + money(calcTotal());
+    } else {
+      node.textContent = items + ' items · ' + money(calcTotal());
+    }
     window.requestAnimationFrame(function () {
       node.classList.add('mini-summary-updated');
     });
@@ -598,6 +609,11 @@
 
     if (button.id === 'submitBtn') {
       submit();
+      return;
+    }
+    if (button.classList.contains('summary-edit-btn')) {
+      moveStep(Number(button.getAttribute('data-edit-step')));
+      setStatus('Editando paso anterior.');
       return;
     }
 
@@ -844,13 +860,13 @@
     localStorage.removeItem(LEGACY_KEY);
     state = createInitialState();
     redraw();
-    setStatus('Pedido reiniciado y guardado local borrado.');
+    setStatus('Pedido reiniciado.');
   }
 
   function onLoadLastClick() {
     restoreDraft(loadDraft());
     redraw();
-    setStatus('Pedido guardado cargado desde este dispositivo.');
+    setStatus('Pedido anterior cargado.');
   }
 
   function onSuccessPanelClick(e) {
