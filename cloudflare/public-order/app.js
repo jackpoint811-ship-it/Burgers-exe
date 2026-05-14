@@ -761,8 +761,14 @@
   document.getElementById('clearBtn').addEventListener('click', onClearClick);
   document.getElementById('loadLastBtn').addEventListener('click', onLoadLastClick);
   document.getElementById('successPanel').addEventListener('click', onSuccessPanelClick);
-  document.getElementById('loadLastBtn').textContent = 'Cargar pedido guardado en este dispositivo';
-  document.getElementById('clearBtn').textContent = 'Reiniciar pedido y borrar guardado local';
+  var loadLastBtn = document.getElementById('loadLastBtn');
+  var clearBtn = document.getElementById('clearBtn');
+  loadLastBtn.textContent = 'Cargar';
+  loadLastBtn.title = 'Cargar pedido guardado en este dispositivo';
+  loadLastBtn.setAttribute('aria-label', 'Cargar pedido guardado en este dispositivo');
+  clearBtn.textContent = 'Reiniciar';
+  clearBtn.title = 'Reiniciar pedido y borrar guardado local';
+  clearBtn.setAttribute('aria-label', 'Reiniciar pedido y borrar guardado local');
   var navPanel = document.querySelector('.nav-panel');
   if (navPanel) {
     var mini = document.createElement('p');
