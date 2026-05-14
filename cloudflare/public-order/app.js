@@ -119,8 +119,17 @@
       '<p>Tu orden fue registrada correctamente.</p>' +
       '<p><strong>Total:</strong> ' + money(total) + '</p>' +
       '<p><strong>Items:</strong> ' + itemCount + '</p>' +
-      '<p class="muted">Te contactaremos para confirmar detalles si hace falta.</p>';
+      '<p class="muted">Te contactaremos para confirmar detalles si hace falta.</p>' +
+      '<button id="backToMenuBtn" class="success-secondary-cta" type="button">Volver al menú</button>';
     panel.classList.remove('hidden');
+  }
+
+  function goBackToMenuAfterSuccess() {
+    hideSuccessPanel();
+    state.step = 0;
+    redraw();
+    setStatus('Listo. Volviste al menú.');
+    scrollToCurrentStep();
   }
 
   // ---------------------------------------------------------------------------
@@ -633,6 +642,12 @@
     setStatus('Pedido guardado cargado desde este dispositivo.');
   }
 
+  function onSuccessPanelClick(e) {
+    var button = e.target.closest('#backToMenuBtn');
+    if (!button) return;
+    goBackToMenuAfterSuccess();
+  }
+
   async function submit() {
     hideSuccessPanel();
     var err = validate('submit');
@@ -678,6 +693,7 @@
   document.getElementById('stepper').addEventListener('click', onStepperClick);
   document.getElementById('clearBtn').addEventListener('click', onClearClick);
   document.getElementById('loadLastBtn').addEventListener('click', onLoadLastClick);
+  document.getElementById('successPanel').addEventListener('click', onSuccessPanelClick);
   document.getElementById('loadLastBtn').textContent = 'Cargar pedido guardado en este dispositivo';
   document.getElementById('clearBtn').textContent = 'Reiniciar pedido y borrar guardado local';
   var navPanel = document.querySelector('.nav-panel');

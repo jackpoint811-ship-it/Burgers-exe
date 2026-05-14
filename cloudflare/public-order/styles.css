@@ -522,6 +522,13 @@ textarea:focus-visible,
   overflow-wrap: anywhere;
 }
 
+.success-secondary-cta {
+  margin-top: var(--space-3);
+  background: transparent;
+  border-color: #7bcf9b;
+  color: #dfffea;
+}
+
 .hidden {
   display: none;
 }
