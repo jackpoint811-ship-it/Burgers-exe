@@ -149,6 +149,42 @@ small {
 /* STEPPER                                                                     */
 /* -------------------------------------------------------------------------- */
 .stepper {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 100%;
+  min-width: 0;
+}
+
+.stepper-status {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.stepper-current {
+  color: var(--line);
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+}
+
+.stepper-track {
+  height: 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line-soft);
+  background: #0b1118;
+  overflow: hidden;
+}
+
+.stepper-track-fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #2bcf66 0%, #67ff9a 100%);
+  box-shadow: 0 0 8px var(--glow-soft);
+  transition: width 160ms ease;
+}
+
+.stepper-chips {
   display: flex;
   flex-wrap: nowrap;
   gap: var(--space-2);
@@ -162,11 +198,8 @@ small {
 }
 
 .step-progress {
-  flex: 0 0 auto;
-  align-self: center;
-  margin-left: var(--space-2);
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   white-space: nowrap;
 }
 
@@ -191,6 +224,8 @@ small {
   border-color: var(--line);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--line) 30%, transparent), 0 0 14px var(--glow-soft);
   color: var(--line);
+  font-weight: 700;
+  transform: translateY(-1px);
 }
 
 .step.done {
@@ -310,8 +345,20 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .nav-panel button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-align: center; min-width: 0; white-space: normal; }
 .nav-panel button img { width: 15px; height: 15px; flex: 0 0 auto; }
 #nextBtn { min-height: 48px; font-size: 0.98rem; box-shadow: 0 0 0 1px color-mix(in srgb, var(--line) 35%, transparent), 0 0 18px var(--glow-soft); }
-#backBtn,#loadLastBtn,#clearBtn { background: #0b1118; border-color: #2f4f3d; color: var(--muted); }
-#loadLastBtn,#clearBtn { font-size: 0.83rem; min-height: 40px; padding: 8px 10px; }
+#backBtn,#loadLastBtn,#clearBtn { background: #0b1118; border-color: #2f4f3d; color: var(--muted); min-height: 44px; }
+#loadLastBtn,#clearBtn { font-size: 0.83rem; padding: 8px 10px; }
+.nav-panel button:active { transform: translateY(1px); }
+.step-content {
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+.step-content.step-enter {
+  opacity: 1;
+  transform: translateY(0);
+}
+.step-content:not(.step-enter) {
+  opacity: 0.94;
+  transform: translateY(2px);
+}
 
 .ticket-line { border-bottom: 1px solid #294637; padding-bottom: var(--space-2); margin-bottom: var(--space-2); min-width: 0; }
 .summary-section { border: 1px solid #294637; border-radius: var(--radius-sm); padding: var(--space-3); margin-bottom: var(--space-3); background: rgba(11, 17, 24, 0.55); min-width: 0; max-width: 100%; }
@@ -359,6 +406,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   .mini-summary { font-size: 0.85rem; }
   .mini-storage-hint { font-size: 0.72rem; }
   .copy-btn { width: 100%; }
+  #nextBtn { font-size: 1rem; }
 }
 
 @media (max-width: 320px) {

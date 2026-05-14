@@ -262,14 +262,25 @@
   // Render helpers
   // ---------------------------------------------------------------------------
   function renderStepper() {
-    var progress = '<span class="step-progress">Paso ' + (state.step + 1) + ' de ' + STEPS.length + '</span>';
-    document.getElementById('stepper').innerHTML = STEPS.map(function (stepName, i) {
+    var currentStepName = STEPS[state.step];
+    var progressText = 'Paso ' + (state.step + 1) + ' de ' + STEPS.length;
+    var progressPercent = Math.round(((state.step + 1) / STEPS.length) * 100);
+    var chips = STEPS.map(function (stepName, i) {
       var classes = 'step ' + (i === state.step ? 'active' : i < state.step ? 'done' : '');
       var disabled = i > state.step ? 'disabled' : '';
       var ariaCurrent = i === state.step ? 'aria-current="step"' : '';
       var ariaLabel = 'aria-label="Ir al paso ' + (i + 1) + ': ' + stepName + '"';
       return '<button type="button" class="' + classes + '" data-step-index="' + i + '" ' + disabled + ' ' + ariaCurrent + ' ' + ariaLabel + '>' + stepName + '</button>';
-    }).join('') + progress;
+    }).join('');
+    document.getElementById('stepper').innerHTML =
+      '<div class="stepper-status" aria-live="polite">' +
+        '<strong class="stepper-current">' + currentStepName + '</strong>' +
+        '<span class="step-progress">' + progressText + '</span>' +
+      '</div>' +
+      '<div class="stepper-track" role="progressbar" aria-valuemin="1" aria-valuemax="' + STEPS.length + '" aria-valuenow="' + (state.step + 1) + '" aria-label="' + progressText + '">' +
+        '<span class="stepper-track-fill" style="width:' + progressPercent + '%;"></span>' +
+      '</div>' +
+      '<div class="stepper-chips">' + chips + '</div>';
   }
 
   function renderMenuCards(items, qtyObj) {
@@ -377,6 +388,7 @@
   function renderCurrentStep() {
     var container = document.getElementById('stepContent');
     var stepName = getCurrentStepName();
+    container.classList.remove('step-enter');
 
     if (stepName === 'MENU') container.innerHTML = renderMenuStep();
     if (stepName === 'BURGERS') container.innerHTML = renderBurgersStep();
@@ -390,6 +402,9 @@
     }
 
     toggleNav();
+    window.requestAnimationFrame(function () {
+      container.classList.add('step-enter');
+    });
   }
 
   function toggleNav() {
@@ -751,9 +766,11 @@
   // ---------------------------------------------------------------------------
   // Bootstrap
   // ---------------------------------------------------------------------------
-  document.getElementById('stepContent').addEventListener('click', onStepContentClick);
-  document.getElementById('stepContent').addEventListener('change', onStepContentChange);
-  document.getElementById('stepContent').addEventListener('input', onStepContentInput);
+  var stepContent = document.getElementById('stepContent');
+  stepContent.classList.add('step-content');
+  stepContent.addEventListener('click', onStepContentClick);
+  stepContent.addEventListener('change', onStepContentChange);
+  stepContent.addEventListener('input', onStepContentInput);
 
   document.getElementById('nextBtn').addEventListener('click', onNextClick);
   document.getElementById('backBtn').addEventListener('click', onBackClick);
