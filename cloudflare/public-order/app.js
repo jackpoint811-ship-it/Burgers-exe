@@ -130,6 +130,8 @@
 
   function goBackToMenuAfterSuccess() {
     hideSuccessPanel();
+    isSubmitting = false;
+    setSubmitLoading(false);
     state.step = 0;
     redraw();
     setStatus('Listo. Volviste al menú.');
@@ -871,12 +873,16 @@
     clearConfirmUntil = 0;
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(LEGACY_KEY);
+    isSubmitting = false;
+    setSubmitLoading(false);
     state = createInitialState();
     redraw();
     setStatus('Pedido reiniciado.');
   }
 
   function onLoadLastClick() {
+    isSubmitting = false;
+    setSubmitLoading(false);
     restoreDraft(loadDraft());
     redraw();
     setStatus('Pedido anterior cargado.');
