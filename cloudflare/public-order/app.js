@@ -560,6 +560,7 @@
     var op = button.getAttribute('data-op');
     if ((op === 'minus' || op === 'plus') && button.disabled) return;
     var stepName = getCurrentStepName();
+    var changedSku = sku;
 
     if (stepName === 'BURGERS') {
       var counts = getBurgerCounts();
@@ -571,7 +572,7 @@
 
     redraw();
 
-    var card = button.closest('.menu-item');
+    var card = document.querySelector('[data-sku-card="' + changedSku + '"]');
     if (card) {
       card.classList.remove('menu-item-pulse');
       window.requestAnimationFrame(function () {
