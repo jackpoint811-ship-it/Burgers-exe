@@ -58,6 +58,7 @@
   var state = createInitialState();
   var dataStepErrors = {};
   var clearConfirmUntil = 0;
+  var isSubmitting = false;
 
   function getCurrentStepName() { return STEPS[state.step]; }
   function countBurgers() { return state.burgerUnits.length; }
@@ -432,7 +433,19 @@
       '<p>Nota: ' + escapeHtml(state.customer.note || '(sin nota)') + '</p></section>' +
       '<section class="summary-section"><h3>Pago</h3><p>Forma de pago: ' + escapeHtml(state.customer.paymentMethod) + '</p><div id="paymentInfo"></div></section>' +
       '<section class="summary-section summary-total"><h3>Total del pedido</h3><p>' + money(calcTotal()) + '</p></section>' +
-      '<button id="submitBtn" class="primary">Enviar pedido</button>';
+      (isSubmitting
+        ? '<button id="submitBtn" class="primary" disabled aria-busy="true"><span class="submit-spinner" aria-hidden="true"></span><span>Loading order...</span></button>'
+        : '<button id="submitBtn" class="primary">Enviar pedido</button>');
+  }
+
+  function setSubmitLoading(isLoading) {
+    var button = document.getElementById('submitBtn');
+    if (!button) return;
+    button.disabled = Boolean(isLoading);
+    button.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+    button.innerHTML = isLoading
+      ? '<span class="submit-spinner" aria-hidden="true"></span><span>Loading order...</span>'
+      : '<span>Enviar pedido</span>';
   }
 
   function renderMiniSummary() {
@@ -607,6 +620,7 @@
     }
 
     if (button.id === 'submitBtn') {
+      if (isSubmitting) return;
       submit();
       return;
     }
@@ -875,12 +889,15 @@
   }
 
   async function submit() {
+    if (isSubmitting) return;
     hideSuccessPanel();
     var err = validate('submit');
     if (err) return setStatus('Validación fallida: ' + err);
 
     var payload = buildPayload();
-    setStatus('Enviando pedido...');
+    isSubmitting = true;
+    setSubmitLoading(true);
+    setStatus('Loading order...');
     console.debug('POST /api/order payload', payload);
 
     try {
@@ -900,9 +917,13 @@
         return;
       }
       console.warn('Respuesta no confirma escritura real del pedido', { status: response.status, data: data });
+      isSubmitting = false;
+      setSubmitLoading(false);
       setStatus('No se pudo enviar el pedido. Intenta de nuevo.');
     } catch (requestError) {
       console.error('Error enviando /api/order', requestError);
+      isSubmitting = false;
+      setSubmitLoading(false);
       setStatus('No se pudo enviar el pedido. Intenta de nuevo.');
     }
   }
