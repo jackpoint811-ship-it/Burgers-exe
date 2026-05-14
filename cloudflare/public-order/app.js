@@ -652,7 +652,10 @@
       optionChanged = true;
     }
 
-    if (target.name === 'pay') state.customer.paymentMethod = target.value;
+    if (target.name === 'pay') {
+      state.customer.paymentMethod = target.value;
+      syncPayCardStates();
+    }
     if (target.id === 'location') state.customer.location = target.value;
 
     if (optionChanged) {
@@ -696,6 +699,17 @@
         });
       });
     }
+  }
+
+  function syncPayCardStates() {
+    var cards = document.querySelectorAll('.pay-option-card');
+    cards.forEach(function (card) {
+      var input = card.querySelector('input[type="radio"][name="pay"]');
+      var stateNode = card.querySelector('.pay-option-state');
+      var isChecked = Boolean(input && input.checked);
+      card.classList.toggle('is-selected', isChecked);
+      if (stateNode) stateNode.textContent = isChecked ? 'Seleccionado' : 'No seleccionado';
+    });
   }
 
 
