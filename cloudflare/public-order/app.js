@@ -637,6 +637,29 @@
     if (target.name === 'pay') state.customer.paymentMethod = target.value;
     if (target.id === 'location') state.customer.location = target.value;
 
+    if (optionChanged) {
+      var choiceRow = target.closest('.choice-row');
+      var choiceState = choiceRow ? choiceRow.querySelector('.choice-state') : null;
+      var customCard = target.closest('.custom-card-edit');
+      var summaryNode = customCard ? customCard.querySelector('.custom-summary') : null;
+      var unit = state.burgerUnits[index] || { without: [], extras: [] };
+      var isWithout = target.getAttribute('data-kind') === 'without';
+      var withoutSummary = (unit.without || []).map(function (opt) { return opt.replace(/^Sin\s+/i, ''); }).join(', ') || 'Sin cambios';
+      var extrasSummary = (unit.extras || []).join(', ') || 'Sin extras';
+
+      if (choiceState) {
+        if (isWithout) {
+          choiceState.textContent = target.checked ? 'Quitado' : 'Disponible';
+        } else {
+          choiceState.textContent = target.checked ? 'Agregado' : 'No agregado';
+        }
+      }
+
+      if (summaryNode) {
+        summaryNode.textContent = isWithout ? ('Quitaste: ' + withoutSummary) : ('Extras: ' + extrasSummary);
+      }
+    }
+
     renderMiniSummary();
     if (state.step === 5) refreshDataErrorsIfNeeded();
     saveDraft();
