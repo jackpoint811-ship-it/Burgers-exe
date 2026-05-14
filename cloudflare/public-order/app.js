@@ -93,11 +93,34 @@
     });
   }
 
-  function setStatus(message, details) {
+  function setStatus(message) {
     var statusNode = document.getElementById('status');
-    statusNode.textContent = message + (details ? '\n\n' + JSON.stringify(details, null, 2) : '');
+    statusNode.textContent = message || '';
     statusNode.setAttribute('tabindex', '-1');
     statusNode.focus({ preventScroll: true });
+  }
+
+  function hideSuccessPanel() {
+    var panel = document.getElementById('successPanel');
+    if (!panel) return;
+    panel.classList.add('hidden');
+    panel.innerHTML = '';
+  }
+
+  function showSuccessPanel(data) {
+    var panel = document.getElementById('successPanel');
+    if (!panel) return;
+    var total = Number((data && data.data && data.data.total) || calcTotal());
+    var itemCount = Number((data && data.data && data.data.upstream && data.data.upstream.itemCount) || calcOrderItemCount());
+
+    panel.innerHTML =
+      '<h2>ORDER RECEIVED ✅</h2>' +
+      '<p>Tu pedido ya entró al sistema.</p>' +
+      '<p>Tu orden fue registrada correctamente.</p>' +
+      '<p><strong>Total:</strong> ' + money(total) + '</p>' +
+      '<p><strong>Items:</strong> ' + itemCount + '</p>' +
+      '<p class="muted">Te contactaremos para confirmar detalles si hace falta.</p>';
+    panel.classList.remove('hidden');
   }
 
   // ---------------------------------------------------------------------------
@@ -615,7 +638,9 @@
     if (err) return setStatus('Validación fallida: ' + err);
 
     var payload = buildPayload();
-    setStatus('Enviando /api/order...', payload);
+    hideSuccessPanel();
+    setStatus('Enviando pedido...');
+    console.debug('POST /api/order payload', payload);
 
     var response = await fetch('/api/order', {
       method: 'POST',
@@ -623,8 +648,20 @@
       body: JSON.stringify({ payload: payload })
     });
 
-    var data = await response.json();
-    setStatus((data.ok ? 'ORDER COMPILED' : 'Error en /api/order'), data);
+    try {
+      var data = await response.json();
+      console.debug('POST /api/order response', data);
+      if (response.ok && data && data.ok) {
+        showSuccessPanel(data);
+        setStatus('Pedido recibido correctamente.');
+        return;
+      }
+      console.error('No se pudo enviar el pedido', { status: response.status, data: data });
+      setStatus('No se pudo enviar el pedido. Intenta de nuevo.');
+    } catch (parseError) {
+      console.error('Respuesta inválida en /api/order', parseError);
+      setStatus('No se pudo enviar el pedido. Intenta de nuevo.');
+    }
   }
 
   // ---------------------------------------------------------------------------
