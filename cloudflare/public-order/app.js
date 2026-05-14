@@ -402,7 +402,7 @@
     if (!node) return;
 
     if (state.customer.paymentMethod === 'Pago mismo dia') {
-      node.textContent = 'Pagas el día de entrega: efectivo o transferencia.';
+      node.innerHTML = '<div class="payment-card"><p class="payment-note">Pagas el día de entrega: efectivo o transferencia.</p></div>';
       return;
     }
 
@@ -410,12 +410,74 @@
     try {
       var response = await fetch('/api/bank-config');
       var data = await response.json();
-      node.textContent = data.ok && data.data && data.data.enabled
-        ? ('Banco: ' + (data.data.bankName || '') + ' | Titular: ' + (data.data.accountHolder || '') + ' | Cuenta: ' + (data.data.accountNumber || ''))
-        : 'Datos bancarios pendientes de conectar';
+      if (data.ok && data.data && data.data.enabled) {
+        var paymentDetails = [
+          { key: 'bank', label: 'Banco', value: data.data.bankName || '', ariaLabel: 'Copiar banco' },
+          { key: 'holder', label: 'Titular', value: data.data.accountHolder || '', ariaLabel: 'Copiar titular' },
+          { key: 'account', label: 'Cuenta / CLABE', value: data.data.accountNumber || '', ariaLabel: 'Copiar cuenta' }
+        ];
+        node.innerHTML = '<div class="payment-card">' + paymentDetails.map(function (detail) {
+          return '<div class="payment-detail">' +
+            '<p class="payment-label">' + escapeHtml(detail.label) + '</p>' +
+            '<p class="payment-value">' + escapeHtml(detail.value || 'Pendiente') + '</p>' +
+            '<button type="button" class="copy-btn" data-copy-value="' + escapeHtml(detail.value) + '" data-copy-key="' + escapeHtml(detail.key) + '" aria-label="' + escapeHtml(detail.ariaLabel) + '"' + (detail.value ? '' : ' disabled') + '>Copiar</button>' +
+          '</div>';
+        }).join('') + '</div>';
+        return;
+      }
+      node.textContent = 'Datos bancarios pendientes de conectar';
     } catch (_e) {
       node.textContent = 'Datos bancarios pendientes de conectar';
     }
+  }
+
+  function fallbackCopyText(text) {
+    var helper = document.createElement('textarea');
+    helper.value = text;
+    helper.setAttribute('readonly', '');
+    helper.style.position = 'fixed';
+    helper.style.opacity = '0';
+    helper.style.pointerEvents = 'none';
+    helper.style.left = '-9999px';
+    document.body.appendChild(helper);
+    helper.select();
+    helper.setSelectionRange(0, helper.value.length);
+    var copied = false;
+    try {
+      copied = document.execCommand('copy');
+    } catch (_e) {
+      copied = false;
+    }
+    document.body.removeChild(helper);
+    return copied;
+  }
+
+  async function copyPaymentDetail(button) {
+    if (!button) return;
+    var value = button.getAttribute('data-copy-value') || '';
+    if (!value) return;
+
+    var copied = false;
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      try {
+        await navigator.clipboard.writeText(value);
+        copied = true;
+      } catch (_e) {
+        copied = fallbackCopyText(value);
+      }
+    } else {
+      copied = fallbackCopyText(value);
+    }
+
+    var originalLabel = button.getAttribute('data-copy-original') || button.textContent;
+    button.setAttribute('data-copy-original', originalLabel);
+    button.textContent = copied ? 'Copiado' : 'Copiar';
+
+    if (copied) setStatus('Dato copiado.');
+
+    window.setTimeout(function () {
+      button.textContent = originalLabel;
+    }, 1400);
   }
 
   function redraw() {
@@ -446,6 +508,11 @@
   function onStepContentClick(e) {
     var button = e.target.closest('button');
     if (!button) return;
+
+    if (button.classList.contains('copy-btn')) {
+      copyPaymentDetail(button);
+      return;
+    }
 
     if (button.id === 'startBtn') {
       state.step = 1;
