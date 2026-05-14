@@ -376,17 +376,35 @@
     var phoneError = dataStepErrors.phone ? '<p class="field-error" id="phone-error">' + dataStepErrors.phone + '</p>' : '';
     var locationError = dataStepErrors.location ? '<p class="field-error" id="location-error">' + dataStepErrors.location + '</p>' : '';
     var payError = dataStepErrors.pay ? '<p class="field-error" id="pay-error">' + dataStepErrors.pay + '</p>' : '';
+    var paySameDaySelected = state.customer.paymentMethod === 'Pago mismo dia';
+    var payBeforeSelected = state.customer.paymentMethod === 'Pagar Antes';
 
     return '<h2>DATOS</h2>' +
-      '<label class="field ' + (dataStepErrors.name ? 'has-error' : '') + '">Nombre *<input id="name" placeholder="Ej. Jack" aria-describedby="name-error" aria-invalid="' + (dataStepErrors.name ? 'true' : 'false') + '" value="' + escapeHtml(state.customer.customerName) + '"></label>' +
+      '<p class="data-step-title">Datos para confirmar tu pedido</p>' +
+      '<p class="data-step-help">No necesitas iniciar sesión. Solo usamos estos datos para entregar y confirmar.</p>' +
+      '<label class="field data-field ' + (dataStepErrors.name ? 'has-error' : '') + '" for="name"><span class="field-title">Nombre</span><span class="field-required-badge">Obligatorio</span><input id="name" autocomplete="name" placeholder="Ej. Jack R." aria-describedby="name-help' + (dataStepErrors.name ? ' name-error' : '') + '" aria-invalid="' + (dataStepErrors.name ? 'true' : 'false') + '" value="' + escapeHtml(state.customer.customerName) + '"><span class="field-help" id="name-help">Como aparece en recepción o con quien entregamos.</span></label>' +
       nameError +
-      '<label class="field ' + (dataStepErrors.phone ? 'has-error' : '') + '">Teléfono *<input id="phone" type="tel" inputmode="numeric" placeholder="10 dígitos" aria-describedby="phone-error" aria-invalid="' + (dataStepErrors.phone ? 'true' : 'false') + '" value="' + escapeHtml(state.customer.phone) + '"></label>' +
+      '<label class="field data-field ' + (dataStepErrors.phone ? 'has-error' : '') + '" for="phone"><span class="field-title">Teléfono</span><span class="field-required-badge">Obligatorio</span><input id="phone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="10 dígitos" aria-describedby="phone-help' + (dataStepErrors.phone ? ' phone-error' : '') + '" aria-invalid="' + (dataStepErrors.phone ? 'true' : 'false') + '" value="' + escapeHtml(state.customer.phone) + '"><span class="field-help" id="phone-help">Usamos este número para confirmar y coordinar la entrega.</span></label>' +
       phoneError +
-      '<label class="field ' + (dataStepErrors.location ? 'has-error' : '') + '">Ubicación *<select id="location" aria-describedby="location-error" aria-invalid="' + (dataStepErrors.location ? 'true' : 'false') + '"><option value="">Selecciona</option><option ' + (state.customer.location === 'Torre GGA' ? 'selected' : '') + '>Torre GGA</option><option ' + (state.customer.location === 'Torre Valcob' ? 'selected' : '') + '>Torre Valcob</option></select></label>' +
+      '<label class="field data-field ' + (dataStepErrors.location ? 'has-error' : '') + '" for="location"><span class="field-title">Ubicación</span><span class="field-required-badge">Obligatorio</span><select id="location" aria-describedby="location-help' + (dataStepErrors.location ? ' location-error' : '') + '" aria-invalid="' + (dataStepErrors.location ? 'true' : 'false') + '"><option value="">Selecciona</option><option ' + (state.customer.location === 'Torre GGA' ? 'selected' : '') + '>Torre GGA</option><option ' + (state.customer.location === 'Torre Valcob' ? 'selected' : '') + '>Torre Valcob</option></select><span class="field-help" id="location-help">Selecciona dónde entregamos tu pedido.</span></label>' +
       locationError +
-      '<fieldset class="pay-group ' + (dataStepErrors.pay ? 'has-error' : '') + '" aria-describedby="pay-error"><legend>Forma de pago *</legend><label class="pay-option"><input type="radio" name="pay" value="Pago mismo dia" ' + (state.customer.paymentMethod === 'Pago mismo dia' ? 'checked' : '') + '>Pago mismo dia</label><label class="pay-option"><input type="radio" name="pay" value="Pagar Antes" ' + (state.customer.paymentMethod === 'Pagar Antes' ? 'checked' : '') + '>Pagar Antes</label></fieldset>' +
+      '<fieldset class="pay-group ' + (dataStepErrors.pay ? 'has-error' : '') + '" aria-describedby="pay-help' + (dataStepErrors.pay ? ' pay-error' : '') + '" aria-invalid="' + (dataStepErrors.pay ? 'true' : 'false') + '">' +
+      '<legend><span class="field-title">Forma de pago</span><span class="field-required-badge">Obligatorio</span></legend>' +
+      '<p class="field-help" id="pay-help">Elige cómo quieres liquidar tu pedido.</p>' +
+      '<div class="pay-options">' +
+      '<label class="pay-option-card ' + (paySameDaySelected ? 'is-selected' : '') + '">' +
+      '<input class="pay-option-input" type="radio" name="pay" value="Pago mismo dia" ' + (paySameDaySelected ? 'checked' : '') + '>' +
+      '<span class="pay-option-main"><span class="pay-option-title">Pago mismo día</span><span class="pay-option-desc">Efectivo o transferencia el día de entrega.</span></span>' +
+      '<span class="pay-option-state">' + (paySameDaySelected ? 'Seleccionado' : 'No seleccionado') + '</span>' +
+      '</label>' +
+      '<label class="pay-option-card ' + (payBeforeSelected ? 'is-selected' : '') + '">' +
+      '<input class="pay-option-input" type="radio" name="pay" value="Pagar Antes" ' + (payBeforeSelected ? 'checked' : '') + '>' +
+      '<span class="pay-option-main"><span class="pay-option-title">Pagar antes</span><span class="pay-option-desc">Te mostramos los datos bancarios en el resumen.</span></span>' +
+      '<span class="pay-option-state">' + (payBeforeSelected ? 'Seleccionado' : 'No seleccionado') + '</span>' +
+      '</label>' +
+      '</div></fieldset>' +
       payError +
-      '<label class="field">Nota (opcional)<textarea id="note" placeholder="Ej. Estoy en lobby / sin cambios extra">' + escapeHtml(state.customer.note) + '</textarea></label>';
+      '<label class="field data-field" for="note"><span class="field-title">Notas para entrega o preparación</span><span class="field-optional-badge">Opcional</span><textarea id="note" aria-describedby="note-help" placeholder="Ej. Estoy en lobby / sin cambios extra / entregar en recepción">' + escapeHtml(state.customer.note) + '</textarea><span class="field-help" id="note-help">Puedes dejar indicaciones de acceso o referencia.</span></label>';
   }
 
   function renderSummaryStep() {
