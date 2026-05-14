@@ -896,8 +896,8 @@
       var isDryRun = Boolean(data && data.data && data.data.mode === 'dry-run');
       var isWriteAccepted = Boolean(upstream && upstream.mode === 'write' && upstream.accepted === true);
       if (response.ok && data && data.ok && !isDryRun && isWriteAccepted) {
-        showSuccessPanel(data);
         setStatus('Pedido recibido correctamente.');
+        showSuccessPanel(data);
         return;
       }
       console.warn('Respuesta no confirma escritura real del pedido', { status: response.status, data: data });
