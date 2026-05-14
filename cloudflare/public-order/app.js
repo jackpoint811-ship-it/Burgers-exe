@@ -56,6 +56,7 @@
   }
 
   var state = createInitialState();
+  var dataStepErrors = {};
 
   function getCurrentStepName() { return STEPS[state.step]; }
   function countBurgers() { return state.burgerUnits.length; }
@@ -185,9 +186,29 @@
     };
   }
 
+  function phoneDigits(value) {
+    return String(value || '').replace(/\D/g, '').length;
+  }
+
+  function getDataStepErrors() {
+    var errors = {};
+    if (!state.customer.customerName.trim()) errors.name = 'Nombre requerido.';
+    if (!state.customer.phone.trim()) {
+      errors.phone = 'Teléfono requerido.';
+    } else if (phoneDigits(state.customer.phone) < 10) {
+      errors.phone = 'Teléfono debe tener al menos 10 dígitos.';
+    }
+    if (!state.customer.location) errors.location = 'Selecciona ubicación.';
+    if (!state.customer.paymentMethod) errors.pay = 'Selecciona forma de pago.';
+    return errors;
+  }
+
   function validate(stepOnly) {
     if (!countBurgers() && state.step >= 1 && stepOnly !== 'submit') return 'Agrega al menos 1 burger.';
-    if ((state.step === 5 || stepOnly === 'submit') && (!state.customer.customerName.trim() || !state.customer.phone.trim() || !state.customer.location || !state.customer.paymentMethod)) return 'Completa datos requeridos.';
+    if (state.step === 5 || stepOnly === 'submit') {
+      var dataErrors = getDataStepErrors();
+      if (Object.keys(dataErrors).length) return 'Completa datos requeridos.';
+    }
     if (stepOnly === 'submit' && !buildPayload().items.length) return 'Carrito vacío.';
     return '';
   }
@@ -256,12 +277,21 @@
   }
 
   function renderDataStep() {
+    var nameError = dataStepErrors.name ? '<p class="field-error" id="name-error">' + dataStepErrors.name + '</p>' : '';
+    var phoneError = dataStepErrors.phone ? '<p class="field-error" id="phone-error">' + dataStepErrors.phone + '</p>' : '';
+    var locationError = dataStepErrors.location ? '<p class="field-error" id="location-error">' + dataStepErrors.location + '</p>' : '';
+    var payError = dataStepErrors.pay ? '<p class="field-error" id="pay-error">' + dataStepErrors.pay + '</p>' : '';
+
     return '<h2>DATOS</h2>' +
-      '<label>Nombre<input id="name" value="' + escapeHtml(state.customer.customerName) + '"></label>' +
-      '<label>Teléfono<input id="phone" value="' + escapeHtml(state.customer.phone) + '"></label>' +
-      '<label>Ubicación<select id="location"><option value="">Selecciona</option><option ' + (state.customer.location === 'Torre GGA' ? 'selected' : '') + '>Torre GGA</option><option ' + (state.customer.location === 'Torre Valcob' ? 'selected' : '') + '>Torre Valcob</option></select></label>' +
-      '<fieldset><legend>Forma de pago</legend><label><input type="radio" name="pay" value="Pago mismo dia" ' + (state.customer.paymentMethod === 'Pago mismo dia' ? 'checked' : '') + '>Pago mismo dia</label><label><input type="radio" name="pay" value="Pagar Antes" ' + (state.customer.paymentMethod === 'Pagar Antes' ? 'checked' : '') + '>Pagar Antes</label></fieldset>' +
-      '<label>Nota<textarea id="note">' + escapeHtml(state.customer.note) + '</textarea></label>';
+      '<label class="field ' + (dataStepErrors.name ? 'has-error' : '') + '">Nombre *<input id="name" placeholder="Ej. Jack" aria-describedby="name-error" aria-invalid="' + (dataStepErrors.name ? 'true' : 'false') + '" value="' + escapeHtml(state.customer.customerName) + '"></label>' +
+      nameError +
+      '<label class="field ' + (dataStepErrors.phone ? 'has-error' : '') + '">Teléfono *<input id="phone" type="tel" inputmode="numeric" placeholder="10 dígitos" aria-describedby="phone-error" aria-invalid="' + (dataStepErrors.phone ? 'true' : 'false') + '" value="' + escapeHtml(state.customer.phone) + '"></label>' +
+      phoneError +
+      '<label class="field ' + (dataStepErrors.location ? 'has-error' : '') + '">Ubicación *<select id="location" aria-describedby="location-error" aria-invalid="' + (dataStepErrors.location ? 'true' : 'false') + '"><option value="">Selecciona</option><option ' + (state.customer.location === 'Torre GGA' ? 'selected' : '') + '>Torre GGA</option><option ' + (state.customer.location === 'Torre Valcob' ? 'selected' : '') + '>Torre Valcob</option></select></label>' +
+      locationError +
+      '<fieldset class="pay-group ' + (dataStepErrors.pay ? 'has-error' : '') + '" aria-describedby="pay-error"><legend>Forma de pago *</legend><label class="pay-option"><input type="radio" name="pay" value="Pago mismo dia" ' + (state.customer.paymentMethod === 'Pago mismo dia' ? 'checked' : '') + '>Pago mismo dia</label><label class="pay-option"><input type="radio" name="pay" value="Pagar Antes" ' + (state.customer.paymentMethod === 'Pagar Antes' ? 'checked' : '') + '>Pagar Antes</label></fieldset>' +
+      payError +
+      '<label class="field">Nota (opcional)<textarea id="note" placeholder="Ej. Estoy en lobby / sin cambios extra">' + escapeHtml(state.customer.note) + '</textarea></label>';
   }
 
   function renderSummaryStep() {
@@ -408,7 +438,90 @@
     if (target.name === 'pay') state.customer.paymentMethod = target.value;
     if (target.id === 'location') state.customer.location = target.value;
 
+    if (state.step === 5) refreshDataErrorsIfNeeded();
     saveDraft();
+  }
+
+
+
+  function sameErrorMap(a, b) {
+    var aKeys = Object.keys(a || {});
+    var bKeys = Object.keys(b || {});
+    if (aKeys.length !== bKeys.length) return false;
+    return aKeys.every(function (key) { return a[key] === b[key]; });
+  }
+
+  function updateDataErrorField(fieldId, errorMessage) {
+    var field = document.getElementById(fieldId);
+    var errorId = fieldId + '-error';
+    var errorNode = document.getElementById(errorId);
+    var label = field ? field.closest('label') : null;
+
+    if (label) label.classList.toggle('has-error', Boolean(errorMessage));
+    if (field) field.setAttribute('aria-invalid', errorMessage ? 'true' : 'false');
+
+    if (errorMessage) {
+      if (!errorNode && label && label.parentNode) {
+        errorNode = document.createElement('p');
+        errorNode.className = 'field-error';
+        errorNode.id = errorId;
+        label.parentNode.insertBefore(errorNode, label.nextSibling);
+      }
+      if (errorNode) errorNode.textContent = errorMessage;
+    } else if (errorNode) {
+      errorNode.remove();
+    }
+  }
+
+  function updatePayError(errorMessage) {
+    var group = document.querySelector('.pay-group');
+    if (!group) return;
+
+    group.classList.toggle('has-error', Boolean(errorMessage));
+    var errorNode = document.getElementById('pay-error');
+
+    if (errorMessage) {
+      if (!errorNode && group.parentNode) {
+        errorNode = document.createElement('p');
+        errorNode.className = 'field-error';
+        errorNode.id = 'pay-error';
+        group.parentNode.insertBefore(errorNode, group.nextSibling);
+      }
+      if (errorNode) errorNode.textContent = errorMessage;
+    } else if (errorNode) {
+      errorNode.remove();
+    }
+  }
+
+  function updateDataErrorsUI() {
+    updateDataErrorField('name', dataStepErrors.name);
+    updateDataErrorField('phone', dataStepErrors.phone);
+    updateDataErrorField('location', dataStepErrors.location);
+    updatePayError(dataStepErrors.pay);
+  }
+
+  function focusFirstDataError() {
+    var order = [
+      { key: 'name', selector: '#name' },
+      { key: 'phone', selector: '#phone' },
+      { key: 'location', selector: '#location' },
+      { key: 'pay', selector: 'input[name="pay"]' }
+    ];
+    var first = order.find(function (item) { return dataStepErrors[item.key]; });
+    if (!first) return;
+    var node = document.querySelector(first.selector);
+    if (!node) return;
+    var prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    node.scrollIntoView({ behavior: prefersReduced ? 'auto' : 'smooth', block: 'center' });
+    node.focus({ preventScroll: true });
+  }
+
+  function refreshDataErrorsIfNeeded() {
+    if (!Object.keys(dataStepErrors).length) return;
+    var nextErrors = getDataStepErrors();
+    if (sameErrorMap(dataStepErrors, nextErrors)) return;
+    dataStepErrors = nextErrors;
+    updateDataErrorsUI();
   }
 
   function onStepContentInput(e) {
@@ -416,10 +529,21 @@
     if (target.id === 'name') state.customer.customerName = target.value;
     if (target.id === 'phone') state.customer.phone = target.value;
     if (target.id === 'note') state.customer.note = target.value;
+    if (state.step === 5) refreshDataErrorsIfNeeded();
     saveDraft();
   }
 
   function onNextClick() {
+    if (state.step === 5) {
+      dataStepErrors = getDataStepErrors();
+      if (Object.keys(dataStepErrors).length) {
+        redraw();
+        setStatus('Completa datos requeridos.');
+        focusFirstDataError();
+        return;
+      }
+    }
+
     var err = validate();
     if (err) return setStatus(err);
     state.step = Math.min(STEPS.length - 1, state.step + 1);
