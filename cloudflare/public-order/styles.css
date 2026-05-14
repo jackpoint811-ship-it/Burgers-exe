@@ -88,6 +88,7 @@ small {
   width: min(100%, 980px);
   margin: 0 auto;
   padding: var(--space-4);
+  padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px));
   display: grid;
   gap: var(--space-3);
 }
@@ -129,12 +130,22 @@ small {
 /* -------------------------------------------------------------------------- */
 .stepper {
   display: flex;
+  flex-wrap: nowrap;
   gap: var(--space-2);
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
   padding-bottom: 2px;
+}
+
+.step-progress {
+  flex: 0 0 auto;
+  align-self: center;
+  margin-left: var(--space-2);
+  color: var(--muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
 }
 
 .step {
@@ -151,6 +162,7 @@ small {
   font-size: 0.78rem;
   letter-spacing: 0.02em;
   white-space: nowrap;
+  width: auto;
 }
 
 .step.active {
@@ -163,6 +175,10 @@ small {
   color: #c8f7d7;
   border-color: #2f8054;
   background: #12261d;
+}
+
+.step[aria-current="step"] {
+  font-weight: 700;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -326,8 +342,14 @@ textarea:focus-visible {
 /* -------------------------------------------------------------------------- */
 .nav-panel {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: var(--space-2);
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  background: rgba(17, 21, 33, 0.98);
+  border: 1px solid var(--line-soft);
+  padding-bottom: calc(var(--space-2) + env(safe-area-inset-bottom, 0px));
 }
 
 .nav-panel button {
@@ -341,6 +363,25 @@ textarea:focus-visible {
 .nav-panel button img {
   width: 16px;
   height: 16px;
+}
+
+#nextBtn {
+  min-height: 52px;
+  font-size: 1rem;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--line) 35%, transparent);
+}
+
+#backBtn,
+#loadLastBtn,
+#clearBtn {
+  background: #0b1118;
+  border-color: #2f4f3d;
+  color: var(--muted);
+}
+
+#loadLastBtn,
+#clearBtn {
+  font-size: 0.88rem;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -358,6 +399,8 @@ textarea:focus-visible {
   font-size: 0.86rem;
   line-height: 1.45;
   color: #caefda;
+  border-color: #3f8a61;
+  background: #0f1c18;
 }
 
 .hidden {
@@ -370,6 +413,7 @@ textarea:focus-visible {
 @media (min-width: 760px) {
   .app {
     padding: var(--space-5);
+    padding-bottom: var(--space-5);
   }
 
   .menu-grid {
@@ -378,6 +422,8 @@ textarea:focus-visible {
 
   .nav-panel {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+    position: static;
+    padding-bottom: var(--space-4);
   }
 }
 
