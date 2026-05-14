@@ -315,6 +315,14 @@ small {
 
 label { display: block; margin-bottom: var(--space-3); color: var(--text); min-width: 0; }
 .field { margin-bottom: var(--space-1); min-width: 0; }
+.data-step-title { color: #deffea; font-size: 0.95rem; margin-bottom: 4px; }
+.data-step-help { color: var(--muted); font-size: 0.82rem; margin-bottom: var(--space-3); }
+.data-field { display: grid; gap: 6px; margin-bottom: var(--space-2); }
+.field-title { font-size: 0.86rem; color: #e4ffef; font-weight: 700; letter-spacing: 0.01em; }
+.field-help { color: var(--muted); font-size: 0.78rem; line-height: 1.4; }
+.field-required-badge,.field-optional-badge { justify-self: start; font-size: 0.68rem; border: 1px solid #3a5f49; border-radius: 999px; padding: 2px 8px; text-transform: uppercase; letter-spacing: 0.06em; }
+.field-required-badge { color: #e1ffe9; border-color: #5fd58f; background: rgba(18, 53, 30, 0.75); }
+.field-optional-badge { color: var(--muted); background: rgba(11, 17, 24, 0.82); }
 
 input,
 select,
@@ -340,7 +348,18 @@ textarea { min-height: 92px; resize: vertical; }
 fieldset { border: 1px solid #315442; border-radius: var(--radius-sm); margin: 0 0 var(--space-3); padding: var(--space-2) var(--space-3); min-width: 0; }
 legend { color: var(--muted); padding: 0 6px; }
 fieldset label { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
-.pay-option { border: 1px solid #315442; border-radius: var(--radius-sm); padding: 10px 12px; background: #0b1118; }
+.pay-group legend { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.pay-options { display: grid; gap: var(--space-2); margin-top: var(--space-2); }
+.pay-option-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-2); border: 1px solid #315442; border-radius: var(--radius-sm); padding: 10px 12px; background: #0b1118; min-height: var(--tap-min); cursor: pointer; transition: border-color 130ms ease, box-shadow 130ms ease, transform 130ms ease; }
+.pay-option-card:active { transform: translateY(1px); }
+.pay-option-main { display: grid; gap: 2px; min-width: 0; }
+.pay-option-title { color: #ecfff3; font-size: 0.9rem; font-weight: 700; }
+.pay-option-desc { color: var(--muted); font-size: 0.76rem; line-height: 1.35; }
+.pay-option-state { font-size: 0.72rem; font-weight: 700; border: 1px solid #345847; border-radius: 999px; padding: 4px 8px; color: var(--muted); white-space: nowrap; }
+.pay-option-input { width: 18px; height: 18px; min-height: 18px; margin: 0; accent-color: #52de88; }
+.pay-option-card:has(.pay-option-input:focus-visible) { border-color: var(--focus); box-shadow: 0 0 0 1px rgba(114, 255, 159, 0.42), 0 0 14px rgba(114, 255, 159, 0.2); }
+.pay-option-card.is-selected,.pay-option-card:has(.pay-option-input:checked) { border-color: #65e194; box-shadow: 0 0 0 1px color-mix(in srgb, var(--line) 28%, transparent), 0 0 14px var(--glow-soft); background: linear-gradient(180deg, rgba(18, 53, 30, 0.4) 0%, rgba(10, 16, 24, 0.95) 100%); }
+.pay-option-card.is-selected .pay-option-state,.pay-option-card:has(.pay-option-input:checked) .pay-option-state { border-color: #5ddf90; color: #deffea; background: #12351f; }
 .pay-group.has-error,.has-error input,.has-error select,.has-error textarea { border-color: var(--danger); }
 .field-error { margin: 0 0 var(--space-3); color: var(--danger-text); font-size: 0.84rem; line-height: 1.4; font-weight: 700; }
 input[type="radio"],input[type="checkbox"] { width: 18px; height: 18px; min-height: 18px; margin: 0; }
