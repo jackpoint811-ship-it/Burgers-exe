@@ -634,11 +634,11 @@
   }
 
   async function submit() {
+    hideSuccessPanel();
     var err = validate('submit');
     if (err) return setStatus('Validación fallida: ' + err);
 
     var payload = buildPayload();
-    hideSuccessPanel();
     setStatus('Enviando pedido...');
     console.debug('POST /api/order payload', payload);
 
