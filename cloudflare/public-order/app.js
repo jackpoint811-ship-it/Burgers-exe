@@ -443,6 +443,63 @@
   }
 
 
+
+  function sameErrorMap(a, b) {
+    var aKeys = Object.keys(a || {});
+    var bKeys = Object.keys(b || {});
+    if (aKeys.length !== bKeys.length) return false;
+    return aKeys.every(function (key) { return a[key] === b[key]; });
+  }
+
+  function updateDataErrorField(fieldId, errorMessage) {
+    var field = document.getElementById(fieldId);
+    var errorId = fieldId + '-error';
+    var errorNode = document.getElementById(errorId);
+    var label = field ? field.closest('label') : null;
+
+    if (label) label.classList.toggle('has-error', Boolean(errorMessage));
+    if (field) field.setAttribute('aria-invalid', errorMessage ? 'true' : 'false');
+
+    if (errorMessage) {
+      if (!errorNode && label && label.parentNode) {
+        errorNode = document.createElement('p');
+        errorNode.className = 'field-error';
+        errorNode.id = errorId;
+        label.parentNode.insertBefore(errorNode, label.nextSibling);
+      }
+      if (errorNode) errorNode.textContent = errorMessage;
+    } else if (errorNode) {
+      errorNode.remove();
+    }
+  }
+
+  function updatePayError(errorMessage) {
+    var group = document.querySelector('.pay-group');
+    if (!group) return;
+
+    group.classList.toggle('has-error', Boolean(errorMessage));
+    var errorNode = document.getElementById('pay-error');
+
+    if (errorMessage) {
+      if (!errorNode && group.parentNode) {
+        errorNode = document.createElement('p');
+        errorNode.className = 'field-error';
+        errorNode.id = 'pay-error';
+        group.parentNode.insertBefore(errorNode, group.nextSibling);
+      }
+      if (errorNode) errorNode.textContent = errorMessage;
+    } else if (errorNode) {
+      errorNode.remove();
+    }
+  }
+
+  function updateDataErrorsUI() {
+    updateDataErrorField('name', dataStepErrors.name);
+    updateDataErrorField('phone', dataStepErrors.phone);
+    updateDataErrorField('location', dataStepErrors.location);
+    updatePayError(dataStepErrors.pay);
+  }
+
   function focusFirstDataError() {
     var order = [
       { key: 'name', selector: '#name' },
@@ -461,8 +518,10 @@
 
   function refreshDataErrorsIfNeeded() {
     if (!Object.keys(dataStepErrors).length) return;
-    dataStepErrors = getDataStepErrors();
-    redraw();
+    var nextErrors = getDataStepErrors();
+    if (sameErrorMap(dataStepErrors, nextErrors)) return;
+    dataStepErrors = nextErrors;
+    updateDataErrorsUI();
   }
 
   function onStepContentInput(e) {
