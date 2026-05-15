@@ -1,7 +1,7 @@
-# Cloudflare Internal Chekeo (Fase 5)
+# Cloudflare Internal Chekeo (Fase 6)
 
 ## Estado
-- **Fase 5 — Acciones operativas controladas**.
+- **Fase 6 — Cierre, resumen e histórico operativo**.
 - PIN/session obligatorio.
 - `/api/rpc` protegido por sesión.
 
@@ -28,12 +28,17 @@
 - `updateOrderNotes`
 - `markTicketSent`
 
+## Métodos de cierre/resumen/histórico habilitados
+- `writeDailySummary`
+- `archiveCompletedOrders`
+- `closeDay`
+
 ## Reglas de operación
-- Confirmaciones obligatorias para writes.
+- Confirmaciones fuertes obligatorias para acciones críticas.
 - Botones write bloqueados durante loading.
 - Resultado visible por toast/status.
 - Refresh de datos al finalizar cada write.
-- Cierre/archivado/resumen/producción siguen fuera de alcance en esta fase.
+- Preparación de estructura/producción sigue fuera de alcance en esta fase.
 
 ## Variables de entorno (Cloudflare)
 - `INTERNAL_PANEL_PIN`
@@ -46,4 +51,4 @@
 - `INTERNAL_API_SHARED_SECRET`
 
 ## Siguiente fase
-- **Fase 6 — Cierre, resumen e histórico operativo**.
+- **Fase 7 — Hardening, QA y deploy final**.

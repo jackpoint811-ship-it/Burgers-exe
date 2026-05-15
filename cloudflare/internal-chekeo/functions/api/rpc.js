@@ -20,6 +20,9 @@ const ALLOWED_METHODS = new Set([
   'markOrderSideReady',
   'updateOrderNotes',
   'markTicketSent',
+  'writeDailySummary',
+  'archiveCompletedOrders',
+  'closeDay',
 ]);
 
 function hasRequiredEnv(env) {

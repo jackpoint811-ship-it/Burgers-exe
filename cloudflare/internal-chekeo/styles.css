@@ -11,3 +11,5 @@
 .form-grid{display:grid;gap:.6rem}.form-grid label{display:grid;gap:.3rem}.form-grid select,.form-grid textarea{background:var(--panel-alt);color:var(--text);border:1px solid var(--border);border-radius:.5rem;padding:.5rem}
 .order-actions{display:grid;gap:.4rem}.badge-status,.badge-payment{display:inline-block;padding:.2rem .45rem;border-radius:999px;font-size:.75rem;background:#2b3640}
 @media(min-width:700px){.order-actions{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+.close-section{display:grid;gap:.8rem}.close-totals .card h4{margin:.1rem 0;color:var(--muted)}.close-totals .card p{margin:.25rem 0 0;font-size:1.15rem;font-weight:700}.critical-btn{background:#f2b035;color:#2c1f07}.warning-card{border-color:rgb(242 176 53 / 55%);background:rgb(242 176 53 / 10%)}.history-loaded-list li p{margin:.3rem 0 0;color:var(--muted)}.diagnostic-section pre,.close-section pre{overflow:auto}.write-btn.is-loading{opacity:.7;cursor:wait}

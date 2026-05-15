@@ -13,6 +13,7 @@
     historyPreview: null,
     productionValidation: null,
     migrationPreview: null,
+    historyOrders: [],
     filter: 'Todos',
     loadingWrite: false,
   };
@@ -111,8 +112,8 @@
     render();
   }
 
-  async function runWrite(label, rpcMethod, args = []) {
-    return confirmAction(`¿Confirmar acción: ${label}?`, async () => {
+  async function runWrite(label, rpcMethod, args = [], confirmMessage) {
+    return confirmAction(confirmMessage || `¿Confirmar acción: ${label}?`, async () => {
       beginWrite(label);
       try {
         const result = await rpcCall(rpcMethod, args);
@@ -136,6 +137,9 @@
   const markSideReady = (orderId) => runWrite('Marcar guarnición lista', 'markOrderSideReady', [orderId]);
   const saveNotes = (orderId, noteInternal, noteClient) => runWrite('Guardar notas', 'updateOrderNotes', [orderId, noteInternal, noteClient]);
   const markTicketSent = (orderId) => runWrite('Marcar ticket enviado', 'markTicketSent', [orderId]);
+  const writeDailySummaryAction = () => runWrite('Guardar resumen diario operativo', 'writeDailySummary', [], '¿Guardar el resumen diario operativo? Esta acción escribirá el resumen en la hoja correspondiente.');
+  const archiveCompletedOrdersAction = () => runWrite('Archivar pedidos completados', 'archiveCompletedOrders', [], '¿Archivar pedidos completados? Solo deben archivarse pedidos listos y pagados.');
+  const closeDayAction = () => runWrite('Cerrar el día', 'closeDay', [], '¿Cerrar el día? Esta acción puede guardar resumen y archivar pedidos según la lógica existente. Revisa el preview antes de continuar.');
 
   async function openWhatsAppForOrder(orderId) {
     const d = await rpcCall('getClientTicketData', [orderId]);
@@ -143,6 +147,13 @@
     const text = encodeURIComponent(d?.data?.message || d?.data?.mensaje || `Pedido ${orderId}`);
     if (!phone) return showToast('No hay teléfono para el pedido.', true);
     window.open(`https://wa.me/${phone}?text=${text}`, '_blank', 'noopener');
+  }
+
+
+  async function loadHistoryOrders(limit = 20) {
+    const response = await rpcCall('getHistoryOrders', [limit]);
+    state.historyOrders = Array.isArray(response?.data) ? response.data : [];
+    renderOthers();
   }
 
   function renderOrders() {
@@ -166,10 +177,74 @@
   }
 
   function renderOthers() {
-    document.querySelector('#otros-content').innerHTML = `<h2>Otros (read-only)</h2><p class='scope-banner'>Cierre, archivado y preparación de estructura estarán disponibles en Fase 6.</p><pre>${escape(JSON.stringify({closePreview: state.closePreview, historyPreview: state.historyPreview, summary: state.summary, health: state.health}, null, 2))}</pre>`;
+    const closePreview = state.closePreview || {};
+    const summary = state.summary || {};
+    const historyPreview = state.historyPreview || {};
+    const archivables = closePreview.archivables || closePreview.archiveableOrders || [];
+    const noArchivables = closePreview.noArchivables || closePreview.nonArchiveableOrders || [];
+    const totals = {
+      total: closePreview.totalOrders ?? closePreview.total ?? 0,
+      archivables: closePreview.archiveableCount ?? archivables.length ?? 0,
+      noArchivables: closePreview.nonArchiveableCount ?? noArchivables.length ?? 0,
+      alertas: closePreview.alertCount ?? closePreview.alertas ?? 0,
+      readyPendingPay: closePreview.readyPendingPayment ?? closePreview.listosPendientePago ?? 0,
+      paidNotReady: closePreview.paidNotReady ?? closePreview.pagadosNoListos ?? 0,
+    };
+
+    const historyOrdersList = state.historyOrders.length
+      ? `<ul class='readonly-list history-loaded-list'>${state.historyOrders.map((o) => `<li><strong>${escape(o['ID Pedido'] || o.id || '-')}</strong><p>${escape(o['Nombre'] || o.name || '')}</p></li>`).join('')}</ul>`
+      : `<p class='empty-state'>No hay histórico cargado aún.</p>`;
+
+    document.querySelector('#otros-content').innerHTML = `
+      <h2>Otros</h2>
+      <section class='card close-section'>
+        <h3>Cierre y resumen</h3>
+        <div class='card-grid close-totals'>
+          <article class='card'><h4>Total pedidos</h4><p>${escape(totals.total)}</p></article>
+          <article class='card'><h4>Archivables</h4><p>${escape(totals.archivables)}</p></article>
+          <article class='card'><h4>No archivables</h4><p>${escape(totals.noArchivables)}</p></article>
+          <article class='card warning-card'><h4>Alertas</h4><p>${escape(totals.alertas)}</p></article>
+          <article class='card'><h4>Listos pendiente pago</h4><p>${escape(totals.readyPendingPay)}</p></article>
+          <article class='card'><h4>Pagados no listos</h4><p>${escape(totals.paidNotReady)}</p></article>
+        </div>
+        <div class='row'>
+          <button class='write-btn critical-btn' data-write-action id='write-summary-btn'>Guardar resumen</button>
+          <button class='write-btn critical-btn' data-write-action id='archive-completed-btn'>Archivar completados</button>
+          <button class='write-btn critical-btn' data-write-action id='close-day-btn'>Cerrar día</button>
+        </div>
+      </section>
+
+      <section class='card'>
+        <h3>Archivables</h3>
+        ${archivables.length ? `<ul class='readonly-list'>${archivables.map((o) => `<li>${escape(o['ID Pedido'] || o.id || '-')}</li>`).join('')}</ul>` : `<p class='empty-state'>No hay pedidos archivables por ahora.</p>`}
+      </section>
+
+      <section class='card'>
+        <h3>No archivables</h3>
+        ${noArchivables.length ? `<ul class='readonly-list'>${noArchivables.map((o) => `<li><strong>${escape(o['ID Pedido'] || o.id || '-')}</strong><p>${escape(o.reason || o.motivo || 'Sin motivo detallado')}</p></li>`).join('')}</ul>` : `<p class='empty-state'>No hay pedidos bloqueados para archivado.</p>`}
+      </section>
+
+      <section class='card'>
+        <h3>Resumen diario operativo</h3>
+        <pre>${escape(JSON.stringify(summary, null, 2))}</pre>
+      </section>
+
+      <section class='card'>
+        <h3>Histórico</h3>
+        <pre>${escape(JSON.stringify(historyPreview, null, 2))}</pre>
+        <button class='ghost' id='load-history-orders-btn'>Cargar últimos 20 del histórico</button>
+        ${historyOrdersList}
+      </section>
+
+      <section class='card diagnostic-section'>
+        <h3>Diagnóstico avanzado</h3>
+        <p class='scope-banner'>Preparación de estructura/producción queda para Fase 7.</p>
+        <pre>${escape(JSON.stringify({ health: state.health, productionValidation: state.productionValidation, migrationPreview: state.migrationPreview }, null, 2))}</pre>
+      </section>
+    `;
   }
 
-  function renderHome() { document.querySelector('#inicio-content').innerHTML = `<h2>Inicio</h2><p>Fase 5 activa con acciones operativas controladas.</p>`; }
+  function renderHome() { document.querySelector('#inicio-content').innerHTML = `<h2>Inicio</h2><p>Fase 6 activa con cierre, resumen e histórico operativo.</p>`; }
   function renderTabs() { document.querySelectorAll('[data-tab-target]').forEach((b) => b.classList.toggle('is-active', b.dataset.tabTarget === state.activeTab)); document.querySelectorAll('[data-tab-panel]').forEach((p) => p.classList.toggle('is-hidden', p.dataset.tabPanel !== state.activeTab)); }
   function render() { renderTabs(); renderHome(); renderOrders(); renderKitchen(); renderOthers(); }
 
@@ -202,6 +277,10 @@
       const ready = e.target.closest('[data-ready]'); if (ready) return changeOrderStatus(ready.dataset.ready, 'Listo');
       const sideReady = e.target.closest('[data-side-ready]'); if (sideReady) return markSideReady(sideReady.dataset.sideReady);
       const wa = e.target.closest('[data-wa]'); if (wa) return openWhatsAppForOrder(wa.dataset.wa);
+      const writeSummary = e.target.closest('#write-summary-btn'); if (writeSummary) return writeDailySummaryAction();
+      const archiveCompleted = e.target.closest('#archive-completed-btn'); if (archiveCompleted) return archiveCompletedOrdersAction();
+      const closeDayBtn = e.target.closest('#close-day-btn'); if (closeDayBtn) return closeDayAction();
+      const loadHistoryBtn = e.target.closest('#load-history-orders-btn'); if (loadHistoryBtn) return loadHistoryOrders(20);
     });
     document.querySelector('#modal-close')?.addEventListener('click', () => modal.classList.add('is-hidden'));
     document.querySelector('#logout-button')?.addEventListener('click', async () => { await logoutSession(); setAppVisibility(false); setPinVisibility(true); showAuthStatus('Sesión cerrada.'); });
