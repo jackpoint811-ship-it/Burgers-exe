@@ -9,18 +9,21 @@
     <script src="./app.js" defer></script>
   </head>
   <body>
-    <section id="pin-screen" class="is-hidden" aria-labelledby="pin-title"><div class="auth-card"><h1 id="pin-title">Chekeo Interno</h1><p>Ingresa el PIN para continuar.</p><form id="pin-form"><label for="pin-input">PIN</label><input id="pin-input" name="pin" type="password" inputmode="numeric" autocomplete="off" required /><button id="pin-submit" type="submit">Entrar</button></form><p id="auth-status" class="auth-status" role="status" aria-live="polite"></p></div></section>
+    <section id="pin-screen" class="is-hidden" aria-labelledby="pin-title">
+      <div class="auth-card"><h1 id="pin-title">Chekeo Interno</h1><p>Ingresa el PIN para continuar.</p><form id="pin-form"><label for="pin-input">PIN</label><input id="pin-input" name="pin" type="password" inputmode="numeric" autocomplete="off" required /><button id="pin-submit" type="submit">Entrar</button></form><p id="auth-status" class="auth-status" role="status" aria-live="polite"></p></div>
+    </section>
     <div id="internal-app" class="is-hidden">
       <div class="app-shell">
-        <header class="app-header"><p class="eyebrow">Burger-OG</p><h1>Chekeo Interno</h1><p class="subtitle">Fase 3 · RPC read-only mínimo</p><div class="header-actions"><span class="badge">Fase 3 · PIN + sesión + RPC RO</span><button id="logout-button" class="logout-button" type="button">Salir</button></div></header>
-        <section class="scope-banner" aria-label="Alcance de la fase">Fase 3: datos read-only conectados. Las acciones operativas siguen deshabilitadas.</section>
+        <header class="app-header"><p class="eyebrow">Burger-OG</p><h1>Chekeo Interno</h1><p class="subtitle">Fase 4 · Panel read-only completo</p><div class="header-actions"><span class="badge">Solo lectura · Sin acciones write</span><button id="logout-button" class="logout-button" type="button">Salir</button></div></header>
+        <p class="scope-banner">Panel interno migrado a modo lectura. Acciones operativas: disponible en fase futura.</p>
         <nav class="tab-nav" aria-label="Navegación principal"><button class="tab-button is-active" data-tab-target="inicio" type="button">Inicio</button><button class="tab-button" data-tab-target="pedidos" type="button">Pedidos</button><button class="tab-button" data-tab-target="cocina" type="button">Cocina</button><button class="tab-button" data-tab-target="otros" type="button">Otros</button></nav>
         <main>
-          <section class="tab-panel" data-tab-panel="inicio"><h2>Inicio</h2><div class="card-grid"><article class="card"><h3>Estado backend</h3><p id="health-readonly">Cargando…</p></article><article class="card"><h3>Resumen diario</h3><p id="summary-readonly">Cargando…</p></article><article class="card"><h3>Banco</h3><p id="bank-readonly">Cargando…</p></article></div></section>
-          <section class="tab-panel is-hidden" data-tab-panel="pedidos"><h2>Pedidos (read-only)</h2><ul id="orders-readonly" class="readonly-list"><li class="empty-state">Cargando pedidos…</li></ul></section>
-          <section class="tab-panel is-hidden" data-tab-panel="cocina"><h2>Cocina (preview read-only)</h2><div id="kitchen-readonly" class="empty-state">Cargando preview…</div></section>
-          <section class="tab-panel is-hidden" data-tab-panel="otros"><h2>Otros</h2><ul class="phase-checklist"><li>✅ Fase 1: Scaffold visual estático</li><li>✅ Fase 2: PIN/session aislado</li><li>✅ Fase 3: RPC read-only mínimo</li><li>⬜ Fase 4: Panel read-only completo</li></ul><p class="empty-state">Acciones operativas y write deshabilitadas en esta fase.</p></section>
+          <section class="tab-panel" data-tab-panel="inicio"><div id="inicio-content"></div></section>
+          <section class="tab-panel is-hidden" data-tab-panel="pedidos"><div id="pedidos-content"></div></section>
+          <section class="tab-panel is-hidden" data-tab-panel="cocina"><div id="cocina-content"></div></section>
+          <section class="tab-panel is-hidden" data-tab-panel="otros"><div id="otros-content"></div></section>
         </main>
+        <div id="modal" class="modal is-hidden"><div class="modal-card"><button id="modal-close" class="ghost" type="button">Cerrar</button><div id="modal-content"></div></div></div>
         <p class="status-toast is-hidden" role="status" aria-live="polite"></p>
         <nav class="bottom-nav" aria-label="Navegación inferior"><button class="tab-button is-active" data-tab-target="inicio" type="button">Inicio</button><button class="tab-button" data-tab-target="pedidos" type="button">Pedidos</button><button class="tab-button" data-tab-target="cocina" type="button">Cocina</button><button class="tab-button" data-tab-target="otros" type="button">Otros</button></nav>
       </div>
