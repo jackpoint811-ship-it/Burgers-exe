@@ -1,46 +1,25 @@
-# Cloudflare Internal Chekeo (Fase 6)
+# Cloudflare Internal Chekeo (Fase 7)
 
 ## Estado
-- **Fase 6 — Cierre, resumen e histórico operativo**.
-- PIN/session obligatorio.
-- `/api/rpc` protegido por sesión.
+- **Fase 7 — Hardening, QA y deploy final**.
+- App interna en Cloudflare Pages separada de `cloudflare/public-order`.
+- Backend operativo en Google Apps Script/Sheets por RPC protegido.
 
-## Métodos read-only permitidos
-- `healthCheck`
-- `getAppOrders`
-- `getDailySummary`
-- `getBankConfig`
-- `getOrderDetail`
-- `getClientTicketData`
-- `getCloseDayPreview`
-- `getHistoryPreview`
-- `validateProductionReadiness`
-- `getProductionMigrationPreview`
-- `getHistoryOrders`
+## Propósito
+- Operar Chekeo interno desde Cloudflare sin romper la Web App actual de Apps Script.
+- Mantener aislamiento del flujo público (`public-order`) y del panel interno.
+- Usar un proxy server-side (`/api/rpc`) para proteger credenciales y validar sesión.
 
-## Métodos write operativos permitidos
-- `syncOrdersFromMaster`
-- `updateOrderStatus`
-- `updateOrderOperationalData`
-- `updateOrderPayment`
-- `markOrderPaid`
-- `markOrderSideReady`
-- `updateOrderNotes`
-- `markTicketSent`
+## Seguridad
+- Autenticación por PIN + sesión.
+- Cookie `bog_internal_session` con `HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/`, `Max-Age=43200`.
+- `/api/rpc` protegido por sesión activa.
+- `INTERNAL_API_SHARED_SECRET` solo via server-to-server (Cloudflare Functions → Apps Script).
+- `ALLOWED_IPS` opcional para restringir acceso por IP.
+- No se usa Cloudflare Access por decisión del usuario.
+- No se exponen secrets en frontend.
 
-## Métodos de cierre/resumen/histórico habilitados
-- `writeDailySummary`
-- `archiveCompletedOrders`
-- `closeDay`
-
-## Reglas de operación
-- Confirmaciones fuertes obligatorias para acciones críticas.
-- Botones write bloqueados durante loading.
-- Resultado visible por toast/status.
-- Refresh de datos al finalizar cada write.
-- Preparación de estructura/producción sigue fuera de alcance en esta fase.
-
-## Variables de entorno (Cloudflare)
+## Variables requeridas en Cloudflare Pages
 - `INTERNAL_PANEL_PIN`
 - `INTERNAL_SESSION_SECRET`
 - `APPS_SCRIPT_INTERNAL_ENDPOINT`
@@ -50,5 +29,28 @@
 ## Script Properties (Apps Script)
 - `INTERNAL_API_SHARED_SECRET`
 
-## Siguiente fase
-- **Fase 7 — Hardening, QA y deploy final**.
+## Deploy settings de Cloudflare Pages
+- Root directory: `cloudflare/internal-chekeo`
+- Build command: `exit 0`
+- Build output directory: `.`
+- Framework preset: `None` / `Static`
+- Functions: usar la carpeta `functions/` incluida en el proyecto Pages.
+
+## Checklist de deploy (resumen)
+- Configurar variables de Cloudflare.
+- Configurar Script Properties en Apps Script.
+- Confirmar endpoint de Apps Script desplegado.
+- Confirmar que Web App actual de Apps Script sigue funcionando.
+- Confirmar que `public-order` sigue funcionando.
+- Confirmar que `BOG_ACTIVE_ENV` no cambió.
+- Validar login por PIN y expiración de sesión.
+- Validar operaciones read-only.
+- Validar writes operativos de Fase 5.
+- Validar cierre/resumen/histórico de Fase 6.
+- Validar rollback.
+
+## Rollback
+- Si Cloudflare falla, continuar operación con la Web App actual de Apps Script.
+- No borrar Web App de Apps Script.
+- No borrar datos ni hojas.
+- No usar cambio de `BOG_ACTIVE_ENV` como estrategia de rollback.
