@@ -243,3 +243,10 @@ La siguiente fase será **Fase 1**: crear scaffold estático de `cloudflare/inte
 - No debe agregarse `backend_internal_api_service.gs`.
 - No debe cambiarse `BOG_ACTIVE_ENV`.
 - PR title sugerido: **Document Phase 0 audit for internal Chekeo Cloudflare migration**.
+
+## Fase 1 status
+- Scaffold estático creado en `cloudflare/internal-chekeo`.
+- Sin backend.
+- Sin PIN.
+- Sin API.
+- Siguiente fase: **Fase 2 PIN/session aislado**.
