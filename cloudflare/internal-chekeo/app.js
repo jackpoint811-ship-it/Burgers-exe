@@ -179,9 +179,14 @@
     modalContent.innerHTML = `<h3>Detalle operativo</h3><div class='form-grid'><label>Estado Pedido<select id='op-status'>${ORDER_STATUSES.map((s) => `<option ${s === o['Estado Pedido'] ? 'selected' : ''}>${s}</option>`).join('')}</select></label><label>Estado Pago<select id='op-pay-status'>${PAYMENT_STATUSES.map((s) => `<option ${s === o['Estado Pago'] ? 'selected' : ''}>${s}</option>`).join('')}</select></label><label>Método Pago<select id='op-pay-method'>${PAYMENT_METHODS.map((s) => `<option ${s === o['Método Pago'] ? 'selected' : ''}>${s}</option>`).join('')}</select></label><label>Nota interna<textarea id='op-note-internal'>${escape(o['Nota Interna'] || '')}</textarea></label><label>Nota cliente<textarea id='op-note-client'>${escape(o['Nota Cliente'] || '')}</textarea></label></div><div class='row'><button class='write-btn' data-write-action id='save-op'>Guardar cambios operativos</button><button class='write-btn' data-write-action id='mark-paid-modal'>Marcar pagado</button><button class='ghost' id='wa-modal'>Abrir WhatsApp</button><button class='write-btn' data-write-action id='mark-ticket-modal'>Marcar ticket enviado</button></div>`;
     modal.classList.remove('is-hidden');
     document.querySelector('#save-op').onclick = async () => {
-      const payload = { status: document.querySelector('#op-status').value, paymentStatus: document.querySelector('#op-pay-status').value, paymentMethod: document.querySelector('#op-pay-method').value };
+      const payload = {
+        status: document.querySelector('#op-status').value,
+        paymentStatus: document.querySelector('#op-pay-status').value,
+        paymentMethod: document.querySelector('#op-pay-method').value,
+        noteInternal: document.querySelector('#op-note-internal').value,
+        noteClient: document.querySelector('#op-note-client').value,
+      };
       await saveOrderOperationalData(orderId, payload);
-      await saveNotes(orderId, document.querySelector('#op-note-internal').value, document.querySelector('#op-note-client').value);
     };
     document.querySelector('#mark-paid-modal').onclick = () => markPaid(orderId);
     document.querySelector('#wa-modal').onclick = () => openWhatsAppForOrder(orderId);
