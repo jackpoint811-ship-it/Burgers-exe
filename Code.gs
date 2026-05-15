@@ -27,15 +27,19 @@ function bogHandleJsonPost_(e) {
     }
 
     var requestBody = JSON.parse(bodyText);
-    if (!requestBody || requestBody.action !== 'createPublicOrder') {
-      return bogJsonResponse_({ ok: false, error: { message: 'Acción no soportada.' } });
+    if (requestBody && requestBody.action === 'createPublicOrder') {
+      var data = bogPublicWrite_(function () {
+        return bogCreatePublicOrderFromCloudflare_(requestBody);
+      }, 'Pedido público recibido.');
+
+      return bogJsonResponse_(data);
     }
 
-    var data = bogPublicWrite_(function () {
-      return bogCreatePublicOrderFromCloudflare_(requestBody);
-    }, 'Pedido público recibido.');
+    if (requestBody.action === 'internalApi') {
+      return bogJsonResponse_(bogHandleInternalApiFromCloudflare_(requestBody));
+    }
 
-    return bogJsonResponse_(data);
+    return bogJsonResponse_({ ok: false, error: { message: 'Acción no soportada.' } });
   } catch (err) {
     return bogJsonResponse_(bogErrorEnvelope_(err));
   }

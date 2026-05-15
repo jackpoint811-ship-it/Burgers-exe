@@ -258,3 +258,15 @@ La siguiente fase será **Fase 1**: crear scaffold estático de `cloudflare/inte
 - Sin Apps Script.
 - Sin datos reales.
 - Siguiente fase: **Fase 3 RPC read-only mínimo**.
+
+## Fase 3 status
+- RPC read-only mínimo creado.
+- `/api/rpc` creado y protegido por sesión.
+- Apps Script `internalApi` creado solo para read-only mínimo.
+- Métodos disponibles:
+  - healthCheck
+  - getAppOrders
+  - getDailySummary
+  - getBankConfig
+- Sin acciones write.
+- Siguiente fase: Fase 4 Panel read-only.
