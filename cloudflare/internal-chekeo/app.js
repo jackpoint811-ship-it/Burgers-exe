@@ -126,26 +126,36 @@
     state.loadingPanel = true;
     state.panelError = '';
     render();
-    const [health, orders, summary, bank, closePreview, historyPreview, productionValidation, migrationPreview] = await Promise.all([
-      rpcCall('healthCheck'), rpcCall('getAppOrders'), rpcCall('getDailySummary'), rpcCall('getBankConfig'), rpcCall('getCloseDayPreview'), rpcCall('getHistoryPreview'), rpcCall('validateProductionReadiness'), rpcCall('getProductionMigrationPreview'),
-    ]);
-    state.health = health?.data || null;
-    state.orders = Array.isArray(orders?.data) ? orders.data : [];
-    state.summary = summary?.data || null;
-    state.bank = bank?.data || null;
-    state.closePreview = closePreview?.data || null;
-    state.historyPreview = historyPreview?.data || null;
-    state.productionValidation = productionValidation?.data || null;
-    state.migrationPreview = migrationPreview?.data || null;
-    state.panelError = '';
-  } catch (error) {
-    state.panelError = error?.message || 'No se pudo cargar el panel operativo.';
-    renderPanelError();
-    throw error;
-  } finally {
-    state.loadingPanel = false;
-    render();
-  }
+
+    try {
+      const [health, orders, summary, bank, closePreview, historyPreview, productionValidation, migrationPreview] = await Promise.all([
+        rpcCall('healthCheck'),
+        rpcCall('getAppOrders'),
+        rpcCall('getDailySummary'),
+        rpcCall('getBankConfig'),
+        rpcCall('getCloseDayPreview'),
+        rpcCall('getHistoryPreview'),
+        rpcCall('validateProductionReadiness'),
+        rpcCall('getProductionMigrationPreview'),
+      ]);
+
+      state.health = health?.data || null;
+      state.orders = Array.isArray(orders?.data) ? orders.data : [];
+      state.summary = summary?.data || null;
+      state.bank = bank?.data || null;
+      state.closePreview = closePreview?.data || null;
+      state.historyPreview = historyPreview?.data || null;
+      state.productionValidation = productionValidation?.data || null;
+      state.migrationPreview = migrationPreview?.data || null;
+      state.panelError = '';
+    } catch (error) {
+      state.panelError = error?.message || 'No se pudo cargar el panel operativo.';
+      renderPanelError();
+      throw error;
+    } finally {
+      state.loadingPanel = false;
+      render();
+    }
   }
 
   async function runWrite(label, rpcMethod, args = [], confirmMessage) {
@@ -296,7 +306,9 @@
   }
 
   function renderHome() {
-    const loading = state.loadingPanel ? '<p class='scope-banner'>Cargando panel operativo...</p>' : '';
+    const loading = state.loadingPanel
+      ? `<p class="scope-banner">Cargando panel operativo...</p>`
+      : '';
     const err = state.panelError ? `<p class='empty-state'>${escape(state.panelError)}</p>` : '';
     document.querySelector('#inicio-content').innerHTML = `<h2>Inicio</h2>${loading}${err}<p>Fase 7 activa: hardening y QA final.</p>`;
   }
