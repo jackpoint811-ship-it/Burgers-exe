@@ -35,6 +35,22 @@ function computeTotal(items) {
   return items.reduce((acc, item) => acc + item.qty * (PRICE_TABLE[item.sku] || 0), 0);
 }
 
+
+async function fetchOrderGate(env) {
+  const endpoint = env && env.APPS_SCRIPT_ORDER_GATE_ENDPOINT;
+  if (!endpoint) return { closed: false };
+
+  try {
+    const upstreamResp = await fetch(endpoint, { method: 'GET' });
+    if (!upstreamResp.ok) return { closed: false };
+    const upstreamData = await upstreamResp.json();
+    if (!upstreamData || upstreamData.ok !== true) return { closed: false };
+    return { closed: upstreamData.closed === true };
+  } catch (_error) {
+    return { closed: false };
+  }
+}
+
 function normalizePersonalizations(raw) {
   const ALLOWED_EXTRAS = {
     Pepinillos: true,
@@ -64,6 +80,17 @@ export async function onRequest(context) {
   const request = context.request;
   const env = context.env;
   if (request.method !== 'POST') return jsonResponse(405, { ok: false, error: { code: 'METHOD_NOT_ALLOWED', message: 'Use POST' } });
+
+  const orderGate = await fetchOrderGate(env);
+  if (orderGate.closed) {
+    return jsonResponse(403, {
+      ok: false,
+      error: {
+        code: 'ORDERING_CLOSED',
+        message: 'Pedidos cerrados temporalmente.'
+      }
+    });
+  }
 
   let body;
   try { body = await request.json(); } catch (_err) { return jsonResponse(400, { ok: false, error: { code: 'INVALID_JSON', message: 'JSON inválido' } }); }

@@ -604,15 +604,26 @@
   }
 
   async function fetchOrderGateConfig() {
-    try {
-      var response = await fetch('/api/order-gate');
+    var timeoutMs = 3000;
+    var timeoutPromise = new Promise(function (resolve) {
+      window.setTimeout(function () {
+        resolve(normalizeOrderGateConfig(DEFAULT_ORDER_GATE_CONFIG));
+      }, timeoutMs);
+    });
+
+    var requestPromise = (async function () {
+      try {
+        var response = await fetch('/api/order-gate');
       if (!response.ok) return normalizeOrderGateConfig(DEFAULT_ORDER_GATE_CONFIG);
       var data = await response.json();
       if (!data || data.ok !== true) return normalizeOrderGateConfig(DEFAULT_ORDER_GATE_CONFIG);
-      return normalizeOrderGateConfig(data);
-    } catch (_error) {
-      return normalizeOrderGateConfig(DEFAULT_ORDER_GATE_CONFIG);
-    }
+        return normalizeOrderGateConfig(data);
+      } catch (_error) {
+        return normalizeOrderGateConfig(DEFAULT_ORDER_GATE_CONFIG);
+      }
+    })();
+
+    return Promise.race([requestPromise, timeoutPromise]);
   }
 
   function fallbackCopyText(text) {
@@ -1054,10 +1065,14 @@
     navPanel.insertBefore(hint, navPanel.children[1]);
   }
 
-  (async function bootstrap() {
-    orderGateConfig = await fetchOrderGateConfig();
+  restoreDraft(loadDraft());
+  redraw();
+
+  fetchOrderGateConfig().then(function (nextConfig) {
+    orderGateConfig = normalizeOrderGateConfig(nextConfig);
     renderOrderingGate();
-    restoreDraft(loadDraft());
-    redraw();
-  })();
+  }).catch(function () {
+    orderGateConfig = normalizeOrderGateConfig(DEFAULT_ORDER_GATE_CONFIG);
+    renderOrderingGate();
+  });
 })();
