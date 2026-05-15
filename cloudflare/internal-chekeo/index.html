@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="es-MX">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Chekeo Interno | Burger-OG</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="app-header">
+        <p class="eyebrow">Burger-OG</p>
+        <h1>Chekeo Interno</h1>
+        <p class="subtitle">Scaffold Fase 1</p>
+        <span class="badge">Fase 1 · Estático</span>
+      </header>
+
+      <section class="scope-banner" aria-label="Alcance de la fase">
+        Esta vista es un scaffold estático. No está conectada a Google Sheets ni Apps Script.
+      </section>
+
+      <nav class="tab-nav" aria-label="Navegación principal">
+        <button class="tab-button is-active" data-tab-target="inicio" type="button">Inicio</button>
+        <button class="tab-button" data-tab-target="pedidos" type="button">Pedidos</button>
+        <button class="tab-button" data-tab-target="cocina" type="button">Cocina</button>
+        <button class="tab-button" data-tab-target="otros" type="button">Otros</button>
+      </nav>
+
+      <main>
+        <section class="tab-panel" data-tab-panel="inicio">
+          <h2>Inicio</h2>
+          <div class="card-grid">
+            <article class="card">
+              <h3>Pedidos activos</h3>
+              <p>0 (placeholder)</p>
+            </article>
+            <article class="card">
+              <h3>Pendientes pago</h3>
+              <p>0 (placeholder)</p>
+            </article>
+            <article class="card">
+              <h3>Sistema</h3>
+              <p>Operativo en modo estático</p>
+            </article>
+          </div>
+          <button class="ghost-action" type="button" data-placeholder-action="inicio">
+            Probar acción local
+          </button>
+        </section>
+
+        <section class="tab-panel is-hidden" data-tab-panel="pedidos">
+          <h2>Pedidos</h2>
+          <div class="empty-state">Los pedidos reales se conectarán en Fase 4.</div>
+          <button class="ghost-action" type="button" data-placeholder-action="pedidos">
+            Ver estado placeholder
+          </button>
+        </section>
+
+        <section class="tab-panel is-hidden" data-tab-panel="cocina">
+          <h2>Cocina</h2>
+          <div class="empty-state">La cocina se conectará en Fase 4/5.</div>
+          <button class="ghost-action" type="button" data-placeholder-action="cocina">
+            Simular actualización local
+          </button>
+        </section>
+
+        <section class="tab-panel is-hidden" data-tab-panel="otros">
+          <h2>Otros</h2>
+          <ul class="phase-checklist">
+            <li>✅ Fase 1: Scaffold visual estático</li>
+            <li>⬜ Fase 2: PIN/session aislado</li>
+            <li>⬜ Fase 3: RPC read-only mínimo</li>
+            <li>⬜ Fase 4/5: Integración de panel y cocina</li>
+          </ul>
+          <button class="ghost-action" type="button" data-placeholder-action="otros">
+            Mostrar avance local
+          </button>
+        </section>
+      </main>
+
+      <p class="status-toast is-hidden" role="status" aria-live="polite"></p>
+
+      <nav class="bottom-nav" aria-label="Navegación inferior">
+        <button class="tab-button is-active" data-tab-target="inicio" type="button">Inicio</button>
+        <button class="tab-button" data-tab-target="pedidos" type="button">Pedidos</button>
+        <button class="tab-button" data-tab-target="cocina" type="button">Cocina</button>
+        <button class="tab-button" data-tab-target="otros" type="button">Otros</button>
+      </nav>
+    </div>
+  </body>
+</html>
