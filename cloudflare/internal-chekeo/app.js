@@ -4,6 +4,8 @@
   const PAYMENT_METHODS = ['Efectivo', 'Transferencia', 'Mixto', 'No definido'];
 
   const state = {
+    loadingPanel: false,
+    panelError: '',
     activeTab: 'inicio',
     orders: [],
     summary: null,
@@ -65,20 +67,43 @@
   }
 
   async function confirmAction(message, action) {
-    if (!confirmModal || !confirmAccept || !confirmCancel || !confirmMessage) return;
+    if (!confirmModal || !confirmAccept || !confirmCancel || !confirmMessage) {
+      showToast('Error interno: modal de confirmación no disponible.', true);
+      throw new Error('Confirm modal no disponible.');
+    }
+
     confirmMessage.textContent = message;
     confirmModal.classList.remove('is-hidden');
-    return new Promise((resolve) => {
+
+    return new Promise((resolve, reject) => {
+      let settled = false;
       const cleanup = () => {
         confirmModal.classList.add('is-hidden');
         confirmAccept.onclick = null;
         confirmCancel.onclick = null;
+        confirmAccept.disabled = false;
       };
+
       confirmAccept.onclick = async () => {
-        cleanup();
-        try { resolve(await action()); } catch (e) { resolve(Promise.reject(e)); }
+        if (settled) return;
+        settled = true;
+        confirmAccept.disabled = true;
+        try {
+          const result = await action();
+          cleanup();
+          resolve(result);
+        } catch (error) {
+          cleanup();
+          reject(error);
+        }
       };
-      confirmCancel.onclick = () => { cleanup(); resolve(null); };
+
+      confirmCancel.onclick = () => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve(null);
+      };
     });
   }
 
@@ -98,21 +123,47 @@
   async function logoutSession() { await fetch('/api/logout', { method: 'POST', credentials: 'same-origin' }); }
 
   async function loadOperationalPanel() {
-    const [health, orders, summary, bank, closePreview, historyPreview, productionValidation, migrationPreview] = await Promise.all([
-      rpcCall('healthCheck'), rpcCall('getAppOrders'), rpcCall('getDailySummary'), rpcCall('getBankConfig'), rpcCall('getCloseDayPreview'), rpcCall('getHistoryPreview'), rpcCall('validateProductionReadiness'), rpcCall('getProductionMigrationPreview'),
-    ]);
-    state.health = health?.data || null;
-    state.orders = Array.isArray(orders?.data) ? orders.data : [];
-    state.summary = summary?.data || null;
-    state.bank = bank?.data || null;
-    state.closePreview = closePreview?.data || null;
-    state.historyPreview = historyPreview?.data || null;
-    state.productionValidation = productionValidation?.data || null;
-    state.migrationPreview = migrationPreview?.data || null;
+    state.loadingPanel = true;
+    state.panelError = '';
     render();
+
+    try {
+      const [health, orders, summary, bank, closePreview, historyPreview, productionValidation, migrationPreview] = await Promise.all([
+        rpcCall('healthCheck'),
+        rpcCall('getAppOrders'),
+        rpcCall('getDailySummary'),
+        rpcCall('getBankConfig'),
+        rpcCall('getCloseDayPreview'),
+        rpcCall('getHistoryPreview'),
+        rpcCall('validateProductionReadiness'),
+        rpcCall('getProductionMigrationPreview'),
+      ]);
+
+      state.health = health?.data || null;
+      state.orders = Array.isArray(orders?.data) ? orders.data : [];
+      state.summary = summary?.data || null;
+      state.bank = bank?.data || null;
+      state.closePreview = closePreview?.data || null;
+      state.historyPreview = historyPreview?.data || null;
+      state.productionValidation = productionValidation?.data || null;
+      state.migrationPreview = migrationPreview?.data || null;
+      state.panelError = '';
+    } catch (error) {
+      state.panelError = error?.message || 'No se pudo cargar el panel operativo.';
+      renderPanelError();
+      throw error;
+    } finally {
+      state.loadingPanel = false;
+      render();
+    }
   }
 
   async function runWrite(label, rpcMethod, args = [], confirmMessage) {
+    if (state.loadingWrite) {
+      showToast('Ya hay una acción en curso. Espera a que finalice.', true);
+      return null;
+    }
+
     return confirmAction(confirmMessage || `¿Confirmar acción: ${label}?`, async () => {
       beginWrite(label);
       try {
@@ -154,6 +205,16 @@
     const response = await rpcCall('getHistoryOrders', [limit]);
     state.historyOrders = Array.isArray(response?.data) ? response.data : [];
     renderOthers();
+  }
+
+
+  function renderPanelError() {
+    const message = escape(state.panelError || 'No se pudo cargar el panel operativo.');
+    const html = `<h2>Error de carga</h2><p class='empty-state'>${message}</p>`;
+    ['pedidos-content', 'cocina-content', 'otros-content'].forEach((id) => {
+      const node = document.querySelector(`#${id}`);
+      if (node) node.innerHTML = html;
+    });
   }
 
   function renderOrders() {
@@ -244,7 +305,13 @@
     `;
   }
 
-  function renderHome() { document.querySelector('#inicio-content').innerHTML = `<h2>Inicio</h2><p>Fase 6 activa con cierre, resumen e histórico operativo.</p>`; }
+  function renderHome() {
+    const loading = state.loadingPanel
+      ? `<p class="scope-banner">Cargando panel operativo...</p>`
+      : '';
+    const err = state.panelError ? `<p class='empty-state'>${escape(state.panelError)}</p>` : '';
+    document.querySelector('#inicio-content').innerHTML = `<h2>Inicio</h2>${loading}${err}<p>Fase 7 activa: hardening y QA final.</p>`;
+  }
   function renderTabs() { document.querySelectorAll('[data-tab-target]').forEach((b) => b.classList.toggle('is-active', b.dataset.tabTarget === state.activeTab)); document.querySelectorAll('[data-tab-panel]').forEach((p) => p.classList.toggle('is-hidden', p.dataset.tabPanel !== state.activeTab)); }
   function render() { renderTabs(); renderHome(); renderOrders(); renderKitchen(); renderOthers(); }
 
@@ -286,7 +353,12 @@
     document.querySelector('#logout-button')?.addEventListener('click', async () => { await logoutSession(); setAppVisibility(false); setPinVisibility(true); showAuthStatus('Sesión cerrada.'); });
   }
 
-  function bootInternalAppOnce() { if (hasBootedInternalApp) return; initScaffold(); hasBootedInternalApp = true; loadOperationalPanel(); }
+  function bootInternalAppOnce() {
+    if (hasBootedInternalApp) return;
+    initScaffold();
+    hasBootedInternalApp = true;
+    loadOperationalPanel().catch(() => {});
+  }
 
   pinForm?.addEventListener('submit', async (event) => {
     event.preventDefault();

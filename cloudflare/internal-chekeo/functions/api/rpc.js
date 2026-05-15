@@ -56,7 +56,7 @@ export async function onRequestPost(context) {
   const args = payload && payload.args;
 
   if (typeof method !== 'string' || !ALLOWED_METHODS.has(method)) {
-    return jsonResponse(400, { ok: false, error: { code: 'METHOD_NOT_ALLOWED', message: 'Método no permitido.' } });
+    return jsonResponse(405, { ok: false, error: { code: 'METHOD_NOT_ALLOWED', message: 'Método no permitido.' } });
   }
 
   if (!Array.isArray(args)) {
@@ -90,7 +90,7 @@ export async function onRequestPost(context) {
 
 export function onRequest(context) {
   if (context.request.method !== 'POST') {
-    return jsonResponse(400, { ok: false, error: { code: 'METHOD_NOT_ALLOWED', message: 'Método no permitido.' } });
+    return jsonResponse(405, { ok: false, error: { code: 'METHOD_NOT_ALLOWED', message: 'Método no permitido.' } });
   }
 
   return onRequestPost(context);
