@@ -45,6 +45,20 @@ function bogHandleInternalApiFromCloudflare_(requestBody) {
       return getDailySummary();
     case 'getBankConfig':
       return getBankConfig();
+    case 'getOrderDetail':
+      return getOrderDetail(args[0]);
+    case 'getClientTicketData':
+      return getClientTicketData(args[0]);
+    case 'getCloseDayPreview':
+      return getCloseDayPreview();
+    case 'getHistoryPreview':
+      return getHistoryPreview();
+    case 'validateProductionReadiness':
+      return validateProductionReadiness();
+    case 'getProductionMigrationPreview':
+      return getProductionMigrationPreview();
+    case 'getHistoryOrders':
+      return getHistoryOrders(args[0]);
     default:
       return { ok: false, error: { code: 'METHOD_NOT_ALLOWED', message: 'Método no permitido.' } };
   }

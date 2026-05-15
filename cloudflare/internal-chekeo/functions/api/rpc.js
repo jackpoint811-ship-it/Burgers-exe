@@ -1,6 +1,18 @@
 import { isIpAllowed, jsonResponse, requireSession } from '../_shared/auth.js';
 
-const ALLOWED_METHODS = new Set(['healthCheck', 'getAppOrders', 'getDailySummary', 'getBankConfig']);
+const ALLOWED_METHODS = new Set([
+  'healthCheck',
+  'getAppOrders',
+  'getDailySummary',
+  'getBankConfig',
+  'getOrderDetail',
+  'getClientTicketData',
+  'getCloseDayPreview',
+  'getHistoryPreview',
+  'validateProductionReadiness',
+  'getProductionMigrationPreview',
+  'getHistoryOrders',
+]);
 
 function hasRequiredEnv(env) {
   return Boolean(env?.APPS_SCRIPT_INTERNAL_ENDPOINT && env?.INTERNAL_API_SHARED_SECRET && env?.INTERNAL_SESSION_SECRET);

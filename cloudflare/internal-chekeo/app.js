@@ -1,151 +1,35 @@
 (() => {
-  const state = { activeTab: 'inicio' };
+  const state = { activeTab: 'inicio', orders: [], summary: null, health: null, bank: null, closePreview: null, historyPreview: null, productionValidation: null, migrationPreview: null, selectedOrderId: null, loading: false, filter: 'Todos' };
   let hasBootedInternalApp = false;
-
-  const pinScreen = document.querySelector('#pin-screen');
-  const internalApp = document.querySelector('#internal-app');
-  const pinForm = document.querySelector('#pin-form');
-  const pinInput = document.querySelector('#pin-input');
-  const pinSubmit = document.querySelector('#pin-submit');
-  const authStatus = document.querySelector('#auth-status');
-  const logoutButton = document.querySelector('#logout-button');
-
-  function showAuthStatus(message) { if (authStatus) authStatus.textContent = message; }
-  function setPinVisibility(visible) { pinScreen?.classList.toggle('is-hidden', !visible); }
-  function setAppVisibility(visible) { internalApp?.classList.toggle('is-hidden', !visible); }
-
-  async function checkSession() {
-    const response = await fetch('/api/session', { method: 'GET', credentials: 'same-origin' });
-    const payload = await response.json();
-    return Boolean(payload?.ok && payload?.data?.authenticated);
-  }
-
-  async function authenticateWithPin(pin) {
-    const response = await fetch('/api/auth', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin }) });
-    const payload = await response.json();
-    return Boolean(response.ok && payload?.ok && payload?.data?.authenticated);
-  }
-
+  const filters = ['Todos', 'Nuevo', 'Confirmado', 'Preparando', 'Listo', 'Pendiente pago', 'Con alerta'];
+  const pinScreen = document.querySelector('#pin-screen'); const internalApp = document.querySelector('#internal-app'); const pinForm = document.querySelector('#pin-form'); const pinInput = document.querySelector('#pin-input'); const pinSubmit = document.querySelector('#pin-submit'); const authStatus = document.querySelector('#auth-status'); const logoutButton = document.querySelector('#logout-button');
+  const modal = document.querySelector('#modal'); const modalContent = document.querySelector('#modal-content');
+  const escape = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const showAuthStatus = (m) => { if (authStatus) authStatus.textContent = m; };
+  const setPinVisibility = (v) => pinScreen?.classList.toggle('is-hidden', !v);
+  const setAppVisibility = (v) => internalApp?.classList.toggle('is-hidden', !v);
+  async function checkSession() { const r = await fetch('/api/session', { method: 'GET', credentials: 'same-origin' }); const p = await r.json(); return Boolean(p?.ok && p?.data?.authenticated); }
+  async function authenticateWithPin(pin) { const r = await fetch('/api/auth', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin }) }); const p = await r.json(); return Boolean(r.ok && p?.ok && p?.data?.authenticated); }
   async function logoutSession() { await fetch('/api/logout', { method: 'POST', credentials: 'same-origin' }); }
-
-  function showToast(message) {
-    const toast = document.querySelector('.status-toast');
-    if (!toast) return;
-    toast.textContent = message;
-    toast.classList.remove('is-hidden');
-    window.setTimeout(() => toast.classList.add('is-hidden'), 1800);
+  function showToast(message) { const t = document.querySelector('.status-toast'); if (!t) return; t.textContent = message; t.classList.remove('is-hidden'); window.setTimeout(() => t.classList.add('is-hidden'), 1800); }
+  async function rpcCall(method, args = []) { const r = await fetch('/api/rpc', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ method, args }) }); const d = await r.json().catch(() => null); if (r.status === 401) { setAppVisibility(false); setPinVisibility(true); showAuthStatus('Sesión expirada. Ingresa PIN nuevamente.'); throw new Error('Sesión requerida.'); } if (!r.ok || !d || d.ok !== true) throw new Error(d?.error?.message || 'Error de API.'); return d; }
+  function renderTabs() { document.querySelectorAll('[data-tab-target]').forEach((b) => b.classList.toggle('is-active', b.dataset.tabTarget === state.activeTab)); document.querySelectorAll('[data-tab-panel]').forEach((p) => p.classList.toggle('is-hidden', p.dataset.tabPanel !== state.activeTab)); }
+  function setActiveTab(nextTab) { if (nextTab && nextTab !== state.activeTab) { state.activeTab = nextTab; render(); } }
+  function filteredOrders() { return state.orders.filter((o) => { const status = String(o['Estado Pedido'] || '').toLowerCase(); const pay = String(o['Estado Pago'] || '').toLowerCase(); const alert = String(o['Alerta'] || '').trim(); if (state.filter === 'Todos') return true; if (state.filter === 'Pendiente pago') return pay.includes('pend'); if (state.filter === 'Con alerta') return Boolean(alert); return status.includes(state.filter.toLowerCase()); }); }
+  function renderHome() { document.querySelector('#inicio-content').innerHTML = `<h2>Inicio</h2><div class='card-grid'><article class='card'><h3>Backend</h3><p>${escape(state.health?.activeEnvironment || 'N/D')} · ${escape(state.health?.activeSheet || 'N/D')}</p></article><article class='card'><h3>Resumen diario</h3><p>${escape(JSON.stringify(state.summary || {}))}</p></article><article class='card'><h3>Banco</h3><p>${escape(JSON.stringify(state.bank || {}))}</p></article></div>`; }
+  function renderOrders() { const items = filteredOrders().map((o) => `<li class='order-item'><div><strong>${escape(o['ID Pedido'] || o.id || 'Sin ID')}</strong><p>${escape(o['Nombre'] || 'Sin nombre')} · ${escape(o['Resumen'] || '')}</p><small>${escape(o['Estado Pedido'] || 'N/D')} · ${escape(o['Estado Pago'] || 'N/D')} · ${escape(o['Total'] || 'N/D')}</small></div><div class='row'><button class='ghost' data-detail='${escape(o['ID Pedido'] || o.id || '')}' type='button'>Detalle</button><button class='ghost' data-ticket='${escape(o['ID Pedido'] || o.id || '')}' type='button'>Ticket</button></div></li>`).join('');
+    document.querySelector('#pedidos-content').innerHTML = `<h2>Pedidos</h2><div class='filters'>${filters.map((f) => `<button class='chip ${f === state.filter ? 'is-active' : ''}' data-filter='${f}' type='button'>${f}</button>`).join('')}</div><ul class='readonly-list'>${items || "<li class='empty-state'>Sin pedidos.</li>"}</ul>`;
   }
-
-  async function rpcCall(method, args = []) {
-    const response = await fetch('/api/rpc', {
-      method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ method, args })
-    });
-    const data = await response.json().catch(() => null);
-    if (response.status === 401) {
-      setAppVisibility(false); setPinVisibility(true); showAuthStatus('Sesión expirada. Ingresa PIN nuevamente.');
-      throw new Error('Sesión requerida.');
-    }
-    if (!response.ok || !data || data.ok !== true) {
-      const message = data && data.error && data.error.message ? data.error.message : 'Error de API.';
-      throw new Error(message);
-    }
-    return data;
-  }
-
-  function renderTabs() {
-    document.querySelectorAll('[data-tab-target]').forEach((button) => button.classList.toggle('is-active', button.dataset.tabTarget === state.activeTab));
-    document.querySelectorAll('[data-tab-panel]').forEach((panel) => panel.classList.toggle('is-hidden', panel.dataset.tabPanel !== state.activeTab));
-  }
-
-  function setActiveTab(nextTab) { if (nextTab && nextTab !== state.activeTab) { state.activeTab = nextTab; renderTabs(); } }
-  function setText(id, text) { const el = document.querySelector(id); if (el) el.textContent = text; }
-
-  function renderReadOnlySnapshot(snapshot) {
-    const health = snapshot.health?.data || {};
-    const orders = Array.isArray(snapshot.orders?.data) ? snapshot.orders.data : [];
-    const summary = snapshot.summary?.data || {};
-    const bank = snapshot.bank?.data || {};
-
-    setText('#health-readonly', `Backend OK · Entorno: ${health.activeEnvironment || 'N/D'} · Hoja: ${health.activeSheet || 'N/D'}`);
-    setText('#summary-readonly', `Pedidos activos: ${orders.length} · Resumen diario cargado: ${Object.keys(summary).length > 0 ? 'Sí' : 'No'}`);
-    setText('#bank-readonly', `Config bancaria disponible: ${Object.keys(bank).length > 0 ? 'Sí' : 'No'}`);
-
-    const ordersNode = document.querySelector('#orders-readonly');
-    if (ordersNode) {
-      if (!orders.length) {
-        ordersNode.innerHTML = '<li class="empty-state">No hay pedidos activos para mostrar.</li>';
-      } else {
-        ordersNode.innerHTML = orders.slice(0, 20).map((order) => {
-          const id = order['ID Pedido'] || order.id || 'Sin ID';
-          const status = order['Estado Pedido'] || order.status || 'Sin estado';
-          return `<li><strong>${id}</strong><span>${status}</span></li>`;
-        }).join('');
-      }
-    }
-
-    const kitchenNode = document.querySelector('#kitchen-readonly');
-    if (kitchenNode) {
-      const pending = orders.filter((order) => {
-        const status = String(order['Estado Pedido'] || order.status || '').toLowerCase();
-        return status && !status.includes('listo');
-      });
-      kitchenNode.textContent = pending.length ? `Preview cocina: ${pending.length} pedidos pendientes de estado "listo".` : 'Preview cocina: sin pendientes visibles.';
-    }
-  }
-
-  async function loadReadOnlySnapshot() {
-    showToast('Cargando datos read-only…');
-    try {
-      const [health, orders, summary, bank] = await Promise.all([
-        rpcCall('healthCheck'), rpcCall('getAppOrders'), rpcCall('getDailySummary'), rpcCall('getBankConfig'),
-      ]);
-      renderReadOnlySnapshot({ health, orders, summary, bank });
-      showToast('Datos cargados.');
-    } catch (err) {
-      setText('#health-readonly', 'No se pudo cargar estado backend.');
-      setText('#summary-readonly', 'Sin resumen disponible.');
-      setText('#bank-readonly', 'Sin configuración bancaria disponible.');
-      const ordersNode = document.querySelector('#orders-readonly');
-      if (ordersNode) ordersNode.innerHTML = '<li class="empty-state">No hay datos disponibles.</li>';
-      const kitchenNode = document.querySelector('#kitchen-readonly');
-      if (kitchenNode) kitchenNode.textContent = 'Preview cocina no disponible.';
-      showToast(err?.message || 'Error de API.');
-    }
-  }
-
-  function initScaffold() {
-    document.querySelectorAll('[data-tab-target]').forEach((button) => button.addEventListener('click', () => setActiveTab(button.dataset.tabTarget)));
-    logoutButton?.addEventListener('click', async () => { await logoutSession(); setAppVisibility(false); setPinVisibility(true); showAuthStatus('Sesión cerrada.'); });
-    renderTabs();
-  }
-
-  function bootInternalAppOnce() {
-    if (hasBootedInternalApp) return;
-    initScaffold();
-    hasBootedInternalApp = true;
-    loadReadOnlySnapshot();
-  }
-
-  async function handlePinSubmit(event) {
-    event.preventDefault();
-    const pin = pinInput?.value?.trim() || '';
-    pinSubmit.disabled = true;
-    showAuthStatus('Validando…');
-    try {
-      const ok = await authenticateWithPin(pin);
-      if (!ok) return showAuthStatus('PIN inválido. Intenta de nuevo.');
-      if (pinInput) pinInput.value = '';
-      showAuthStatus(''); setPinVisibility(false); setAppVisibility(true); bootInternalAppOnce();
-    } catch { showAuthStatus('PIN inválido. Intenta de nuevo.'); }
-    finally { pinSubmit.disabled = false; }
-  }
-
-  document.addEventListener('DOMContentLoaded', async () => {
-    pinForm?.addEventListener('submit', handlePinSubmit);
-    try {
-      const authenticated = await checkSession();
-      if (authenticated) { setPinVisibility(false); setAppVisibility(true); bootInternalAppOnce(); return; }
-    } catch {}
-    setAppVisibility(false); setPinVisibility(true);
-  });
+  function renderKitchenReadOnly() { const pending = state.orders.filter((o) => !String(o['Estado Pedido'] || '').toLowerCase().includes('listo')); document.querySelector('#cocina-content').innerHTML = `<h2>Cocina (read-only)</h2><article class='card'><h3>Pedidos</h3><ul>${pending.map((o) => `<li>${escape(o['ID Pedido'] || '')}: ${escape(o['Hamburguesas'] || '-')}, ${escape(o['Extras'] || '-')}, nota: ${escape(o['Nota Interna'] || '-')}</li>`).join('') || '<li>Sin pendientes.</li>'}</ul></article><article class='card'><h3>Guarniciones</h3><ul>${pending.map((o) => `<li>${escape(o['ID Pedido'] || '')}: ${escape(o['Guarniciones'] || '-')}</li>`).join('') || '<li>Sin guarniciones pendientes.</li>'}</ul></article>`; }
+  function renderOthersReadOnly() { const c = state.closePreview || {}; document.querySelector('#otros-content').innerHTML = `<h2>Otros (read-only)</h2><article class='card'><h3>Cierre y Resumen</h3><p>Total pedidos: ${escape(c.totalOrders || 0)} · Archivables: ${escape(c.archivableCount || 0)} · No archivables: ${escape(c.notArchivableCount || 0)}</p><p>Alertas: ${escape(c.alertCount || 0)} · Listos pendiente pago: ${escape(c.readyPendingPaymentCount || 0)} · Pagados no listos: ${escape(c.paidNotReadyCount || 0)}</p></article><article class='card'><h3>Archivables / No archivables</h3><pre>${escape(JSON.stringify({ archivable: c.archivableOrders || [], notArchivable: c.notArchivableOrders || [] }, null, 2))}</pre></article><article class='card'><h3>Resumen diario operativo</h3><pre>${escape(JSON.stringify(state.summary || {}, null, 2))}</pre></article><article class='card'><h3>Histórico</h3><pre>${escape(JSON.stringify(state.historyPreview || {}, null, 2))}</pre></article><article class='card'><h3>Sistema / Ajustes</h3><pre>${escape(JSON.stringify(state.bank || {}, null, 2))}</pre><button class='future' disabled type='button'>Disponible en fase futura</button></article><article class='card'><h3>Diagnóstico avanzado</h3><pre>${escape(JSON.stringify({ health: state.health, readiness: state.productionValidation, migration: state.migrationPreview }, null, 2))}</pre></article>`; }
+  async function openOrderDetailReadOnly(orderId) { const d = await rpcCall('getOrderDetail', [orderId]); const o = d?.data || {}; modalContent.innerHTML = `<h3>Detalle pedido (read-only)</h3><ul class='detail-list'><li>ID Pedido: ${escape(o['ID Pedido'] || orderId)}</li><li>Nombre: ${escape(o['Nombre'] || '-')}</li><li>Teléfono: ${escape(o['Teléfono'] || '-')}</li><li>Ubicación: ${escape(o['Ubicación'] || '-')}</li><li>Hamburguesas: ${escape(o['Hamburguesas'] || '-')}</li><li>Extras: ${escape(o['Extras'] || '-')}</li><li>Guarniciones: ${escape(o['Guarniciones'] || '-')}</li><li>Total: ${escape(o['Total'] || '-')}</li><li>Estado Pedido: ${escape(o['Estado Pedido'] || '-')}</li><li>Estado Pago: ${escape(o['Estado Pago'] || '-')}</li><li>Método Pago: ${escape(o['Método Pago'] || '-')}</li><li>Nota interna: ${escape(o['Nota Interna'] || '-')}</li><li>Nota cliente: ${escape(o['Nota Cliente'] || '-')}</li><li>Ticket enviado: ${escape(o['Ticket Enviado'] || '-')}</li><li>Alerta: ${escape(o['Alerta'] || '-')}</li></ul>`; modal.classList.remove('is-hidden'); }
+  async function openClientTicketReadOnly(orderId) { const d = await rpcCall('getClientTicketData', [orderId]); modalContent.innerHTML = `<h3>Ticket cliente (read-only)</h3><pre>${escape(JSON.stringify(d?.data || {}, null, 2))}</pre>`; modal.classList.remove('is-hidden'); }
+  function closeModal() { modal.classList.add('is-hidden'); }
+  function renderError(message) { ['#inicio-content', '#pedidos-content', '#cocina-content', '#otros-content'].forEach((id) => { const n = document.querySelector(id); if (n) n.innerHTML = `<p class='error-state'>${escape(message)}</p>`; }); }
+  function render() { renderTabs(); renderHome(); renderOrders(); renderKitchenReadOnly(); renderOthersReadOnly(); }
+  async function loadReadOnlyPanel() { showToast('Cargando panel read-only…'); try { const [health, orders, summary, bank, closePreview, historyPreview, productionValidation, migrationPreview] = await Promise.all([rpcCall('healthCheck'), rpcCall('getAppOrders'), rpcCall('getDailySummary'), rpcCall('getBankConfig'), rpcCall('getCloseDayPreview'), rpcCall('getHistoryPreview'), rpcCall('validateProductionReadiness'), rpcCall('getProductionMigrationPreview')]); state.health = health?.data || null; state.orders = Array.isArray(orders?.data) ? orders.data : []; state.summary = summary?.data || null; state.bank = bank?.data || null; state.closePreview = closePreview?.data || null; state.historyPreview = historyPreview?.data || null; state.productionValidation = productionValidation?.data || null; state.migrationPreview = migrationPreview?.data || null; render(); showToast('Datos cargados.'); } catch (e) { renderError(e?.message || 'Error de API'); showToast(e?.message || 'Error'); } }
+  function initScaffold() { document.querySelectorAll('[data-tab-target]').forEach((b) => b.addEventListener('click', () => setActiveTab(b.dataset.tabTarget))); document.body.addEventListener('click', async (e) => { const filter = e.target.closest('[data-filter]'); if (filter) { state.filter = filter.dataset.filter; renderOrders(); return; } const detail = e.target.closest('[data-detail]'); if (detail) { await openOrderDetailReadOnly(detail.dataset.detail); return; } const ticket = e.target.closest('[data-ticket]'); if (ticket) { await openClientTicketReadOnly(ticket.dataset.ticket); } }); document.querySelector('#modal-close')?.addEventListener('click', closeModal); modal?.addEventListener('click', (e) => { if (e.target === modal) closeModal(); }); logoutButton?.addEventListener('click', async () => { await logoutSession(); setAppVisibility(false); setPinVisibility(true); showAuthStatus('Sesión cerrada.'); }); renderTabs(); }
+  function bootInternalAppOnce() { if (hasBootedInternalApp) return; initScaffold(); hasBootedInternalApp = true; loadReadOnlyPanel(); }
+  async function handlePinSubmit(event) { event.preventDefault(); const pin = pinInput?.value?.trim() || ''; pinSubmit.disabled = true; showAuthStatus('Validando…'); try { const ok = await authenticateWithPin(pin); if (!ok) return showAuthStatus('PIN inválido. Intenta de nuevo.'); if (pinInput) pinInput.value = ''; showAuthStatus(''); setPinVisibility(false); setAppVisibility(true); bootInternalAppOnce(); } catch { showAuthStatus('PIN inválido. Intenta de nuevo.'); } finally { pinSubmit.disabled = false; } }
+  document.addEventListener('DOMContentLoaded', async () => { pinForm?.addEventListener('submit', handlePinSubmit); try { const authenticated = await checkSession(); if (authenticated) { setPinVisibility(false); setAppVisibility(true); bootInternalAppOnce(); return; } } catch {} setAppVisibility(false); setPinVisibility(true); });
 })();

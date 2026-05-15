@@ -270,3 +270,11 @@ La siguiente fase será **Fase 1**: crear scaffold estático de `cloudflare/inte
   - getBankConfig
 - Sin acciones write.
 - Siguiente fase: Fase 4 Panel read-only.
+
+## Fase 4 status
+- Panel read-only completo creado.
+- UI interna migrada visualmente en modo lectura.
+- RPC read-only expandido.
+- Sin acciones write.
+- Sin cambios de estado, pagos, notas, cierre ni archivado.
+- Siguiente fase: Fase 5 Acciones operativas controladas.
