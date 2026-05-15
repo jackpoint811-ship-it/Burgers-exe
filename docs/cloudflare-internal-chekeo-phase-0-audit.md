@@ -284,3 +284,10 @@ La siguiente fase será **Fase 1**: crear scaffold estático de `cloudflare/inte
 - Sync, estados, pagos, notas, ticket y cocina habilitados con confirmación.
 - Cierre, archivado, guardar resumen y preparación de producción siguen deshabilitados.
 - Siguiente fase: Fase 6 Cierre, resumen e histórico operativo.
+
+## Fase 6 status
+- Cierre, resumen e histórico operativo habilitados.
+- writeDailySummary, archiveCompletedOrders y closeDay agregados con confirmaciones fuertes.
+- Histórico operativo visible/cargable.
+- Preparación de estructura/producción sigue deshabilitada.
+- Siguiente fase: Fase 7 Hardening, QA y deploy final.

@@ -75,6 +75,12 @@ function bogHandleInternalApiFromCloudflare_(requestBody) {
       return updateOrderNotes(args[0], args[1], args[2]);
     case 'markTicketSent':
       return markTicketSent(args[0]);
+    case 'writeDailySummary':
+      return writeDailySummary();
+    case 'archiveCompletedOrders':
+      return archiveCompletedOrders();
+    case 'closeDay':
+      return closeDay();
     default:
       return { ok: false, error: { code: 'METHOD_NOT_ALLOWED', message: 'Método no permitido.' } };
   }
