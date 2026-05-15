@@ -1,59 +1,1649 @@
-const pinScreen = document.getElementById('pin-screen');
-const panelScreen = document.getElementById('panel-screen');
-const statusEl = document.getElementById('status');
-const pinForm = document.getElementById('pin-form');
-const pinInput = document.getElementById('pin-input');
-const pinButton = document.getElementById('pin-button');
-const logoutButton = document.getElementById('logout-button');
 
-function showStatus(message) { statusEl.textContent = message || ''; }
-function showPin() { pinScreen.classList.remove('hidden'); panelScreen.classList.add('hidden'); }
-function showPanel() { panelScreen.classList.remove('hidden'); pinScreen.classList.add('hidden'); showStatus(''); }
-
-async function checkSession() {
-  const resp = await fetch('/api/session', { credentials: 'same-origin' });
-  const data = await resp.json();
-  if (data?.ok && data?.data?.authenticated) return showPanel();
-  showPin();
+async function apiCall(method, args = []) {
+  const response = await fetch('/api/rpc', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ method, args }) });
+  const data = await response.json().catch(() => null);
+  if (response.status === 401) { showPin(); throw new Error('Sesión expirada. Ingresa PIN nuevamente.'); }
+  if (!response.ok || !data || data.ok !== true) {
+    const message = data && data.error && data.error.message ? data.error.message : 'API error';
+    throw new Error(message);
+  }
+  return data;
 }
 
-pinForm.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  showStatus('Validando…');
-  pinButton.disabled = true;
-  try {
-    const resp = await fetch('/api/auth', {
-      method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pin: pinInput.value })
-    });
-    const data = await resp.json();
-    if (resp.ok && data?.ok) {
-      pinInput.value = '';
-      showPanel();
-      return;
-    }
-    showStatus('PIN inválido. Intenta de nuevo.');
-  } catch {
-    showStatus('No se pudo validar el PIN.');
-  } finally {
-    pinButton.disabled = false;
+const rpcRun = {
+  withSuccessHandler(success){
+    const chain={withFailureHandler(failure){return new Proxy({}, {get(_t,method){return (...args)=>apiCall(method,args).then(success).catch(failure);}})}};
+    return chain;
   }
-});
-
-logoutButton.addEventListener('click', async () => {
-  await fetch('/api/logout', { method: 'POST', credentials: 'same-origin' });
-  showStatus('Sesión cerrada.');
-  showPin();
-});
-
-window.internalRpc = async (payload) => {
-  const resp = await fetch('/api/rpc', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload || {}) });
-  if (resp.status === 401) {
-    showStatus('Sesión expirada. Ingresa PIN nuevamente.');
-    showPin();
-    return null;
-  }
-  return resp.json();
 };
 
-checkSession().catch(() => { showStatus('No se pudo verificar sesión.'); showPin(); });
+const pinScreen=document.getElementById('pin-screen');
+const appRoot=document.getElementById('internal-app');
+const authStatus=document.getElementById('authStatus');
+const pinForm=document.getElementById('pin-form');
+const pinInput=document.getElementById('pin-input');
+const pinButton=document.getElementById('pin-button');
+function showPin(){ pinScreen.classList.remove('is-hidden'); appRoot.classList.add('is-hidden'); }
+function showApp(){ appRoot.classList.remove('is-hidden'); pinScreen.classList.add('is-hidden'); authStatus.textContent=''; }
+async function checkSession(){ const r=await fetch('/api/session',{credentials:'same-origin'}); const d=await r.json().catch(()=>null); if(d&&d.ok&&d.data&&d.data.authenticated){showApp(); if(!window.__internalInitDone){ initApp(); bindInternalAuthEvents_(); window.__internalInitDone=true; } return true;} showPin(); return false; }
+function bindInternalAuthEvents_(){ const logout=document.getElementById('logoutButton'); if(logout){ logout.addEventListener('click', async function(){ await fetch('/api/logout',{method:'POST',credentials:'same-origin'}); showPin(); authStatus.textContent='Sesión cerrada.'; }); }}
+pinForm.addEventListener('submit', async function(e){ e.preventDefault(); pinButton.disabled=true; authStatus.textContent='Validando…'; try{ const r=await fetch('/api/auth',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin:pinInput.value})}); const d=await r.json().catch(()=>null); if(r.ok&&d&&d.ok){ pinInput.value=''; showApp(); if(!window.__internalInitDone){ initApp(); bindInternalAuthEvents_(); window.__internalInitDone=true; } return;} authStatus.textContent='PIN inválido. Intenta de nuevo.';} catch(_){ authStatus.textContent='No se pudo validar el PIN.';} finally{ pinButton.disabled=false; }});
+
+
+  var APP_STATE = {
+    loading: {},
+    activeTab: 'Inicio',
+    health: null,
+    summary: null,
+    orders: [],
+    bankConfigOk: false,
+    bankConfig: null,
+    activeOrdersFilter: 'all',
+    kitchenBurgerFilter: 'Todos',
+    kitchenMode: 'Pedidos',
+    kitchenSideFilter: 'Todas',
+    detailOrderId: '',
+    closePreview: null,
+    history: [],
+    confirmAction: null,
+    productionValidation: null,
+    migrationPreview: null
+  };
+
+  var PRODUCTION_CHECKLIST_ITEMS = [
+    'Verificar disponibilidad del sistema antes de tareas técnicas.',
+    'Revisar diagnóstico de datos para detectar incidencias.',
+    'Confirmar estructura mínima sin mover ni borrar datos.',
+    'Respaldar información operativa antes de cambios manuales.'
+  ];
+
+  var PRODUCTION_FINAL_STEPS = [
+    'Planificar ventana operativa para mantenimiento técnico.',
+    'Ejecutar cambios manuales supervisados fuera del flujo diario.',
+    'Verificar conteos y totales luego del ajuste.',
+    'Si hay desviaciones, restaurar respaldo manualmente.'
+  ];
+
+  var ORDER_STATUS_OPTIONS = ['Nuevo', 'Confirmado', 'Preparando', 'Listo'];
+  var PAYMENT_STATUS_OPTIONS = ['Pendiente', 'Pagado'];
+  var PAYMENT_METHOD_OPTIONS = ['Efectivo', 'Transferencia', 'Mixto', 'No definido'];
+  var ORDERS_FILTERS = [
+    { key: 'all', label: 'Todos' },
+    { key: 'Nuevo', label: 'Nuevo' },
+    { key: 'Confirmado', label: 'Confirmado' },
+    { key: 'Preparando', label: 'Preparando' },
+    { key: 'Listo', label: 'Listo' },
+    { key: 'pending-payment', label: 'Pendiente pago' },
+    { key: 'with-alert', label: 'Con alerta' }
+  ];
+
+  function initApp() {
+    bindEvents();
+    setActiveTab('Inicio');
+    renderOrderFilters();
+    loadHealth();
+    loadSummary();
+    loadOrders();
+    loadBankConfig();
+    loadHistoryPreview();
+    loadCloseDayPreview();
+    renderProductionChecklist_();
+    loadProductionValidation();
+    loadProductionMigrationPreview();
+  }
+
+  function setActiveTab(tabName) {
+    APP_STATE.activeTab = tabName;
+    Array.prototype.slice.call(document.querySelectorAll('.tab-btn')).forEach(function (btn) {
+      btn.classList.toggle('is-active', btn.getAttribute('data-tab') === tabName);
+    });
+
+    Array.prototype.slice.call(document.querySelectorAll('.tab-panel')).forEach(function (panel) {
+      panel.classList.toggle('is-hidden', panel.id !== 'tab-' + tabName);
+    });
+  }
+
+  function loadHealth() {
+    setLoading('health', true);
+    rpcRun
+      .withSuccessHandler(function (response) {
+        setLoading('health', false);
+        if (!response || !response.ok) {
+          return renderError(response && response.error ? response.error : { message: 'healthCheck falló.' });
+        }
+        APP_STATE.health = response.data || {};
+        document.getElementById('healthStatus').textContent = 'Operando';
+        document.getElementById('backendState').textContent = 'Operativo';
+      })
+      .withFailureHandler(function (error) {
+        setLoading('health', false);
+        renderError(error);
+      })
+      .healthCheck();
+  }
+
+  function loadSummary() {
+    setLoading('summary', true);
+    rpcRun
+      .withSuccessHandler(function (response) {
+        setLoading('summary', false);
+        if (!response || !response.ok) {
+          return renderError(response && response.error ? response.error : { message: 'getDailySummary falló.' });
+        }
+        APP_STATE.summary = response.data || {};
+        renderSummary(APP_STATE.summary, APP_STATE.orders);
+        renderHomeQuickSummary(APP_STATE.orders, APP_STATE.summary);
+      })
+      .withFailureHandler(function (error) {
+        setLoading('summary', false);
+        renderError(error);
+      })
+      .getDailySummary();
+  }
+
+
+  function loadCloseDayPreview() {
+    setLoading('close-preview', true);
+    rpcRun
+      .withSuccessHandler(function (response) {
+        setLoading('close-preview', false);
+        if (!response || !response.ok) {
+          return renderError(response && response.error ? response.error : { message: 'getCloseDayPreview falló.' });
+        }
+        APP_STATE.closePreview = response.data || null;
+        renderCloseDayPreview();
+      })
+      .withFailureHandler(function (error) {
+        setLoading('close-preview', false);
+        renderError(error);
+      })
+      .getCloseDayPreview();
+  }
+
+  function loadHistoryPreview() {
+    setLoading('history', true);
+    rpcRun
+      .withSuccessHandler(function (response) {
+        setLoading('history', false);
+        if (!response || !response.ok) {
+          return renderError(response && response.error ? response.error : { message: 'getHistoryPreview falló.' });
+        }
+        APP_STATE.history = response.data || {};
+        renderHistoryPreview(APP_STATE.history);
+      })
+      .withFailureHandler(function (error) {
+        setLoading('history', false);
+        renderError(error);
+      })
+      .getHistoryPreview();
+  }
+
+  function loadOrders() {
+    setLoading('orders', true);
+    rpcRun
+      .withSuccessHandler(function (response) {
+        setLoading('orders', false);
+        if (!response || !response.ok) {
+          return renderError(response && response.error ? response.error : { message: 'No se pudieron cargar los pedidos. Intenta sincronizar de nuevo.' });
+        }
+
+        APP_STATE.orders = (response.data || []).slice().sort(function (a, b) {
+          return String(a['ID Pedido'] || '').localeCompare(String(b['ID Pedido'] || ''));
+        });
+
+        if (APP_STATE.detailOrderId && !findOrderById_(APP_STATE.detailOrderId)) {
+          closeOrderDetail();
+        }
+
+        renderOrders();
+        renderKitchen(APP_STATE.orders);
+        renderHomeQuickSummary(APP_STATE.orders, APP_STATE.summary);
+        renderSummary(APP_STATE.summary, APP_STATE.orders);
+      })
+      .withFailureHandler(function (error) {
+        setLoading('orders', false);
+        renderError(error);
+      })
+      .getAppOrders();
+  }
+
+  function syncOrders() {
+    if (APP_STATE.loading.sync || APP_STATE.loading.write) {
+      return;
+    }
+
+    setLoading('sync', true);
+    showToast('Sincronizando pedidos...', 'info');
+
+    rpcRun
+      .withSuccessHandler(function (response) {
+        setLoading('sync', false);
+        if (!response || !response.ok) {
+          return renderError(response && response.error ? response.error : { message: 'syncOrdersFromMaster falló.' });
+        }
+
+        showToast('Sincronización completada.', 'success');
+        reloadOperationalData();
+      })
+      .withFailureHandler(function (error) {
+        setLoading('sync', false);
+        renderError(error);
+      })
+      .syncOrdersFromMaster();
+  }
+
+  function loadBankConfig() {
+    setLoading('bank', true);
+    rpcRun
+      .withSuccessHandler(function (response) {
+        setLoading('bank', false);
+        if (!response || !response.ok) {
+          APP_STATE.bankConfigOk = false;
+          APP_STATE.bankConfig = null;
+          document.getElementById('bankState').textContent = 'Incompletos';
+          return;
+        }
+
+        var data = response.data || {};
+        APP_STATE.bankConfig = data;
+        APP_STATE.bankConfigOk = Boolean(data.Banco && data.Nombre && data['Número de cuenta']);
+        document.getElementById('bankState').textContent = APP_STATE.bankConfigOk ? 'Completos' : 'Incompletos';
+      })
+      .withFailureHandler(function () {
+        setLoading('bank', false);
+        APP_STATE.bankConfigOk = false;
+        APP_STATE.bankConfig = null;
+        document.getElementById('bankState').textContent = 'Incompletos';
+      })
+      .getBankConfig();
+  }
+
+  function loadProductionValidation() {
+    setLoading('production-validation', true);
+    rpcRun
+      .withSuccessHandler(function (response) {
+        setLoading('production-validation', false);
+        if (!response || !response.ok) {
+          APP_STATE.productionValidation = null;
+          return renderError(response && response.error ? response.error : { message: 'No se pudo revisar el sistema.' });
+        }
+        APP_STATE.productionValidation = response.data || null;
+        renderProductionValidation_();
+      })
+      .withFailureHandler(function (error) {
+        setLoading('production-validation', false);
+        APP_STATE.productionValidation = null;
+        renderError(error);
+      })
+      .validateProductionReadiness();
+  }
+
+  function loadProductionMigrationPreview() {
+    setLoading('migration-preview', true);
+    rpcRun
+      .withSuccessHandler(function (response) {
+        setLoading('migration-preview', false);
+        if (!response || !response.ok) {
+          APP_STATE.migrationPreview = null;
+          return renderError(response && response.error ? response.error : { message: 'getProductionMigrationPreview falló.' });
+        }
+        APP_STATE.migrationPreview = response.data || null;
+        renderMigrationPreview_();
+      })
+      .withFailureHandler(function (error) {
+        setLoading('migration-preview', false);
+        APP_STATE.migrationPreview = null;
+        renderError(error);
+      })
+      .getProductionMigrationPreview();
+  }
+
+  function prepareProductionSheets() {
+    openConfirmModal_(
+      'Se validarán/crearán encabezados en Chekeo sin mover ni borrar datos. ¿Continuar?',
+      function () {
+        if (!beginWrite_('Preparando hojas de producción...')) {
+          return;
+        }
+        rpcRun
+          .withSuccessHandler(function (response) {
+            handleWriteSuccess_(response);
+            if (response && response.ok) {
+              loadProductionValidation();
+              loadProductionMigrationPreview();
+            }
+          })
+          .withFailureHandler(renderError)
+          .prepareProductionSheets();
+      }
+    );
+  }
+
+
+  function archiveCompletedOrders() {
+    var preview = APP_STATE.closePreview;
+    var eligibleCount = preview ? Number(preview.pedidosArchivables || 0) : 0;
+    if (!eligibleCount) {
+      showToast('No hay pedidos Listo + Pagado para archivar.', 'info');
+      return;
+    }
+
+    openConfirmModal_(
+      'Se archivarán ' + eligibleCount + ' pedidos Listo + Pagado en Historico. ¿Continuar?',
+      function () {
+        if (!beginWrite_('Archivando pedidos...')) {
+          return;
+        }
+
+        rpcRun
+          .withSuccessHandler(handleWriteSuccess_)
+          .withFailureHandler(renderError)
+          .archiveCompletedOrders();
+      }
+    );
+  }
+
+  function closeDay() {
+    var preview = APP_STATE.closePreview;
+    openConfirmModal_(
+      'Esto guardará resumen y archivará pedidos Listo + Pagado. ¿Cerrar día?',
+      function () {
+        if (!beginWrite_('Cerrando día...')) {
+          return;
+        }
+
+        rpcRun
+          .withSuccessHandler(handleWriteSuccess_)
+          .withFailureHandler(renderError)
+          .closeDay();
+      }
+    );
+  }
+
+
+
+  function writeDailySummary() {
+    if (!beginWrite_('Guardando resumen de corte...')) {
+      return;
+    }
+
+    rpcRun
+      .withSuccessHandler(handleWriteSuccess_)
+      .withFailureHandler(renderError)
+      .writeDailySummary();
+  }
+
+  function beginWrite_(message) {
+    if (APP_STATE.loading.write) {
+      showToast('Espera a que termine la operación actual.', 'info');
+      return false;
+    }
+    setLoading('write', true);
+    showToast(message || 'Guardando...', 'info');
+    return true;
+  }
+
+  function endWrite_() {
+    setLoading('write', false);
+  }
+
+  function updateOrderStatus(orderId, nextStatus) {
+    if (!beginWrite_('Actualizando estado...')) {
+      return;
+    }
+    rpcRun
+      .withSuccessHandler(handleWriteSuccess_)
+      .withFailureHandler(renderError)
+      .updateOrderStatus(orderId, nextStatus);
+  }
+
+  function markOrderPaid(orderId) {
+    if (!beginWrite_('Actualizando pago...')) {
+      return;
+    }
+    rpcRun
+      .withSuccessHandler(handleWriteSuccess_)
+      .withFailureHandler(renderError)
+      .markOrderPaid(orderId);
+  }
+
+  function markOrderSideReady(orderId) {
+    if (!beginWrite_('Marcando guarnición lista...')) {
+      return;
+    }
+    rpcRun
+      .withSuccessHandler(handleWriteSuccess_)
+      .withFailureHandler(renderError)
+      .markOrderSideReady(orderId);
+  }
+
+  function updateOrderOperationalData(orderId, payload) {
+    if (!beginWrite_('Guardando...')) {
+      return;
+    }
+    rpcRun
+      .withSuccessHandler(handleWriteSuccess_)
+      .withFailureHandler(renderError)
+      .updateOrderOperationalData(orderId, payload);
+  }
+
+  function handleWriteSuccess_(response) {
+    endWrite_();
+    if (!response || !response.ok) {
+      return renderError(response && response.error ? response.error : { message: 'Operación falló.' });
+    }
+    showToast(response.message || 'Operación completada.', 'success');
+    reloadOperationalData();
+  }
+
+  function reloadOperationalData() {
+    loadOrders();
+    loadSummary();
+    loadCloseDayPreview();
+    loadHistoryPreview();
+  }
+
+  function setLoading(key, value) {
+    APP_STATE.loading[key] = value;
+    if (key === 'sync' || key === 'write') {
+      updateActionButtonsState_();
+    }
+  }
+
+  function updateActionButtonsState_() {
+    var isSyncLocked = Boolean(APP_STATE.loading.sync || APP_STATE.loading.write);
+    document.getElementById('syncButton').disabled = isSyncLocked;
+
+    var archiveBtn = document.getElementById('archiveCompletedButton');
+    var closeBtn = document.getElementById('closeDayButton');
+    var previewBtn = document.getElementById('refreshClosePreviewButton');
+    var summaryBtn = document.getElementById('saveSummaryButton');
+    var validateProdBtn = document.getElementById('validateProductionButton');
+    var previewMigrationBtn = document.getElementById('previewMigrationButton');
+    var prepareProdBtn = document.getElementById('prepareProductionButton');
+    if (archiveBtn) { archiveBtn.disabled = isSyncLocked; }
+    if (closeBtn) { closeBtn.disabled = isSyncLocked; }
+    if (previewBtn) { previewBtn.disabled = isSyncLocked; }
+    if (summaryBtn) { summaryBtn.disabled = isSyncLocked; }
+    if (validateProdBtn) { validateProdBtn.disabled = isSyncLocked; }
+    if (previewMigrationBtn) { previewMigrationBtn.disabled = isSyncLocked; }
+    if (prepareProdBtn) { prepareProdBtn.disabled = isSyncLocked; }
+
+    var disableWrite = Boolean(APP_STATE.loading.write);
+    Array.prototype.slice.call(document.querySelectorAll('[data-write-action]')).forEach(function (button) {
+      button.disabled = disableWrite;
+      button.classList.toggle('is-loading', disableWrite);
+    });
+  }
+
+  function showToast(message, type) {
+    var toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.className = 'toast' + (type ? ' ' + type : '');
+  }
+
+  function renderOrderFilters() {
+    var container = document.getElementById('ordersFilters');
+    container.innerHTML = ORDERS_FILTERS.map(function (filter) {
+      var activeClass = APP_STATE.activeOrdersFilter === filter.key ? ' is-active' : '';
+      return '<button type="button" class="chip' + activeClass + '" data-filter="' + escapeHtml(filter.key) + '">' + escapeHtml(filter.label) + '</button>';
+    }).join('');
+  }
+
+  function getFilteredOrders_() {
+    var filterKey = APP_STATE.activeOrdersFilter;
+    var allOrders = APP_STATE.orders || [];
+
+    if (filterKey === 'all') {
+      return allOrders;
+    }
+    if (filterKey === 'pending-payment') {
+      return allOrders.filter(function (order) {
+        return String(order['Estado Pago'] || '') !== 'Pagado';
+      });
+    }
+    if (filterKey === 'with-alert') {
+      return allOrders.filter(function (order) {
+        return String(order['Alerta'] || '').trim() === '⚠️';
+      });
+    }
+
+    return allOrders.filter(function (order) {
+      return String(order['Estado Pedido'] || '') === filterKey;
+    });
+  }
+
+  function renderOrders() {
+    renderOrderFilters();
+
+    var container = document.getElementById('ordersContainer');
+    var orders = getFilteredOrders_();
+
+    if (!orders.length) {
+      container.innerHTML = '<div class="empty-state">No hay pedidos para el filtro seleccionado.</div>';
+      return;
+    }
+
+    var items = orders.map(function (order) {
+      var orderId = String(order['ID Pedido'] || '');
+      var safeAlert = escapeHtml(order['Alerta'] || '');
+      var alertTag = safeAlert ? '<span class="badge-alert">' + safeAlert + '</span>' : '';
+      var isPaid = String(order['Estado Pago'] || '') === 'Pagado';
+      var paidButton = isPaid ? '' : '<button type="button" class="btn btn-primary" data-action="mark-paid" data-write-action="1">Marcar pagado</button>';
+      var paymentStatus = escapeHtml(order['Estado Pago'] || '-');
+      var paymentMethod = escapeHtml(order['Método Pago'] || '-');
+      var orderStatus = escapeHtml(order['Estado Pedido'] || '-');
+
+      return '' +
+        '<li class="orders-item" data-order-id="' + escapeHtml(orderId) + '">' +
+          '<div class="orders-item-header"><strong>' + escapeHtml(orderId || '-') + '</strong>' + alertTag + '<span class="pill">' + orderStatus + '</span></div>' +
+          '<p class="orders-item-name">' + escapeHtml(order['Nombre'] || '-') + '</p>' +
+          '<p class="orders-item-summary">' + escapeHtml(order['Resumen Pedido'] || '-') + '</p>' +
+          '<div class="orders-item-meta"><span><strong>Total:</strong> ' + escapeHtml(formatMoney(order['Total'])) + '</span><span><strong>Pago:</strong> ' + paymentStatus + ' · ' + paymentMethod + '</span></div>' +
+          '<div class="order-actions-inline">' +
+            '<button type="button" class="btn btn-secondary" data-action="view-detail">Ver detalle</button>' +
+            paidButton +
+          '</div>' +
+        '</li>';
+    }).join('');
+
+    container.innerHTML = '<ul class="orders-list">' + items + '</ul>';
+  }
+
+  function renderKitchen(orders) {
+    var container = document.getElementById('kitchenContainer');
+    var activeOrders = (orders || []).filter(function (order) {
+      return String(order['Estado Pedido'] || '') !== 'Listo';
+    });
+    var burgerTypes = getKitchenBurgerTypes_(activeOrders);
+    var sideTypes = getKitchenSideTypes_(activeOrders);
+    var mode = APP_STATE.kitchenMode || 'Pedidos';
+    var burgerFilter = APP_STATE.kitchenBurgerFilter || 'Todos';
+    var sideFilter = APP_STATE.kitchenSideFilter || 'Todas';
+
+    var modeChips = '' +
+      '<div class="kitchen-chips">' +
+        '<button type="button" class="chip' + (mode === 'Pedidos' ? ' is-active' : '') + '" data-kitchen-mode="Pedidos">Pedidos</button>' +
+        '<button type="button" class="chip' + (mode === 'Guarniciones' ? ' is-active' : '') + '" data-kitchen-mode="Guarniciones">Guarniciones</button>' +
+      '</div>';
+
+    var filterChips = mode === 'Guarniciones'
+      ? '<div class="kitchen-chips">' + sideTypes.map(function (type) {
+        return '<button type="button" class="chip' + (type === sideFilter ? ' is-active' : '') + '" data-kitchen-side-filter="' + escapeHtml(type) + '">' + escapeHtml(type) + '</button>';
+      }).join('') + '</div>'
+      : '<div class="kitchen-chips">' + burgerTypes.map(function (type) {
+        return '<button type="button" class="chip' + (type === burgerFilter ? ' is-active' : '') + '" data-kitchen-burger-filter="' + escapeHtml(type) + '">' + escapeHtml(type) + '</button>';
+      }).join('') + '</div>';
+
+    var header = '<div class="kitchen-controls">' + modeChips + filterChips + '</div>';
+
+    if (mode === 'Guarniciones') {
+      var sideItems = activeOrders.filter(function (order) {
+        return hasKitchenSides_(order) && String(order['Guarnición Lista'] || 'No') !== 'Si' && matchesKitchenSideFilter_(order, sideFilter);
+      });
+
+      if (!sideItems.length) {
+        container.innerHTML = header + '<div class="empty-state">Sin guarniciones pendientes.</div>';
+        return;
+      }
+
+      container.innerHTML = header + '<ul class="kitchen-list">' + sideItems.map(function (order) {
+        var sideType = getKitchenSideDisplay_(order, sideFilter);
+        return '' +
+          '<li class="kitchen-item" data-order-id="' + escapeHtml(order['ID Pedido'] || '') + '">' +
+            '<p><strong>ID Pedido:</strong> ' + escapeHtml(order['ID Pedido'] || '-') + '</p>' +
+            '<p><strong>Nombre:</strong> ' + escapeHtml(order['Nombre'] || '-') + '</p>' +
+            '<p><strong>Guarnición:</strong> ' + escapeHtml(sideType || '-') + '</p>' +
+            '<div class="kitchen-actions">' +
+              '<button type="button" class="btn btn-primary" data-action="k-side-ready" data-write-action="1">Listo</button>' +
+            '</div>' +
+          '</li>';
+      }).join('') + '</ul>';
+      return;
+    }
+
+    var filteredOrders = activeOrders.filter(function (order) {
+      return matchesKitchenBurgerFilter_(order, burgerFilter);
+    });
+
+    if (!filteredOrders.length) {
+      container.innerHTML = header + '<div class="empty-state">Sin pedidos activos en cocina.</div><div class="kitchen-next-preview-empty">Sin siguiente pedido</div>';
+      return;
+    }
+    var main = filteredOrders[0];
+    var next = filteredOrders[1] || null;
+    var guarnicionLista = String(main['Guarnición Lista'] || 'No') === 'Si';
+    var sideReadyChip = guarnicionLista ? '<span class="chip-side-ready">Guarnición lista</span>' : '';
+    var burgersBlock = buildKitchenSectionBlock_('Hamburguesas', main['Hamburguesas'], true);
+    var extrasBlock = buildKitchenSectionBlock_('Extras', main['Extras'], false);
+    var sidesBlock = buildKitchenSectionBlock_('Guarniciones', main['Guarniciones'], false);
+    var noteBlock = String(main['Nota Interna'] || '').trim() ? '<div class="kitchen-note"><strong>Nota interna</strong><p>' + escapeHtml(main['Nota Interna']) + '</p></div>' : '';
+    container.innerHTML = header + '' +
+      '<article class="kitchen-ticket" data-order-id="' + escapeHtml(main['ID Pedido'] || '') + '">' +
+        '<div class="kitchen-ticket-header">' +
+          '<p class="kitchen-customer">' + escapeHtml(main['Nombre'] || 'Sin nombre') + '</p>' +
+          '<div class="kitchen-subhead"><span>' + escapeHtml(main['Estado Pedido'] || '-') + '</span>' + sideReadyChip + '</div>' +
+        '</div>' +
+        burgersBlock +
+        extrasBlock +
+        sidesBlock +
+        noteBlock +
+        '<div class="kitchen-actions">' +
+          '<button type="button" class="btn btn-primary" data-action="k-ready" data-write-action="1">Listo</button>' +
+        '</div>' +
+      '</article>' +
+      (next ? '<div class="kitchen-next-preview"><strong>Siguiente</strong><p class="kitchen-next-name">' + escapeHtml(next['Nombre'] || 'Sin nombre') + '</p><span class="muted">' + escapeHtml(next['Resumen Pedido'] || '-') + '</span></div>' : '<div class="kitchen-next-preview-empty">Sin siguiente pedido</div>');
+  }
+
+  function buildKitchenSectionBlock_(label, value, alwaysShow) {
+    var items = splitKitchenItems_(value);
+    if (!items.length && !alwaysShow) { return ''; }
+    var content = items.length
+      ? '<ul class="kitchen-section-list">' + items.map(function (item) {
+          return '<li>' + escapeHtml(item) + '</li>';
+        }).join('') + '</ul>'
+      : '<p class="muted">Sin items</p>';
+    return '<section class="kitchen-section"><h4>' + escapeHtml(label) + '</h4>' + content + '</section>';
+  }
+
+  function splitKitchenItems_(value) {
+    var raw = String(value || '').trim();
+    if (!raw || raw === '-') { return []; }
+    return raw.split('+').map(function (item) {
+      return String(item || '').trim();
+    }).filter(function (item) {
+      return item && item !== '-';
+    });
+  }
+
+  function getKitchenBurgerTypes_(orders) {
+    var set = { Todos: true };
+    (orders || []).forEach(function (order) {
+      String(order['Hamburguesas'] || '').split('+').forEach(function (item) {
+        var clean = item.replace(/^\s*\d+x\s*/i, '').trim();
+        if (clean) { set[clean] = true; }
+      });
+    });
+    return Object.keys(set);
+  }
+  function matchesKitchenBurgerFilter_(order, filter) {
+    if (filter === 'Todos') { return true; }
+    return String(order['Hamburguesas'] || '').toLowerCase().indexOf(filter.toLowerCase()) !== -1;
+  }
+  function hasKitchenSides_(order) {
+    return String(order['Guarniciones'] || '').trim() !== '';
+  }
+
+  function getKitchenSideTypes_(orders) {
+    var set = { Todas: true };
+    (orders || []).forEach(function (order) {
+      getKitchenSideParts_(order).forEach(function (side) {
+        set[side] = true;
+      });
+    });
+    return Object.keys(set);
+  }
+
+  function getKitchenSideParts_(order) {
+    return String(order['Guarniciones'] || '').split('+').map(function (item) {
+      return item.replace(/^\s*\d+x\s*/i, '').trim();
+    }).filter(Boolean);
+  }
+
+  function getKitchenSideDisplay_(order, filter) {
+    var sideParts = getKitchenSideParts_(order);
+    if (!sideParts.length) { return ''; }
+    if (filter === 'Todas') {
+      return sideParts.join(', ');
+    }
+    return sideParts.indexOf(filter) !== -1 ? filter : '';
+  }
+
+  function matchesKitchenSideFilter_(order, filter) {
+    if (filter === 'Todas') { return true; }
+    return getKitchenSideParts_(order).indexOf(filter) !== -1;
+  }
+
+  function openOrderDetail(orderId) {
+    var order = findOrderById_(orderId);
+    if (!order) {
+      showToast('Pedido no disponible en memoria.', 'error');
+      return;
+    }
+
+    APP_STATE.detailOrderId = orderId;
+
+    var isPaid = String(order['Estado Pago'] || '') === 'Pagado';
+    var markPaidButton = isPaid ? '' : '<button type="button" class="btn btn-primary" data-action="detail-mark-paid" data-write-action="1">Marcar pagado</button>';
+    var alertRow = String(order['Alerta'] || '').trim() ? '<p><strong>Alerta:</strong> ' + escapeHtml(order['Alerta']) + '</p>' : '';
+
+    document.getElementById('orderDetailContent').innerHTML = '' +
+      '<p><strong>ID Pedido:</strong> ' + escapeHtml(order['ID Pedido'] || '-') + '</p>' +
+      '<p><strong>Nombre:</strong> ' + escapeHtml(order['Nombre'] || '-') + '</p>' +
+      '<p><strong>Resumen Pedido:</strong> ' + escapeHtml(order['Resumen Pedido'] || '-') + '</p>' +
+      '<p><strong>Hamburguesas:</strong> ' + escapeHtml(order['Hamburguesas'] || '-') + '</p>' +
+      '<p><strong>Extras:</strong> ' + escapeHtml(order['Extras'] || '-') + '</p>' +
+      '<p><strong>Guarniciones:</strong> ' + escapeHtml(order['Guarniciones'] || '-') + '</p>' +
+      '<p><strong>Total:</strong> ' + escapeHtml(formatMoney(order['Total'])) + '</p>' +
+      '<p><strong>Ticket enviado:</strong> ' + escapeHtml(order['Ticket Enviado'] || 'No') + '</p>' +
+      (order['Fecha Ticket Enviado'] ? '<p><strong>Fecha ticket enviado:</strong> ' + escapeHtml(order['Fecha Ticket Enviado']) + '</p>' : '') +
+      '<p><strong>Estado Pedido:</strong> ' + escapeHtml(order['Estado Pedido'] || '-') + '</p>' +
+      '<p><strong>Estado Pago:</strong> ' + escapeHtml(order['Estado Pago'] || '-') + '</p>' +
+      '<p><strong>Método Pago:</strong> ' + escapeHtml(order['Método Pago'] || '-') + '</p>' +
+      alertRow +
+      '<div class="field"><label>Estado Pedido</label><select id="detailOrderStatus">' + buildOptions_(ORDER_STATUS_OPTIONS, order['Estado Pedido']) + '</select></div>' +
+      '<div class="field"><label>Estado Pago</label><select id="detailPaymentStatus">' + buildOptions_(PAYMENT_STATUS_OPTIONS, order['Estado Pago']) + '</select></div>' +
+      '<div class="field"><label>Método Pago</label><select id="detailPaymentMethod">' + buildOptions_(PAYMENT_METHOD_OPTIONS, order['Método Pago']) + '</select></div>' +
+      '<div class="field"><label>Nota Interna</label><textarea id="detailNoteInternal" placeholder="Operación interna">' + escapeHtml(order['Nota Interna'] || '') + '</textarea></div>' +
+      '<div class="field"><label>Nota Cliente</label><textarea id="detailNoteClient" placeholder="Nota visible para cliente">' + escapeHtml(order['Nota Cliente'] || '') + '</textarea></div>' +
+      '<div class="modal-actions">' +
+        '<button type="button" class="btn btn-secondary" data-action="detail-save" data-write-action="1">Guardar pedido</button>' +
+        markPaidButton +
+      '</div>' +
+      '<div class="ticket-block">' +
+        '<p><strong>Ticket cliente</strong></p>' +
+        '<p class="muted">Incluye solo datos permitidos para cliente.</p>' +
+        '<div class="action-row">' +
+          '<button type="button" class="btn btn-secondary" data-action="detail-download-ticket">Descargar ticket PNG</button>' +
+          '<button type="button" class="btn btn-primary" data-action="detail-open-whatsapp">Abrir WhatsApp</button>' +
+        '</div>' +
+        '<div class="action-row">' +
+          '<button type="button" class="btn btn-secondary" data-action="detail-mark-ticket" data-write-action="1">Marcar ticket enviado</button>' +
+          '<span></span>' +
+        '</div>' +
+      '</div>';
+
+    renderTicketCanvas_(order);
+    document.getElementById('orderDetailModal').classList.remove('is-hidden');
+  }
+
+  function closeOrderDetail() {
+    APP_STATE.detailOrderId = '';
+    document.getElementById('orderDetailModal').classList.add('is-hidden');
+    document.getElementById('orderDetailContent').innerHTML = '';
+  }
+
+  function saveOrderFromDetail() {
+    if (!APP_STATE.detailOrderId) {
+      return;
+    }
+
+    var payload = {
+      status: document.getElementById('detailOrderStatus').value,
+      paymentStatus: document.getElementById('detailPaymentStatus').value,
+      paymentMethod: document.getElementById('detailPaymentMethod').value,
+      noteInternal: document.getElementById('detailNoteInternal').value,
+      noteClient: document.getElementById('detailNoteClient').value
+    };
+
+    updateOrderOperationalData(APP_STATE.detailOrderId, payload);
+    closeOrderDetail();
+  }
+
+  function markCurrentDetailOrderPaid() {
+    if (!APP_STATE.detailOrderId) {
+      return;
+    }
+    markOrderPaid(APP_STATE.detailOrderId);
+    closeOrderDetail();
+  }
+
+  function getClientTicketFields_(order, ticketData) {
+    var breakdown = ticketData && Array.isArray(ticketData.priceBreakdown) ? ticketData.priceBreakdown : buildBasicTicketBreakdown_(order);
+    var paymentValue = ticketData && ticketData.payment ? ticketData.payment : (order['Método Pago'] || order['Estado Pago'] || '');
+    return {
+      orderId: String(order['ID Pedido'] || ''),
+      name: String(order['Nombre'] || ''),
+      payment: String(paymentValue || ''),
+      noteClient: String(order['Nota Cliente'] || ''),
+      total: formatMoney(order['Total']),
+      breakdown: breakdown
+    };
+  }
+
+  function getTicketCanvas_() {
+    if (!APP_STATE.ticketCanvas) {
+      APP_STATE.ticketCanvas = document.createElement('canvas');
+      APP_STATE.ticketCanvas.width = 520;
+      APP_STATE.ticketCanvas.height = 1200;
+    }
+    return APP_STATE.ticketCanvas;
+  }
+
+  function renderTicketCanvas_(order, ticketData) {
+    var canvas = getTicketCanvas_();
+    var ctx = canvas.getContext('2d');
+    var fields = getClientTicketFields_(order, ticketData);
+    var layout = buildTicketCanvasLayout_(fields, ctx, canvas.width);
+    canvas.height = layout.height;
+    ctx = canvas.getContext('2d');
+    drawTicketPaperBackground_(ctx, canvas.width, canvas.height);
+    drawTicketLayout_(ctx, layout);
+  }
+
+  function buildTicketCanvasLayout_(fields, ctx, canvasWidth) {
+    var padX = 34;
+    var width = canvasWidth - (padX * 2);
+    var y = 42;
+    var blocks = [];
+    var fonts = {
+      title: 'bold 34px Arial, sans-serif',
+      subtitle: 'bold 20px Arial, sans-serif',
+      body: '19px Arial, sans-serif',
+      section: 'bold 18px Arial, sans-serif',
+      total: 'bold 32px Arial, sans-serif',
+      footer: 'bold 17px Arial, sans-serif'
+    };
+
+    function pushCentered(text, font, color, gapAfter) {
+      blocks.push({ type: 'center', text: text, x: padX, y: y, width: width, font: font, color: color });
+      y += getLineHeightForFont_(font) + (gapAfter || 0);
+    }
+    function pushDivider(gapTop, gapBottom) {
+      y += gapTop || 0;
+      blocks.push({ type: 'divider', x: padX, y: y, width: width });
+      y += (gapBottom || 0);
+    }
+    function pushField(label, value) {
+      var lines = splitTicketFieldLines_(ctx, label, value, width, fonts.body);
+      blocks.push({ type: 'field', lines: lines, x: padX, y: y, width: width, font: fonts.body });
+      y += (lines.length * 27) + 5;
+    }
+    function pushSection(title) {
+      blocks.push({ type: 'section', text: title, x: padX, y: y, width: width, font: fonts.section });
+      y += 28;
+    }
+
+    pushCentered('Ticket de pedido', fonts.title, '#111111', 4);
+    pushCentered('ID ' + (fields.orderId || '-'), fonts.subtitle, '#4b5563', 6);
+    pushDivider(10, 14);
+    pushField('CLIENTE', fields.name);
+    pushField('PAGO', fields.payment || 'Pendiente');
+    pushDivider(8, 14);
+    pushSection('DESGLOSE');
+    (fields.breakdown || []).forEach(function (line) {
+      blocks.push({ type: 'breakdown', line: line, x: padX, y: y, width: width, font: fonts.body });
+      y += 28;
+    });
+    if (fields.noteClient) {
+      pushSection('NOTA CLIENTE');
+      pushField('NOTA', fields.noteClient);
+    }
+    pushDivider(8, 18);
+    blocks.push({ type: 'total', label: 'TOTAL', value: fields.total, x: padX, y: y, width: width, font: fonts.total });
+    y += 46;
+    pushDivider(8, 16);
+    pushCentered('Gracias por tu compra', fonts.footer, '#1f2937', 0);
+    pushCentered('Conserva este ticket', '16px Arial, sans-serif', '#4b5563', 2);
+
+    return { width: canvasWidth, height: Math.max(420, y + 34), blocks: blocks };
+  }
+
+  function drawTicketLayout_(ctx, layout) {
+    layout.blocks.forEach(function (block) {
+      if (block.type === 'center') {
+        drawTicketCenteredText_(ctx, block.text, block.y, block.font, block.color, block.x, block.width);
+      } else if (block.type === 'divider') {
+        drawTicketDashedDivider_(ctx, block.x, block.y, block.width);
+      } else if (block.type === 'field') {
+        drawTicketFieldBlock_(ctx, block);
+      } else if (block.type === 'section') {
+        ctx.fillStyle = '#111111';
+        ctx.font = block.font;
+        ctx.fillText(block.text, block.x, block.y);
+      } else if (block.type === 'breakdown') {
+        drawTicketBreakdownLine_(ctx, block);
+      } else if (block.type === 'total') {
+        drawTicketTotal_(ctx, block);
+      }
+    });
+  }
+
+  function drawTicketFieldBlock_(ctx, block) {
+    ctx.font = block.font;
+    ctx.fillStyle = '#111111';
+    block.lines.forEach(function (line, index) {
+      ctx.fillText((index === 0 ? '- ' : '  ') + line, block.x, block.y + (index * 27));
+    });
+  }
+
+  function drawTicketCenteredText_(ctx, text, y, font, color, x, width) {
+    ctx.font = font;
+    ctx.fillStyle = color || '#111111';
+    var textWidth = ctx.measureText(text).width;
+    var left = typeof x === 'number' ? x : 0;
+    var areaWidth = width || ctx.canvas.width;
+    ctx.fillText(text, left + ((areaWidth - textWidth) / 2), y);
+    return y + 30;
+  }
+
+  function drawTicketDashedDivider_(ctx, x, y, width) {
+    ctx.save();
+    ctx.strokeStyle = '#6b7280';
+    ctx.lineWidth = 1.6;
+    ctx.setLineDash([4, 6]);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + width, y);
+    ctx.stroke();
+    ctx.restore();
+    return y;
+  }
+
+  function drawTicketTotal_(ctx, block) {
+    ctx.fillStyle = '#f3f4f6';
+    ctx.fillRect(block.x - 12, block.y - 30, block.width + 24, 42);
+    ctx.font = block.font;
+    ctx.fillStyle = '#111111';
+    ctx.fillText(block.label, block.x, block.y);
+    var totalText = String(block.value || '-');
+    var textWidth = ctx.measureText(totalText).width;
+    ctx.fillText(totalText, block.x + block.width - textWidth, block.y);
+  }
+
+  function drawTicketBreakdownLine_(ctx, block) {
+    ctx.font = block.font;
+    ctx.fillStyle = '#111111';
+    ctx.fillText(block.line.concept, block.x, block.y);
+    var priceText = block.line.amount === null || block.line.amount === undefined
+      ? (block.line.review ? 'Revisar' : '')
+      : formatMoney(block.line.amount);
+    if (priceText) {
+      var textWidth = ctx.measureText(priceText).width;
+      ctx.fillText(priceText, block.x + block.width - textWidth, block.y);
+    }
+  }
+
+  function splitTicketFieldLines_(ctx, label, value, maxWidth, font) {
+    ctx.font = font;
+    var safeValue = String(value || '-').trim() || '-';
+    var prefix = String(label || '').trim() + ': ';
+    var bulletPrefix = '- ';
+    var continuationPrefix = '  ';
+    var firstLineAvailable = Math.max(80, maxWidth - ctx.measureText(bulletPrefix + prefix).width);
+    var continuationAvailable = Math.max(80, maxWidth - ctx.measureText(continuationPrefix).width);
+    var words = safeValue.split(/\s+/);
+    var lines = [];
+    var currentLine = '';
+    var currentMax = firstLineAvailable;
+
+    words.forEach(function (word) {
+      var candidate = currentLine ? (currentLine + ' ' + word) : word;
+      if (ctx.measureText(candidate).width <= currentMax || !currentLine) {
+        currentLine = candidate;
+      } else {
+        lines.push(currentLine);
+        currentLine = word;
+        currentMax = continuationAvailable;
+      }
+    });
+
+    if (currentLine) {
+      lines.push(currentLine);
+    }
+    if (!lines.length) {
+      lines = ['-'];
+    }
+    lines[0] = prefix + lines[0];
+    return lines;
+  }
+
+  function getLineHeightForFont_(font) {
+    if (String(font).indexOf('36px') >= 0) return 42;
+    if (String(font).indexOf('30px') >= 0) return 36;
+    if (String(font).indexOf('21px') >= 0) return 28;
+    return 26;
+  }
+
+  function drawTicketPaperBackground_(ctx, w, h) {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = 'rgba(17, 24, 39, 0.18)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(1, 1, w - 2, h - 2);
+  }
+
+  function wrapCanvasText_(ctx, text, maxWidth) {
+    var words = String(text || '').split(/\s+/);
+    var lines = [];
+    var line = '';
+    words.forEach(function (word) {
+      var candidate = line ? (line + ' ' + word) : word;
+      if (ctx.measureText(candidate).width <= maxWidth || !line) {
+        line = candidate;
+      } else {
+        lines.push(line);
+        line = word;
+      }
+    });
+    if (line) {
+      lines.push(line);
+    }
+    return lines.length ? lines : ['-'];
+  }
+
+  function downloadCurrentTicketPng_() {
+    var order = findOrderById_(APP_STATE.detailOrderId);
+    if (!order) {
+      showToast('No se encontró pedido para ticket.', 'error');
+      return;
+    }
+
+    rpcRun
+      .withSuccessHandler(function (response) {
+        var ticketData = response && response.ok ? response.data : null;
+        renderTicketCanvas_(order, ticketData);
+        downloadTicketCanvas_(order);
+      })
+      .withFailureHandler(function () {
+        renderTicketCanvas_(order, null);
+        downloadTicketCanvas_(order);
+      })
+      .getClientTicketData(order['ID Pedido']);
+  }
+
+  function downloadTicketCanvas_(order) {
+    var canvas = getTicketCanvas_();
+    if (!canvas) {
+      showToast('No se pudo preparar ticket.', 'error');
+      return;
+    }
+    var link = document.createElement('a');
+    link.href = canvas.toDataURL('image/png');
+    link.download = buildTicketFileName_(order['ID Pedido']);
+    link.click();
+    showToast('Ticket PNG listo para compartir.', 'success');
+  }
+
+  function buildBasicTicketBreakdown_(order) {
+    var lines = [];
+    lines = lines.concat(parseTicketLineConcepts_(order['Hamburguesas'], false));
+    lines = lines.concat(parseTicketLineConcepts_(order['Extras'], true));
+    lines = lines.concat(parseTicketLineConcepts_(order['Guarniciones'], false));
+    return lines;
+  }
+
+  function parseTicketLineConcepts_(value, isExtra) {
+    var text = String(value || '').trim();
+    if (!text || text === '-' || text.toLowerCase() === 'n/a') return [];
+    return text.split(/\s*\+\s*/).map(function (item) {
+      var concept = String(item || '').trim();
+      if (!concept || concept === '-') return null;
+      return { concept: isExtra ? ('+ ' + concept.replace(/^\+\s*/, '')) : concept, amount: null, review: false };
+    }).filter(Boolean);
+  }
+
+  function buildTicketFileName_(orderId) {
+    var safeId = String(orderId || 'SIN-ID')
+      .toUpperCase()
+      .replace(/[^A-Z0-9-_]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+    return 'ticket-' + (safeId || 'SIN-ID') + '.png';
+  }
+
+  function buildWhatsappMessage_(order, bankConfig) {
+    var clientName = String(order['Nombre'] || 'cliente');
+    var total = formatMoney(order['Total']);
+    var banco = bankConfig && bankConfig.Banco ? String(bankConfig.Banco) : '';
+    var nombreCuenta = bankConfig && bankConfig.Nombre ? String(bankConfig.Nombre) : '';
+    var numeroCuenta = bankConfig && bankConfig['Número de cuenta'] ? String(bankConfig['Número de cuenta']) : '';
+
+    return [
+      'Hola ' + clientName + ', gracias por tu pedido en Burger-OG.',
+      'Tu total es: ' + total + '.',
+      'Datos para transferencia:',
+      'Banco: ' + banco,
+      'Nombre: ' + nombreCuenta,
+      'Número de cuenta: ' + numeroCuenta,
+      'Te compartimos tu ticket en imagen por este medio.'
+    ].join('\n');
+  }
+
+  function openWhatsAppForCurrentOrder_() {
+    var order = findOrderById_(APP_STATE.detailOrderId);
+    if (!order) {
+      showToast('No se encontró pedido.', 'error');
+      return;
+    }
+    if (!APP_STATE.bankConfigOk || !APP_STATE.bankConfig) {
+      showToast('Completa Configuración bancaria antes de abrir WhatsApp.', 'error');
+      return;
+    }
+
+    var normalizedPhone = normalizeWhatsappPhone_(order['Teléfono']);
+    if (!normalizedPhone) {
+      showToast('Teléfono inválido. Usa 10 dígitos MX o 52 + 10 dígitos.', 'error');
+      return;
+    }
+    var message = buildWhatsappMessage_(order, APP_STATE.bankConfig);
+    var url = 'https://wa.me/' + normalizedPhone + '?text=' + encodeURIComponent(message);
+    window.open(url, '_blank');
+    showToast('Se abrió WhatsApp con mensaje precargado.', 'success');
+  }
+
+  function normalizeWhatsappPhone_(phone) {
+    var digits = String(phone || '').replace(/[^\d]/g, '');
+    if (digits.length === 10) {
+      return '52' + digits;
+    }
+    if (digits.length === 12 && digits.indexOf('52') === 0) {
+      return digits;
+    }
+    return '';
+  }
+
+  function markCurrentOrderTicketSent_() {
+    if (!APP_STATE.detailOrderId) {
+      return;
+    }
+    if (!beginWrite_('Marcando ticket enviado...')) {
+      return;
+    }
+    rpcRun
+      .withSuccessHandler(handleWriteSuccess_)
+      .withFailureHandler(renderError)
+      .markTicketSent(APP_STATE.detailOrderId);
+    closeOrderDetail();
+  }
+
+
+  function renderCloseDayPreview() {
+    var meta = document.getElementById('closePreviewMeta');
+    var warn = document.getElementById('closePreviewWarnings');
+    var preview = APP_STATE.closePreview;
+
+    if (!preview) {
+      meta.textContent = 'Sin preview de cierre.';
+      warn.innerHTML = '';
+      document.getElementById('archivablesList').innerHTML = '<div class="empty-state">Sin datos.</div>';
+      document.getElementById('nonArchivableList').innerHTML = '<div class="empty-state">Sin datos.</div>';
+      return;
+    }
+
+    meta.textContent =
+      'Total pedidos: ' + Number(preview.totalPedidos || 0) +
+      ' · Archivables: ' + Number(preview.pedidosArchivables || 0) +
+      ' · No archivables: ' + Number(preview.pedidosNoArchivables || 0);
+
+    warn.innerHTML = [
+      summaryCard('Con alerta', Number(preview.conAlerta || 0)),
+      summaryCard('Sin ticket enviado', Number(preview.sinTicketEnviado || 0)),
+      summaryCard('Listo + pendiente pago', Number(preview.listosPendientesPago || 0)),
+      summaryCard('Pagado + no listo', Number(preview.pagadosNoListos || 0))
+    ].join('');
+
+    var archivables = preview.archivables || [];
+    if (!archivables.length) {
+      document.getElementById('archivablesList').innerHTML = '<div class="empty-state">No hay pedidos archivables.</div>';
+    } else {
+      document.getElementById('archivablesList').innerHTML = '<ul class="compact-list">' + archivables.map(function (order) {
+        return '<li class="compact-item">' +
+          '<strong>' + escapeHtml(order['ID Pedido'] || '-') + '</strong> · ' + escapeHtml(order['Nombre'] || '-') + '<br>' +
+          'Total: ' + escapeHtml(formatMoney(order['Total'])) + ' · Estado: ' + escapeHtml(order['Estado Pedido'] || '-') + ' / ' + escapeHtml(order['Estado Pago'] || '-') + '<br>' +
+          'Ticket: ' + escapeHtml(order['Ticket Enviado'] || 'No') + ' · Alerta: ' + escapeHtml(order['Alerta'] || '-') +
+        '</li>';
+      }).join('') + '</ul>';
+    }
+
+    var noArchivables = preview.noArchivables || [];
+    if (!noArchivables.length) {
+      document.getElementById('nonArchivableList').innerHTML = '<div class="empty-state">No hay pendientes.</div>';
+    } else {
+      document.getElementById('nonArchivableList').innerHTML = '<ul class="compact-list">' + noArchivables.map(function (order) {
+        return '<li class="compact-item warning-card">' +
+          '<strong>' + escapeHtml(order['ID Pedido'] || '-') + '</strong> · ' + escapeHtml(order['Nombre'] || '-') + '<br>' +
+          escapeHtml(order.razon || 'Pendiente de completar') +
+        '</li>';
+      }).join('') + '</ul>';
+    }
+  }
+
+  function renderHistoryPreview(historyPreview) {
+    var data = historyPreview || {};
+    document.getElementById('historyMeta').textContent =
+      'Total historico: ' + Number(data.totalHistorico || 0) +
+      ' · Total vendido histórico: ' + formatMoney(data.totalVendidoHistorico || 0);
+
+    var orders = data.ultimosPedidosArchivados || [];
+    if (!orders.length) {
+      document.getElementById('historyContainer').innerHTML = '<div class="empty-state">Sin pedidos archivados.</div>';
+    } else {
+      document.getElementById('historyContainer').innerHTML = '<ul class="history-list">' + orders.map(function (order) {
+        return '<li class="history-item">' +
+          '<p><strong>' + escapeHtml(order['ID Pedido'] || '-') + '</strong> <span class="pill">' + escapeHtml(order['Corte ID'] || '-') + '</span></p>' +
+          '<p><strong>Nombre:</strong> ' + escapeHtml(order['Nombre'] || '-') + '</p>' +
+          '<p><strong>Total:</strong> ' + escapeHtml(formatMoney(order['Total'])) + '</p>' +
+          '<p><strong>Archivado:</strong> ' + escapeHtml(order['Fecha Archivado'] || '-') + ' ' + escapeHtml(order['Hora Archivado'] || '-') + '</p>' +
+        '</li>';
+      }).join('') + '</ul>';
+    }
+
+    var cuts = data.ultimosCortes || [];
+    if (!cuts.length) {
+      document.getElementById('historyCutsContainer').innerHTML = '<div class="empty-state">Sin cortes registrados.</div>';
+    } else {
+      document.getElementById('historyCutsContainer').innerHTML = '<ul class="compact-list">' + cuts.map(function (cut) {
+        return '<li class="compact-item">' +
+          '<strong>' + escapeHtml(cut.corteId || '-') + '</strong><br>' +
+          'Pedidos: ' + escapeHtml(cut.pedidos || 0) + ' · Total: ' + escapeHtml(formatMoney(cut.total || 0)) + '<br>' +
+          'Referencia: ' + escapeHtml(cut.fechaArchivado || '-') + ' ' + escapeHtml(cut.horaArchivado || '-') +
+        '</li>';
+      }).join('') + '</ul>';
+    }
+  }
+
+  function renderHomeQuickSummary(orders, summary) {
+    var totalOrders = orders || [];
+    var activeOrderRows = totalOrders.filter(function (order) {
+      return String(order['Estado Pedido'] || '') !== 'Listo';
+    });
+    var activeOrders = activeOrderRows.length;
+    var readyOrders = totalOrders.filter(function (order) {
+      return String(order['Estado Pedido'] || '') === 'Listo';
+    }).length;
+    var pendingPayment = totalOrders.filter(function (order) {
+      return String(order['Estado Pago'] || '') !== 'Pagado';
+    }).length;
+    var pendingTotal = summary && typeof summary.totalPendiente !== 'undefined'
+      ? Number(summary.totalPendiente || 0)
+      : totalOrders.reduce(function (acc, order) {
+        return acc + toMoneyNumber_(order['Estado Pago'] === 'Pagado' ? 0 : order['Total']);
+      }, 0);
+
+    var hamburguesasPendientes = countPendingItemsByType_(activeOrderRows, 'Hamburguesas');
+    var guarnicionesPendientes = countPendingSidesByType_(activeOrderRows);
+    var pedidosPorUbicacion = countActiveOrdersByLocation_(activeOrderRows);
+
+    document.getElementById('homeQuickSummary').innerHTML = [
+      quickItem_('Pedidos activos', activeOrders),
+      quickItem_('Pedidos listos', readyOrders),
+      quickItem_('Pendientes pago', pendingPayment),
+      quickItem_('Total pendiente', formatMoney(pendingTotal)),
+      '<div class="quick-summary-divider"></div>',
+      renderPendingCountBlock_('Hamburguesas pendientes', hamburguesasPendientes, 'Sin hamburguesas pendientes'),
+      renderPendingCountBlock_('Guarniciones pendientes', guarnicionesPendientes, 'Sin guarniciones pendientes'),
+      renderPendingCountBlock_('Pedidos por ubicación', pedidosPorUbicacion, 'Sin pedidos activos por ubicación')
+    ].join('');
+  }
+
+  function countPendingItemsByType_(orders, key) {
+    return (orders || []).reduce(function (acc, order) {
+      parseOrderItemsWithCount_(order[key]).forEach(function (item) {
+        acc[item.name] = (acc[item.name] || 0) + item.qty;
+      });
+      return acc;
+    }, {});
+  }
+
+  function countPendingSidesByType_(activeOrders) {
+    var pendingSideOrders = (activeOrders || []).filter(function (order) {
+      return String(order['Guarnición Lista'] || 'No') !== 'Si';
+    });
+    return countPendingItemsByType_(pendingSideOrders, 'Guarniciones');
+  }
+
+  function countActiveOrdersByLocation_(activeOrders) {
+    return (activeOrders || []).reduce(function (acc, order) {
+      var normalizedLocation = normalizeOrderLocation_(order['Ubicación']);
+      acc[normalizedLocation] = (acc[normalizedLocation] || 0) + 1;
+      return acc;
+    }, {});
+  }
+
+  function parseOrderItemsWithCount_(rawValue) {
+    var clean = String(rawValue || '').trim();
+    if (!clean) return [];
+    var lowered = clean.toLowerCase();
+    if (lowered === '-' || lowered === 'n/a' || lowered === 'na' || lowered === 'no' || lowered === 'ninguno') return [];
+
+    return clean.split('+').map(function (chunk) {
+      var piece = String(chunk || '').trim().replace(/\s+/g, ' ');
+      if (!piece) return null;
+      var match = piece.match(/^(\d+)\s*x\s*(.+)$/i);
+      var qty = match ? Number(match[1]) : 1;
+      var name = (match ? match[2] : piece).trim();
+      if (!name) return null;
+      return { name: name, qty: qty > 0 ? qty : 1 };
+    }).filter(function (item) { return !!item; });
+  }
+
+  function normalizeOrderLocation_(locationRaw) {
+    var clean = String(locationRaw || '').trim().replace(/\s+/g, ' ');
+    if (!clean) return 'Sin ubicación';
+    var normalized = clean.toLowerCase();
+    if (normalized.indexOf('gga') !== -1) return 'Torre GGA';
+    if (normalized.indexOf('valcob') !== -1) return 'Torre Valcob';
+    return clean;
+  }
+
+  function renderPendingCountBlock_(title, counts, emptyMessage) {
+    var entries = Object.keys(counts || {}).map(function (name) {
+      return { name: name, qty: Number(counts[name] || 0) };
+    }).filter(function (entry) {
+      return entry.qty > 0;
+    }).sort(function (a, b) {
+      return b.qty - a.qty || a.name.localeCompare(b.name);
+    });
+
+    if (!entries.length) {
+      return '<div class="quick-pending-block"><h3>' + escapeHtml(title) + '</h3><p class="muted">' + escapeHtml(emptyMessage) + '</p></div>';
+    }
+
+    return '<div class="quick-pending-block"><h3>' + escapeHtml(title) + '</h3><ul class="quick-pending-list">' + entries.map(function (entry) {
+      return '<li class="quick-pending-item"><span>' + escapeHtml(entry.name) + '</span><strong>' + escapeHtml(entry.qty) + '</strong></li>';
+    }).join('') + '</ul></div>';
+  }
+
+  function renderSummary(summary, orders) {
+    var safeSummary = summary || {};
+    var alertCount = (orders || []).filter(function (order) {
+      return String(order['Alerta'] || '').trim() === '⚠️';
+    }).length;
+
+    var cards = document.getElementById('summaryCards');
+    cards.innerHTML = [
+      summaryCard('Total vendido', formatMoney(safeSummary.totalVendido)),
+      summaryCard('Total pagado', formatMoney(safeSummary.totalPagado)),
+      summaryCard('Total pendiente', formatMoney(safeSummary.totalPendiente)),
+      summaryCard('Con alerta', alertCount)
+    ].join('');
+
+    renderCountList('orderStatusCount', safeSummary.conteoEstadoPedido || {});
+    renderCountList('paymentStatusCount', safeSummary.conteoEstadoPago || {});
+  }
+
+  function renderProductionChecklist_() {
+    document.getElementById('productionChecklist').innerHTML = PRODUCTION_CHECKLIST_ITEMS.map(function (item) {
+      return '<li>' + escapeHtml(item) + '</li>';
+    }).join('');
+
+    document.getElementById('productionFinalSteps').innerHTML = PRODUCTION_FINAL_STEPS.map(function (item) {
+      return '<li>' + escapeHtml(item) + '</li>';
+    }).join('');
+  }
+
+  function renderProductionValidation_() {
+    var container = document.getElementById('productionValidationContainer');
+    var validation = APP_STATE.productionValidation;
+    if (!validation) {
+      container.innerHTML = 'Sin validación.';
+      return;
+    }
+
+    var checks = validation.checks || [];
+    var statusLabel = validation.ready ? 'OK para migración manual' : 'Bloqueado por errores';
+    var checksHtml = checks.length
+      ? '<ul class=\"compact-list\">' + checks.map(function (check) {
+        var severity = String(check.severity || 'info');
+        var pillClass = severity === 'error' ? 'check-pill is-error' : (severity === 'warning' ? 'check-pill is-warning' : 'check-pill is-ok');
+        var text = check.ok ? 'OK' : (severity === 'warning' ? 'warning' : 'error');
+        return '<li class=\"compact-item\">' +
+          '<p><strong>' + escapeHtml(check.label || '-') + '</strong> <span class=\"' + pillClass + '\">' + escapeHtml(text) + '</span></p>' +
+          '<p>' + escapeHtml(check.message || '-') + '</p>' +
+        '</li>';
+      }).join('') + '</ul>'
+      : '<p>Sin checks.</p>';
+
+    container.innerHTML = '' +
+      '<p><strong>Resultado:</strong> ' + escapeHtml(statusLabel) + '</p>' +
+      '<p><strong>Diagnóstico técnico:</strong> revisión completada.</p>' +
+      checksHtml;
+  }
+
+  function renderMigrationPreview_() {
+    var container = document.getElementById('migrationPreviewContainer');
+    var preview = APP_STATE.migrationPreview;
+    if (!preview) {
+      container.innerHTML = 'Sin preview.';
+      return;
+    }
+
+    var totals = preview.totals || {};
+    var sample = preview.sample || {};
+
+    container.innerHTML = '' +
+      '<p><strong>Origen:</strong> ' + escapeHtml(preview.sourceSheet || '-') + ' → <strong>Destino:</strong> ' + escapeHtml(preview.targetSheet || '-') + '</p>' +
+      '<p><strong>Filas:</strong> origen=' + escapeHtml(totals.sourceRows || 0) + ' · destino=' + escapeHtml(totals.targetRows || 0) + '</p>' +
+      '<p><strong>Preview:</strong> insertar=' + escapeHtml(totals.wouldInsert || 0) + ' · actualizar=' + escapeHtml(totals.wouldUpdate || 0) + '</p>' +
+      '<p><strong>Duplicados en destino:</strong> ' + escapeHtml(totals.duplicateIdsInProduction || 0) + '</p>' +
+      '<p><strong>Modo:</strong> Solo lectura</p>' +
+      '<p><strong>Muestra inserciones:</strong> ' + escapeHtml((sample.insertions || []).join(', ') || 'N/A') + '</p>' +
+      '<p><strong>Muestra actualizaciones:</strong> ' + escapeHtml((sample.updates || []).join(', ') || 'N/A') + '</p>';
+  }
+
+  function renderError(error) {
+    if (APP_STATE.loading.write) {
+      endWrite_();
+    }
+
+    var raw = (error && error.message) ? String(error.message) : 'No se pudo completar la acción. Intenta de nuevo.';
+    if (raw.indexOf('getAppOrders falló') !== -1) {
+      raw = 'No se pudieron cargar los pedidos. Intenta sincronizar de nuevo.';
+    } else if (raw.indexOf('validateProductionReadiness falló') !== -1) {
+      raw = 'No se pudo revisar el sistema.';
+    } else if (raw.indexOf('BACKEND_ERROR') !== -1) {
+      raw = 'No se pudo completar la operación en este momento.';
+    }
+    var safeMessage = raw.length > 180 ? 'No se pudo completar la acción. Intenta de nuevo.' : raw;
+    showToast(safeMessage, 'error');
+    if (APP_STATE.activeTab === 'Otros') {
+      document.getElementById('backendState').textContent = 'Con error';
+    }
+  }
+
+  function quickItem_(label, value) {
+    return '<div class="quick-item"><p class="label">' + escapeHtml(label) + '</p><p class="value">' + escapeHtml(value) + '</p></div>';
+  }
+
+  function summaryCard(label, value) {
+    return '<div class="summary-card"><p class="label">' + escapeHtml(label) + '</p><p class="value">' + escapeHtml(value) + '</p></div>';
+  }
+
+  function renderCountList(targetId, counts) {
+    var list = document.getElementById(targetId);
+    var keys = Object.keys(counts);
+    if (!keys.length) {
+      list.innerHTML = '<li>Sin datos</li>';
+      return;
+    }
+
+    list.innerHTML = keys.map(function (key) {
+      var safeKey = escapeHtml(key);
+      var safeValue = escapeHtml(counts[key]);
+      return '<li>' + safeKey + ': ' + safeValue + '</li>';
+    }).join('');
+  }
+
+  function formatMoney(value) {
+    var amount = Number(value);
+    if (!isFinite(amount)) {
+      return '$0.00';
+    }
+    return '$' + amount.toFixed(2);
+  }
+
+  function toMoneyNumber_(value) {
+    var amount = Number(value);
+    return isFinite(amount) ? amount : 0;
+  }
+
+  function buildOptions_(options, selectedValue) {
+    var selected = String(selectedValue || '');
+    return options.map(function (option) {
+      var isSelected = option === selected ? ' selected' : '';
+      return '<option value="' + escapeHtml(option) + '"' + isSelected + '>' + escapeHtml(option) + '</option>';
+    }).join('');
+  }
+
+  function findOrderById_(orderId) {
+    var target = String(orderId || '');
+    for (var i = 0; i < APP_STATE.orders.length; i += 1) {
+      var order = APP_STATE.orders[i];
+      if (String(order['ID Pedido'] || '') === target) {
+        return order;
+      }
+    }
+    return null;
+  }
+
+  function escapeHtml(value) {
+    var text = String(value === null || value === undefined ? '' : value);
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+
+  function openConfirmModal_(message, onConfirm) {
+    APP_STATE.confirmAction = onConfirm;
+    document.getElementById('confirmMessage').textContent = message || '¿Deseas continuar?';
+    document.getElementById('confirmModal').classList.remove('is-hidden');
+  }
+
+  function closeConfirmModal_() {
+    APP_STATE.confirmAction = null;
+    document.getElementById('confirmModal').classList.add('is-hidden');
+  }
+
+  function confirmModalAccept_() {
+    var action = APP_STATE.confirmAction;
+    closeConfirmModal_();
+    if (typeof action === 'function') {
+      action();
+    }
+  }
+
+  function bindEvents() {
+    document.getElementById('syncButton').addEventListener('click', syncOrders);
+    document.getElementById('refreshClosePreviewButton').addEventListener('click', loadCloseDayPreview);
+    document.getElementById('saveSummaryButton').addEventListener('click', writeDailySummary);
+    document.getElementById('archiveCompletedButton').addEventListener('click', archiveCompletedOrders);
+    document.getElementById('closeDayButton').addEventListener('click', closeDay);
+    document.getElementById('validateProductionButton').addEventListener('click', loadProductionValidation);
+    document.getElementById('previewMigrationButton').addEventListener('click', loadProductionMigrationPreview);
+    document.getElementById('prepareProductionButton').addEventListener('click', prepareProductionSheets);
+
+    Array.prototype.slice.call(document.querySelectorAll('.tab-btn')).forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        setActiveTab(btn.getAttribute('data-tab'));
+      });
+    });
+
+    document.getElementById('ordersFilters').addEventListener('click', function (event) {
+      var chip = event.target.closest('[data-filter]');
+      if (!chip) {
+        return;
+      }
+      APP_STATE.activeOrdersFilter = chip.getAttribute('data-filter');
+      renderOrders();
+    });
+
+    document.getElementById('ordersContainer').addEventListener('click', function (event) {
+      var card = event.target.closest('[data-order-id]');
+      if (!card) {
+        return;
+      }
+
+      var orderId = card.getAttribute('data-order-id');
+      var button = event.target.closest('button[data-action]');
+      var action = button ? button.getAttribute('data-action') : '';
+
+      if (action === 'view-detail') {
+        openOrderDetail(orderId);
+        return;
+      }
+
+      if (action === 'mark-paid') {
+        markOrderPaid(orderId);
+        return;
+      }
+
+      if (!action) {
+        openOrderDetail(orderId);
+      }
+    });
+
+    document.getElementById('kitchenContainer').addEventListener('click', function (event) {
+      var button = event.target.closest('button[data-action]');
+      if (!button) {
+        return;
+      }
+
+      var card = button.closest('[data-order-id]');
+      if (!card) {
+        return;
+      }
+
+      var orderId = card.getAttribute('data-order-id');
+      var action = button.getAttribute('data-action');
+
+      if (action === 'k-ready') {
+        updateOrderStatus(orderId, 'Listo');
+      }
+      if (action === 'k-side-ready') {
+        markOrderSideReady(orderId);
+      }
+    });
+
+    document.getElementById('kitchenContainer').addEventListener('click', function (event) {
+      var modeChip = event.target.closest('[data-kitchen-mode]');
+      if (modeChip) {
+        APP_STATE.kitchenMode = modeChip.getAttribute('data-kitchen-mode');
+        renderKitchen(APP_STATE.orders);
+      }
+      var filterChip = event.target.closest('[data-kitchen-burger-filter]');
+      if (filterChip) {
+        APP_STATE.kitchenBurgerFilter = filterChip.getAttribute('data-kitchen-burger-filter');
+        renderKitchen(APP_STATE.orders);
+      }
+      var sideFilterChip = event.target.closest('[data-kitchen-side-filter]');
+      if (sideFilterChip) {
+        APP_STATE.kitchenSideFilter = sideFilterChip.getAttribute('data-kitchen-side-filter');
+        renderKitchen(APP_STATE.orders);
+      }
+    });
+
+    document.getElementById('orderDetailModal').addEventListener('click', function (event) {
+      var actionBtn = event.target.closest('[data-action]');
+      if (!actionBtn) {
+        return;
+      }
+      var action = actionBtn.getAttribute('data-action');
+      if (action === 'close-modal') {
+        closeOrderDetail();
+      }
+      if (action === 'detail-save') {
+        saveOrderFromDetail();
+      }
+      if (action === 'detail-mark-paid') {
+        markCurrentDetailOrderPaid();
+      }
+      if (action === 'detail-download-ticket') {
+        downloadCurrentTicketPng_();
+      }
+      if (action === 'detail-open-whatsapp') {
+        openWhatsAppForCurrentOrder_();
+      }
+      if (action === 'detail-mark-ticket') {
+        markCurrentOrderTicketSent_();
+      }
+    });
+
+    document.getElementById('closeDetailButton').addEventListener('click', closeOrderDetail);
+    document.getElementById('confirmCancelButton').addEventListener('click', closeConfirmModal_);
+    document.getElementById('confirmOkButton').addEventListener('click', confirmModalAccept_);
+    document.getElementById('confirmModal').addEventListener('click', function (event) {
+      if (event.target.closest('[data-action="close-confirm"]')) {
+        closeConfirmModal_();
+      }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', initApp);
+
+
+checkSession().catch(function(){ showPin(); authStatus.textContent="No se pudo verificar sesión."; });

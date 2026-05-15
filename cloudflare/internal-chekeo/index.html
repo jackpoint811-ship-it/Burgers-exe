@@ -1,32 +1,165 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Chekeo Interno</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Chekeo Interno | Burger-OG</title>
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-  <main class="container">
-    <section id="pin-screen" class="card hidden">
+  <section id="pin-screen" class="pin-shell is-hidden">
+    <div class="pin-card">
       <h1>Chekeo Interno</h1>
       <p>Ingresa el PIN para continuar.</p>
-      <form id="pin-form">
-        <input id="pin-input" type="password" inputmode="numeric" autocomplete="off" required />
-        <button id="pin-button" type="submit">Entrar</button>
-      </form>
-    </section>
-
-    <section id="panel-screen" class="card hidden">
-      <header class="panel-header">
-        <h2>Panel Chekeo</h2>
-        <button id="logout-button" class="link-button" type="button">Salir</button>
+      <form id="pin-form"><input id="pin-input" type="password" inputmode="numeric" autocomplete="off" required /><button id="pin-button" class="btn btn-primary" type="submit">Entrar</button></form>
+      <p id="authStatus" class="muted"></p>
+    </div>
+  </section>
+  <div id="internal-app" class="is-hidden">
+    <div class="app-shell">
+      <header class="app-header card">
+        <div>
+          <p class="eyebrow">Burger-OG</p>
+          <h1>Burger-OG</h1>
+          <p class="muted">Panel de pedidos</p>
+        </div>
+        <div class="header-actions"><button id="syncButton" class="btn btn-primary" type="button">Sincronizar</button><button id="logoutButton" class="btn btn-secondary" type="button">Salir</button></div>
       </header>
-      <p>Sesión activa.</p>
-    </section>
 
-    <p id="status" class="status" aria-live="polite"></p>
-  </main>
+      <section id="toast" class="toast" aria-live="polite"></section>
+
+      <main class="content">
+        <section id="tab-Inicio" class="card tab-panel">
+          <h2>Inicio</h2>
+          <p id="healthStatus">Cargando estado backend...</p>
+          <div id="homeQuickSummary" class="quick-summary"></div>
+        </section>
+
+        <section id="tab-Pedidos" class="card tab-panel is-hidden">
+          <h2>Pedidos</h2>
+          <div id="ordersFilters" class="chips" aria-label="Filtros pedidos"></div>
+          <div id="ordersContainer">Cargando pedidos...</div>
+        </section>
+
+        <section id="tab-Cocina" class="card tab-panel is-hidden">
+          <h2>Cocina</h2>
+          <div id="kitchenContainer">Cargando cocina...</div>
+        </section>
+
+        <section id="tab-Otros" class="card tab-panel is-hidden">
+          <h2>Otros</h2>
+          <h3>Cierre y Resumen</h3>
+          <div class="action-row action-row-single-mobile">
+            <button id="refreshClosePreviewButton" class="btn btn-secondary" type="button">Actualizar preview</button>
+            <button id="saveSummaryButton" class="btn btn-secondary" type="button">Guardar resumen</button>
+          </div>
+          <div class="action-row action-row-single-mobile">
+            <button id="archiveCompletedButton" class="btn btn-primary" type="button">Archivar completados</button>
+            <button id="closeDayButton" class="btn btn-danger" type="button">Cerrar día</button>
+          </div>
+          <div id="closePreviewMeta" class="muted">Cargando preview...</div>
+          <div id="closePreviewWarnings" class="summary-grid"></div>
+          <div class="summary-lists">
+            <div>
+              <h3>Archivables</h3>
+              <div id="archivablesList"></div>
+            </div>
+            <div>
+              <h3>No archivables</h3>
+              <div id="nonArchivableList"></div>
+            </div>
+          </div>
+          <div class="summary-divider"></div>
+          <h3>Resumen diario operativo</h3>
+          <div id="summaryCards" class="summary-grid"></div>
+          <div class="summary-lists">
+            <div>
+              <h3>Estado Pedido</h3>
+              <ul id="orderStatusCount"></ul>
+            </div>
+            <div>
+              <h3>Estado Pago</h3>
+              <ul id="paymentStatusCount"></ul>
+            </div>
+          </div>
+          <div class="summary-divider"></div>
+          <h3>Histórico</h3>
+          <div id="historyMeta" class="muted">Cargando histórico...</div>
+          <div class="summary-lists">
+            <div>
+              <h3>Últimos pedidos archivados</h3>
+              <div id="historyContainer"></div>
+            </div>
+            <div>
+              <h3>Últimos cortes</h3>
+              <div id="historyCutsContainer"></div>
+            </div>
+          </div>
+          <div class="summary-divider"></div>
+          <h3>Sistema / Ajustes</h3>
+          <ul class="settings-list">
+            <li><strong>Sistema:</strong> Burger-OG</li>
+            <li><strong>Estado:</strong> <span id="backendState">Pendiente</span></li>
+            <li><strong>Datos bancarios:</strong> <span id="bankState">Incompletos</span></li>
+            <li><strong>Acciones seguras:</strong> Confirmación antes de cerrar o archivar.</li>
+          </ul>
+          <div class="summary-divider"></div>
+          <details>
+            <summary>Diagnóstico avanzado</summary>
+            <div class="action-row action-row-single-mobile">
+              <button id="validateProductionButton" class="btn btn-secondary" type="button">Revisar sistema</button>
+              <button id="previewMigrationButton" class="btn btn-secondary" type="button">Ver diagnóstico de datos</button>
+            </div>
+            <div class="action-row action-row-single-mobile">
+              <button id="prepareProductionButton" class="btn btn-primary" type="button">Preparar estructura</button>
+              <span></span>
+            </div>
+            <div id="productionValidationContainer" class="muted">Sin diagnóstico.</div>
+            <div id="migrationPreviewContainer" class="muted">Sin diagnóstico de datos.</div>
+            <ul id="productionChecklist" class="settings-list"></ul>
+            <ol id="productionFinalSteps" class="settings-list"></ol>
+          </details>
+        </section>
+      </main>
+
+      <nav class="bottom-nav" aria-label="Tabs">
+        <button class="tab-btn is-active" data-tab="Inicio" type="button">Inicio</button>
+        <button class="tab-btn" data-tab="Pedidos" type="button">Pedidos</button>
+        <button class="tab-btn" data-tab="Cocina" type="button">Cocina</button>
+        <button class="tab-btn" data-tab="Otros" type="button">Otros</button>
+      </nav>
+    </div>
+
+    <div id="orderDetailModal" class="modal is-hidden" role="dialog" aria-modal="true" aria-labelledby="orderDetailTitle">
+      <div class="modal-backdrop" data-action="close-modal"></div>
+      <section class="modal-panel" aria-live="polite">
+        <header class="modal-header">
+          <h3 id="orderDetailTitle">Detalle de pedido</h3>
+          <button id="closeDetailButton" type="button" class="btn btn-secondary">Cerrar</button>
+        </header>
+        <div id="orderDetailContent" class="modal-content"></div>
+      </section>
+    </div>
+
+    <div id="confirmModal" class="modal is-hidden" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+      <div class="modal-backdrop" data-action="close-confirm"></div>
+      <section class="modal-panel modal-panel-small" aria-live="polite">
+        <header class="modal-header">
+          <h3 id="confirmTitle">Confirmar acción</h3>
+        </header>
+        <div class="modal-content">
+          <p id="confirmMessage">¿Deseas continuar?</p>
+          <div class="action-row">
+            <button id="confirmCancelButton" type="button" class="btn btn-secondary">Cancelar</button>
+            <button id="confirmOkButton" type="button" class="btn btn-danger">Confirmar</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    
+  </div>
   <script src="/app.js" defer></script>
 </body>
 </html>

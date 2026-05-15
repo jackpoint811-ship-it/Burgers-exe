@@ -38,7 +38,11 @@ function bogHandleJsonPost_(e) {
       return bogJsonResponse_(data);
     }
 
-    return bogJsonResponse_(bogHandleInternalRpc_(requestBody));
+    if (requestBody.action === 'internalApi') {
+      return bogJsonResponse_(bogHandleInternalApiFromCloudflare_(requestBody));
+    }
+
+    return bogJsonResponse_({ ok: false, error: { message: 'Acción no soportada.' } });
   } catch (err) {
     return bogJsonResponse_(bogErrorEnvelope_(err));
   }
