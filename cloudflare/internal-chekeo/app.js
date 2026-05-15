@@ -1,35 +1,225 @@
 (() => {
-  const state = { activeTab: 'inicio', orders: [], summary: null, health: null, bank: null, closePreview: null, historyPreview: null, productionValidation: null, migrationPreview: null, selectedOrderId: null, loading: false, filter: 'Todos' };
+  const ORDER_STATUSES = ['Nuevo', 'Confirmado', 'Preparando', 'Listo'];
+  const PAYMENT_STATUSES = ['Pendiente', 'Pagado'];
+  const PAYMENT_METHODS = ['Efectivo', 'Transferencia', 'Mixto', 'No definido'];
+
+  const state = {
+    activeTab: 'inicio',
+    orders: [],
+    summary: null,
+    health: null,
+    bank: null,
+    closePreview: null,
+    historyPreview: null,
+    productionValidation: null,
+    migrationPreview: null,
+    filter: 'Todos',
+    loadingWrite: false,
+  };
+
   let hasBootedInternalApp = false;
-  const filters = ['Todos', 'Nuevo', 'Confirmado', 'Preparando', 'Listo', 'Pendiente pago', 'Con alerta'];
-  const pinScreen = document.querySelector('#pin-screen'); const internalApp = document.querySelector('#internal-app'); const pinForm = document.querySelector('#pin-form'); const pinInput = document.querySelector('#pin-input'); const pinSubmit = document.querySelector('#pin-submit'); const authStatus = document.querySelector('#auth-status'); const logoutButton = document.querySelector('#logout-button');
-  const modal = document.querySelector('#modal'); const modalContent = document.querySelector('#modal-content');
+  const pinScreen = document.querySelector('#pin-screen');
+  const internalApp = document.querySelector('#internal-app');
+  const pinForm = document.querySelector('#pin-form');
+  const pinInput = document.querySelector('#pin-input');
+  const pinSubmit = document.querySelector('#pin-submit');
+  const authStatus = document.querySelector('#auth-status');
+  const modal = document.querySelector('#modal');
+  const modalContent = document.querySelector('#modal-content');
+  const confirmModal = document.querySelector('#confirm-modal');
+  const confirmMessage = document.querySelector('#confirm-message');
+  const confirmCancel = document.querySelector('#confirm-cancel');
+  const confirmAccept = document.querySelector('#confirm-accept');
+
   const escape = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const showAuthStatus = (m) => { if (authStatus) authStatus.textContent = m; };
   const setPinVisibility = (v) => pinScreen?.classList.toggle('is-hidden', !v);
   const setAppVisibility = (v) => internalApp?.classList.toggle('is-hidden', !v);
+
+  function showToast(message, isError = false) {
+    const t = document.querySelector('.status-toast');
+    if (!t) return;
+    t.textContent = message;
+    t.classList.remove('is-hidden', 'is-error');
+    if (isError) t.classList.add('is-error');
+    window.setTimeout(() => t.classList.add('is-hidden'), 2200);
+  }
+
+  function setButtonsDisabled(disabled) {
+    document.querySelectorAll('[data-write-action]').forEach((btn) => {
+      btn.disabled = disabled;
+      btn.classList.toggle('is-loading', disabled);
+    });
+  }
+
+  function beginWrite(label) {
+    state.loadingWrite = true;
+    setButtonsDisabled(true);
+    showToast(`Procesando: ${label}...`);
+  }
+
+  function endWrite() {
+    state.loadingWrite = false;
+    setButtonsDisabled(false);
+  }
+
+  async function confirmAction(message, action) {
+    if (!confirmModal || !confirmAccept || !confirmCancel || !confirmMessage) return;
+    confirmMessage.textContent = message;
+    confirmModal.classList.remove('is-hidden');
+    return new Promise((resolve) => {
+      const cleanup = () => {
+        confirmModal.classList.add('is-hidden');
+        confirmAccept.onclick = null;
+        confirmCancel.onclick = null;
+      };
+      confirmAccept.onclick = async () => {
+        cleanup();
+        try { resolve(await action()); } catch (e) { resolve(Promise.reject(e)); }
+      };
+      confirmCancel.onclick = () => { cleanup(); resolve(null); };
+    });
+  }
+
+  async function rpcCall(method, args = []) {
+    const r = await fetch('/api/rpc', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ method, args }) });
+    const d = await r.json().catch(() => null);
+    if (r.status === 401) {
+      setAppVisibility(false); setPinVisibility(true); showAuthStatus('Sesión expirada. Ingresa PIN nuevamente.');
+      throw new Error('Sesión requerida.');
+    }
+    if (!r.ok || !d || d.ok !== true) throw new Error(d?.error?.message || 'Error de API.');
+    return d;
+  }
+
   async function checkSession() { const r = await fetch('/api/session', { method: 'GET', credentials: 'same-origin' }); const p = await r.json(); return Boolean(p?.ok && p?.data?.authenticated); }
   async function authenticateWithPin(pin) { const r = await fetch('/api/auth', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin }) }); const p = await r.json(); return Boolean(r.ok && p?.ok && p?.data?.authenticated); }
   async function logoutSession() { await fetch('/api/logout', { method: 'POST', credentials: 'same-origin' }); }
-  function showToast(message) { const t = document.querySelector('.status-toast'); if (!t) return; t.textContent = message; t.classList.remove('is-hidden'); window.setTimeout(() => t.classList.add('is-hidden'), 1800); }
-  async function rpcCall(method, args = []) { const r = await fetch('/api/rpc', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ method, args }) }); const d = await r.json().catch(() => null); if (r.status === 401) { setAppVisibility(false); setPinVisibility(true); showAuthStatus('Sesión expirada. Ingresa PIN nuevamente.'); throw new Error('Sesión requerida.'); } if (!r.ok || !d || d.ok !== true) throw new Error(d?.error?.message || 'Error de API.'); return d; }
-  function renderTabs() { document.querySelectorAll('[data-tab-target]').forEach((b) => b.classList.toggle('is-active', b.dataset.tabTarget === state.activeTab)); document.querySelectorAll('[data-tab-panel]').forEach((p) => p.classList.toggle('is-hidden', p.dataset.tabPanel !== state.activeTab)); }
-  function setActiveTab(nextTab) { if (nextTab && nextTab !== state.activeTab) { state.activeTab = nextTab; render(); } }
-  function filteredOrders() { return state.orders.filter((o) => { const status = String(o['Estado Pedido'] || '').toLowerCase(); const pay = String(o['Estado Pago'] || '').toLowerCase(); const alert = String(o['Alerta'] || '').trim(); if (state.filter === 'Todos') return true; if (state.filter === 'Pendiente pago') return pay.includes('pend'); if (state.filter === 'Con alerta') return Boolean(alert); return status.includes(state.filter.toLowerCase()); }); }
-  function renderHome() { document.querySelector('#inicio-content').innerHTML = `<h2>Inicio</h2><div class='card-grid'><article class='card'><h3>Backend</h3><p>${escape(state.health?.activeEnvironment || 'N/D')} · ${escape(state.health?.activeSheet || 'N/D')}</p></article><article class='card'><h3>Resumen diario</h3><p>${escape(JSON.stringify(state.summary || {}))}</p></article><article class='card'><h3>Banco</h3><p>${escape(JSON.stringify(state.bank || {}))}</p></article></div>`; }
-  function renderOrders() { const items = filteredOrders().map((o) => `<li class='order-item'><div><strong>${escape(o['ID Pedido'] || o.id || 'Sin ID')}</strong><p>${escape(o['Nombre'] || 'Sin nombre')} · ${escape(o['Resumen'] || '')}</p><small>${escape(o['Estado Pedido'] || 'N/D')} · ${escape(o['Estado Pago'] || 'N/D')} · ${escape(o['Total'] || 'N/D')}</small></div><div class='row'><button class='ghost' data-detail='${escape(o['ID Pedido'] || o.id || '')}' type='button'>Detalle</button><button class='ghost' data-ticket='${escape(o['ID Pedido'] || o.id || '')}' type='button'>Ticket</button></div></li>`).join('');
-    document.querySelector('#pedidos-content').innerHTML = `<h2>Pedidos</h2><div class='filters'>${filters.map((f) => `<button class='chip ${f === state.filter ? 'is-active' : ''}' data-filter='${f}' type='button'>${f}</button>`).join('')}</div><ul class='readonly-list'>${items || "<li class='empty-state'>Sin pedidos.</li>"}</ul>`;
+
+  async function loadOperationalPanel() {
+    const [health, orders, summary, bank, closePreview, historyPreview, productionValidation, migrationPreview] = await Promise.all([
+      rpcCall('healthCheck'), rpcCall('getAppOrders'), rpcCall('getDailySummary'), rpcCall('getBankConfig'), rpcCall('getCloseDayPreview'), rpcCall('getHistoryPreview'), rpcCall('validateProductionReadiness'), rpcCall('getProductionMigrationPreview'),
+    ]);
+    state.health = health?.data || null;
+    state.orders = Array.isArray(orders?.data) ? orders.data : [];
+    state.summary = summary?.data || null;
+    state.bank = bank?.data || null;
+    state.closePreview = closePreview?.data || null;
+    state.historyPreview = historyPreview?.data || null;
+    state.productionValidation = productionValidation?.data || null;
+    state.migrationPreview = migrationPreview?.data || null;
+    render();
   }
-  function renderKitchenReadOnly() { const pending = state.orders.filter((o) => !String(o['Estado Pedido'] || '').toLowerCase().includes('listo')); document.querySelector('#cocina-content').innerHTML = `<h2>Cocina (read-only)</h2><article class='card'><h3>Pedidos</h3><ul>${pending.map((o) => `<li>${escape(o['ID Pedido'] || '')}: ${escape(o['Hamburguesas'] || '-')}, ${escape(o['Extras'] || '-')}, nota: ${escape(o['Nota Interna'] || '-')}</li>`).join('') || '<li>Sin pendientes.</li>'}</ul></article><article class='card'><h3>Guarniciones</h3><ul>${pending.map((o) => `<li>${escape(o['ID Pedido'] || '')}: ${escape(o['Guarniciones'] || '-')}</li>`).join('') || '<li>Sin guarniciones pendientes.</li>'}</ul></article>`; }
-  function renderOthersReadOnly() { const c = state.closePreview || {}; document.querySelector('#otros-content').innerHTML = `<h2>Otros (read-only)</h2><article class='card'><h3>Cierre y Resumen</h3><p>Total pedidos: ${escape(c.totalOrders || 0)} · Archivables: ${escape(c.archivableCount || 0)} · No archivables: ${escape(c.notArchivableCount || 0)}</p><p>Alertas: ${escape(c.alertCount || 0)} · Listos pendiente pago: ${escape(c.readyPendingPaymentCount || 0)} · Pagados no listos: ${escape(c.paidNotReadyCount || 0)}</p></article><article class='card'><h3>Archivables / No archivables</h3><pre>${escape(JSON.stringify({ archivable: c.archivableOrders || [], notArchivable: c.notArchivableOrders || [] }, null, 2))}</pre></article><article class='card'><h3>Resumen diario operativo</h3><pre>${escape(JSON.stringify(state.summary || {}, null, 2))}</pre></article><article class='card'><h3>Histórico</h3><pre>${escape(JSON.stringify(state.historyPreview || {}, null, 2))}</pre></article><article class='card'><h3>Sistema / Ajustes</h3><pre>${escape(JSON.stringify(state.bank || {}, null, 2))}</pre><button class='future' disabled type='button'>Disponible en fase futura</button></article><article class='card'><h3>Diagnóstico avanzado</h3><pre>${escape(JSON.stringify({ health: state.health, readiness: state.productionValidation, migration: state.migrationPreview }, null, 2))}</pre></article>`; }
-  async function openOrderDetailReadOnly(orderId) { const d = await rpcCall('getOrderDetail', [orderId]); const o = d?.data || {}; modalContent.innerHTML = `<h3>Detalle pedido (read-only)</h3><ul class='detail-list'><li>ID Pedido: ${escape(o['ID Pedido'] || orderId)}</li><li>Nombre: ${escape(o['Nombre'] || '-')}</li><li>Teléfono: ${escape(o['Teléfono'] || '-')}</li><li>Ubicación: ${escape(o['Ubicación'] || '-')}</li><li>Hamburguesas: ${escape(o['Hamburguesas'] || '-')}</li><li>Extras: ${escape(o['Extras'] || '-')}</li><li>Guarniciones: ${escape(o['Guarniciones'] || '-')}</li><li>Total: ${escape(o['Total'] || '-')}</li><li>Estado Pedido: ${escape(o['Estado Pedido'] || '-')}</li><li>Estado Pago: ${escape(o['Estado Pago'] || '-')}</li><li>Método Pago: ${escape(o['Método Pago'] || '-')}</li><li>Nota interna: ${escape(o['Nota Interna'] || '-')}</li><li>Nota cliente: ${escape(o['Nota Cliente'] || '-')}</li><li>Ticket enviado: ${escape(o['Ticket Enviado'] || '-')}</li><li>Alerta: ${escape(o['Alerta'] || '-')}</li></ul>`; modal.classList.remove('is-hidden'); }
-  async function openClientTicketReadOnly(orderId) { const d = await rpcCall('getClientTicketData', [orderId]); modalContent.innerHTML = `<h3>Ticket cliente (read-only)</h3><pre>${escape(JSON.stringify(d?.data || {}, null, 2))}</pre>`; modal.classList.remove('is-hidden'); }
-  function closeModal() { modal.classList.add('is-hidden'); }
-  function renderError(message) { ['#inicio-content', '#pedidos-content', '#cocina-content', '#otros-content'].forEach((id) => { const n = document.querySelector(id); if (n) n.innerHTML = `<p class='error-state'>${escape(message)}</p>`; }); }
-  function render() { renderTabs(); renderHome(); renderOrders(); renderKitchenReadOnly(); renderOthersReadOnly(); }
-  async function loadReadOnlyPanel() { showToast('Cargando panel read-only…'); try { const [health, orders, summary, bank, closePreview, historyPreview, productionValidation, migrationPreview] = await Promise.all([rpcCall('healthCheck'), rpcCall('getAppOrders'), rpcCall('getDailySummary'), rpcCall('getBankConfig'), rpcCall('getCloseDayPreview'), rpcCall('getHistoryPreview'), rpcCall('validateProductionReadiness'), rpcCall('getProductionMigrationPreview')]); state.health = health?.data || null; state.orders = Array.isArray(orders?.data) ? orders.data : []; state.summary = summary?.data || null; state.bank = bank?.data || null; state.closePreview = closePreview?.data || null; state.historyPreview = historyPreview?.data || null; state.productionValidation = productionValidation?.data || null; state.migrationPreview = migrationPreview?.data || null; render(); showToast('Datos cargados.'); } catch (e) { renderError(e?.message || 'Error de API'); showToast(e?.message || 'Error'); } }
-  function initScaffold() { document.querySelectorAll('[data-tab-target]').forEach((b) => b.addEventListener('click', () => setActiveTab(b.dataset.tabTarget))); document.body.addEventListener('click', async (e) => { const filter = e.target.closest('[data-filter]'); if (filter) { state.filter = filter.dataset.filter; renderOrders(); return; } const detail = e.target.closest('[data-detail]'); if (detail) { await openOrderDetailReadOnly(detail.dataset.detail); return; } const ticket = e.target.closest('[data-ticket]'); if (ticket) { await openClientTicketReadOnly(ticket.dataset.ticket); } }); document.querySelector('#modal-close')?.addEventListener('click', closeModal); modal?.addEventListener('click', (e) => { if (e.target === modal) closeModal(); }); logoutButton?.addEventListener('click', async () => { await logoutSession(); setAppVisibility(false); setPinVisibility(true); showAuthStatus('Sesión cerrada.'); }); renderTabs(); }
-  function bootInternalAppOnce() { if (hasBootedInternalApp) return; initScaffold(); hasBootedInternalApp = true; loadReadOnlyPanel(); }
-  async function handlePinSubmit(event) { event.preventDefault(); const pin = pinInput?.value?.trim() || ''; pinSubmit.disabled = true; showAuthStatus('Validando…'); try { const ok = await authenticateWithPin(pin); if (!ok) return showAuthStatus('PIN inválido. Intenta de nuevo.'); if (pinInput) pinInput.value = ''; showAuthStatus(''); setPinVisibility(false); setAppVisibility(true); bootInternalAppOnce(); } catch { showAuthStatus('PIN inválido. Intenta de nuevo.'); } finally { pinSubmit.disabled = false; } }
-  document.addEventListener('DOMContentLoaded', async () => { pinForm?.addEventListener('submit', handlePinSubmit); try { const authenticated = await checkSession(); if (authenticated) { setPinVisibility(false); setAppVisibility(true); bootInternalAppOnce(); return; } } catch {} setAppVisibility(false); setPinVisibility(true); });
+
+  async function runWrite(label, rpcMethod, args = []) {
+    return confirmAction(`¿Confirmar acción: ${label}?`, async () => {
+      beginWrite(label);
+      try {
+        const result = await rpcCall(rpcMethod, args);
+        await loadOperationalPanel();
+        showToast(`OK: ${label}`);
+        return result;
+      } catch (e) {
+        showToast(e?.message || 'Error en operación', true);
+        throw e;
+      } finally {
+        endWrite();
+      }
+    });
+  }
+
+  const syncOrders = () => runWrite('Sincronizar pedidos', 'syncOrdersFromMaster');
+  const changeOrderStatus = (orderId, nextStatus) => runWrite(`Cambiar estado a ${nextStatus}`, 'updateOrderStatus', [orderId, nextStatus]);
+  const saveOrderOperationalData = (orderId, payload) => runWrite('Guardar cambios operativos', 'updateOrderOperationalData', [orderId, payload]);
+  const updatePayment = (orderId, paymentStatus, paymentMethod) => runWrite('Actualizar pago', 'updateOrderPayment', [orderId, paymentStatus, paymentMethod]);
+  const markPaid = (orderId) => runWrite('Marcar pagado', 'markOrderPaid', [orderId]);
+  const markSideReady = (orderId) => runWrite('Marcar guarnición lista', 'markOrderSideReady', [orderId]);
+  const saveNotes = (orderId, noteInternal, noteClient) => runWrite('Guardar notas', 'updateOrderNotes', [orderId, noteInternal, noteClient]);
+  const markTicketSent = (orderId) => runWrite('Marcar ticket enviado', 'markTicketSent', [orderId]);
+
+  async function openWhatsAppForOrder(orderId) {
+    const d = await rpcCall('getClientTicketData', [orderId]);
+    const phone = String(d?.data?.phone || d?.data?.telefono || '').replace(/\D/g, '');
+    const text = encodeURIComponent(d?.data?.message || d?.data?.mensaje || `Pedido ${orderId}`);
+    if (!phone) return showToast('No hay teléfono para el pedido.', true);
+    window.open(`https://wa.me/${phone}?text=${text}`, '_blank', 'noopener');
+  }
+
+  function renderOrders() {
+    const list = state.orders.map((o) => {
+      const id = escape(o['ID Pedido'] || o.id || '');
+      return `<li class='order-item'><div><strong>${id}</strong><p>${escape(o['Nombre'] || '')}</p><small><span class='badge-status'>${escape(o['Estado Pedido'] || '-')}</span> <span class='badge-payment'>${escape(o['Estado Pago'] || '-')}</span></small></div>
+      <div class='order-actions'>
+      <button class='ghost' data-detail='${id}'>Detalle</button>
+      <button class='ghost write-btn' data-write-action data-mark-paid='${id}'>Marcar pagado</button>
+      <button class='ghost write-btn' data-write-action data-ready='${id}'>Listo</button>
+      <button class='ghost write-btn' data-write-action data-side-ready='${id}'>Guarnición lista</button>
+      <button class='ghost' data-wa='${id}'>WhatsApp</button>
+      </div></li>`;
+    }).join('');
+    document.querySelector('#pedidos-content').innerHTML = `<h2>Pedidos</h2><button class='write-btn' data-write-action id='sync-orders-btn'>Sincronizar</button><ul class='readonly-list'>${list}</ul>`;
+  }
+
+  function renderKitchen() {
+    const pending = state.orders.filter((o) => !String(o['Estado Pedido'] || '').toLowerCase().includes('listo'));
+    document.querySelector('#cocina-content').innerHTML = `<h2>Cocina</h2><ul class='readonly-list'>${pending.map((o) => `<li>${escape(o['ID Pedido'] || '')} <button class='write-btn' data-write-action data-ready='${escape(o['ID Pedido'] || '')}'>Marcar pedido Listo</button> <button class='write-btn' data-write-action data-side-ready='${escape(o['ID Pedido'] || '')}'>Marcar guarnición lista</button></li>`).join('')}</ul>`;
+  }
+
+  function renderOthers() {
+    document.querySelector('#otros-content').innerHTML = `<h2>Otros (read-only)</h2><p class='scope-banner'>Cierre, archivado y preparación de estructura estarán disponibles en Fase 6.</p><pre>${escape(JSON.stringify({closePreview: state.closePreview, historyPreview: state.historyPreview, summary: state.summary, health: state.health}, null, 2))}</pre>`;
+  }
+
+  function renderHome() { document.querySelector('#inicio-content').innerHTML = `<h2>Inicio</h2><p>Fase 5 activa con acciones operativas controladas.</p>`; }
+  function renderTabs() { document.querySelectorAll('[data-tab-target]').forEach((b) => b.classList.toggle('is-active', b.dataset.tabTarget === state.activeTab)); document.querySelectorAll('[data-tab-panel]').forEach((p) => p.classList.toggle('is-hidden', p.dataset.tabPanel !== state.activeTab)); }
+  function render() { renderTabs(); renderHome(); renderOrders(); renderKitchen(); renderOthers(); }
+
+  async function openOrderDetail(orderId) {
+    const d = await rpcCall('getOrderDetail', [orderId]);
+    const o = d?.data || {};
+    modalContent.innerHTML = `<h3>Detalle operativo</h3><div class='form-grid'><label>Estado Pedido<select id='op-status'>${ORDER_STATUSES.map((s) => `<option ${s === o['Estado Pedido'] ? 'selected' : ''}>${s}</option>`).join('')}</select></label><label>Estado Pago<select id='op-pay-status'>${PAYMENT_STATUSES.map((s) => `<option ${s === o['Estado Pago'] ? 'selected' : ''}>${s}</option>`).join('')}</select></label><label>Método Pago<select id='op-pay-method'>${PAYMENT_METHODS.map((s) => `<option ${s === o['Método Pago'] ? 'selected' : ''}>${s}</option>`).join('')}</select></label><label>Nota interna<textarea id='op-note-internal'>${escape(o['Nota Interna'] || '')}</textarea></label><label>Nota cliente<textarea id='op-note-client'>${escape(o['Nota Cliente'] || '')}</textarea></label></div><div class='row'><button class='write-btn' data-write-action id='save-op'>Guardar cambios operativos</button><button class='write-btn' data-write-action id='mark-paid-modal'>Marcar pagado</button><button class='ghost' id='wa-modal'>Abrir WhatsApp</button><button class='write-btn' data-write-action id='mark-ticket-modal'>Marcar ticket enviado</button></div>`;
+    modal.classList.remove('is-hidden');
+    document.querySelector('#save-op').onclick = async () => {
+      const payload = { status: document.querySelector('#op-status').value, paymentStatus: document.querySelector('#op-pay-status').value, paymentMethod: document.querySelector('#op-pay-method').value };
+      await saveOrderOperationalData(orderId, payload);
+      await saveNotes(orderId, document.querySelector('#op-note-internal').value, document.querySelector('#op-note-client').value);
+    };
+    document.querySelector('#mark-paid-modal').onclick = () => markPaid(orderId);
+    document.querySelector('#wa-modal').onclick = () => openWhatsAppForOrder(orderId);
+    document.querySelector('#mark-ticket-modal').onclick = () => markTicketSent(orderId);
+  }
+
+  function initScaffold() {
+    document.querySelectorAll('[data-tab-target]').forEach((b) => b.addEventListener('click', () => { state.activeTab = b.dataset.tabTarget; render(); }));
+    document.body.addEventListener('click', async (e) => {
+      const sync = e.target.closest('#sync-orders-btn'); if (sync) return syncOrders();
+      const detail = e.target.closest('[data-detail]'); if (detail) return openOrderDetail(detail.dataset.detail);
+      const markPaidBtn = e.target.closest('[data-mark-paid]'); if (markPaidBtn) return markPaid(markPaidBtn.dataset.markPaid);
+      const ready = e.target.closest('[data-ready]'); if (ready) return changeOrderStatus(ready.dataset.ready, 'Listo');
+      const sideReady = e.target.closest('[data-side-ready]'); if (sideReady) return markSideReady(sideReady.dataset.sideReady);
+      const wa = e.target.closest('[data-wa]'); if (wa) return openWhatsAppForOrder(wa.dataset.wa);
+    });
+    document.querySelector('#modal-close')?.addEventListener('click', () => modal.classList.add('is-hidden'));
+    document.querySelector('#logout-button')?.addEventListener('click', async () => { await logoutSession(); setAppVisibility(false); setPinVisibility(true); showAuthStatus('Sesión cerrada.'); });
+  }
+
+  function bootInternalAppOnce() { if (hasBootedInternalApp) return; initScaffold(); hasBootedInternalApp = true; loadOperationalPanel(); }
+
+  pinForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const pin = pinInput?.value?.trim() || '';
+    pinSubmit.disabled = true;
+    showAuthStatus('Validando...');
+    try {
+      const ok = await authenticateWithPin(pin);
+      if (!ok) return showAuthStatus('PIN inválido.');
+      pinInput.value = '';
+      setPinVisibility(false); setAppVisibility(true); bootInternalAppOnce();
+    } finally { pinSubmit.disabled = false; }
+  });
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    const authenticated = await checkSession().catch(() => false);
+    if (authenticated) { setPinVisibility(false); setAppVisibility(true); bootInternalAppOnce(); }
+    else { setAppVisibility(false); setPinVisibility(true); }
+  });
 })();
