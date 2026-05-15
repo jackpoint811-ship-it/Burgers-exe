@@ -9,85 +9,66 @@
     <script src="./app.js" defer></script>
   </head>
   <body>
-    <div class="app-shell">
-      <header class="app-header">
-        <p class="eyebrow">Burger-OG</p>
-        <h1>Chekeo Interno</h1>
-        <p class="subtitle">Scaffold Fase 1</p>
-        <span class="badge">Fase 1 · Estático</span>
-      </header>
+    <section id="pin-screen" class="is-hidden" aria-labelledby="pin-title">
+      <div class="auth-card">
+        <h1 id="pin-title">Chekeo Interno</h1>
+        <p>Ingresa el PIN para continuar.</p>
+        <form id="pin-form">
+          <label for="pin-input">PIN</label>
+          <input id="pin-input" name="pin" type="password" inputmode="numeric" autocomplete="off" required />
+          <button id="pin-submit" type="submit">Entrar</button>
+        </form>
+        <p id="auth-status" class="auth-status" role="status" aria-live="polite"></p>
+      </div>
+    </section>
 
-      <section class="scope-banner" aria-label="Alcance de la fase">
-        Esta vista es un scaffold estático. No está conectada a Google Sheets ni Apps Script.
-      </section>
-
-      <nav class="tab-nav" aria-label="Navegación principal">
-        <button class="tab-button is-active" data-tab-target="inicio" type="button">Inicio</button>
-        <button class="tab-button" data-tab-target="pedidos" type="button">Pedidos</button>
-        <button class="tab-button" data-tab-target="cocina" type="button">Cocina</button>
-        <button class="tab-button" data-tab-target="otros" type="button">Otros</button>
-      </nav>
-
-      <main>
-        <section class="tab-panel" data-tab-panel="inicio">
-          <h2>Inicio</h2>
-          <div class="card-grid">
-            <article class="card">
-              <h3>Pedidos activos</h3>
-              <p>0 (placeholder)</p>
-            </article>
-            <article class="card">
-              <h3>Pendientes pago</h3>
-              <p>0 (placeholder)</p>
-            </article>
-            <article class="card">
-              <h3>Sistema</h3>
-              <p>Operativo en modo estático</p>
-            </article>
+    <div id="internal-app" class="is-hidden">
+      <div class="app-shell">
+        <header class="app-header">
+          <p class="eyebrow">Burger-OG</p>
+          <h1>Chekeo Interno</h1>
+          <p class="subtitle">Scaffold Fase 2</p>
+          <div class="header-actions">
+            <span class="badge">Fase 2 · PIN + sesión</span>
+            <button id="logout-button" class="logout-button" type="button">Salir</button>
           </div>
-          <button class="ghost-action" type="button" data-placeholder-action="inicio">
-            Probar acción local
-          </button>
+        </header>
+
+        <section class="scope-banner" aria-label="Alcance de la fase">
+          Esta vista sigue siendo scaffold; no está conectada a Google Sheets, Apps Script ni RPC.
         </section>
 
-        <section class="tab-panel is-hidden" data-tab-panel="pedidos">
-          <h2>Pedidos</h2>
-          <div class="empty-state">Los pedidos reales se conectarán en Fase 4.</div>
-          <button class="ghost-action" type="button" data-placeholder-action="pedidos">
-            Ver estado placeholder
-          </button>
-        </section>
+        <nav class="tab-nav" aria-label="Navegación principal">
+          <button class="tab-button is-active" data-tab-target="inicio" type="button">Inicio</button>
+          <button class="tab-button" data-tab-target="pedidos" type="button">Pedidos</button>
+          <button class="tab-button" data-tab-target="cocina" type="button">Cocina</button>
+          <button class="tab-button" data-tab-target="otros" type="button">Otros</button>
+        </nav>
 
-        <section class="tab-panel is-hidden" data-tab-panel="cocina">
-          <h2>Cocina</h2>
-          <div class="empty-state">La cocina se conectará en Fase 4/5.</div>
-          <button class="ghost-action" type="button" data-placeholder-action="cocina">
-            Simular actualización local
-          </button>
-        </section>
+        <main>
+          <section class="tab-panel" data-tab-panel="inicio">
+            <h2>Inicio</h2>
+            <div class="card-grid">
+              <article class="card"><h3>Pedidos activos</h3><p>0 (placeholder)</p></article>
+              <article class="card"><h3>Pendientes pago</h3><p>0 (placeholder)</p></article>
+              <article class="card"><h3>Sistema</h3><p>Operativo en modo estático</p></article>
+            </div>
+            <button class="ghost-action" type="button" data-placeholder-action="inicio">Probar acción local</button>
+          </section>
+          <section class="tab-panel is-hidden" data-tab-panel="pedidos"><h2>Pedidos</h2><div class="empty-state">Los pedidos reales se conectarán en Fase 4.</div><button class="ghost-action" type="button" data-placeholder-action="pedidos">Ver estado placeholder</button></section>
+          <section class="tab-panel is-hidden" data-tab-panel="cocina"><h2>Cocina</h2><div class="empty-state">La cocina se conectará en Fase 4/5.</div><button class="ghost-action" type="button" data-placeholder-action="cocina">Simular actualización local</button></section>
+          <section class="tab-panel is-hidden" data-tab-panel="otros"><h2>Otros</h2><ul class="phase-checklist"><li>✅ Fase 1: Scaffold visual estático</li><li>✅ Fase 2: PIN/session aislado</li><li>⬜ Fase 3: RPC read-only mínimo</li><li>⬜ Fase 4/5: Integración de panel y cocina</li></ul><button class="ghost-action" type="button" data-placeholder-action="otros">Mostrar avance local</button></section>
+        </main>
 
-        <section class="tab-panel is-hidden" data-tab-panel="otros">
-          <h2>Otros</h2>
-          <ul class="phase-checklist">
-            <li>✅ Fase 1: Scaffold visual estático</li>
-            <li>⬜ Fase 2: PIN/session aislado</li>
-            <li>⬜ Fase 3: RPC read-only mínimo</li>
-            <li>⬜ Fase 4/5: Integración de panel y cocina</li>
-          </ul>
-          <button class="ghost-action" type="button" data-placeholder-action="otros">
-            Mostrar avance local
-          </button>
-        </section>
-      </main>
+        <p class="status-toast is-hidden" role="status" aria-live="polite"></p>
 
-      <p class="status-toast is-hidden" role="status" aria-live="polite"></p>
-
-      <nav class="bottom-nav" aria-label="Navegación inferior">
-        <button class="tab-button is-active" data-tab-target="inicio" type="button">Inicio</button>
-        <button class="tab-button" data-tab-target="pedidos" type="button">Pedidos</button>
-        <button class="tab-button" data-tab-target="cocina" type="button">Cocina</button>
-        <button class="tab-button" data-tab-target="otros" type="button">Otros</button>
-      </nav>
+        <nav class="bottom-nav" aria-label="Navegación inferior">
+          <button class="tab-button is-active" data-tab-target="inicio" type="button">Inicio</button>
+          <button class="tab-button" data-tab-target="pedidos" type="button">Pedidos</button>
+          <button class="tab-button" data-tab-target="cocina" type="button">Cocina</button>
+          <button class="tab-button" data-tab-target="otros" type="button">Otros</button>
+        </nav>
+      </div>
     </div>
   </body>
 </html>

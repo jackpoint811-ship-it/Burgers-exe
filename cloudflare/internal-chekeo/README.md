@@ -1,26 +1,29 @@
-# Cloudflare Internal Chekeo (Fase 1)
+# Cloudflare Internal Chekeo (Fase 2)
 
 ## Propósito
-Este directorio contiene el scaffold inicial de la app interna independiente `cloudflare/internal-chekeo` para la migración de Chekeo hacia Cloudflare Pages.
+Este directorio contiene el scaffold de la app interna independiente `cloudflare/internal-chekeo` para la migración de Chekeo hacia Cloudflare Pages.
 
 ## Estado actual
-- **Fase 1**: scaffold estático.
-- No existe integración con backend.
+- **Fase 2 — PIN/session aislado**.
+- Autenticación interna con PIN y cookie de sesión temporal.
+- Sin integración con backend de negocio.
 
-## Qué incluye
-- Estructura base de app interna móvil con tabs y navegación inferior.
-- Placeholders visuales para Inicio, Pedidos, Cocina y Otros.
-- Estilos base locales (`styles.css`).
-- Lógica local mínima de tabs y toast (`app.js`).
-- `robots.txt` con bloqueo total de indexación.
+## Alcance actual
+- Usa PIN interno.
+- No usa Cloudflare Access.
+- No usa login formal.
+- No hay backend de negocio.
+- No hay RPC.
+- No hay Apps Script.
+- No hay datos reales.
 
-## Qué NO incluye
-- Sin PIN.
-- Sin API.
-- Sin RPC.
-- Sin Apps Script.
-- Sin datos reales.
-- Sin funciones de escritura (write).
+## Variables de entorno
+Requeridas:
+- `INTERNAL_PANEL_PIN`
+- `INTERNAL_SESSION_SECRET`
+
+Opcional:
+- `ALLOWED_IPS`
 
 ## Deploy sugerido (Cloudflare Pages)
 - **Root directory**: `cloudflare/internal-chekeo`
@@ -28,9 +31,4 @@ Este directorio contiene el scaffold inicial de la app interna independiente `cl
 - **Build output directory**: `.`
 
 ## Siguiente fase
-- **Fase 2** — PIN/session aislado.
-
-## Reglas
-- Mantener este proyecto separado de `cloudflare/public-order`.
-- No tocar Apps Script en esta fase.
-- No cambiar `BOG_ACTIVE_ENV` durante esta fase.
+- **Fase 3 — RPC read-only mínimo**.
