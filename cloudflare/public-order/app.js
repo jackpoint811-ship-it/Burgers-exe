@@ -60,6 +60,20 @@
   var clearConfirmUntil = 0;
   var isSubmitting = false;
 
+  var DEFAULT_ORDER_GATE_CONFIG = {
+    closed: false,
+    title: 'PEDIDOS CERRADOS POR AHORA',
+    message: 'Por el momento no estamos recibiendo pedidos. Únete al grupo de WhatsApp para enterarte cuando abramos pedidos otra vez.',
+    whatsappUrl: 'https://chat.whatsapp.com/GycE5zALOypGPvJVaMfbPp'
+  };
+
+  var orderGateConfig = {
+    closed: DEFAULT_ORDER_GATE_CONFIG.closed,
+    title: DEFAULT_ORDER_GATE_CONFIG.title,
+    message: DEFAULT_ORDER_GATE_CONFIG.message,
+    whatsappUrl: DEFAULT_ORDER_GATE_CONFIG.whatsappUrl
+  };
+
   function getCurrentStepName() { return STEPS[state.step]; }
   function countBurgers() { return state.burgerUnits.length; }
 
@@ -541,6 +555,66 @@
     }
   }
 
+
+  function normalizeOrderGateConfig(raw) {
+    var source = raw || {};
+    var closed = source.closed === true;
+    var title = String(source.title || '').trim() || DEFAULT_ORDER_GATE_CONFIG.title;
+    var message = String(source.message || '').trim() || DEFAULT_ORDER_GATE_CONFIG.message;
+    var whatsappUrl = String(source.whatsappUrl || '').trim() || DEFAULT_ORDER_GATE_CONFIG.whatsappUrl;
+    return {
+      closed: closed,
+      title: title,
+      message: message,
+      whatsappUrl: whatsappUrl
+    };
+  }
+
+  function isOrderingClosed() {
+    return Boolean(orderGateConfig && orderGateConfig.closed);
+  }
+
+  function renderOrderingGate() {
+    var appRoot = document.querySelector('.app');
+    if (!appRoot) return;
+
+    var existing = document.getElementById('orderingGate');
+    if (existing) existing.remove();
+
+    if (!isOrderingClosed()) {
+      appRoot.setAttribute('aria-hidden', 'false');
+      return;
+    }
+
+    appRoot.setAttribute('aria-hidden', 'true');
+
+    var overlay = document.createElement('div');
+    overlay.id = 'orderingGate';
+    overlay.className = 'ordering-gate-overlay';
+    overlay.innerHTML =
+      '<section class="ordering-gate-modal" role="dialog" aria-modal="true" aria-labelledby="orderingGateTitle" aria-describedby="orderingGateMessage">' +
+      '<h2 id="orderingGateTitle">' + escapeHtml(orderGateConfig.title) + '</h2>' +
+      '<p id="orderingGateMessage">' + escapeHtml(orderGateConfig.message) + '</p>' +
+      '<a class="ordering-gate-link" href="' + escapeHtml(orderGateConfig.whatsappUrl) + '" target="_blank" rel="noopener noreferrer">Unirme al grupo de WhatsApp</a>' +
+      '</section>';
+    document.body.appendChild(overlay);
+
+    var link = overlay.querySelector('.ordering-gate-link');
+    if (link) link.focus({ preventScroll: true });
+  }
+
+  async function fetchOrderGateConfig() {
+    try {
+      var response = await fetch('/api/order-gate');
+      if (!response.ok) return normalizeOrderGateConfig(DEFAULT_ORDER_GATE_CONFIG);
+      var data = await response.json();
+      if (!data || data.ok !== true) return normalizeOrderGateConfig(DEFAULT_ORDER_GATE_CONFIG);
+      return normalizeOrderGateConfig(data);
+    } catch (_error) {
+      return normalizeOrderGateConfig(DEFAULT_ORDER_GATE_CONFIG);
+    }
+  }
+
   function fallbackCopyText(text) {
     var helper = document.createElement('textarea');
     helper.value = text;
@@ -905,6 +979,7 @@
 
   async function submit() {
     if (isSubmitting) return;
+    if (isOrderingClosed()) return setStatus('Pedidos cerrados temporalmente.');
     hideSuccessPanel();
     var err = validate('submit');
     if (err) return setStatus('Validación fallida: ' + err);
@@ -979,6 +1054,10 @@
     navPanel.insertBefore(hint, navPanel.children[1]);
   }
 
-  restoreDraft(loadDraft());
-  redraw();
+  (async function bootstrap() {
+    orderGateConfig = await fetchOrderGateConfig();
+    renderOrderingGate();
+    restoreDraft(loadDraft());
+    redraw();
+  })();
 })();
