@@ -278,3 +278,9 @@ La siguiente fase será **Fase 1**: crear scaffold estático de `cloudflare/inte
 - Sin acciones write.
 - Sin cambios de estado, pagos, notas, cierre ni archivado.
 - Siguiente fase: Fase 5 Acciones operativas controladas.
+
+## Fase 5 status
+- Acciones operativas controladas agregadas.
+- Sync, estados, pagos, notas, ticket y cocina habilitados con confirmación.
+- Cierre, archivado, guardar resumen y preparación de producción siguen deshabilitados.
+- Siguiente fase: Fase 6 Cierre, resumen e histórico operativo.

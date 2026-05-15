@@ -12,6 +12,14 @@ const ALLOWED_METHODS = new Set([
   'validateProductionReadiness',
   'getProductionMigrationPreview',
   'getHistoryOrders',
+  'syncOrdersFromMaster',
+  'updateOrderStatus',
+  'updateOrderOperationalData',
+  'updateOrderPayment',
+  'markOrderPaid',
+  'markOrderSideReady',
+  'updateOrderNotes',
+  'markTicketSent',
 ]);
 
 function hasRequiredEnv(env) {
@@ -79,7 +87,7 @@ export async function onRequestPost(context) {
 
 export function onRequest(context) {
   if (context.request.method !== 'POST') {
-    return jsonResponse(405, { ok: false, error: { code: 'METHOD_NOT_ALLOWED', message: 'Método no permitido.' } });
+    return jsonResponse(400, { ok: false, error: { code: 'METHOD_NOT_ALLOWED', message: 'Método no permitido.' } });
   }
 
   return onRequestPost(context);

@@ -14,8 +14,8 @@
     </section>
     <div id="internal-app" class="is-hidden">
       <div class="app-shell">
-        <header class="app-header"><p class="eyebrow">Burger-OG</p><h1>Chekeo Interno</h1><p class="subtitle">Fase 4 · Panel read-only completo</p><div class="header-actions"><span class="badge">Solo lectura · Sin acciones write</span><button id="logout-button" class="logout-button" type="button">Salir</button></div></header>
-        <p class="scope-banner">Panel interno migrado a modo lectura. Acciones operativas: disponible en fase futura.</p>
+        <header class="app-header"><p class="eyebrow">Burger-OG</p><h1>Chekeo Interno</h1><p class="subtitle">Fase 5 · Acciones operativas controladas</p><div class="header-actions"><span class="badge">PIN/session activo</span><button id="logout-button" class="logout-button" type="button">Salir</button></div></header>
+        <p class="scope-banner">Panel interno con writes operativos controlados. Cierre/archivado quedan para Fase 6.</p>
         <nav class="tab-nav" aria-label="Navegación principal"><button class="tab-button is-active" data-tab-target="inicio" type="button">Inicio</button><button class="tab-button" data-tab-target="pedidos" type="button">Pedidos</button><button class="tab-button" data-tab-target="cocina" type="button">Cocina</button><button class="tab-button" data-tab-target="otros" type="button">Otros</button></nav>
         <main>
           <section class="tab-panel" data-tab-panel="inicio"><div id="inicio-content"></div></section>
@@ -24,6 +24,8 @@
           <section class="tab-panel is-hidden" data-tab-panel="otros"><div id="otros-content"></div></section>
         </main>
         <div id="modal" class="modal is-hidden"><div class="modal-card"><button id="modal-close" class="ghost" type="button">Cerrar</button><div id="modal-content"></div></div></div>
+        
+        <div id="confirm-modal" class="modal is-hidden"><div class="modal-card"><h3>Confirmar acción</h3><p id="confirm-message"></p><div class="row"><button id="confirm-cancel" class="ghost" type="button">Cancelar</button><button id="confirm-accept" class="write-btn" type="button">Confirmar</button></div></div></div>
         <p class="status-toast is-hidden" role="status" aria-live="polite"></p>
         <nav class="bottom-nav" aria-label="Navegación inferior"><button class="tab-button is-active" data-tab-target="inicio" type="button">Inicio</button><button class="tab-button" data-tab-target="pedidos" type="button">Pedidos</button><button class="tab-button" data-tab-target="cocina" type="button">Cocina</button><button class="tab-button" data-tab-target="otros" type="button">Otros</button></nav>
       </div>

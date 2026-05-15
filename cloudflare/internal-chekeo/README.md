@@ -1,7 +1,7 @@
-# Cloudflare Internal Chekeo (Fase 4)
+# Cloudflare Internal Chekeo (Fase 5)
 
 ## Estado
-- **Fase 4 — Panel read-only completo**.
+- **Fase 5 — Acciones operativas controladas**.
 - PIN/session obligatorio.
 - `/api/rpc` protegido por sesión.
 
@@ -18,11 +18,22 @@
 - `getProductionMigrationPreview`
 - `getHistoryOrders`
 
-## Restricciones de fase
-- No hay acciones write.
-- No hay edición de pedidos.
-- No hay cierre/archivado/guardado.
-- No hay cambios a Sheets desde esta UI.
+## Métodos write operativos permitidos
+- `syncOrdersFromMaster`
+- `updateOrderStatus`
+- `updateOrderOperationalData`
+- `updateOrderPayment`
+- `markOrderPaid`
+- `markOrderSideReady`
+- `updateOrderNotes`
+- `markTicketSent`
+
+## Reglas de operación
+- Confirmaciones obligatorias para writes.
+- Botones write bloqueados durante loading.
+- Resultado visible por toast/status.
+- Refresh de datos al finalizar cada write.
+- Cierre/archivado/resumen/producción siguen fuera de alcance en esta fase.
 
 ## Variables de entorno (Cloudflare)
 - `INTERNAL_PANEL_PIN`
@@ -35,4 +46,4 @@
 - `INTERNAL_API_SHARED_SECRET`
 
 ## Siguiente fase
-- **Fase 5 — Acciones operativas controladas**.
+- **Fase 6 — Cierre, resumen e histórico operativo**.
