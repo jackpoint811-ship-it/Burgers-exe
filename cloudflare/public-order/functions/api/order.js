@@ -40,15 +40,24 @@ async function fetchOrderGate(env) {
   const endpoint = env && env.APPS_SCRIPT_ORDER_GATE_ENDPOINT;
   if (!endpoint) return { closed: false };
 
-  try {
-    const upstreamResp = await fetch(endpoint, { method: 'GET' });
-    if (!upstreamResp.ok) return { closed: false };
-    const upstreamData = await upstreamResp.json();
-    if (!upstreamData || upstreamData.ok !== true) return { closed: false };
-    return { closed: upstreamData.closed === true };
-  } catch (_error) {
-    return { closed: false };
-  }
+  const timeoutMs = 3000;
+  const timeoutPromise = new Promise((resolve) => {
+    setTimeout(() => resolve({ closed: false }), timeoutMs);
+  });
+
+  const requestPromise = (async () => {
+    try {
+      const upstreamResp = await fetch(endpoint, { method: 'GET' });
+      if (!upstreamResp.ok) return { closed: false };
+      const upstreamData = await upstreamResp.json();
+      if (!upstreamData || upstreamData.ok !== true) return { closed: false };
+      return { closed: upstreamData.closed === true };
+    } catch (_error) {
+      return { closed: false };
+    }
+  })();
+
+  return Promise.race([requestPromise, timeoutPromise]);
 }
 
 function normalizePersonalizations(raw) {

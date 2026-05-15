@@ -603,27 +603,35 @@
     if (link) link.focus({ preventScroll: true });
   }
 
-  async function fetchOrderGateConfig() {
+  function fetchOrderGateConfig(onLateResolve) {
     var timeoutMs = 3000;
-    var timeoutPromise = new Promise(function (resolve) {
-      window.setTimeout(function () {
+    var timeoutHit = false;
+
+    return new Promise(function (resolve) {
+      var timeoutId = window.setTimeout(function () {
+        timeoutHit = true;
         resolve(normalizeOrderGateConfig(DEFAULT_ORDER_GATE_CONFIG));
       }, timeoutMs);
+
+      (async function () {
+        try {
+          var response = await fetch('/api/order-gate');
+          if (!response.ok) return normalizeOrderGateConfig(DEFAULT_ORDER_GATE_CONFIG);
+          var data = await response.json();
+          if (!data || data.ok !== true) return normalizeOrderGateConfig(DEFAULT_ORDER_GATE_CONFIG);
+          return normalizeOrderGateConfig(data);
+        } catch (_error) {
+          return normalizeOrderGateConfig(DEFAULT_ORDER_GATE_CONFIG);
+        }
+      })().then(function (config) {
+        if (!timeoutHit) {
+          window.clearTimeout(timeoutId);
+          resolve(config);
+          return;
+        }
+        if (typeof onLateResolve === 'function') onLateResolve(config);
+      });
     });
-
-    var requestPromise = (async function () {
-      try {
-        var response = await fetch('/api/order-gate');
-      if (!response.ok) return normalizeOrderGateConfig(DEFAULT_ORDER_GATE_CONFIG);
-      var data = await response.json();
-      if (!data || data.ok !== true) return normalizeOrderGateConfig(DEFAULT_ORDER_GATE_CONFIG);
-        return normalizeOrderGateConfig(data);
-      } catch (_error) {
-        return normalizeOrderGateConfig(DEFAULT_ORDER_GATE_CONFIG);
-      }
-    })();
-
-    return Promise.race([requestPromise, timeoutPromise]);
   }
 
   function fallbackCopyText(text) {
@@ -1068,7 +1076,10 @@
   restoreDraft(loadDraft());
   redraw();
 
-  fetchOrderGateConfig().then(function (nextConfig) {
+  fetchOrderGateConfig(function (lateConfig) {
+    orderGateConfig = normalizeOrderGateConfig(lateConfig);
+    renderOrderingGate();
+  }).then(function (nextConfig) {
     orderGateConfig = normalizeOrderGateConfig(nextConfig);
     renderOrderingGate();
   }).catch(function () {
