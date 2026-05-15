@@ -250,3 +250,11 @@ La siguiente fase será **Fase 1**: crear scaffold estático de `cloudflare/inte
 - Sin PIN.
 - Sin API.
 - Siguiente fase: **Fase 2 PIN/session aislado**.
+
+## Fase 2 status
+- PIN/session aislado creado.
+- Endpoints `/api/auth`, `/api/session`, `/api/logout` creados.
+- Sin RPC.
+- Sin Apps Script.
+- Sin datos reales.
+- Siguiente fase: **Fase 3 RPC read-only mínimo**.
