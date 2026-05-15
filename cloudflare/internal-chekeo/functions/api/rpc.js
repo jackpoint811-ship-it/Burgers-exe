@@ -14,7 +14,7 @@ export async function onRequestPost(context) {
   }
 
   if (!isIpAllowed(request, env)) {
-    return jsonResponse(401, { ok: false, error: { code: 'UNAUTHORIZED', message: 'Sesión requerida.' } });
+    return jsonResponse(403, { ok: false, error: { code: 'FORBIDDEN_IP', message: 'IP no permitida.' } });
   }
 
   const session = await requireSession(request, env);

@@ -36,16 +36,16 @@ function bogHandleInternalApiFromCloudflare_(requestBody) {
     return { ok: false, error: { code: 'INVALID_ARGS', message: 'rpc.args debe ser un arreglo.' } };
   }
 
-  var handlers = {
-    healthCheck: healthCheck,
-    getAppOrders: getAppOrders,
-    getDailySummary: getDailySummary,
-    getBankConfig: getBankConfig
-  };
-
-  if (!handlers[method]) {
-    return { ok: false, error: { code: 'METHOD_NOT_ALLOWED', message: 'Método no permitido.' } };
+  switch (method) {
+    case 'healthCheck':
+      return healthCheck();
+    case 'getAppOrders':
+      return getAppOrders();
+    case 'getDailySummary':
+      return getDailySummary();
+    case 'getBankConfig':
+      return getBankConfig();
+    default:
+      return { ok: false, error: { code: 'METHOD_NOT_ALLOWED', message: 'Método no permitido.' } };
   }
-
-  return handlers[method].apply(null, args);
 }
