@@ -14,6 +14,22 @@ var BOG_NORMALIZED_HEADERS = {
   EVENTOS_PEDIDO: ['evento_id', 'pedido_id', 'tipo_evento', 'estado_anterior', 'estado_nuevo', 'detalle', 'usuario', 'timestamp', 'origen_app']
 };
 
+var BOG_PUBLIC_SKU_FALLBACK_METADATA = {
+  OG: { producto_id: 'OG', tipo: 'Burger', nombre: 'Burger OG', precio_publico: 85, activo: true },
+  BBQ: { producto_id: 'BBQ', tipo: 'Burger', nombre: 'Burger BBQ', precio_publico: 85, activo: true },
+  PAPAS_OG: { producto_id: 'PAPAS_OG', tipo: 'Guarnicion', nombre: 'Guarnicion Papas a la francesa OG', precio_publico: 20, activo: true },
+  PAPAS_ESPECIALES: { producto_id: 'PAPAS_ESPECIALES', tipo: 'Guarnicion', nombre: 'Guarnicion Papas a la francesa Especiales', precio_publico: 25, activo: true },
+  PAPAS_LEMON_PEPPER: { producto_id: 'PAPAS_LEMON_PEPPER', tipo: 'Guarnicion', nombre: 'Guarnicion Papas a la francesa Lemon&Pepper', precio_publico: 25, activo: true },
+  AROS_CEBOLLA: { producto_id: 'AROS_CEBOLLA', tipo: 'Guarnicion', nombre: 'Guarnicion Aros de Cebolla', precio_publico: 30, activo: true },
+  EXTRA_PEPINILLOS: { producto_id: 'EXTRA_PEPINILLOS', tipo: 'Extra', nombre: 'Extra Pepinillos', precio_publico: 5, activo: true },
+  EXTRA_QUESO_AMERICANO: { producto_id: 'EXTRA_QUESO_AMERICANO', tipo: 'Extra', nombre: 'Extra Queso americano', precio_publico: 5, activo: true },
+  EXTRA_QUESO_MANCHEGO: { producto_id: 'EXTRA_QUESO_MANCHEGO', tipo: 'Extra', nombre: 'Extra Queso manchego', precio_publico: 5, activo: true },
+  EXTRA_TOCINO: { producto_id: 'EXTRA_TOCINO', tipo: 'Extra', nombre: 'Extra Tocino', precio_publico: 5, activo: true },
+  EXTRA_CATSUP: { producto_id: 'EXTRA_CATSUP', tipo: 'Extra', nombre: 'Extra Catsup', precio_publico: 5, activo: true },
+  EXTRA_MOSTAZA: { producto_id: 'EXTRA_MOSTAZA', tipo: 'Extra', nombre: 'Extra Mostaza', precio_publico: 5, activo: true },
+  EXTRA_TOMATE: { producto_id: 'EXTRA_TOMATE', tipo: 'Extra', nombre: 'Extra Tomate', precio_publico: 5, activo: true }
+};
+
 // NOTE: createPublicOrder is invoked via bogPublicWrite_() in Code.gs, which already
 // applies script-level write locking. Do not add a nested LockService lock here.
 function bogCreateNormalizedPublicOrderFromCloudflare_(requestBody) {
@@ -42,8 +58,10 @@ function bogCreateNormalizedPublicOrderFromCloudflare_(requestBody) {
 
     var pedidoId = bogBuildPedidoId_(now);
     var folio = bogBuildNextFolio_(sheets.pedidos);
-    var menuLookup = bogBuildMenuLookup_();
+    var menuLookupResult = bogBuildMenuLookup_();
+    var menuLookup = menuLookupResult.lookup;
     var warnings = [];
+    Array.prototype.push.apply(warnings, menuLookupResult.warnings);
 
     var itemRows = [];
     var burgerRows = [];
@@ -58,22 +76,31 @@ function bogCreateNormalizedPublicOrderFromCloudflare_(requestBody) {
       itemSeq += 1;
       var qty = Number(normalizedItems[sku]);
       var menuItem = menuLookup[sku] || null;
+      var fallbackItem = BOG_PUBLIC_SKU_FALLBACK_METADATA[sku] || null;
       var unitPrice = 0;
       var notas = '';
 
-      if (menuItem && typeof menuItem.precio_publico === 'number' && isFinite(menuItem.precio_publico) && menuItem.precio_publico >= 0) {
-        unitPrice = Number(menuItem.precio_publico);
+      var menuPrice = menuItem ? bogParseMenuPrice_(menuItem.precio_publico) : null;
+      var fallbackPrice = fallbackItem ? bogParseMenuPrice_(fallbackItem.precio_publico) : null;
+      var effectiveItem = menuItem;
+      if (menuPrice !== null && menuPrice >= 0) {
+        unitPrice = menuPrice;
+      } else if (fallbackItem && fallbackPrice !== null && fallbackPrice >= 0) {
+        effectiveItem = fallbackItem;
+        unitPrice = fallbackPrice;
+        warnings.push('SKU usando fallback metadata: ' + sku);
+        notas = 'fallback_metadata';
       } else {
-        warnings.push('SKU sin metadata de MENU_LIVE: ' + sku + '. precio_unitario=0.');
-        notas = 'sin_metadata_menu_live';
+        warnings.push('SKU sin metadata usable: ' + sku + '. precio_unitario=0.');
+        notas = 'sin_metadata_usable';
       }
 
       var subtotal = unitPrice * qty;
       itemSubtotalSum += subtotal;
 
       var itemId = pedidoId + '-ITEM-' + bogPad3_(itemSeq);
-      var tipo = (menuItem && bogTrim_(menuItem.tipo)) || bogInferItemTipoBySku_(sku);
-      var nombre = (menuItem && bogTrim_(menuItem.nombre)) || sku;
+      var tipo = (effectiveItem && bogTrim_(effectiveItem.tipo)) || bogInferItemTipoBySku_(sku);
+      var nombre = (effectiveItem && bogTrim_(effectiveItem.nombre)) || sku;
       var itemRow = {
         pedido_item_id: itemId,
         pedido_id: pedidoId,
@@ -235,18 +262,67 @@ function bogPad3_(value) {
 }
 
 function bogBuildMenuLookup_() {
+  var warnings = [];
   var lookup = {};
   try {
     var menu = getMenuLive();
+    if (!menu || menu.ok !== true) {
+      warnings.push('MENU_LIVE respondió sin ok=true.');
+    }
     var items = menu && menu.data && Array.isArray(menu.data.all) ? menu.data.all : [];
+    if (!items.length) {
+      warnings.push('MENU_LIVE sin data.all utilizable.');
+    }
     items.forEach(function (item) {
       var key = bogTrim_(item && item.producto_id);
-      if (key) lookup[key] = item;
+      if (key) lookup[key] = bogNormalizeMenuItem_(item);
     });
   } catch (err) {
-    // best effort
+    warnings.push('MENU_LIVE unavailable: ' + (err && err.message ? err.message : String(err)));
   }
-  return lookup;
+  return { lookup: lookup, warnings: warnings };
+}
+
+function bogNormalizeMenuItem_(item) {
+  return {
+    producto_id: bogTrim_(item && item.producto_id),
+    tipo: bogTrim_(item && item.tipo),
+    nombre: bogTrim_(item && item.nombre),
+    precio_publico: item ? item.precio_publico : null,
+    activo: item ? item.activo : null
+  };
+}
+
+function bogParseMenuPrice_(value) {
+  if (typeof value === 'number') {
+    return isFinite(value) ? value : null;
+  }
+  if (typeof value !== 'string') return null;
+
+  var normalized = bogTrim_(value).replace(/[^\d,.\-]/g, '');
+  if (!normalized) return null;
+  if (normalized.indexOf(',') >= 0 && normalized.indexOf('.') >= 0) {
+    normalized = normalized.replace(/,/g, '');
+  } else if (normalized.indexOf(',') >= 0) {
+    normalized = normalized.replace(/,/g, '.');
+  }
+  var parsed = Number(normalized);
+  return isNaN(parsed) ? null : parsed;
+}
+
+function previewNormalizedOrderMenuLookup() {
+  var menuLookupResult = bogBuildMenuLookup_();
+  var lookup = menuLookupResult.lookup || {};
+  return {
+    ok: true,
+    menuLiveOk: menuLookupResult.warnings.length === 0,
+    menuLiveCount: Object.keys(lookup).length,
+    lookupKeys: Object.keys(lookup),
+    fallbackKeys: Object.keys(BOG_PUBLIC_SKU_FALLBACK_METADATA),
+    warnings: menuLookupResult.warnings,
+    sample: { OG: lookup.OG || BOG_PUBLIC_SKU_FALLBACK_METADATA.OG || null },
+    timestamp: new Date().toISOString()
+  };
 }
 
 function bogInferItemTipoBySku_(sku) {

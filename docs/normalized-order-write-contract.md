@@ -41,8 +41,11 @@ All required headers must exist; otherwise write fails.
 
 ## Price allocation behavior
 - Cloudflare `payload.total` is accepted as order-level source of truth.
-- Item unit/subtotal values are enriched from `MENU_LIVE` when available.
-- Missing `MENU_LIVE` metadata does not block writes; fallback uses `precio_unitario = 0` with warning events.
+- Item unit/subtotal values are enriched from `MENU_LIVE` (`getMenuLive().data.all`) by `producto_id`.
+- `precio_publico` parsing accepts numeric and formatted string values (for example `85`, `"85.00"`, `"$85.00"`, `"85,00"`).
+- If `MENU_LIVE` item is missing or has unusable price, writer uses static fallback metadata for known public SKUs (`OG`, `BBQ`, selected `PAPAS_*`, `AROS_CEBOLLA`, and `EXTRA_*` items).
+- Fallback usage does not block writes and is recorded as warning text (`SKU usando fallback metadata: <sku>`).
+- Only when both `MENU_LIVE` and static fallback metadata are unusable does writer set `precio_unitario = 0` and warn (`SKU sin metadata usable: <sku>. precio_unitario=0.`).
 - If sum of item subtotals differs from `payload.total`, order is still accepted and mismatch is logged as event.
 
 ## Events written
@@ -51,3 +54,8 @@ Always writes:
 
 Conditionally writes:
 - `TOTAL_METADATA_MISMATCH` when metadata subtotal sum != payload total.
+
+## Manual diagnostics (read-only)
+- `previewNormalizedOrderMenuLookup()` is available to manually inspect metadata enrichment readiness before a test order.
+- It returns `ok`, `menuLiveOk`, `menuLiveCount`, `lookupKeys`, `fallbackKeys`, `warnings`, `sample.OG`, and `timestamp`.
+- It is read-only and does not write to any sheet.
