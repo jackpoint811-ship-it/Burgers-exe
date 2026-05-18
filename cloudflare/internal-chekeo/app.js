@@ -8,6 +8,7 @@
     panelError: '',
     activeTab: 'inicio',
     orders: [],
+    ordersSource: 'normalized',
     summary: null,
     health: null,
     bank: null,
@@ -128,9 +129,8 @@
     render();
 
     try {
-      const [health, orders, summary, bank, closePreview, historyPreview, productionValidation, migrationPreview] = await Promise.all([
+      const [health, summary, bank, closePreview, historyPreview, productionValidation, migrationPreview] = await Promise.all([
         rpcCall('healthCheck'),
-        rpcCall('getAppOrders'),
         rpcCall('getDailySummary'),
         rpcCall('getBankConfig'),
         rpcCall('getCloseDayPreview'),
@@ -139,8 +139,20 @@
         rpcCall('getProductionMigrationPreview'),
       ]);
 
+      let orders = [];
+      let ordersSource = 'normalized';
+      try {
+        const normalizedOrders = await rpcCall('getNormalizedAppOrders', [{}]);
+        orders = Array.isArray(normalizedOrders?.data) ? normalizedOrders.data : [];
+      } catch (normalizedError) {
+        const legacyOrders = await rpcCall('getAppOrders');
+        orders = Array.isArray(legacyOrders?.data) ? legacyOrders.data : [];
+        ordersSource = 'legacy-fallback';
+      }
+
       state.health = health?.data || null;
-      state.orders = Array.isArray(orders?.data) ? orders.data : [];
+      state.orders = orders;
+      state.ordersSource = ordersSource;
       state.summary = summary?.data || null;
       state.bank = bank?.data || null;
       state.closePreview = closePreview?.data || null;
@@ -180,7 +192,7 @@
     });
   }
 
-  const syncOrders = () => runWrite('Sincronizar pedidos', 'syncOrdersFromMaster');
+  const refreshOrders = () => loadOperationalPanel();
   const changeOrderStatus = (orderId, nextStatus) => runWrite(`Cambiar estado a ${nextStatus}`, 'updateOrderStatus', [orderId, nextStatus]);
   const saveOrderOperationalData = (orderId, payload) => runWrite('Guardar cambios operativos', 'updateOrderOperationalData', [orderId, payload]);
   const updatePayment = (orderId, paymentStatus, paymentMethod) => runWrite('Actualizar pago', 'updateOrderPayment', [orderId, paymentStatus, paymentMethod]);
@@ -193,6 +205,10 @@
   const closeDayAction = () => runWrite('Cerrar el día', 'closeDay', [], '¿Cerrar el día? Esta acción puede guardar resumen y archivar pedidos según la lógica existente. Revisa el preview antes de continuar.');
 
   async function openWhatsAppForOrder(orderId) {
+    if (state.ordersSource === 'normalized') {
+      showToast('WhatsApp pendiente migración para modo normalizado.', true);
+      return;
+    }
     const d = await rpcCall('getClientTicketData', [orderId]);
     const phone = String(d?.data?.phone || d?.data?.telefono || '').replace(/\D/g, '');
     const text = encodeURIComponent(d?.data?.message || d?.data?.mensaje || `Pedido ${orderId}`);
@@ -219,22 +235,48 @@
 
   function renderOrders() {
     const list = state.orders.map((o) => {
-      const id = escape(o['ID Pedido'] || o.id || '');
-      return `<li class='order-item'><div><strong>${id}</strong><p>${escape(o['Nombre'] || '')}</p><small><span class='badge-status'>${escape(o['Estado Pedido'] || '-')}</span> <span class='badge-payment'>${escape(o['Estado Pago'] || '-')}</span></small></div>
+      const normalized = state.ordersSource === 'normalized';
+      const id = escape(normalized ? (o.pedido_id || o.id || '') : (o['ID Pedido'] || o.id || ''));
+      const folio = escape(normalized ? (o.folio || '-') : (o['ID Pedido'] || o.id || '-'));
+      const customer = escape(normalized ? (o.cliente_nombre || 'Sin nombre') : (o['Nombre'] || 'Sin nombre'));
+      const phone = escape(normalized ? (o.cliente_telefono || 'Sin teléfono') : (o['Telefono'] || o['Teléfono'] || 'Sin teléfono'));
+      const total = escape(normalized ? (o.total || '0') : (o['Total'] || '0'));
+      const status = escape(normalized ? (o.estado || '-') : (o['Estado Pedido'] || '-'));
+      const paymentStatus = escape(normalized ? (o.payment?.estado_pago || 'Pendiente') : (o['Estado Pago'] || '-'));
+      const burgerSummary = escape(normalized ? (o.kitchen?.burger_summary || 'Sin burgers') : '-');
+      const guarnicionSummary = escape(normalized ? (o.kitchen?.guarnicion_summary || 'Sin guarniciones') : '-');
+      const normalizedWriteState = normalized ? 'disabled title="Pendiente migración"' : '';
+      const normalizedWriteLabel = normalized ? 'Pendiente migración' : 'Marcar pagado';
+      const normalizedStatusLabel = normalized ? 'Pendiente migración' : 'Listo';
+      const normalizedSideLabel = normalized ? 'Pendiente migración' : 'Guarnición lista';
+      const whatsappLabel = normalized ? 'WhatsApp pendiente migración' : 'WhatsApp';
+      return `<li class='order-item'><div><small>${folio}</small><p><strong>${customer}</strong></p><p>${phone}</p><p>Total: ${total}</p><small><span class='badge-status'>${status}</span> <span class='badge-payment'>${paymentStatus}</span></small><p>${burgerSummary}</p><p>${guarnicionSummary}</p></div>
       <div class='order-actions'>
       <button class='ghost' data-detail='${id}'>Detalle</button>
-      <button class='ghost write-btn' data-write-action data-mark-paid='${id}'>Marcar pagado</button>
-      <button class='ghost write-btn' data-write-action data-ready='${id}'>Listo</button>
-      <button class='ghost write-btn' data-write-action data-side-ready='${id}'>Guarnición lista</button>
-      <button class='ghost' data-wa='${id}'>WhatsApp</button>
+      <button class='ghost write-btn' data-write-action data-mark-paid='${id}' ${normalizedWriteState}>${normalizedWriteLabel}</button>
+      <button class='ghost write-btn' data-write-action data-ready='${id}' ${normalizedWriteState}>${normalizedStatusLabel}</button>
+      <button class='ghost write-btn' data-write-action data-side-ready='${id}' ${normalizedWriteState}>${normalizedSideLabel}</button>
+      <button class='ghost' data-wa='${id}' ${normalized ? 'disabled title="Pendiente migración"' : ''}>${whatsappLabel}</button>
       </div></li>`;
     }).join('');
-    document.querySelector('#pedidos-content').innerHTML = `<h2>Pedidos</h2><button class='write-btn' data-write-action id='sync-orders-btn'>Sincronizar</button><ul class='readonly-list'>${list}</ul>`;
+    const banner = state.ordersSource === 'legacy-fallback'
+      ? `<p class='scope-banner'>Modo fallback legacy</p>`
+      : `<p class='scope-banner'>Leyendo pedidos normalizados</p>`;
+    const refreshLabel = state.ordersSource === 'normalized' ? 'Actualizar' : 'Sincronizar';
+    document.querySelector('#pedidos-content').innerHTML = `<h2>Pedidos</h2>${banner}<button class='write-btn' id='sync-orders-btn'>${refreshLabel}</button><ul class='readonly-list'>${list}</ul>`;
   }
 
   function renderKitchen() {
-    const pending = state.orders.filter((o) => !String(o['Estado Pedido'] || '').toLowerCase().includes('listo'));
-    document.querySelector('#cocina-content').innerHTML = `<h2>Cocina</h2><ul class='readonly-list'>${pending.map((o) => `<li>${escape(o['ID Pedido'] || '')} <button class='write-btn' data-write-action data-ready='${escape(o['ID Pedido'] || '')}'>Marcar pedido Listo</button> <button class='write-btn' data-write-action data-side-ready='${escape(o['ID Pedido'] || '')}'>Marcar guarnición lista</button></li>`).join('')}</ul>`;
+    const normalized = state.ordersSource === 'normalized';
+    const pending = state.orders.filter((o) => !String(normalized ? (o.estado || '') : (o['Estado Pedido'] || '')).toLowerCase().includes('listo'));
+    document.querySelector('#cocina-content').innerHTML = `<h2>Cocina</h2><ul class='readonly-list'>${pending.map((o) => {
+      const id = escape(normalized ? (o.pedido_id || '') : (o['ID Pedido'] || ''));
+      if (!normalized) return `<li>${id} <button class='write-btn' data-write-action data-ready='${id}'>Marcar pedido Listo</button> <button class='write-btn' data-write-action data-side-ready='${id}'>Marcar guarnición lista</button></li>`;
+      const burgers = Array.isArray(o.burgers) ? o.burgers : [];
+      const burgerTickets = burgers.map((b) => `<li><strong>${escape(b.burger_base_id || 'burger')}</strong><p>Extras: ${escape((b.extras || []).join(', ') || 'Extras No')}</p><p>Sin: ${escape((b.sin_ingredientes || []).join(', ') || 'Sin cambios')}</p>${b.comentarios ? `<p>Comentario: ${escape(b.comentarios)}</p>` : ''}</li>`).join('');
+      const pendingGuarniciones = Array.isArray(o.guarniciones) ? o.guarniciones.filter((g) => !String(g.estado || '').toLowerCase().includes('list')).length : 0;
+      return `<li><small>${escape(o.folio || '-')}</small><p><strong>${escape(o.cliente_nombre || 'Sin nombre')}</strong></p><p>${escape(o.kitchen?.burger_summary || 'Sin burgers')}</p><ul>${burgerTickets || '<li>Sin burgers</li>'}</ul><p>${escape(o.kitchen?.guarnicion_summary || 'Sin guarniciones')}</p><p>Pendientes guarniciones: ${escape(pendingGuarniciones)}</p><button class='write-btn' disabled title='Pendiente migración'>Marcar pedido Listo</button> <button class='write-btn' disabled title='Pendiente migración'>Marcar guarnición lista</button></li>`;
+    }).join('')}</ul>`;
   }
 
   function renderOthers() {
@@ -316,6 +358,17 @@
   function render() { renderTabs(); renderHome(); renderOrders(); renderKitchen(); renderOthers(); }
 
   async function openOrderDetail(orderId) {
+    if (state.ordersSource === 'normalized') {
+      const d = await rpcCall('getNormalizedOrderDetail', [orderId]);
+      const o = d?.data || {};
+      const items = Array.isArray(o.items) ? o.items : [];
+      const burgers = Array.isArray(o.burgers) ? o.burgers : [];
+      const guarniciones = Array.isArray(o.guarniciones) ? o.guarniciones : [];
+      const eventos = Array.isArray(o.eventos) ? o.eventos : [];
+      modalContent.innerHTML = `<h3>Detalle normalizado (solo lectura)</h3><p><strong>Pedido:</strong> ${escape(o.pedido_id || '-')} / ${escape(o.folio || '-')}</p><p><strong>Cliente:</strong> ${escape(o.cliente_nombre || '-')}</p><p><strong>Teléfono:</strong> ${escape(o.cliente_telefono || '-')}</p><p><strong>Total:</strong> ${escape(o.total || '0')}</p><p><strong>Estado:</strong> ${escape(o.estado || '-')}</p><p><strong>Método pago:</strong> ${escape(o.payment?.metodo_pago || o.metodo_pago || '-')}</p><h4>Items</h4><pre>${escape(JSON.stringify(items, null, 2))}</pre><h4>Burgers</h4><pre>${escape(JSON.stringify(burgers, null, 2))}</pre><h4>Guarniciones</h4><pre>${escape(JSON.stringify(guarniciones, null, 2))}</pre><h4>Eventos</h4><pre>${escape(JSON.stringify(eventos, null, 2))}</pre><div class='row'><button class='ghost' disabled title='Pendiente migración'>WhatsApp pendiente migración</button></div>`;
+      modal.classList.remove('is-hidden');
+      return;
+    }
     const d = await rpcCall('getOrderDetail', [orderId]);
     const o = d?.data || {};
     modalContent.innerHTML = `<h3>Detalle operativo</h3><div class='form-grid'><label>Estado Pedido<select id='op-status'>${ORDER_STATUSES.map((s) => `<option ${s === o['Estado Pedido'] ? 'selected' : ''}>${s}</option>`).join('')}</select></label><label>Estado Pago<select id='op-pay-status'>${PAYMENT_STATUSES.map((s) => `<option ${s === o['Estado Pago'] ? 'selected' : ''}>${s}</option>`).join('')}</select></label><label>Método Pago<select id='op-pay-method'>${PAYMENT_METHODS.map((s) => `<option ${s === o['Método Pago'] ? 'selected' : ''}>${s}</option>`).join('')}</select></label><label>Nota interna<textarea id='op-note-internal'>${escape(o['Nota Interna'] || '')}</textarea></label><label>Nota cliente<textarea id='op-note-client'>${escape(o['Nota Cliente'] || '')}</textarea></label></div><div class='row'><button class='write-btn' data-write-action id='save-op'>Guardar cambios operativos</button><button class='write-btn' data-write-action id='mark-paid-modal'>Marcar pagado</button><button class='ghost' id='wa-modal'>Abrir WhatsApp</button><button class='write-btn' data-write-action id='mark-ticket-modal'>Marcar ticket enviado</button></div>`;
@@ -338,7 +391,7 @@
   function initScaffold() {
     document.querySelectorAll('[data-tab-target]').forEach((b) => b.addEventListener('click', () => { state.activeTab = b.dataset.tabTarget; render(); }));
     document.body.addEventListener('click', async (e) => {
-      const sync = e.target.closest('#sync-orders-btn'); if (sync) return syncOrders();
+      const sync = e.target.closest('#sync-orders-btn'); if (sync) return refreshOrders();
       const detail = e.target.closest('[data-detail]'); if (detail) return openOrderDetail(detail.dataset.detail);
       const markPaidBtn = e.target.closest('[data-mark-paid]'); if (markPaidBtn) return markPaid(markPaidBtn.dataset.markPaid);
       const ready = e.target.closest('[data-ready]'); if (ready) return changeOrderStatus(ready.dataset.ready, 'Listo');

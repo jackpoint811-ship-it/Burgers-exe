@@ -241,3 +241,18 @@ Se completó la sincronización de pricing backend con el catálogo dinámico:
 - Normalized read service implemented (`getNormalizedAppOrders`, `getNormalizedOrderDetail`, `previewNormalizedOrdersRead`).
 - UI integration pending Phase 3C.
 - Writes/status updates still pending migration (existing write/update paths unchanged).
+
+## Phase 3C — Internal UI normalized read path (implemented)
+- `cloudflare/internal-chekeo/app.js` now uses normalized read as primary source:
+  - `getNormalizedAppOrders(filters)` for orders panel.
+  - `getNormalizedOrderDetail(pedidoId)` for order detail in normalized mode.
+- Legacy fallback remains available (`getAppOrders` + legacy detail path) if normalized read fails.
+- UI exposes subtle source banner (`normalizado` vs `fallback legacy`).
+- Normalized mode is explicitly read-only for operational actions pending migration:
+  - write/status/payment/guarnición actions disabled in normalized mode.
+  - WhatsApp action disabled in normalized mode pending ID-path migration.
+  - sync behavior replaced by safe refresh (no automatic `syncOrdersFromMaster` in normalized mode).
+
+## Phase 3D — Pending
+- Migrate operational writes/status/payment/guarnición transitions to normalized contract.
+- Re-enable write controls in normalized mode once write path is validated end-to-end.
