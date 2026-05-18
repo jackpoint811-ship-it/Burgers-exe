@@ -8,6 +8,12 @@ Definir la estructura objetivo de datos para la nueva arquitectura con dos super
 
 Google Sheets permanece como backend/base de datos, y Apps Script puede existir solo como backend/bridge (no como superficie operativa visible).
 
+## Regla histórica principal (largo plazo)
+- La hoja principal de Burgers.exe debe mantenerse **ligera**.
+- El detalle histórico de días cerrados (pedidos/itemización completa de cierre) vive en **Google Drive**.
+- En Google Sheets quedan solo índices/resúmenes ligeros y enlaces a Drive (`ARCHIVO_CORTES` como índice principal).
+- `HISTORICO_ITEMS` **no forma parte del esquema principal de largo plazo**.
+
 ## Reglas generales del contrato
 - No modificar ni borrar hojas legacy durante Fase 0/1.
 - No cambiar comportamiento productivo actual durante esta etapa documental.
@@ -35,7 +41,7 @@ Google Sheets permanece como backend/base de datos, y Apps Script puede existir 
 
 ---
 
-## Estructura objetivo por hoja
+## Estructura objetivo por hoja (main Sheet)
 
 ## 1) `HOME`
 **Propósito:** tablero/portada operativa con accesos, KPIs rápidos y estado general.
@@ -165,7 +171,7 @@ Google Sheets permanece como backend/base de datos, y Apps Script puede existir 
 - Estructura protegida; solo filas nuevas/actualizaciones controladas por procesos.
 
 ## 7) `PEDIDO_ITEMS`
-**Propósito:** detalle por ítem del pedido (líneas comprables).
+**Propósito:** detalle por ítem del pedido (líneas comprables del flujo activo).
 
 **Columnas mínimas:**
 - `pedido_item_id`
@@ -264,7 +270,7 @@ Google Sheets permanece como backend/base de datos, y Apps Script puede existir 
 - Protección media; edición manual restringida.
 
 ## 12) `HISTORICO_PEDIDOS`
-**Propósito:** histórico de pedidos a largo plazo (resumen por pedido).
+**Propósito:** resumen histórico liviano por pedido (no almacén detallado de largo plazo).
 
 **Columnas mínimas:**
 - `pedido_id`
@@ -273,43 +279,30 @@ Google Sheets permanece como backend/base de datos, y Apps Script puede existir 
 - `total`
 - `estado_final`
 - `cliente_hash_o_ref` (según política de datos)
+- `drive_corte_ref` (ID o URL de referencia al corte en Drive)
 
 **Lectura/Escritura por app:**
 - Burgers.exe: no requerido.
-- Chekeo 2.0: lectura para consultas históricas; escritura en cierre/archivado.
+- Chekeo 2.0: lectura para consultas históricas rápidas; escritura de resumen en cierre/archivado.
+
+**Nota clave:**
+- El detalle completo de pedidos/items cerrados se mantiene en documentos/archivos de Drive.
 
 **Protección sugerida:**
 - Alta protección; escritura solo por proceso controlado.
 
-## 13) `HISTORICO_ITEMS`
-**Propósito:** histórico de líneas de detalle asociadas a pedidos cerrados.
-
-**Columnas mínimas:**
-- `pedido_id`
-- `pedido_item_id`
-- `producto_id`
-- `tipo`
-- `cantidad`
-- `precio_unitario`
-- `subtotal`
-- `fecha_cierre`
-
-**Lectura/Escritura por app:**
-- Burgers.exe: no requerido.
-- Chekeo 2.0: lectura histórica; escritura en proceso de cierre/archivado.
-
-**Protección sugerida:**
-- Alta protección.
-
-## 14) `ARCHIVO_CORTES`
-**Propósito:** índice liviano de cierres archivados en Google Drive.
+## 13) `ARCHIVO_CORTES`
+**Propósito:** índice liviano principal de cierres archivados en Google Drive.
 
 **Columnas mínimas:**
 - `corte_id`
 - `fecha_corte`
-- `drive_folder_id`
-- `drive_file_id_principal`
-- `resumen`
+- `total_pedidos`
+- `total_vendido`
+- `total_burgers`
+- `total_guarniciones`
+- `drive_folder_url`
+- `drive_summary_file_url`
 - `creado_en`
 - `creado_por`
 
@@ -318,19 +311,21 @@ Google Sheets permanece como backend/base de datos, y Apps Script puede existir 
 - Chekeo 2.0: lectura para navegación de historial; escritura al cerrar/archivar día.
 
 **Nota clave:**
-- Aquí solo se guarda índice liviano. El detalle completo del cierre vive en Google Drive.
+- Aquí solo se guarda índice/metadatos y enlaces. El detalle completo del cierre vive en Google Drive.
 
 **Protección sugerida:**
 - Estructura protegida; append-only recomendado.
 
 ---
 
+## Hojas fuera de esquema principal de largo plazo
+- `HISTORICO_ITEMS`: **no es parte del main Sheet a largo plazo**. Si existe temporalmente en transición, debe tratarse como artefacto intermedio y no como almacenamiento detallado permanente.
+
 ## Hojas con protección recomendada (resumen)
 Protección **alta** recomendada para:
 - `AJUSTES_APP`
 - `COSTOS_PRECIOS`
 - `HISTORICO_PEDIDOS`
-- `HISTORICO_ITEMS`
 - `ARCHIVO_CORTES`
 
 Protección de estructura (encabezados/columnas) para:

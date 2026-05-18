@@ -3,6 +3,11 @@
 ## Objetivo
 Definir cómo se almacena el cierre diario y el histórico detallado usando **Google Drive** como archivo externo, manteniendo Google Sheets liviano y operativo.
 
+## Decisión de arquitectura
+- **Google Drive es la fuente de verdad del detalle histórico de cierres/días cerrados**.
+- El main Sheet de Burgers.exe guarda solo índices/sumarios ligeros y enlaces de navegación.
+- `ARCHIVO_CORTES` es un índice liviano (metadata + links), no un repositorio detallado.
+
 ## Principio clave
 La hoja de cálculo de Burgers.exe **no debe crecer indefinidamente** con detalle histórico completo. El detalle de cierres y evidencia operativa vive en Drive; en Sheet queda un índice liviano.
 
@@ -27,14 +32,17 @@ En cada carpeta diaria, guardar uno o más archivos de detalle (según formato o
 - Evidencia adicional necesaria para auditoría.
 
 ## Índice liviano en Google Sheets (`ARCHIVO_CORTES`)
-La hoja `ARCHIVO_CORTES` almacena solo metadatos mínimos para localizar el detalle en Drive:
+La hoja `ARCHIVO_CORTES` almacena solo metadatos mínimos y enlaces para localizar el detalle en Drive.
 
-Columnas recomendadas:
+Campos recomendados:
 - `corte_id`
 - `fecha_corte`
-- `drive_folder_id`
-- `drive_file_id_principal`
-- `resumen`
+- `total_pedidos`
+- `total_vendido`
+- `total_burgers`
+- `total_guarniciones`
+- `drive_folder_url`
+- `drive_summary_file_url`
 - `creado_en`
 - `creado_por`
 
@@ -42,11 +50,12 @@ Columnas recomendadas:
 1. Ejecutar cierre diario.
 2. Crear carpeta del corte en Drive (si no existe).
 3. Guardar archivo(s) detallado(s) del cierre en la carpeta.
-4. Insertar fila índice en `ARCHIVO_CORTES` con IDs de Drive.
-5. Mantener en Sheet solo el índice y agregados necesarios.
+4. Insertar fila índice en `ARCHIVO_CORTES` con métricas clave y links de Drive.
+5. Mantener en Sheet solo índice/sumarios ligeros y referencias de navegación.
 
 ## Alcance de datos a largo plazo
-- Mantener a largo plazo el histórico de pedidos (nivel negocio) y el enlace al archivo detallado en Drive.
+- Mantener en Sheet solo resumen operativo e índices históricos livianos.
+- Mantener en Drive el detalle histórico de pedidos/items de días cerrados.
 - Evitar duplicar detalle pesado de cierres dentro del Sheet principal.
 
 ## Reglas operativas

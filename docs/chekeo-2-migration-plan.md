@@ -108,12 +108,13 @@ Definir una migración segura hacia la arquitectura Burgers.exe + Chekeo 2.0 sin
 - Coordinación de estado “Burgers listas” y entrega.
 
 ## Phase 7 – Archivo Drive para cierres/histórico detallado
-**Objetivo:** externalizar detalle pesado y dejar índice liviano en Sheet.
+**Objetivo:** mover el detalle histórico de cierres a Drive y mantener el main Sheet liviano.
 
 **Acciones:**
 - Crear carpetas por corte en Drive.
-- Guardar documento(s) detallado(s) de cierre en Drive.
-- Registrar índice mínimo en `ARCHIVO_CORTES`.
+- Guardar documento(s) detallado(s) de cierre e histórico de items/pedidos cerrados en Drive.
+- Mantener en Sheet solo índices/sumarios y links (`ARCHIVO_CORTES`, y `HISTORICO_PEDIDOS` si aplica como resumen).
+- Evitar `HISTORICO_ITEMS` como tabla permanente en el main Sheet.
 
 ## Phase 8 – Retiro de legacy (solo con aprobación explícita)
 **Objetivo:** simplificación final post-migración.
