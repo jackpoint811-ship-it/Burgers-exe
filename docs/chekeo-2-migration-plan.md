@@ -191,3 +191,18 @@ Se implementó una capa read-only de Apps Script para preparar `MENU_LIVE` como 
 
 La integración del frontend público para consumir `MENU_LIVE` se realizará en un PR posterior, una vez validado el contrato y la operación read-only.
 
+
+
+## Estado de implementación – Phase 2C (Cloudflare menú read-only)
+
+Se implementó endpoint público read-only para catálogo:
+
+- Nuevo endpoint: `GET /api/menu` en `cloudflare/public-order/functions/api/menu.js`.
+- Consume `MENU_LIVE` vía Apps Script bridge (`action: getPublicMenuLive`) cuando `APPS_SCRIPT_MENU_ENDPOINT` está configurado.
+- Incluye fallback estático seguro si endpoint no existe o falla.
+
+### Confirmaciones de alcance
+- Integración del frontend para consumir `/api/menu`: **diferida al siguiente PR**.
+- `cloudflare/public-order/app.js` mantiene menú estático actual en esta fase.
+- Pricing de órdenes sigue usando `PRICE_TABLE` actual en `cloudflare/public-order/functions/api/order.js` hasta una fase posterior.
+- Sin cambios de escritura de pedidos por esta fase.

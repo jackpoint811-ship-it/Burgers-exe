@@ -49,3 +49,48 @@ Esto **no debe romper** la lectura del menú.
 - Se agrega servicio Apps Script read-only para validar y leer `MENU_LIVE`.
 - Se agrega previsualización de conteos para revisión operativa.
 - **No** se conecta todavía la app pública (`cloudflare/public-order`) a `MENU_LIVE`.
+
+
+## Phase 2C – Cloudflare `GET /api/menu`
+Se agrega endpoint read-only en `cloudflare/public-order/functions/api/menu.js` para exponer menú normalizado a la app pública sin cambiar `app.js` todavía.
+
+### Variable de entorno
+- `APPS_SCRIPT_MENU_ENDPOINT`: URL del bridge Apps Script para menú público.
+
+### Flujo
+1. Cloudflare intenta consultar Apps Script con `action: "getPublicMenuLive"` (timeout ~3000ms).
+2. Si Apps Script responde `ok: true`, Cloudflare normaliza y responde con `source: "apps-script"`.
+3. Si falta `APPS_SCRIPT_MENU_ENDPOINT`, hay timeout/error de red, o Apps Script responde inválido, Cloudflare responde `source: "fallback"` con menú estático seguro.
+
+### Contrato de respuesta Cloudflare
+```json
+{
+  "ok": true,
+  "source": "apps-script | fallback",
+  "data": {
+    "burgers": [],
+    "guarniciones": [],
+    "extras": [],
+    "all": []
+  },
+  "warnings": [],
+  "timestamp": "ISO string"
+}
+```
+
+### Forma normalizada de item
+Cada item en `data.*` contiene:
+- `sku` (= `producto_id`)
+- `producto_id`
+- `tipo`
+- `name` y `nombre`
+- `description` y `descripcion`
+- `price` y `precio_publico`
+- `active` y `activo`
+- `orden_visual`
+- `image_url`
+- `image_status`
+
+### Nota de rollout
+- Esta fase **no** reemplaza el menú estático del frontend (`cloudflare/public-order/app.js`).
+- Esta fase **no** reemplaza `PRICE_TABLE` de órdenes.
