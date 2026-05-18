@@ -143,7 +143,9 @@
       let ordersSource = 'normalized';
       try {
         const normalizedOrders = await rpcCall('getNormalizedAppOrders', [{}]);
-        orders = Array.isArray(normalizedOrders?.data) ? normalizedOrders.data : [];
+        orders = Array.isArray(normalizedOrders?.orders)
+          ? normalizedOrders.orders
+          : (Array.isArray(normalizedOrders?.data) ? normalizedOrders.data : []);
       } catch (normalizedError) {
         const legacyOrders = await rpcCall('getAppOrders');
         orders = Array.isArray(legacyOrders?.data) ? legacyOrders.data : [];
@@ -274,7 +276,9 @@
       if (!normalized) return `<li>${id} <button class='write-btn' data-write-action data-ready='${id}'>Marcar pedido Listo</button> <button class='write-btn' data-write-action data-side-ready='${id}'>Marcar guarnición lista</button></li>`;
       const burgers = Array.isArray(o.burgers) ? o.burgers : [];
       const burgerTickets = burgers.map((b) => `<li><strong>${escape(b.burger_base_id || 'burger')}</strong><p>Extras: ${escape((b.extras || []).join(', ') || 'Extras No')}</p><p>Sin: ${escape((b.sin_ingredientes || []).join(', ') || 'Sin cambios')}</p>${b.comentarios ? `<p>Comentario: ${escape(b.comentarios)}</p>` : ''}</li>`).join('');
-      const pendingGuarniciones = Array.isArray(o.guarniciones) ? o.guarniciones.filter((g) => !String(g.estado || '').toLowerCase().includes('list')).length : 0;
+      const pendingGuarniciones = Array.isArray(o.guarniciones)
+        ? o.guarniciones.filter((g) => String(g?.estado_guarnicion || '').trim() !== 'Hecha').length
+        : 0;
       return `<li><small>${escape(o.folio || '-')}</small><p><strong>${escape(o.cliente_nombre || 'Sin nombre')}</strong></p><p>${escape(o.kitchen?.burger_summary || 'Sin burgers')}</p><ul>${burgerTickets || '<li>Sin burgers</li>'}</ul><p>${escape(o.kitchen?.guarnicion_summary || 'Sin guarniciones')}</p><p>Pendientes guarniciones: ${escape(pendingGuarniciones)}</p><button class='write-btn' disabled title='Pendiente migración'>Marcar pedido Listo</button> <button class='write-btn' disabled title='Pendiente migración'>Marcar guarnición lista</button></li>`;
     }).join('')}</ul>`;
   }
@@ -360,11 +364,11 @@
   async function openOrderDetail(orderId) {
     if (state.ordersSource === 'normalized') {
       const d = await rpcCall('getNormalizedOrderDetail', [orderId]);
-      const o = d?.data || {};
+      const o = d?.pedido || {};
       const items = Array.isArray(o.items) ? o.items : [];
       const burgers = Array.isArray(o.burgers) ? o.burgers : [];
       const guarniciones = Array.isArray(o.guarniciones) ? o.guarniciones : [];
-      const eventos = Array.isArray(o.eventos) ? o.eventos : [];
+      const eventos = Array.isArray(d?.eventos) ? d.eventos : [];
       modalContent.innerHTML = `<h3>Detalle normalizado (solo lectura)</h3><p><strong>Pedido:</strong> ${escape(o.pedido_id || '-')} / ${escape(o.folio || '-')}</p><p><strong>Cliente:</strong> ${escape(o.cliente_nombre || '-')}</p><p><strong>Teléfono:</strong> ${escape(o.cliente_telefono || '-')}</p><p><strong>Total:</strong> ${escape(o.total || '0')}</p><p><strong>Estado:</strong> ${escape(o.estado || '-')}</p><p><strong>Método pago:</strong> ${escape(o.payment?.metodo_pago || o.metodo_pago || '-')}</p><h4>Items</h4><pre>${escape(JSON.stringify(items, null, 2))}</pre><h4>Burgers</h4><pre>${escape(JSON.stringify(burgers, null, 2))}</pre><h4>Guarniciones</h4><pre>${escape(JSON.stringify(guarniciones, null, 2))}</pre><h4>Eventos</h4><pre>${escape(JSON.stringify(eventos, null, 2))}</pre><div class='row'><button class='ghost' disabled title='Pendiente migración'>WhatsApp pendiente migración</button></div>`;
       modal.classList.remove('is-hidden');
       return;
