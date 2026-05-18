@@ -59,6 +59,12 @@ function bogHandleInternalApiFromCloudflare_(requestBody) {
       return getProductionMigrationPreview();
     case 'getHistoryOrders':
       return getHistoryOrders(args[0]);
+    case 'getNormalizedAppOrders':
+      return getNormalizedAppOrders(args[0]);
+    case 'getNormalizedOrderDetail':
+      return getNormalizedOrderDetail(args[0]);
+    case 'previewNormalizedOrdersRead':
+      return previewNormalizedOrdersRead();
     case 'syncOrdersFromMaster':
       return syncOrdersFromMaster();
     case 'updateOrderStatus':
