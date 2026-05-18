@@ -14,7 +14,10 @@ function bogCreatePublicOrderFromCloudflare_(requestBody) {
     throw new Error('No autorizado. Secret inválido.');
   }
 
-  var payload = requestBody.payload || {};
+  return bogCreateNormalizedPublicOrderFromCloudflare_(requestBody);
+}
+
+function bogValidatePublicOrderPayload_(payload) {
   var required = ['customerName', 'phone', 'location', 'paymentMethod'];
   required.forEach(function (field) {
     if (!bogTrim_(payload[field])) {
@@ -22,80 +25,6 @@ function bogCreatePublicOrderFromCloudflare_(requestBody) {
     }
   });
 
-  bogValidatePublicOrderPayload_(payload);
-
-  if (!Array.isArray(payload.items)) {
-    throw new Error('Items inválidos: se esperaba array.');
-  }
-  var items = payload.items;
-  if (!items.length) {
-    throw new Error('Items inválidos: agrega al menos un producto.');
-  }
-  var normalizedItems = bogBuildNormalizedItemsMap_(items);
-  if (!Object.keys(normalizedItems).length) {
-    throw new Error('Items inválidos: no hay productos válidos para procesar.');
-  }
-  var computedTotal = bogComputePublicOrderTotal_(normalizedItems);
-  var providedTotal = Number(payload.total || 0);
-  if (isNaN(providedTotal) || providedTotal < 0) {
-    throw new Error('Total inválido.');
-  }
-  if (computedTotal !== providedTotal) {
-    throw new Error('Total inconsistente. Esperado ' + computedTotal + ' pero recibido ' + providedTotal + '.');
-  }
-
-  var personalizationSummary = bogBuildPublicOrderPersonalizationsSummary_(payload.personalizations, normalizedItems);
-
-  var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  var masterSheet = bogGetRequiredSheet_(spreadsheet, BurgerOGConstants.SHEETS.MASTER_SHEET_NAME);
-  var sheetData = bogReadSheetAsObjects_(masterSheet, BurgerOGConstants.MASTER_REQUIRED_COLUMNS);
-
-  var hasAnyPersonalization = personalizationSummary.all.length > 0;
-  var rowRecord = {
-    'Marca temporal': new Date(),
-    'Nombre': bogTrim_(payload.customerName),
-    '¿Cuantas? [OG]': normalizedItems.OG || '',
-    '¿Cuantas? [BBQ]': normalizedItems.BBQ || '',
-    '¿Personalizar tu(s) hamburguesa(s)?': hasAnyPersonalization ? 'Si' : 'No',
-    'Describe como quieres tus Burgers': personalizationSummary.full,
-    'Personalizar OG': personalizationSummary.og.length ? 'Si' : 'No',
-    'Personalizar BBQ': personalizationSummary.bbq.length ? 'Si' : 'No',
-    'Burger OG': personalizationSummary.ogText,
-    'BBQ Burger': personalizationSummary.bbqText,
-    'Extras [Pepinillos]': normalizedItems.EXTRA_PEPINILLOS || '',
-    'Extras [Queso americano]': normalizedItems.EXTRA_QUESO_AMERICANO || '',
-    'Extras [Queso manchego]': normalizedItems.EXTRA_QUESO_MANCHEGO || '',
-    'Extras [Tocino]': normalizedItems.EXTRA_TOCINO || '',
-    'Extras [Catsup]': normalizedItems.EXTRA_CATSUP || '',
-    'Extras [Mostaza]': normalizedItems.EXTRA_MOSTAZA || '',
-    'Extras [Tomate]': normalizedItems.EXTRA_TOMATE || '',
-    'Date un extra [Papas a la francesa OG]': normalizedItems.PAPAS_OG || '',
-    'Date un extra [Papas a la francesa Especiales]': normalizedItems.PAPAS_ESPECIALES || '',
-    'Date un extra [Papas a la francesa Lemon&Pepper]': normalizedItems.PAPAS_LEMON_PEPPER || '',
-    'Date un extra [Aros de Cebolla]': normalizedItems.AROS_CEBOLLA || '',
-    'Telefono': bogTrim_(payload.phone),
-    'Forma de pago': bogTrim_(payload.paymentMethod),
-    'Ubicación': bogTrim_(payload.location),
-    'Total': providedTotal,
-    'Precio Manual total': '',
-    'Nota': bogBuildPublicOrderNote_(payload.note),
-    'Confirmado': '',
-    'Pagado?': 'No',
-    'Tipo': ''
-  };
-
-  var row = bogBuildRowByHeaderMap_(sheetData.headers, sheetData.headerMap, rowRecord);
-  masterSheet.getRange(masterSheet.getLastRow() + 1, 1, 1, sheetData.headers.length).setValues([row]);
-
-  return {
-    accepted: true,
-    mode: 'write',
-    total: providedTotal,
-    itemCount: items.length
-  };
-}
-
-function bogValidatePublicOrderPayload_(payload) {
   var paymentMethod = bogTrim_(payload.paymentMethod);
   if (paymentMethod !== 'Pago mismo dia' && paymentMethod !== 'Pagar Antes') {
     throw new Error('Forma de pago inválida.');
@@ -120,9 +49,6 @@ function bogBuildNormalizedItemsMap_(items) {
     if (!sku) {
       throw new Error('Item inválido: sku vacío.');
     }
-    if (!Object.prototype.hasOwnProperty.call(BurgerOGConstants.PUBLIC_ORDER_PRICE_TABLE, sku)) {
-      throw new Error('SKU inválido: ' + sku);
-    }
     var qty = Number(item && item.qty);
     if (isNaN(qty) || qty <= 0 || Math.floor(qty) !== qty) {
       throw new Error('Cantidad inválida para SKU: ' + sku);
@@ -130,12 +56,6 @@ function bogBuildNormalizedItemsMap_(items) {
     map[sku] = (map[sku] || 0) + qty;
   });
   return map;
-}
-
-function bogComputePublicOrderTotal_(normalizedItems) {
-  return Object.keys(normalizedItems).reduce(function (acc, sku) {
-    return acc + (normalizedItems[sku] * BurgerOGConstants.PUBLIC_ORDER_PRICE_TABLE[sku]);
-  }, 0);
 }
 
 var BOG_PUBLIC_ORDER_WITHOUT_ALLOWED = {
