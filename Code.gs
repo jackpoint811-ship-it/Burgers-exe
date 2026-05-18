@@ -35,6 +35,10 @@ function bogHandleJsonPost_(e) {
       return bogJsonResponse_(data);
     }
 
+    if (requestBody && requestBody.action === 'getPublicMenuLive') {
+      return bogJsonResponse_(bogGetPublicMenuLiveForCloudflare_());
+    }
+
     if (requestBody.action === 'internalApi') {
       return bogJsonResponse_(bogHandleInternalApiFromCloudflare_(requestBody));
     }
@@ -43,6 +47,36 @@ function bogHandleJsonPost_(e) {
   } catch (err) {
     return bogJsonResponse_(bogErrorEnvelope_(err));
   }
+}
+
+
+function bogGetPublicMenuLiveForCloudflare_() {
+  return bogPublicRead_(function () {
+    var menuLive = getMenuLive();
+    var data = menuLive && menuLive.data ? menuLive.data : { burgers: [], guarniciones: [], extras: [], all: [] };
+    var warnings = menuLive && Array.isArray(menuLive.warnings) ? menuLive.warnings : [];
+    var timestamp = menuLive && menuLive.timestamp ? menuLive.timestamp : new Date().toISOString();
+
+    if (menuLive && menuLive.ok === true) {
+      return {
+        ok: true,
+        data: data,
+        warnings: warnings,
+        timestamp: timestamp
+      };
+    }
+
+    return {
+      ok: false,
+      error: {
+        code: 'MENU_LIVE_INVALID',
+        message: 'MENU_LIVE contract invalid.'
+      },
+      data: data,
+      warnings: warnings,
+      timestamp: timestamp
+    };
+  }, 'MENU_LIVE público obtenido.').data;
 }
 
 function bogJsonResponse_(obj) {
