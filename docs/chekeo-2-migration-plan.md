@@ -221,3 +221,11 @@ Se habilitó el consumo del catálogo público dinámico en frontend:
 - Pricing y write path de pedidos: **sin migrar todavía**.
 - `cloudflare/public-order/functions/api/order.js` mantiene `PRICE_TABLE` vigente.
 - Estructura de escritura de pedidos a `PEDIDOS` nueva: **no activada en esta fase**.
+
+## Estado de implementación – Phase 2E (pricing backend dinámico/fallback)
+
+Se completó la sincronización de pricing backend con el catálogo dinámico:
+
+- Frontend catálogo dinámico: **listo** (Phase 2D).
+- Backend de órdenes (`/api/order`) ahora valida SKUs y calcula total contra catálogo dinámico/fallback compartido con `/api/menu`.
+- Nueva ruta de escritura a `PEDIDOS` (estructura nueva): **todavía no migrada/activada**.
