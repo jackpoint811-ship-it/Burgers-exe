@@ -236,3 +236,8 @@ Se completó la sincronización de pricing backend con el catálogo dinámico:
 - New public orders are no longer appended to `Pedidos Master` in this path.
 - Cloudflare remains pricing source of truth at order level (`payload.total`), with metadata mismatch captured as events instead of hard rejection.
 - Chekeo 2.0 read-side UI over normalized sheets remains pending in subsequent phases.
+
+## Phase 3B — Normalized read service (implemented)
+- Normalized read service implemented (`getNormalizedAppOrders`, `getNormalizedOrderDetail`, `previewNormalizedOrdersRead`).
+- UI integration pending Phase 3C.
+- Writes/status updates still pending migration (existing write/update paths unchanged).
