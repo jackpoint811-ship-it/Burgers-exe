@@ -21,13 +21,28 @@ function jsonResponse(status, body) {
   });
 }
 
+
+function parseBooleanLike(value) {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') {
+    if (value === 1) return true;
+    if (value === 0) return false;
+  }
+
+  const normalized = String(value == null ? '' : value).trim().toLowerCase();
+  if (!normalized) return false;
+  if (normalized === 'true' || normalized === 'si' || normalized === 'sí' || normalized === '1') return true;
+  if (normalized === 'false' || normalized === 'no' || normalized === '0') return false;
+  return false;
+}
+
 function normalizeItem(raw) {
   const productoId = String(raw && (raw.producto_id || raw.sku) ? (raw.producto_id || raw.sku) : '').trim();
   const nombre = String(raw && (raw.nombre || raw.name) ? (raw.nombre || raw.name) : '').trim();
   const descripcion = String(raw && (raw.descripcion || raw.description) ? (raw.descripcion || raw.description) : '').trim();
   const tipo = String(raw && raw.tipo ? raw.tipo : '').trim();
   const precio = Number(raw && (raw.precio_publico != null ? raw.precio_publico : raw.price));
-  const activo = raw && raw.activo != null ? Boolean(raw.activo) : Boolean(raw && raw.active);
+  const activo = parseBooleanLike(raw && raw.activo != null ? raw.activo : (raw ? raw.active : null));
   const ordenVisual = Number(raw && raw.orden_visual != null ? raw.orden_visual : 999);
 
   return {
@@ -53,6 +68,7 @@ function buildBuckets(items) {
   (Array.isArray(items) ? items : []).map(normalizeItem).forEach((item) => {
     if (!item.producto_id) return;
     out.all.push(item);
+    if (item.active !== true) return;
     if (item.tipo === 'Burger') out.burgers.push(item);
     if (item.tipo === 'Guarnicion') out.guarniciones.push(item);
     if (item.tipo === 'Extra') out.extras.push(item);
@@ -94,10 +110,12 @@ export async function onRequest(context) {
     const data = upstream && upstream.data ? upstream.data : {};
     const normalized = buildBuckets(data.all || []);
     if ((!normalized.all.length) && (Array.isArray(data.burgers) || Array.isArray(data.guarniciones) || Array.isArray(data.extras))) {
-      normalized.burgers = (data.burgers || []).map(normalizeItem);
-      normalized.guarniciones = (data.guarniciones || []).map(normalizeItem);
-      normalized.extras = (data.extras || []).map(normalizeItem);
-      normalized.all = normalized.burgers.concat(normalized.guarniciones, normalized.extras);
+      const merged = [].concat(data.burgers || [], data.guarniciones || [], data.extras || []);
+      const rebuilt = buildBuckets(merged);
+      normalized.burgers = rebuilt.burgers;
+      normalized.guarniciones = rebuilt.guarniciones;
+      normalized.extras = rebuilt.extras;
+      normalized.all = rebuilt.all;
     }
 
     if (upstream && upstream.ok === true) {
