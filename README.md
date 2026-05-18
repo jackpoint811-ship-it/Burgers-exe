@@ -1,7 +1,7 @@
 # Burger-OG
 
 ## Estado final del proyecto
-Proyecto operativo por fases completadas de **Fase 0 a Fase 7** para correr en Google Apps Script Web App con Google Sheets como backend.
+Proyecto operativo por fases con transición hacia arquitectura de dos superficies: **Burgers.exe** (pública) y **Chekeo 2.0** (interna), usando Google Sheets como backend.
 
 ## Fases completadas
 - Fase 0: Reset legacy.
@@ -15,16 +15,13 @@ Proyecto operativo por fases completadas de **Fase 0 a Fase 7** para correr en G
 
 ## Stack permitido
 - Google Sheets
-- Google Apps Script Web App
+- Google Apps Script (solo backend/bridge, no como superficie operativa visible)
 - HTML/CSS/JS embebido (sin librerías externas, CDN ni frameworks)
 
-## Despliegue de Apps Script Web App
-1. Abrir el proyecto en Apps Script.
-2. Verificar `appsscript.json` (`runtimeVersion: V8`).
-3. Ir a **Deploy > New deployment**.
-4. Elegir tipo **Web app**.
-5. Configurar acceso según operación interna.
-6. Publicar deployment y usar la URL generada.
+## Superficie operativa actual
+- **Burgers.exe**: app pública de pedidos.
+- **Chekeo 2.0**: app interna de operación (Home, Pedidos, Cocina, Opciones).
+- Apps Script puede permanecer como backend/bridge técnico cuando sea necesario, pero ya no se considera la superficie visible de operación.
 
 ## Modo prueba / producción
 La app usa `ScriptProperties` con la clave `BOG_ACTIVE_ENV`:
