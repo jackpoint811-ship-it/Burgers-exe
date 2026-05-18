@@ -229,3 +229,10 @@ Se completó la sincronización de pricing backend con el catálogo dinámico:
 - Frontend catálogo dinámico: **listo** (Phase 2D).
 - Backend de órdenes (`/api/order`) ahora valida SKUs y calcula total contra catálogo dinámico/fallback compartido con `/api/menu`.
 - Nueva ruta de escritura a `PEDIDOS` (estructura nueva): **todavía no migrada/activada**.
+
+
+## Phase 3A — Normalized public order write (implemented)
+- `createPublicOrder` now writes new public orders to normalized sheets: `PEDIDOS`, `PEDIDO_ITEMS`, `PEDIDO_BURGERS`, `GUARNICIONES`, `EVENTOS_PEDIDO`.
+- New public orders are no longer appended to `Pedidos Master` in this path.
+- Cloudflare remains pricing source of truth at order level (`payload.total`), with metadata mismatch captured as events instead of hard rejection.
+- Chekeo 2.0 read-side UI over normalized sheets remains pending in subsequent phases.
