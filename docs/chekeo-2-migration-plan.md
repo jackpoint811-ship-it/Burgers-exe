@@ -134,3 +134,33 @@ Definir una migración segura hacia la arquitectura Burgers.exe + Chekeo 2.0 sin
 - Sin cambios de producción en fases documentales.
 - Sin borrado de datos hasta fase final aprobada.
 - Mantener trazabilidad de estados/eventos.
+
+## Estado de implementación – Phase 1 (alta segura)
+
+Se implementó tooling manual en Apps Script para preparar la estructura objetivo sin afectar operación actual:
+
+- Nuevo archivo: `setup_chekeo_2_sheets.gs`.
+- Función manual principal: `setupChekeo2Sheets()`.
+- Función opcional de previsualización: `previewChekeo2SheetSetup()`.
+
+### Garantías de seguridad de `setupChekeo2Sheets()`
+
+- Es **manual** (no se ejecuta automáticamente en runtime).
+- Es **idempotente** (se puede ejecutar múltiples veces sin duplicar encabezados ni borrar datos).
+- Solo crea hojas faltantes del contrato Chekeo 2.0.
+- Si una hoja ya existe:
+  - no la borra,
+  - no la renombra,
+  - no la limpia,
+  - no elimina filas/columnas,
+  - no sobreescribe celdas de encabezado no vacías,
+  - solo completa encabezados faltantes en fila 1 cuando es seguro.
+- No migra datos legacy ni modifica hojas legacy existentes.
+- No cambia `BOG_ACTIVE_ENV`.
+- No altera comportamiento runtime actual de Burgers.exe público ni del Chekeo interno vigente.
+
+### Uso operativo sugerido
+
+1. Ejecutar `previewChekeo2SheetSetup()` para revisar cambios esperados.
+2. Ejecutar manualmente `setupChekeo2Sheets()` para crear/completar estructura.
+3. Revisar el objeto de resumen devuelto (`createdSheets`, `existingSheets`, `updatedHeaders`, `skippedHeaders`, `timestamp`).
