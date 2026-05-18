@@ -77,7 +77,7 @@ If JSON parse fails, service returns `[]` and appends a warning in response.
 
 ## Kitchen behavior
 - `burger_summary`: human-readable grouped count (example: `1x OG, 2x BBQ`)
-- `guarnicion_summary`: human-readable line-item summary or `Sin guarniciones`
+- `guarnicion_summary`: human-readable line-item summary or `Sin guarniciones` (uses matching `PEDIDO_ITEMS.nombre` by `pedido_item_id` when available; falls back to `producto_id`)
 - `pending_guarniciones`: count where `estado_guarnicion !== "Hecha"`
 - `status` mapping:
   - `Nuevo -> Nuevo`

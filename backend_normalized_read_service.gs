@@ -226,6 +226,7 @@ function bogSafeParseJsonArray_(value, fieldName, burgerId, warnings) {
 }
 
 function bogComposeNormalizedOrder_(pedido, items, burgers, guarniciones) {
+  var itemNameByItemId = bogBuildItemNameByItemId_(items);
   var burgerSummaryMap = {};
   burgers.forEach(function (burger) {
     var key = burger.burger_base_id || 'Burger';
@@ -237,7 +238,11 @@ function bogComposeNormalizedOrder_(pedido, items, burgers, guarniciones) {
   }).join(', ');
 
   var guarnicionSummary = guarniciones.length
-    ? guarniciones.map(function (g) { return g.cantidad + 'x ' + g.producto_id; }).join(', ')
+    ? guarniciones.map(function (g) {
+      var preferredName = itemNameByItemId[g.pedido_item_id] || '';
+      var displayName = preferredName || g.producto_id;
+      return g.cantidad + 'x ' + displayName;
+    }).join(', ')
     : 'Sin guarniciones';
 
   var pendingGuarniciones = guarniciones.filter(function (g) {
@@ -283,6 +288,17 @@ function bogComposeNormalizedOrder_(pedido, items, burgers, guarniciones) {
   };
 }
 
+
+function bogBuildItemNameByItemId_(items) {
+  var out = {};
+  items.forEach(function (item) {
+    var itemId = bogTrim_(item.pedido_item_id);
+    if (!itemId) return;
+    var name = bogTrim_(item.nombre);
+    out[itemId] = name || bogTrim_(item.producto_id);
+  });
+  return out;
+}
 function bogMapKitchenStatus_(estado) {
   var normalized = bogNormalizeHeaderKey_(estado);
   if (normalized === 'nuevo') return 'Nuevo';
