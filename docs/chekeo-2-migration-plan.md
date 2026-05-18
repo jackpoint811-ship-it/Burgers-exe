@@ -166,3 +166,28 @@ Se implementó tooling manual en Apps Script para preparar la estructura objetiv
 1. Ejecutar `previewChekeo2SheetSetup()` para revisar cambios esperados.
 2. Ejecutar manualmente `setupChekeo2Sheets()` para crear/completar estructura.
 3. Revisar el objeto de resumen devuelto (`createdSheets`, `existingSheets`, `updatedHeaders`, `skippedHeaders`, `conflicts`, `timestamp`).
+
+
+## Estado de implementación – Phase 2A (MENU_LIVE read-only)
+
+Se implementó una capa read-only de Apps Script para preparar `MENU_LIVE` como fuente futura del menú público sin alterar runtime productivo:
+
+- Nuevo archivo: `menu_live_service.gs`.
+- Funciones nuevas:
+  - `validateMenuLiveContract()`
+  - `getMenuLive()`
+  - `previewMenuLive()`
+- Nuevo documento operativo: `docs/menu-live-contract.md`.
+
+### Garantías de esta fase
+
+- Solo lectura de `MENU_LIVE` (sin escrituras ni mutaciones de hojas).
+- Normalización y validación del contrato de headers.
+- Filtrado de activos para categorías (`Burger`, `Guarnicion`, `Extra`) y salida completa en `data.all`.
+- Manejo best-effort de imágenes en celda sin bloquear carga del menú.
+- Sin cambios en frontend público ni reemplazo de `PRICE_TABLE` en esta PR.
+
+### Siguiente paso (fuera de esta PR)
+
+La integración del frontend público para consumir `MENU_LIVE` se realizará en un PR posterior, una vez validado el contrato y la operación read-only.
+
