@@ -1,18 +1,4 @@
-const PRICE_TABLE = {
-  OG: 85,
-  BBQ: 85,
-  PAPAS_OG: 20,
-  PAPAS_ESPECIALES: 25,
-  PAPAS_LEMON_PEPPER: 25,
-  AROS_CEBOLLA: 30,
-  EXTRA_PEPINILLOS: 5,
-  EXTRA_QUESO_AMERICANO: 5,
-  EXTRA_QUESO_MANCHEGO: 5,
-  EXTRA_TOCINO: 5,
-  EXTRA_CATSUP: 5,
-  EXTRA_MOSTAZA: 5,
-  EXTRA_TOMATE: 5
-};
+import { buildPriceTableFromCatalog, getMenuCatalog } from '../_shared/menu-catalog.js';
 
 function jsonResponse(status, body) {
   return new Response(JSON.stringify(body), {
@@ -21,18 +7,18 @@ function jsonResponse(status, body) {
   });
 }
 
-function normalizeItems(items) {
+function normalizeItems(items, priceTable) {
   if (!Array.isArray(items)) return [];
   return items
     .map((item) => ({
       sku: String(item && item.sku ? item.sku : '').trim(),
       qty: Number(item && item.qty ? item.qty : 0)
     }))
-    .filter((item) => item.sku && item.qty > 0 && Object.prototype.hasOwnProperty.call(PRICE_TABLE, item.sku));
+    .filter((item) => item.sku && item.qty > 0 && Object.prototype.hasOwnProperty.call(priceTable, item.sku));
 }
 
-function computeTotal(items) {
-  return items.reduce((acc, item) => acc + item.qty * (PRICE_TABLE[item.sku] || 0), 0);
+function computeTotal(items, priceTable) {
+  return items.reduce((acc, item) => acc + item.qty * (priceTable[item.sku] || 0), 0);
 }
 
 
@@ -109,9 +95,12 @@ export async function onRequest(context) {
     return jsonResponse(400, { ok: false, error: { code: 'INVALID_PAYLOAD', message: 'Faltan campos mínimos' } });
   }
 
-  const items = normalizeItems(payload.items);
+  const catalog = await getMenuCatalog(env);
+  const priceTable = buildPriceTableFromCatalog(catalog);
+
+  const items = normalizeItems(payload.items, priceTable);
   if (!items.length) return jsonResponse(400, { ok: false, error: { code: 'INVALID_PAYLOAD', message: 'Agrega al menos un item válido' } });
-  const total = computeTotal(items);
+  const total = computeTotal(items, priceTable);
   const normalized = {
     customerName: String(payload.customerName || '').trim(),
     phone: String(payload.phone || '').trim(),
@@ -131,7 +120,7 @@ export async function onRequest(context) {
   };
 
   if (!writeEnabled) {
-    return jsonResponse(200, { ok: true, data: { mode: 'dry-run', total, preparedPayload: { action: preparedPayload.action, payload: preparedPayload.payload, auth: { scheme: preparedPayload.auth.scheme } } } });
+    return jsonResponse(200, { ok: true, data: { mode: 'dry-run', total, pricingSource: catalog.source, menuWarnings: catalog.warnings || [], preparedPayload: { action: preparedPayload.action, payload: preparedPayload.payload, auth: { scheme: preparedPayload.auth.scheme } } } });
   }
 
   if (!env.APPS_SCRIPT_ORDER_ENDPOINT || !env.APPS_SCRIPT_SHARED_SECRET) {
@@ -144,7 +133,7 @@ export async function onRequest(context) {
     if (!upstreamResp.ok || !upstreamData || upstreamData.ok !== true) {
       return jsonResponse(502, { ok: false, error: { code: 'UPSTREAM_ERROR', message: 'Apps Script rechazó la solicitud.' }, data: upstreamData });
     }
-    return jsonResponse(200, { ok: true, data: { total, upstream: upstreamData.data || null } });
+    return jsonResponse(200, { ok: true, data: { total, pricingSource: catalog.source, menuWarnings: catalog.warnings || [], upstream: upstreamData.data || null } });
   } catch (err) {
     return jsonResponse(502, { ok: false, error: { code: 'UPSTREAM_NETWORK', message: 'No se pudo contactar Apps Script.' }, data: { detail: err && err.message ? err.message : 'Error desconocido' } });
   }

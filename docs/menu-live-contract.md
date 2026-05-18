@@ -107,3 +107,12 @@ En esta fase, `cloudflare/public-order/app.js` ahora consume el catálogo dinám
 - El frontend público ya usa catálogo dinámico (Burgers, Guarniciones, Extras) cuando está disponible.
 - El fallback local sigue activo como red de seguridad.
 - El pricing del backend de órdenes **sigue** en `PRICE_TABLE` (`cloudflare/public-order/functions/api/order.js`) hasta fase posterior.
+
+## Phase 2E – Backend `/api/order` pricea con catálogo dinámico + fallback
+En esta fase, `cloudflare/public-order/functions/api/order.js` deja de usar `PRICE_TABLE` como fuente primaria y calcula/valida con el mismo catálogo normalizado que `GET /api/menu`.
+
+### Cambios clave
+- `/api/menu` y `/api/order` comparten helper de catálogo en Cloudflare (`functions/_shared/menu-catalog.js`).
+- El backend de órdenes sigue siendo **source of truth** del total final (nunca se confía en total del frontend).
+- Si falla Apps Script o falta `APPS_SCRIPT_MENU_ENDPOINT`, `/api/order` usa fallback estático seguro y devuelve `pricingSource: "fallback"`.
+- `PRICE_TABLE` ya no es la fuente primaria de pricing en órdenes.
