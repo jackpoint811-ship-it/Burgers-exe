@@ -4,7 +4,7 @@
 `MENU_LIVE` es la fuente preparada para convertirse en el menú público de Burgers.exe en fases posteriores, pero **este cambio aún no conecta el frontend público**.
 
 ## Headers esperados (fila 1)
-La fila 1 debe incluir estos encabezados:
+La fila 1 debe incluir estos encabezados (el orden de columnas puede variar, pero los nombres deben coincidir exactamente):
 
 1. `producto_id`
 2. `tipo`
@@ -26,7 +26,7 @@ La fila 1 debe incluir estos encabezados:
   - `Extra`
 - `nombre`: requerido.
 - `descripcion`: opcional.
-- `precio_publico`: requerido, número >= 0. Este es el **precio público aprobado**.
+- `precio_publico`: requerido, número >= 0. Este es el **precio público aprobado**. Puede venir como número o celda con formato moneda; el servicio prioriza el valor numérico crudo y usa fallback seguro para strings monetarios.
 - `activo`: requerido, acepta `TRUE/FALSE`, `true/false`, `Si/Sí/No`, `1/0`.
 - `orden_visual`: opcional; si está vacío, se usa `999` para ordenamiento.
 - `imagen`: se inserta en la celda del producto (imagen o texto URL).

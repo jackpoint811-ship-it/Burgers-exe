@@ -44,24 +44,14 @@ function validateMenuLiveContract() {
     };
   }
 
-  var lastColumn = Math.max(sheet.getLastColumn(), MENU_LIVE_HEADERS.length);
-  var headerRow = sheet.getRange(1, 1, 1, lastColumn).getDisplayValues()[0] || [];
-  var normalizedHeaders = headerRow.map(function(header) {
-    return String(header || '').trim();
-  }).filter(function(header) {
-    return header !== '';
-  });
-
-  var present = {};
-  normalizedHeaders.forEach(function(h) { present[h] = true; });
-
+  var headerMeta = _menuLiveGetHeaderMap_(sheet);
   var missingHeaders = MENU_LIVE_HEADERS.filter(function(expected) {
-    return !present[expected];
+    return !headerMeta.map.hasOwnProperty(expected);
   });
 
   var expectedLookup = {};
   MENU_LIVE_HEADERS.forEach(function(h) { expectedLookup[h] = true; });
-  var extraHeaders = normalizedHeaders.filter(function(h) {
+  var extraHeaders = headerMeta.headers.filter(function(h) {
     return !expectedLookup[h];
   });
 
@@ -95,6 +85,7 @@ function getMenuLive() {
 
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName('MENU_LIVE');
+  var headerMeta = _menuLiveGetHeaderMap_(sheet);
   var lastRow = sheet.getLastRow();
 
   if (lastRow < 2) {
@@ -106,23 +97,20 @@ function getMenuLive() {
     };
   }
 
-  var headerCount = MENU_LIVE_HEADERS.length;
-  var values = sheet.getRange(2, 1, lastRow - 1, headerCount).getDisplayValues();
-  var indexByHeader = {};
-  MENU_LIVE_HEADERS.forEach(function(h, i) { indexByHeader[h] = i; });
+  var rowCount = lastRow - 1;
+  var columnCount = Math.max(sheet.getLastColumn(), headerMeta.width);
+  var rawRows = sheet.getRange(2, 1, rowCount, columnCount).getValues();
+  var displayRows = sheet.getRange(2, 1, rowCount, columnCount).getDisplayValues();
 
   var all = [];
-
-  values.forEach(function(row, rowOffset) {
+  rawRows.forEach(function(rawRow, rowOffset) {
     var rowNum = rowOffset + 2;
-    var item = _menuLiveBuildItem(row, indexByHeader, rowNum, warnings);
-    if (item) {
-      all.push(item);
-    }
+    var displayRow = displayRows[rowOffset] || [];
+    var item = _menuLiveBuildItem(rawRow, displayRow, headerMeta.map, rowNum, warnings);
+    if (item) all.push(item);
   });
 
   var active = all.filter(function(item) { return item.activo === true; });
-
   var burgers = active.filter(function(item) { return item.tipo === 'Burger'; });
   var guarniciones = active.filter(function(item) { return item.tipo === 'Guarnicion'; });
   var extras = active.filter(function(item) { return item.tipo === 'Extra'; });
@@ -138,12 +126,7 @@ function getMenuLive() {
 
   return {
     ok: true,
-    data: {
-      burgers: burgers,
-      guarniciones: guarniciones,
-      extras: extras,
-      all: all
-    },
+    data: { burgers: burgers, guarniciones: guarniciones, extras: extras, all: all },
     warnings: warnings,
     timestamp: nowIso
   };
@@ -151,39 +134,61 @@ function getMenuLive() {
 
 function previewMenuLive() {
   var nowIso = new Date().toISOString();
-  var validation = validateMenuLiveContract();
   var parsed = getMenuLive();
   var all = parsed.data && parsed.data.all ? parsed.data.all : [];
-
   var inactiveCount = all.filter(function(item) { return item.activo !== true; }).length;
 
   return {
-    ok: validation.ok && parsed.ok,
+    ok: parsed.ok,
     totalRowsParsed: all.length,
     activeBurgers: parsed.data.burgers.length,
     activeGuarniciones: parsed.data.guarniciones.length,
     activeExtras: parsed.data.extras.length,
     inactiveItems: inactiveCount,
-    warnings: (validation.warnings || []).concat(parsed.warnings || []),
+    warnings: parsed.warnings || [],
     timestamp: nowIso
   };
 }
 
-function _menuLiveBuildItem(row, indexByHeader, rowNum, warnings) {
-  var productoId = _menuLiveToTrimmedString(row[indexByHeader.producto_id]);
-  var tipo = _menuLiveToTrimmedString(row[indexByHeader.tipo]);
-  var nombre = _menuLiveToTrimmedString(row[indexByHeader.nombre]);
-  var descripcion = _menuLiveToTrimmedString(row[indexByHeader.descripcion]);
-  var precioPublico = _menuLiveParseNonNegativeNumber(row[indexByHeader.precio_publico]);
-  var activoParsed = _menuLiveParseBooleanLike(row[indexByHeader.activo]);
-  var ordenVisual = _menuLiveParseOrder(row[indexByHeader.orden_visual]);
-  var imagenRaw = _menuLiveToTrimmedString(row[indexByHeader.imagen]);
-  var origenCostoRef = _menuLiveToTrimmedString(row[indexByHeader.origen_costo_ref]);
-  var actualizadoEn = _menuLiveToTrimmedString(row[indexByHeader.actualizado_en]);
-  var actualizadoPor = _menuLiveToTrimmedString(row[indexByHeader.actualizado_por]);
+function _menuLiveGetHeaderMap_(sheet) {
+  var width = Math.max(sheet.getLastColumn(), MENU_LIVE_HEADERS.length);
+  var headerRow = sheet.getRange(1, 1, 1, width).getDisplayValues()[0] || [];
+  var map = {};
+  var headers = [];
+
+  headerRow.forEach(function(value, index) {
+    var normalized = String(value || '').trim();
+    if (!normalized) return;
+    headers.push(normalized);
+    if (!map.hasOwnProperty(normalized)) {
+      map[normalized] = index;
+    }
+  });
+
+  return {
+    map: map,
+    headers: headers,
+    width: width
+  };
+}
+
+function _menuLiveBuildItem(rawRow, displayRow, indexByHeader, rowNum, warnings) {
+  var productoId = _menuLiveToTrimmedString(_menuLiveReadCell_(rawRow, displayRow, indexByHeader.producto_id));
+  var tipo = _menuLiveToTrimmedString(_menuLiveReadCell_(rawRow, displayRow, indexByHeader.tipo));
+  var nombre = _menuLiveToTrimmedString(_menuLiveReadCell_(rawRow, displayRow, indexByHeader.nombre));
+  var descripcion = _menuLiveToTrimmedString(_menuLiveReadCell_(rawRow, displayRow, indexByHeader.descripcion));
+  var precioPublico = _menuLiveParseNonNegativeNumber(
+    _menuLiveReadRawCell_(rawRow, indexByHeader.precio_publico),
+    _menuLiveReadDisplayCell_(displayRow, indexByHeader.precio_publico)
+  );
+  var activoParsed = _menuLiveParseBooleanLike(_menuLiveReadRawCell_(rawRow, indexByHeader.activo));
+  var ordenVisual = _menuLiveParseOrder(_menuLiveReadRawCell_(rawRow, indexByHeader.orden_visual));
+  var imagenRaw = _menuLiveToTrimmedString(_menuLiveReadCell_(rawRow, displayRow, indexByHeader.imagen));
+  var origenCostoRef = _menuLiveToTrimmedString(_menuLiveReadCell_(rawRow, displayRow, indexByHeader.origen_costo_ref));
+  var actualizadoEn = _menuLiveToTrimmedString(_menuLiveReadCell_(rawRow, displayRow, indexByHeader.actualizado_en));
+  var actualizadoPor = _menuLiveToTrimmedString(_menuLiveReadCell_(rawRow, displayRow, indexByHeader.actualizado_por));
 
   var rowErrors = [];
-
   if (!productoId) rowErrors.push('producto_id requerido');
   if (!nombre) rowErrors.push('nombre requerido');
   if (!MENU_LIVE_ALLOWED_TIPOS[tipo]) rowErrors.push('tipo inválido: ' + tipo);
@@ -221,21 +226,71 @@ function _menuLiveBuildItem(row, indexByHeader, rowNum, warnings) {
   };
 }
 
+function _menuLiveReadRawCell_(row, index) {
+  if (typeof index !== 'number' || index < 0) return null;
+  return row[index];
+}
+
+function _menuLiveReadDisplayCell_(row, index) {
+  if (typeof index !== 'number' || index < 0) return '';
+  return row[index];
+}
+
+function _menuLiveReadCell_(rawRow, displayRow, index) {
+  var rawValue = _menuLiveReadRawCell_(rawRow, index);
+  if (rawValue === null || rawValue === undefined || rawValue === '') {
+    return _menuLiveReadDisplayCell_(displayRow, index);
+  }
+  return rawValue;
+}
+
 function _menuLiveToTrimmedString(value) {
   if (value === null || value === undefined) return '';
   return String(value).trim();
 }
 
-function _menuLiveParseNonNegativeNumber(value) {
-  var raw = _menuLiveToTrimmedString(value);
-  if (!raw) return null;
-  var normalized = raw.replace(/,/g, '.');
+function _menuLiveParseNonNegativeNumber(rawValue, displayValue) {
+  if (typeof rawValue === 'number') {
+    if (!isFinite(rawValue) || rawValue < 0) return null;
+    return rawValue;
+  }
+
+  var fromRaw = _menuLiveParseNumericString_(_menuLiveToTrimmedString(rawValue));
+  if (fromRaw !== null) return fromRaw;
+
+  return _menuLiveParseNumericString_(_menuLiveToTrimmedString(displayValue));
+}
+
+function _menuLiveParseNumericString_(text) {
+  if (!text) return null;
+  var sanitized = text.replace(/\s+/g, '').replace(/[^0-9,.-]/g, '');
+  if (!sanitized) return null;
+
+  var normalized;
+  var hasComma = sanitized.indexOf(',') !== -1;
+  var hasDot = sanitized.indexOf('.') !== -1;
+
+  if (hasComma && hasDot) {
+    if (sanitized.lastIndexOf(',') > sanitized.lastIndexOf('.')) {
+      normalized = sanitized.replace(/\./g, '').replace(',', '.');
+    } else {
+      normalized = sanitized.replace(/,/g, '');
+    }
+  } else if (hasComma) {
+    normalized = sanitized.replace(',', '.');
+  } else {
+    normalized = sanitized;
+  }
+
+  if (!/^-?\d+(\.\d+)?$/.test(normalized)) return null;
   var parsed = Number(normalized);
   if (!isFinite(parsed) || parsed < 0) return null;
   return parsed;
 }
 
 function _menuLiveParseBooleanLike(value) {
+  if (typeof value === 'boolean') return value;
+
   var raw = _menuLiveToTrimmedString(value).toLowerCase();
   if (!raw) return null;
   if (raw === 'true' || raw === '1' || raw === 'si' || raw === 'sí') return true;
@@ -244,9 +299,11 @@ function _menuLiveParseBooleanLike(value) {
 }
 
 function _menuLiveParseOrder(value) {
-  var raw = _menuLiveToTrimmedString(value);
-  if (!raw) return 999;
-  var parsed = Number(raw);
-  if (!isFinite(parsed)) return 999;
+  if (typeof value === 'number') {
+    return isFinite(value) ? value : 999;
+  }
+
+  var parsed = _menuLiveParseNumericString_(_menuLiveToTrimmedString(value));
+  if (parsed === null) return 999;
   return parsed;
 }
