@@ -94,3 +94,16 @@ Cada item en `data.*` contiene:
 ### Nota de rollout
 - Esta fase **no** reemplaza el menú estático del frontend (`cloudflare/public-order/app.js`).
 - Esta fase **no** reemplaza `PRICE_TABLE` de órdenes.
+
+## Phase 2D – Frontend público consume `GET /api/menu`
+En esta fase, `cloudflare/public-order/app.js` ahora consume el catálogo dinámico desde `GET /api/menu`.
+
+### Comportamiento
+- La app renderiza de inmediato con menú local de fallback para evitar pantalla en blanco.
+- Después consulta `/api/menu` en background (timeout corto) y, si llega catálogo válido, refresca la UI con datos remotos.
+- Si falla la consulta o la respuesta es inválida, mantiene fallback local sin romper flujo.
+
+### Alcance y límites
+- El frontend público ya usa catálogo dinámico (Burgers, Guarniciones, Extras) cuando está disponible.
+- El fallback local sigue activo como red de seguridad.
+- El pricing del backend de órdenes **sigue** en `PRICE_TABLE` (`cloudflare/public-order/functions/api/order.js`) hasta fase posterior.

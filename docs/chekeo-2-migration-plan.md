@@ -206,3 +206,18 @@ Se implementó endpoint público read-only para catálogo:
 - `cloudflare/public-order/app.js` mantiene menú estático actual en esta fase.
 - Pricing de órdenes sigue usando `PRICE_TABLE` actual en `cloudflare/public-order/functions/api/order.js` hasta una fase posterior.
 - Sin cambios de escritura de pedidos por esta fase.
+
+
+## Estado de implementación – Phase 2D (frontend catálogo dinámico)
+
+Se habilitó el consumo del catálogo público dinámico en frontend:
+
+- `cloudflare/public-order/app.js` ahora consulta `GET /api/menu`.
+- Mantiene fallback local para render inmediato y continuidad ante fallas de red/timeout.
+- Si llega menú remoto válido, la app hace redraw con catálogo actualizado.
+
+### Confirmaciones de alcance
+- Catálogo frontend: **migrado a dinámico con fallback**.
+- Pricing y write path de pedidos: **sin migrar todavía**.
+- `cloudflare/public-order/functions/api/order.js` mantiene `PRICE_TABLE` vigente.
+- Estructura de escritura de pedidos a `PEDIDOS` nueva: **no activada en esta fase**.
