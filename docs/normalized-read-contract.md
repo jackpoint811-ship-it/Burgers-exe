@@ -1,4 +1,4 @@
-# Normalized Read Contract (Phase 3B)
+# Normalized Read Contract (Phase 3B/3C)
 
 ## Scope
 Phase 3B adds a **read-only** normalized backend service for Chekeo 2.0.
@@ -8,7 +8,8 @@ This phase introduces:
 - `getNormalizedOrderDetail(pedidoId)`
 - `previewNormalizedOrdersRead()`
 
-No UI replacement is included in this phase. Internal UI integration is pending Phase 3C.
+Phase 3C updates internal UI read path to consume this normalized model (`cloudflare/internal-chekeo/app.js`) with legacy fallback.
+Operational writes/status transitions remain pending migration in Phase 3D.
 
 ## Source sheets
 Read model composes data from:
@@ -115,8 +116,9 @@ Read-only diagnostics endpoint returning:
 - `timestamp`
 
 ## Read-only guarantee
-Phase 3B read model:
+Phase 3B/3C read model:
 - does not write/update statuses
 - does not write to any sheet
 - does not delete/clear/migrate sheets
-- does not modify UI
+- UI read integration in Chekeo 2.0 is enabled in Phase 3C (read-only mode for normalized orders/detail paths)
+- write/status/payment/guarnición actions from normalized UI remain disabled until Phase 3D
