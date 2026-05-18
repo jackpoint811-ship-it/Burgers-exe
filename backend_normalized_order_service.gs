@@ -14,6 +14,8 @@ var BOG_NORMALIZED_HEADERS = {
   EVENTOS_PEDIDO: ['evento_id', 'pedido_id', 'tipo_evento', 'estado_anterior', 'estado_nuevo', 'detalle', 'usuario', 'timestamp', 'origen_app']
 };
 
+// NOTE: createPublicOrder is invoked via bogPublicWrite_() in Code.gs, which already
+// applies script-level write locking. Do not add a nested LockService lock here.
 function bogCreateNormalizedPublicOrderFromCloudflare_(requestBody) {
   var payload = requestBody.payload || {};
   bogValidatePublicOrderPayload_(payload);
@@ -34,10 +36,7 @@ function bogCreateNormalizedPublicOrderFromCloudflare_(requestBody) {
   }
 
   var now = new Date();
-  var lock = LockService.getScriptLock();
-  lock.waitLock(30000);
 
-  try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sheets = bogGetNormalizedSheetsWithHeaders_(ss);
 
@@ -177,18 +176,15 @@ function bogCreateNormalizedPublicOrderFromCloudflare_(requestBody) {
 
     bogAppendRecordsByHeaders_(sheets.eventos.sheet, sheets.eventos.headers, sheets.eventos.headerMap, eventRows);
 
-    return {
-      accepted: true,
-      mode: 'write',
-      pedido_id: pedidoId,
-      folio: folio,
-      total: providedTotal,
-      itemCount: payload.items.length,
-      normalizedWrite: true
-    };
-  } finally {
-    lock.releaseLock();
-  }
+  return {
+    accepted: true,
+    mode: 'write',
+    pedido_id: pedidoId,
+    folio: folio,
+    total: providedTotal,
+    itemCount: payload.items.length,
+    normalizedWrite: true
+  };
 }
 
 function bogGetNormalizedSheetsWithHeaders_(ss) {
