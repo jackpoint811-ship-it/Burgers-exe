@@ -19,19 +19,10 @@ var CHEKEO_2_SHEET_HEADERS = {
   ARCHIVO_CORTES: ['corte_id', 'fecha_corte', 'total_pedidos', 'total_vendido', 'total_burgers', 'total_guarniciones', 'drive_folder_url', 'drive_summary_file_url', 'creado_en', 'creado_por']
 };
 
-/**
- * Preview only: reports what setupChekeo2Sheets would do without changing the spreadsheet.
- * @return {{createdSheets: string[], existingSheets: string[], updatedHeaders: Object<string, string[]>, skippedHeaders: Object<string, string[]>, timestamp: string}}
- */
 function previewChekeo2SheetSetup() {
   return runChekeo2SheetSetup_(true);
 }
 
-/**
- * Manual setup: creates missing sheets and safely fills missing header cells in row 1.
- * Idempotent and non-destructive.
- * @return {{createdSheets: string[], existingSheets: string[], updatedHeaders: Object<string, string[]>, skippedHeaders: Object<string, string[]>, timestamp: string}}
- */
 function setupChekeo2Sheets() {
   return runChekeo2SheetSetup_(false);
 }
@@ -43,17 +34,20 @@ function runChekeo2SheetSetup_(dryRun) {
     existingSheets: [],
     updatedHeaders: {},
     skippedHeaders: {},
+    conflicts: [],
     timestamp: new Date().toISOString()
   };
 
   var sheetNames = Object.keys(CHEKEO_2_SHEET_HEADERS);
   for (var i = 0; i < sheetNames.length; i++) {
     var sheetName = sheetNames[i];
-    var headers = CHEKEO_2_SHEET_HEADERS[sheetName];
+    var expectedHeaders = CHEKEO_2_SHEET_HEADERS[sheetName];
     var sheet = ss.getSheetByName(sheetName);
+    var isCreated = false;
 
     if (!sheet) {
       summary.createdSheets.push(sheetName);
+      isCreated = true;
       if (!dryRun) {
         sheet = ss.insertSheet(sheetName);
       }
@@ -61,40 +55,77 @@ function runChekeo2SheetSetup_(dryRun) {
       summary.existingSheets.push(sheetName);
     }
 
-    if (dryRun && !sheet) {
-      summary.updatedHeaders[sheetName] = headers.slice();
+    if (dryRun && isCreated) {
+      summary.updatedHeaders[sheetName] = expectedHeaders.slice();
+      summary.skippedHeaders[sheetName] = [];
       continue;
     }
 
-    var updated = [];
-    var skipped = [];
-    var headerRange = sheet.getRange(1, 1, 1, headers.length);
-    var existingValues = headerRange.getValues()[0];
+    var isEmptySheet = isSheetCompletelyEmpty_(sheet);
+    var existingRow1 = sheet.getRange(1, 1, 1, expectedHeaders.length).getValues()[0];
+    var row1Matches = doesRow1MatchHeaders_(existingRow1, expectedHeaders);
 
-    for (var col = 0; col < headers.length; col++) {
-      var expected = headers[col];
-      var existing = existingValues[col];
-      var existingText = existing === null || existing === undefined ? '' : String(existing).trim();
-
-      if (existingText === '') {
-        updated.push(expected);
-        if (!dryRun) {
-          sheet.getRange(1, col + 1).setValue(expected);
-        }
-      } else {
-        skipped.push(expected);
+    if (isCreated || isEmptySheet) {
+      if (!dryRun) {
+        applyHeadersAndFormatting_(sheet, expectedHeaders);
       }
+      summary.updatedHeaders[sheetName] = expectedHeaders.slice();
+      summary.skippedHeaders[sheetName] = [];
+      continue;
     }
 
-    summary.updatedHeaders[sheetName] = updated;
-    summary.skippedHeaders[sheetName] = skipped;
-
-    if (!dryRun) {
-      sheet.setFrozenRows(1);
-      headerRange.setFontWeight('bold');
-      headerRange.setBackground('#f1f3f4');
+    if (row1Matches) {
+      if (!dryRun) {
+        applyHeaderFormattingOnly_(sheet, expectedHeaders.length);
+      }
+      summary.updatedHeaders[sheetName] = [];
+      summary.skippedHeaders[sheetName] = expectedHeaders.slice();
+      continue;
     }
+
+    summary.updatedHeaders[sheetName] = [];
+    summary.skippedHeaders[sheetName] = expectedHeaders.slice();
+    summary.conflicts.push({
+      sheetName: sheetName,
+      reason: 'Existing non-empty sheet with row 1 that does not match expected header contract.',
+      existingRow1: existingRow1,
+      expectedHeaders: expectedHeaders.slice()
+    });
   }
 
   return summary;
+}
+
+function isSheetCompletelyEmpty_(sheet) {
+  return sheet.getLastRow() === 0 && sheet.getLastColumn() === 0;
+}
+
+function doesRow1MatchHeaders_(existingRow1, expectedHeaders) {
+  for (var i = 0; i < expectedHeaders.length; i++) {
+    var existingText = normalizeCellText_(existingRow1[i]);
+    if (existingText !== expectedHeaders[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function normalizeCellText_(value) {
+  if (value === null || value === undefined) {
+    return '';
+  }
+  return String(value).trim();
+}
+
+function applyHeadersAndFormatting_(sheet, headers) {
+  var headerRange = sheet.getRange(1, 1, 1, headers.length);
+  headerRange.setValues([headers]);
+  applyHeaderFormattingOnly_(sheet, headers.length);
+}
+
+function applyHeaderFormattingOnly_(sheet, headerLength) {
+  var headerRange = sheet.getRange(1, 1, 1, headerLength);
+  sheet.setFrozenRows(1);
+  headerRange.setFontWeight('bold');
+  headerRange.setBackground('#f1f3f4');
 }

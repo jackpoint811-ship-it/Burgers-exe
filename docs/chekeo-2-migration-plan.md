@@ -153,8 +153,10 @@ Se implementó tooling manual en Apps Script para preparar la estructura objetiv
   - no la renombra,
   - no la limpia,
   - no elimina filas/columnas,
-  - no sobreescribe celdas de encabezado no vacías,
-  - solo completa encabezados faltantes en fila 1 cuando es seguro.
+  - si está completamente vacía, escribe headers oficiales en fila 1,
+  - si la fila 1 ya coincide exactamente con el contrato, no reescribe valores (solo puede aplicar freeze/formato de encabezado),
+  - si **no está vacía** y la fila 1 **no coincide** con el contrato esperado, la reporta como conflicto y **no la modifica** (sin headers, sin formato, sin freeze).
+- Esta protección evita alterar hojas actuales/legacy como `HOME` con layouts existentes.
 - No migra datos legacy ni modifica hojas legacy existentes.
 - No cambia `BOG_ACTIVE_ENV`.
 - No altera comportamiento runtime actual de Burgers.exe público ni del Chekeo interno vigente.
@@ -163,4 +165,4 @@ Se implementó tooling manual en Apps Script para preparar la estructura objetiv
 
 1. Ejecutar `previewChekeo2SheetSetup()` para revisar cambios esperados.
 2. Ejecutar manualmente `setupChekeo2Sheets()` para crear/completar estructura.
-3. Revisar el objeto de resumen devuelto (`createdSheets`, `existingSheets`, `updatedHeaders`, `skippedHeaders`, `timestamp`).
+3. Revisar el objeto de resumen devuelto (`createdSheets`, `existingSheets`, `updatedHeaders`, `skippedHeaders`, `conflicts`, `timestamp`).
