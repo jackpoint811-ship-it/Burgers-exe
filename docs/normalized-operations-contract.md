@@ -175,3 +175,9 @@ Chekeo 2.0 now consumes the normalized operation methods when `state.ordersSourc
 
 ## Phase 6 kitchen ops
 New RPC ops: ensureNormalizedKitchenHeaders, previewNormalizedKitchenReadiness, updateNormalizedBurgerStatus, markNormalizedBurgersReady, updateNormalizedGuarnicionStatus, completeNormalizedOrderIfReady.
+
+## Phase 6 correction (2026-05-19)
+- Producción, pago y entrega son procesos separados.
+- Cocina no depende del pago para marcar producción `Preparada`.
+- Finalización para cierre: `estado_produccion=Preparada` + `estado_pago=Pagado` + `estado_entrega=Entregada`.
+

@@ -122,3 +122,9 @@ Phase 3B/3C read model:
 
 ## Phase 6 production object
 Added `production` and expanded `kitchen` flags for burgers/guarniciones readiness and blockers.
+
+## Phase 6 correction (2026-05-19)
+- Producción, pago y entrega son procesos separados.
+- Cocina no depende del pago para marcar producción `Preparada`.
+- Finalización para cierre: `estado_produccion=Preparada` + `estado_pago=Pagado` + `estado_entrega=Entregada`.
+

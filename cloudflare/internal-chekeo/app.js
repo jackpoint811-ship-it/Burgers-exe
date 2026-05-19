@@ -210,7 +210,7 @@
   const markNormalizedSidesPreparing = (orderId) => runWrite('Guarniciones preparando', 'updateNormalizedGuarnicionStatus', [orderId, 'Preparando', 'chekeo-2-ui']);
   const markNormalizedBurgersPreparing = (orderId) => runWrite('Burgers preparando', 'updateNormalizedBurgerStatus', [orderId, 'Preparando', 'chekeo-2-ui']);
   const markNormalizedBurgersReady = (orderId) => runWrite('Burgers listas', 'updateNormalizedBurgerStatus', [orderId, 'Lista', 'chekeo-2-ui']);
-  const completeNormalizedReadyOrder = (orderId) => runWrite('Completar orden', 'completeNormalizedOrderIfReady', [orderId, 'chekeo-2-ui']);
+  const completeNormalizedReadyOrder = (orderId) => runWrite('Marcar como preparada', 'completeNormalizedOrderIfReady', [orderId, 'chekeo-2-ui']);
   const saveNormalizedNotes = (orderId, notaInterna, notaCliente) => runWrite('Guardar notas', 'updateNormalizedOrderNotes', [orderId, notaInterna, notaCliente, 'chekeo-2-ui']);
   const markNormalizedTicketSentUi = (orderId) => runWrite('Marcar ticket enviado', 'markNormalizedTicketSent', [orderId, 'chekeo-2-ui']);
   const updateNormalizedPayment = (orderId, estadoPago, metodoPago) => runWrite('Actualizar pago', 'updateNormalizedPaymentStatus', [orderId, estadoPago, metodoPago, 'chekeo-2-ui']);
@@ -282,8 +282,8 @@
     const paidButton = paymentStatus === 'Pagado'
       ? `<button class='ghost write-btn' disabled>Pagado</button>`
       : `<button class='ghost write-btn' data-write-action data-mark-paid='${id}'>Pagado</button>`;
-    const ready = Boolean(o.production?.order_ready);
-    const completeButton = ready ? `<button class='ghost write-btn' data-write-action data-complete-order='${id}'>Completar orden</button>` : `<button class='ghost write-btn' disabled title='${escape((o.production?.blockers || []).join(', ') || 'Faltan pasos')}'>Faltan pasos</button>`;
+    const ready = Boolean(o.production?.production_ready || o.production?.order_ready);
+    const completeButton = ready ? `<button class='ghost write-btn' data-write-action data-complete-order='${id}'>Marcar como preparada</button>` : `<button class='ghost write-btn' disabled title='${escape((o.production?.blockers || []).join(', ') || 'Faltan pasos')}'>Faltan pasos</button>`;
     return `${paidButton}${statusButton}${completeButton}`;
   }
 
@@ -308,7 +308,7 @@
         : `<button class='ghost write-btn' data-write-action data-mark-paid='${id}'>Marcar pagado</button><button class='ghost write-btn' data-write-action data-ready='${id}'>Listo</button><button class='ghost write-btn' data-write-action data-side-ready='${id}'>Guarnición lista</button>`;
       const whatsappLabel = normalized ? 'WhatsApp pendiente' : 'WhatsApp';
       const prod = o.production || {};
-      const prodBadges = normalized ? `<p>Burgers: ${escape(`${prod.burgers_listas || 0}/${prod.burgers_total || 0} listas`)}</p><p>Guarniciones: ${prod.guarniciones_total ? escape(`${prod.guarniciones_hechas || 0}/${prod.guarniciones_total || 0} hechas`) : 'Sin guarniciones'}</p><p>Pago: ${prod.payment_ready ? 'Pagado' : 'Pendiente'}</p><p>Orden lista: ${prod.order_ready ? 'Sí' : 'No'}</p>` : '';
+      const prodBadges = normalized ? `<p>Burgers: ${escape(`${prod.burgers_listas || 0}/${prod.burgers_total || 0} listas`)}</p><p>Guarniciones: ${prod.guarniciones_total ? escape(`${prod.guarniciones_hechas || 0}/${prod.guarniciones_total || 0} hechas`) : 'Sin guarniciones'}</p><p></p><p>Producción lista: ${prod.order_ready ? 'Sí' : 'No'}</p>` : '';
       return `<li class='order-item'><div><small>${folio}</small><p><strong>${customer}</strong></p><p>${phone}</p><p>Total: ${total}</p><small><span class='badge-status'>${status}</span> <span class='badge-payment'>${paymentStatus}</span>${ticketBadge}</small><p>${burgerSummary}</p><p>${guarnicionSummary}</p>${prodBadges}</div>
       <div class='order-actions'>
       <button class='ghost' data-detail='${id}'>Detalle</button>
@@ -328,7 +328,7 @@
     if (!normalized) {
       document.querySelector('#cocina-content').innerHTML = `<h2>Cocina</h2><ul class='readonly-list'>${pending.map((o) => {
         const id = escape(o['ID Pedido'] || '');
-        return `<li>${id} <button class='write-btn' data-write-action data-ready='${id}'>Marcar pedido Listo</button> <button class='write-btn' data-write-action data-side-ready='${id}'>Marcar guarnición lista</button></li>`;
+        return `<li>${id} <button class='write-btn' data-write-action data-complete-order='${id}'>Marcar como preparada</button> <button class='write-btn' data-write-action data-side-ready='${id}'>Marcar guarnición lista</button></li>`;
       }).join('')}</ul>`;
       return;
     }
@@ -346,12 +346,12 @@
       const lines = guas.map((g) => `<li><strong>${escape(g.producto_id || 'Guarnición')}</strong> x${escape(g.cantidad || 0)} <span class='badge-status'>${escape(g.estado_guarnicion || 'Pendiente')}</span></li>`).join('');
       return `<li><small>${escape(o.folio || '-')}</small><p><strong>${escape(o.cliente_nombre || 'Sin nombre')}</strong></p><p>${escape((o.production?.guarniciones_hechas || 0) + '/' + (o.production?.guarniciones_total || 0))} hechas</p><ul>${lines || '<li>Sin guarniciones</li>'}</ul><div class='row'><button class='write-btn' data-write-action data-guarniciones-preparing='${id}'>Guarniciones preparando</button><button class='write-btn' data-write-action data-guarniciones-ready='${id}' ${(o.production?.guarniciones_ready) ? 'disabled' : ''}>Guarniciones hechas</button></div></li>`;
     }).join('');
-    const readyOrders = state.orders.filter((o) => o.production?.order_ready && o.estado !== 'Listo');
-    const readyTickets = readyOrders.map((o) => `<li><small>${escape(o.folio || '-')}</small><p><strong>${escape(o.cliente_nombre || 'Sin nombre')}</strong></p><p><span class='badge-payment'>Pago ${o.production?.payment_ready ? 'OK' : 'Pendiente'}</span> <span class='badge-status'>Burgers ${o.production?.burgers_ready ? 'OK' : 'Pendientes'}</span> <span class='badge-status'>Guarniciones ${o.production?.guarniciones_ready ? 'OK' : 'Pendientes'}</span></p><button class='write-btn' data-write-action data-complete-order='${escape(o.pedido_id || '')}'>Completar orden</button></li>`).join('');
+    const readyOrders = state.orders.filter((o) => (o.production?.production_ready || o.production?.order_ready) && (o.production?.estado_produccion || 'Pendiente') !== 'Preparada');
+    const readyTickets = readyOrders.map((o) => `<li><small>${escape(o.folio || '-')}</small><p><strong>${escape(o.cliente_nombre || 'Sin nombre')}</strong></p><p><span class='badge-payment'>Pago ${o.production?.payment_ready ? 'OK' : 'Pendiente'}</span> <span class='badge-status'>Burgers ${o.production?.burgers_ready ? 'OK' : 'Pendientes'}</span> <span class='badge-status'>Guarniciones ${o.production?.guarniciones_ready ? 'OK' : 'Pendientes'}</span></p><button class='write-btn' data-write-action data-complete-order='${escape(o.pedido_id || '')}'>Marcar como preparada</button></li>`).join('');
     document.querySelector('#cocina-content').innerHTML = `<h2>Cocina</h2>
       <h3>Burgers</h3>${burgerTickets ? `<ul class='readonly-list'>${burgerTickets}</ul>` : `<p class='empty-state'>No hay burgers pendientes.</p>`}
       <h3>Guarniciones</h3>${guarnicionTickets ? `<ul class='readonly-list'>${guarnicionTickets}</ul>` : `<p class='empty-state'>No hay guarniciones.</p>`}
-      <h3>Listas para completar</h3>${readyTickets ? `<ul class='readonly-list'>${readyTickets}</ul>` : `<p class='empty-state'>Sin órdenes listas para completar.</p>`}`;
+      <h3>Listas para marcar preparadas</h3>${readyTickets ? `<ul class='readonly-list'>${readyTickets}</ul>` : `<p class='empty-state'>Sin órdenes listas para completar.</p>`}`;
   }
 
   function renderOthers() {
@@ -457,7 +457,7 @@
       const production = o.production || {};
       const hasSideItems = Number(production.guarniciones_total || 0) > 0;
       const hasPendingSides = !Boolean(production.guarniciones_ready);
-      const canComplete = Boolean(production.order_ready) && o.estado !== 'Listo';
+      const canComplete = Boolean(production.order_ready) && (o.production?.estado_produccion || 'Pendiente') !== 'Preparada';
       modalContent.innerHTML = `<h3>Detalle normalizado</h3>
         <div class='form-grid'>
           <p><strong>Pedido:</strong> ${escape(o.pedido_id || '-')} / ${escape(o.folio || '-')}</p>
@@ -487,7 +487,7 @@
           <button class='write-btn' data-write-action data-burgers-ready='${escape(orderId)}' ${production.burgers_ready ? 'disabled' : ''}>Burgers listas</button>
           ${hasSideItems ? `<button class='write-btn' data-write-action data-guarniciones-preparing='${escape(orderId)}'>Guarniciones preparando</button>` : ''}
           ${hasSideItems ? `<button class='write-btn' data-write-action data-guarniciones-ready='${escape(orderId)}' ${hasPendingSides ? '' : 'disabled'}>Guarniciones hechas</button>` : ''}
-          <button class='write-btn' data-write-action data-complete-order='${escape(orderId)}' ${canComplete ? '' : 'disabled'}>Completar orden</button>
+          <button class='write-btn' data-write-action data-complete-order='${escape(orderId)}' ${canComplete ? '' : 'disabled'}>Marcar como preparada</button>
         </div>
         <h4>Items</h4><pre>${escape(JSON.stringify(items, null, 2))}</pre>
         <h4>Burgers</h4><pre>${escape(JSON.stringify(burgers, null, 2))}</pre>

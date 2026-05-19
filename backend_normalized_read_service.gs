@@ -1,4 +1,4 @@
-var BOG_NORMALIZED_READ_PEDIDOS_REQUIRED_HEADERS = ['pedido_id', 'folio', 'canal', 'cliente_nombre', 'cliente_telefono', 'metodo_pago', 'total', 'estado', 'fecha_creacion', 'fecha_actualizacion', 'origen_app'];
+var BOG_NORMALIZED_READ_PEDIDOS_REQUIRED_HEADERS = ['pedido_id', 'folio', 'canal', 'cliente_nombre', 'cliente_telefono', 'metodo_pago', 'total', 'estado', 'fecha_creacion', 'fecha_actualizacion', 'origen_app', 'estado_pago', 'estado_produccion', 'estado_entrega'];
 
 function getNormalizedAppOrders(filters) {
   var parsedFilters = bogNormalizeReadFilters_(filters);
@@ -182,9 +182,10 @@ function bogComputeProduction_(pedido, burgers, guarniciones) {
   guarniciones.forEach(function (g) { var s = bogTrim_(g.estado_guarnicion) || 'Pendiente'; if (s === 'Hecha') gh += 1; else if (s === 'Preparando') gpr += 1; else gp += 1; });
   var burgersReady = bt > 0 && bl === bt;
   var guaReady = gt === 0 || gh === gt;
-  var payReady = (bogTrim_(pedido.estado_pago) || 'Pendiente') === 'Pagado';
-  var blockers = []; if (!burgersReady) blockers.push('Burgers pendientes'); if (!guaReady) blockers.push('Guarniciones pendientes'); if (!payReady) blockers.push('Pago pendiente');
-  return { burgers_total: bt, burgers_pendientes: bp, burgers_preparando: bpr, burgers_listas: bl, burgers_ready: burgersReady, guarniciones_total: gt, guarniciones_pendientes: gp, guarniciones_preparando: gpr, guarniciones_hechas: gh, guarniciones_ready: guaReady, payment_ready: payReady, order_ready: burgersReady && guaReady && payReady, blockers: blockers };
+  var blockers = []; if (!burgersReady) blockers.push('Burgers pendientes'); if (!guaReady) blockers.push('Guarniciones pendientes');
+  var estadoProduccion = bogTrim_(pedido.estado_produccion);
+  if (!estadoProduccion) estadoProduccion = bogTrim_(pedido.estado) === 'Listo' ? 'Preparada' : 'Pendiente';
+  return { estado_produccion: estadoProduccion, burgers_total: bt, burgers_pendientes: bp, burgers_preparando: bpr, burgers_listas: bl, burgers_ready: burgersReady, guarniciones_total: gt, guarniciones_pendientes: gp, guarniciones_preparando: gpr, guarniciones_hechas: gh, guarniciones_ready: guaReady, production_ready: burgersReady && guaReady, order_ready: burgersReady && guaReady, blockers: blockers };
 }
 
 function bogGroupByPedidoId_(rows) {
@@ -316,10 +317,9 @@ function bogComposeNormalizedOrder_(pedido, items, burgers, guarniciones) {
       order_ready: production.order_ready
     },
     production: production,
-    payment: {
-      metodo_pago: bogTrim_(pedido.metodo_pago),
-      estado_pago: bogTrim_(pedido.estado_pago) || 'Pendiente'
-    }
+    payment: { metodo_pago: bogTrim_(pedido.metodo_pago), estado_pago: bogTrim_(pedido.estado_pago) || 'Pendiente', payment_ready: (bogTrim_(pedido.estado_pago) || 'Pendiente') === 'Pagado' },
+    delivery: { estado_entrega: bogTrim_(pedido.estado_entrega) || 'Pendiente', delivery_ready: (bogTrim_(pedido.estado_entrega) || 'Pendiente') === 'Entregada' },
+    finalization: { finalized: production.production_ready && ((bogTrim_(pedido.estado_pago) || 'Pendiente') === 'Pagado') && ((bogTrim_(pedido.estado_entrega) || 'Pendiente') === 'Entregada'), blockers: [].concat(!production.production_ready ? ['Producción pendiente'] : [], (bogTrim_(pedido.estado_pago) || 'Pendiente') === 'Pagado' ? [] : ['Pago pendiente'], (bogTrim_(pedido.estado_entrega) || 'Pendiente') === 'Entregada' ? [] : ['Entrega pendiente']) }
   };
 }
 

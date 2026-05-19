@@ -81,6 +81,14 @@ function bogHandleInternalApiFromCloudflare_(requestBody) {
       return updateNormalizedGuarnicionStatus(args[0], args[1], args[2]);
     case 'completeNormalizedOrderIfReady':
       return completeNormalizedOrderIfReady(args[0], args[1]);
+    case 'updateNormalizedProductionStatus':
+      return updateNormalizedProductionStatus(args[0], args[1], args[2]);
+    case 'updateNormalizedDeliveryStatus':
+      return updateNormalizedDeliveryStatus(args[0], args[1], args[2]);
+    case 'markNormalizedOrderDelivered':
+      return markNormalizedOrderDelivered(args[0], args[1]);
+    case 'getNormalizedOrderFinalizationState':
+      return getNormalizedOrderFinalizationState(args[0]);
     case 'updateNormalizedOrderStatus':
       return updateNormalizedOrderStatus(args[0], args[1], args[2]);
     case 'updateNormalizedPaymentStatus':
