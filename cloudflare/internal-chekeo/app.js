@@ -1,6 +1,8 @@
 (() => {
   const ORDER_STATUSES = ['Nuevo', 'Confirmado', 'Preparando', 'Listo'];
+  const NORMALIZED_ORDER_STATUSES = ['Nuevo', 'Confirmado', 'Preparando', 'Listo', 'Cancelado', 'Completado'];
   const PAYMENT_STATUSES = ['Pendiente', 'Pagado'];
+  const NORMALIZED_PAYMENT_STATUSES = ['Pendiente', 'Pagado', 'Parcial', 'Cancelado'];
   const PAYMENT_METHODS = ['Efectivo', 'Transferencia', 'Mixto', 'No definido'];
 
   const state = {
@@ -195,16 +197,27 @@
   }
 
   const refreshOrders = () => loadOperationalPanel();
-  const changeOrderStatus = (orderId, nextStatus) => runWrite(`Cambiar estado a ${nextStatus}`, 'updateOrderStatus', [orderId, nextStatus]);
+  const isNormalizedMode = () => state.ordersSource === 'normalized';
+  const changeNormalizedOrderStatus = (orderId, nextStatus) => runWrite(`Cambiar estado a ${nextStatus}`, 'updateNormalizedOrderStatus', [orderId, nextStatus, 'chekeo-2-ui']);
+  const markNormalizedPaid = (orderId) => runWrite('Marcar pagado', 'markNormalizedOrderPaid', [orderId, 'chekeo-2-ui']);
+  const markNormalizedSideDone = (orderIdOrGuarnicionId) => runWrite('Marcar guarnición hecha', 'markNormalizedGuarnicionDone', [orderIdOrGuarnicionId, 'chekeo-2-ui']);
+  const saveNormalizedNotes = (orderId, notaInterna, notaCliente) => runWrite('Guardar notas', 'updateNormalizedOrderNotes', [orderId, notaInterna, notaCliente, 'chekeo-2-ui']);
+  const markNormalizedTicketSentUi = (orderId) => runWrite('Marcar ticket enviado', 'markNormalizedTicketSent', [orderId, 'chekeo-2-ui']);
+  const updateNormalizedPayment = (orderId, estadoPago, metodoPago) => runWrite('Actualizar pago', 'updateNormalizedPaymentStatus', [orderId, estadoPago, metodoPago, 'chekeo-2-ui']);
+  const changeOrderStatus = (orderId, nextStatus) => isNormalizedMode() ? changeNormalizedOrderStatus(orderId, nextStatus) : runWrite(`Cambiar estado a ${nextStatus}`, 'updateOrderStatus', [orderId, nextStatus]);
   const saveOrderOperationalData = (orderId, payload) => runWrite('Guardar cambios operativos', 'updateOrderOperationalData', [orderId, payload]);
-  const updatePayment = (orderId, paymentStatus, paymentMethod) => runWrite('Actualizar pago', 'updateOrderPayment', [orderId, paymentStatus, paymentMethod]);
-  const markPaid = (orderId) => runWrite('Marcar pagado', 'markOrderPaid', [orderId]);
-  const markSideReady = (orderId) => runWrite('Marcar guarnición lista', 'markOrderSideReady', [orderId]);
-  const saveNotes = (orderId, noteInternal, noteClient) => runWrite('Guardar notas', 'updateOrderNotes', [orderId, noteInternal, noteClient]);
-  const markTicketSent = (orderId) => runWrite('Marcar ticket enviado', 'markTicketSent', [orderId]);
-  const writeDailySummaryAction = () => runWrite('Guardar resumen diario operativo', 'writeDailySummary', [], '¿Guardar el resumen diario operativo? Esta acción escribirá el resumen en la hoja correspondiente.');
-  const archiveCompletedOrdersAction = () => runWrite('Archivar pedidos completados', 'archiveCompletedOrders', [], '¿Archivar pedidos completados? Solo deben archivarse pedidos listos y pagados.');
-  const closeDayAction = () => runWrite('Cerrar el día', 'closeDay', [], '¿Cerrar el día? Esta acción puede guardar resumen y archivar pedidos según la lógica existente. Revisa el preview antes de continuar.');
+  const updatePayment = (orderId, paymentStatus, paymentMethod) => isNormalizedMode() ? updateNormalizedPayment(orderId, paymentStatus, paymentMethod) : runWrite('Actualizar pago', 'updateOrderPayment', [orderId, paymentStatus, paymentMethod]);
+  const markPaid = (orderId) => isNormalizedMode() ? markNormalizedPaid(orderId) : runWrite('Marcar pagado', 'markOrderPaid', [orderId]);
+  const markSideReady = (orderId) => isNormalizedMode() ? markNormalizedSideDone(orderId) : runWrite('Marcar guarnición lista', 'markOrderSideReady', [orderId]);
+  const saveNotes = (orderId, noteInternal, noteClient) => isNormalizedMode() ? saveNormalizedNotes(orderId, noteInternal, noteClient) : runWrite('Guardar notas', 'updateOrderNotes', [orderId, noteInternal, noteClient]);
+  const markTicketSent = (orderId) => isNormalizedMode() ? markNormalizedTicketSentUi(orderId) : runWrite('Marcar ticket enviado', 'markTicketSent', [orderId]);
+  const showCloseHistoryPending = () => {
+    showToast('Cierre/histórico pendiente migración en modo normalizado.', true);
+    return null;
+  };
+  const writeDailySummaryAction = () => state.ordersSource === 'legacy-fallback' ? runWrite('Guardar resumen diario operativo', 'writeDailySummary', [], '¿Guardar el resumen diario operativo? Esta acción escribirá el resumen en la hoja correspondiente.') : showCloseHistoryPending();
+  const archiveCompletedOrdersAction = () => state.ordersSource === 'legacy-fallback' ? runWrite('Archivar pedidos completados', 'archiveCompletedOrders', [], '¿Archivar pedidos completados? Solo deben archivarse pedidos listos y pagados.') : showCloseHistoryPending();
+  const closeDayAction = () => state.ordersSource === 'legacy-fallback' ? runWrite('Cerrar el día', 'closeDay', [], '¿Cerrar el día? Esta acción puede guardar resumen y archivar pedidos según la lógica existente. Revisa el preview antes de continuar.') : showCloseHistoryPending();
 
   async function openWhatsAppForOrder(orderId) {
     if (state.ordersSource === 'normalized') {
@@ -235,6 +248,39 @@
     });
   }
 
+  function getPendingGuarniciones(order) {
+    if (Number.isFinite(Number(order?.pending_guarniciones))) return Number(order.pending_guarniciones);
+    if (Number.isFinite(Number(order?.kitchen?.pending_guarniciones))) return Number(order.kitchen.pending_guarniciones);
+    if (Array.isArray(order?.guarniciones)) return order.guarniciones.filter((g) => String(g?.estado_guarnicion || '').trim() !== 'Hecha').length;
+    return 0;
+  }
+
+  function hasGuarniciones(order) {
+    if (Array.isArray(order?.guarniciones)) return order.guarniciones.length > 0;
+    return getPendingGuarniciones(order) > 0 || Boolean(order?.kitchen?.guarnicion_summary && order.kitchen.guarnicion_summary !== 'Sin guarniciones');
+  }
+
+  function renderNormalizedOrderActions(o, id, status, paymentStatus) {
+    const pendingGuarniciones = getPendingGuarniciones(o);
+    const hasSides = hasGuarniciones(o);
+    const statusActions = {
+      Nuevo: ['Confirmar', 'Confirmado'],
+      Confirmado: ['Preparando', 'Preparando'],
+      Preparando: ['Listo', 'Listo'],
+    };
+    const statusAction = statusActions[status] || null;
+    const statusButton = statusAction
+      ? `<button class='ghost write-btn' data-write-action data-order-status='${id}' data-next-status='${escape(statusAction[1])}'>${escape(statusAction[0])}</button>`
+      : `<button class='ghost write-btn' disabled>Estado OK</button>`;
+    const paidButton = paymentStatus === 'Pagado'
+      ? `<button class='ghost write-btn' disabled>Pagado</button>`
+      : `<button class='ghost write-btn' data-write-action data-mark-paid='${id}'>Pagado</button>`;
+    const sideButton = pendingGuarniciones > 0
+      ? `<button class='ghost write-btn' data-write-action data-side-ready='${id}'>Guarnición hecha</button>`
+      : `<button class='ghost write-btn' disabled>${hasSides ? 'Guarnición OK' : 'Sin guarniciones'}</button>`;
+    return `${paidButton}${statusButton}${sideButton}`;
+  }
+
   function renderOrders() {
     const list = state.orders.map((o) => {
       const normalized = state.ordersSource === 'normalized';
@@ -243,29 +289,27 @@
       const customer = escape(normalized ? (o.cliente_nombre || 'Sin nombre') : (o['Nombre'] || 'Sin nombre'));
       const phone = escape(normalized ? (o.cliente_telefono || 'Sin teléfono') : (o['Telefono'] || o['Teléfono'] || 'Sin teléfono'));
       const total = escape(normalized ? (o.total || '0') : (o['Total'] || '0'));
-      const status = escape(normalized ? (o.estado || '-') : (o['Estado Pedido'] || '-'));
-      const paymentStatus = escape(normalized ? (o.payment?.estado_pago || 'Pendiente') : (o['Estado Pago'] || '-'));
+      const rawStatus = normalized ? (o.estado || '-') : (o['Estado Pedido'] || '-');
+      const rawPaymentStatus = normalized ? (o.payment?.estado_pago || o.estado_pago || 'Pendiente') : (o['Estado Pago'] || '-');
+      const status = escape(rawStatus);
+      const paymentStatus = escape(rawPaymentStatus);
       const burgerSummary = escape(normalized ? (o.kitchen?.burger_summary || 'Sin burgers') : '-');
       const guarnicionSummary = escape(normalized ? (o.kitchen?.guarnicion_summary || 'Sin guarniciones') : '-');
-      const normalizedWriteState = normalized ? 'disabled title="Pendiente migración"' : '';
-      const normalizedWriteLabel = normalized ? 'Pendiente migración' : 'Marcar pagado';
-      const normalizedStatusLabel = normalized ? 'Pendiente migración' : 'Listo';
-      const normalizedSideLabel = normalized ? 'Pendiente migración' : 'Guarnición lista';
-      const whatsappLabel = normalized ? 'WhatsApp pendiente migración' : 'WhatsApp';
+      const operationalActions = normalized
+        ? renderNormalizedOrderActions(o, id, rawStatus, rawPaymentStatus)
+        : `<button class='ghost write-btn' data-write-action data-mark-paid='${id}'>Marcar pagado</button><button class='ghost write-btn' data-write-action data-ready='${id}'>Listo</button><button class='ghost write-btn' data-write-action data-side-ready='${id}'>Guarnición lista</button>`;
+      const whatsappLabel = normalized ? 'WhatsApp pendiente' : 'WhatsApp';
       return `<li class='order-item'><div><small>${folio}</small><p><strong>${customer}</strong></p><p>${phone}</p><p>Total: ${total}</p><small><span class='badge-status'>${status}</span> <span class='badge-payment'>${paymentStatus}</span></small><p>${burgerSummary}</p><p>${guarnicionSummary}</p></div>
       <div class='order-actions'>
       <button class='ghost' data-detail='${id}'>Detalle</button>
-      <button class='ghost write-btn' data-write-action data-mark-paid='${id}' ${normalizedWriteState}>${normalizedWriteLabel}</button>
-      <button class='ghost write-btn' data-write-action data-ready='${id}' ${normalizedWriteState}>${normalizedStatusLabel}</button>
-      <button class='ghost write-btn' data-write-action data-side-ready='${id}' ${normalizedWriteState}>${normalizedSideLabel}</button>
+      ${operationalActions}
       <button class='ghost' data-wa='${id}' ${normalized ? 'disabled title="Pendiente migración"' : ''}>${whatsappLabel}</button>
       </div></li>`;
     }).join('');
     const banner = state.ordersSource === 'legacy-fallback'
       ? `<p class='scope-banner'>Modo fallback legacy</p>`
-      : `<p class='scope-banner'>Leyendo pedidos normalizados</p>`;
-    const refreshLabel = state.ordersSource === 'normalized' ? 'Actualizar' : 'Sincronizar';
-    document.querySelector('#pedidos-content').innerHTML = `<h2>Pedidos</h2>${banner}<button class='write-btn' id='sync-orders-btn'>${refreshLabel}</button><ul class='readonly-list'>${list}</ul>`;
+      : `<p class='scope-banner'>Modo normalizado activo</p>`;
+    document.querySelector('#pedidos-content').innerHTML = `<h2>Pedidos</h2>${banner}<button class='write-btn' id='sync-orders-btn'>Actualizar</button><ul class='readonly-list'>${list}</ul>`;
   }
 
   function renderKitchen() {
@@ -274,12 +318,20 @@
     document.querySelector('#cocina-content').innerHTML = `<h2>Cocina</h2><ul class='readonly-list'>${pending.map((o) => {
       const id = escape(normalized ? (o.pedido_id || '') : (o['ID Pedido'] || ''));
       if (!normalized) return `<li>${id} <button class='write-btn' data-write-action data-ready='${id}'>Marcar pedido Listo</button> <button class='write-btn' data-write-action data-side-ready='${id}'>Marcar guarnición lista</button></li>`;
+      const rawStatus = o.estado || '';
       const burgers = Array.isArray(o.burgers) ? o.burgers : [];
       const burgerTickets = burgers.map((b) => `<li><strong>${escape(b.burger_base_id || 'burger')}</strong><p>Extras: ${escape((b.extras || []).join(', ') || 'Extras No')}</p><p>Sin: ${escape((b.sin_ingredientes || []).join(', ') || 'Sin cambios')}</p>${b.comentarios ? `<p>Comentario: ${escape(b.comentarios)}</p>` : ''}</li>`).join('');
-      const pendingGuarniciones = Array.isArray(o.guarniciones)
-        ? o.guarniciones.filter((g) => String(g?.estado_guarnicion || '').trim() !== 'Hecha').length
-        : 0;
-      return `<li><small>${escape(o.folio || '-')}</small><p><strong>${escape(o.cliente_nombre || 'Sin nombre')}</strong></p><p>${escape(o.kitchen?.burger_summary || 'Sin burgers')}</p><ul>${burgerTickets || '<li>Sin burgers</li>'}</ul><p>${escape(o.kitchen?.guarnicion_summary || 'Sin guarniciones')}</p><p>Pendientes guarniciones: ${escape(pendingGuarniciones)}</p><button class='write-btn' disabled title='Pendiente migración'>Marcar pedido Listo</button> <button class='write-btn' disabled title='Pendiente migración'>Marcar guarnición lista</button></li>`;
+      const pendingGuarniciones = getPendingGuarniciones(o);
+      const preparingButton = ['Nuevo', 'Confirmado'].includes(rawStatus)
+        ? `<button class='write-btn' data-write-action data-order-status='${id}' data-next-status='Preparando'>Preparando</button>`
+        : '';
+      const readyButton = ['Preparando', 'Confirmado'].includes(rawStatus)
+        ? `<button class='write-btn' data-write-action data-order-status='${id}' data-next-status='Listo'>Pedido listo</button>`
+        : '';
+      const sideButton = pendingGuarniciones > 0
+        ? `<button class='write-btn' data-write-action data-side-ready='${id}'>Guarnición hecha</button>`
+        : `<button class='write-btn' disabled>${hasGuarniciones(o) ? 'Guarnición OK' : 'Sin guarniciones'}</button>`;
+      return `<li><small>${escape(o.folio || '-')}</small><p><strong>${escape(o.cliente_nombre || 'Sin nombre')}</strong></p><p><span class='badge-status'>${escape(rawStatus || '-')}</span></p><p>${escape(o.kitchen?.burger_summary || 'Sin burgers')}</p><ul>${burgerTickets || '<li>Sin burgers</li>'}</ul><p>${escape(o.kitchen?.guarnicion_summary || 'Sin guarniciones')}</p><p>Pendientes guarniciones: ${escape(pendingGuarniciones)}</p><div class='row'>${preparingButton}${readyButton}${sideButton}</div></li>`;
     }).join('')}</ul>`;
   }
 
@@ -301,6 +353,13 @@
     const historyOrdersList = state.historyOrders.length
       ? `<ul class='readonly-list history-loaded-list'>${state.historyOrders.map((o) => `<li><strong>${escape(o['ID Pedido'] || o.id || '-')}</strong><p>${escape(o['Nombre'] || o.name || '')}</p></li>`).join('')}</ul>`
       : `<p class='empty-state'>No hay histórico cargado aún.</p>`;
+    const closeActions = isNormalizedMode()
+      ? `<button class='write-btn critical-btn' id='write-summary-btn' disabled title='Pendiente migración cierre/histórico'>Guardar resumen pendiente migración</button>
+          <button class='write-btn critical-btn' id='archive-completed-btn' disabled title='Pendiente migración cierre/histórico'>Archivar pendiente migración</button>
+          <button class='write-btn critical-btn' id='close-day-btn' disabled title='Pendiente migración cierre/histórico'>Cerrar día pendiente migración</button>`
+      : `<button class='write-btn critical-btn' data-write-action id='write-summary-btn'>Guardar resumen</button>
+          <button class='write-btn critical-btn' data-write-action id='archive-completed-btn'>Archivar completados</button>
+          <button class='write-btn critical-btn' data-write-action id='close-day-btn'>Cerrar día</button>`;
 
     document.querySelector('#otros-content').innerHTML = `
       <h2>Otros</h2>
@@ -315,9 +374,7 @@
           <article class='card'><h4>Pagados no listos</h4><p>${escape(totals.paidNotReady)}</p></article>
         </div>
         <div class='row'>
-          <button class='write-btn critical-btn' data-write-action id='write-summary-btn'>Guardar resumen</button>
-          <button class='write-btn critical-btn' data-write-action id='archive-completed-btn'>Archivar completados</button>
-          <button class='write-btn critical-btn' data-write-action id='close-day-btn'>Cerrar día</button>
+          ${closeActions}
         </div>
       </section>
 
@@ -364,13 +421,46 @@
   async function openOrderDetail(orderId) {
     if (state.ordersSource === 'normalized') {
       const d = await rpcCall('getNormalizedOrderDetail', [orderId]);
-      const o = d?.pedido || {};
+      const payload = d?.data || d || {};
+      const o = payload?.pedido || {};
       const items = Array.isArray(o.items) ? o.items : [];
       const burgers = Array.isArray(o.burgers) ? o.burgers : [];
       const guarniciones = Array.isArray(o.guarniciones) ? o.guarniciones : [];
-      const eventos = Array.isArray(d?.eventos) ? d.eventos : [];
-      modalContent.innerHTML = `<h3>Detalle normalizado (solo lectura)</h3><p><strong>Pedido:</strong> ${escape(o.pedido_id || '-')} / ${escape(o.folio || '-')}</p><p><strong>Cliente:</strong> ${escape(o.cliente_nombre || '-')}</p><p><strong>Teléfono:</strong> ${escape(o.cliente_telefono || '-')}</p><p><strong>Total:</strong> ${escape(o.total || '0')}</p><p><strong>Estado:</strong> ${escape(o.estado || '-')}</p><p><strong>Método pago:</strong> ${escape(o.payment?.metodo_pago || o.metodo_pago || '-')}</p><h4>Items</h4><pre>${escape(JSON.stringify(items, null, 2))}</pre><h4>Burgers</h4><pre>${escape(JSON.stringify(burgers, null, 2))}</pre><h4>Guarniciones</h4><pre>${escape(JSON.stringify(guarniciones, null, 2))}</pre><h4>Eventos</h4><pre>${escape(JSON.stringify(eventos, null, 2))}</pre><div class='row'><button class='ghost' disabled title='Pendiente migración'>WhatsApp pendiente migración</button></div>`;
+      const eventos = Array.isArray(payload?.eventos) ? payload.eventos : [];
+      const payment = o.payment || {};
+      const selectedStatus = o.estado || 'Nuevo';
+      const selectedPaymentStatus = payment.estado_pago || o.estado_pago || 'Pendiente';
+      const selectedPaymentMethod = payment.metodo_pago || o.metodo_pago || 'No definido';
+      modalContent.innerHTML = `<h3>Detalle normalizado</h3>
+        <div class='form-grid'>
+          <p><strong>Pedido:</strong> ${escape(o.pedido_id || '-')} / ${escape(o.folio || '-')}</p>
+          <p><strong>Cliente:</strong> ${escape(o.cliente_nombre || '-')}</p>
+          <p><strong>Teléfono:</strong> ${escape(o.cliente_telefono || '-')}</p>
+          <p><strong>Total:</strong> ${escape(o.total || '0')}</p>
+          <label>Estado Pedido<select id='norm-status'>${NORMALIZED_ORDER_STATUSES.map((status) => `<option ${status === selectedStatus ? 'selected' : ''}>${status}</option>`).join('')}</select></label>
+          <label>Estado Pago<select id='norm-pay-status'>${NORMALIZED_PAYMENT_STATUSES.map((status) => `<option ${status === selectedPaymentStatus ? 'selected' : ''}>${status}</option>`).join('')}</select></label>
+          <label>Método Pago<select id='norm-pay-method'>${PAYMENT_METHODS.map((method) => `<option ${method === selectedPaymentMethod ? 'selected' : ''}>${method}</option>`).join('')}</select></label>
+          <label>Nota interna<textarea id='norm-note-internal'>${escape(o.nota_interna || '')}</textarea></label>
+          <label>Nota cliente<textarea id='norm-note-client'>${escape(o.nota_cliente || '')}</textarea></label>
+        </div>
+        <div class='row'>
+          <button class='write-btn' data-write-action id='save-normalized-status'>Guardar estado</button>
+          <button class='write-btn' data-write-action id='save-normalized-payment'>Guardar pago</button>
+          <button class='write-btn' data-write-action id='save-normalized-notes'>Guardar notas</button>
+          <button class='write-btn' data-write-action id='mark-normalized-paid-modal'>Marcar pagado</button>
+          <button class='write-btn' data-write-action id='mark-normalized-ticket-modal'>Marcar ticket enviado</button>
+          <button class='ghost' disabled title='Pendiente migración'>WhatsApp pendiente migración</button>
+        </div>
+        <h4>Items</h4><pre>${escape(JSON.stringify(items, null, 2))}</pre>
+        <h4>Burgers</h4><pre>${escape(JSON.stringify(burgers, null, 2))}</pre>
+        <h4>Guarniciones</h4><pre>${escape(JSON.stringify(guarniciones, null, 2))}</pre>
+        <h4>Eventos</h4><pre>${escape(JSON.stringify(eventos, null, 2))}</pre>`;
       modal.classList.remove('is-hidden');
+      document.querySelector('#save-normalized-status').onclick = () => changeOrderStatus(orderId, document.querySelector('#norm-status').value);
+      document.querySelector('#save-normalized-payment').onclick = () => updatePayment(orderId, document.querySelector('#norm-pay-status').value, document.querySelector('#norm-pay-method').value);
+      document.querySelector('#save-normalized-notes').onclick = () => saveNotes(orderId, document.querySelector('#norm-note-internal').value, document.querySelector('#norm-note-client').value);
+      document.querySelector('#mark-normalized-paid-modal').onclick = () => markPaid(orderId);
+      document.querySelector('#mark-normalized-ticket-modal').onclick = () => markTicketSent(orderId);
       return;
     }
     const d = await rpcCall('getOrderDetail', [orderId]);
@@ -398,12 +488,13 @@
       const sync = e.target.closest('#sync-orders-btn'); if (sync) return refreshOrders();
       const detail = e.target.closest('[data-detail]'); if (detail) return openOrderDetail(detail.dataset.detail);
       const markPaidBtn = e.target.closest('[data-mark-paid]'); if (markPaidBtn) return markPaid(markPaidBtn.dataset.markPaid);
+      const orderStatus = e.target.closest('[data-order-status]'); if (orderStatus) return changeOrderStatus(orderStatus.dataset.orderStatus, orderStatus.dataset.nextStatus);
       const ready = e.target.closest('[data-ready]'); if (ready) return changeOrderStatus(ready.dataset.ready, 'Listo');
       const sideReady = e.target.closest('[data-side-ready]'); if (sideReady) return markSideReady(sideReady.dataset.sideReady);
       const wa = e.target.closest('[data-wa]'); if (wa) return openWhatsAppForOrder(wa.dataset.wa);
-      const writeSummary = e.target.closest('#write-summary-btn'); if (writeSummary) return writeDailySummaryAction();
-      const archiveCompleted = e.target.closest('#archive-completed-btn'); if (archiveCompleted) return archiveCompletedOrdersAction();
-      const closeDayBtn = e.target.closest('#close-day-btn'); if (closeDayBtn) return closeDayAction();
+      const writeSummary = e.target.closest('#write-summary-btn'); if (writeSummary) return state.ordersSource === 'legacy-fallback' ? writeDailySummaryAction() : showCloseHistoryPending();
+      const archiveCompleted = e.target.closest('#archive-completed-btn'); if (archiveCompleted) return state.ordersSource === 'legacy-fallback' ? archiveCompletedOrdersAction() : showCloseHistoryPending();
+      const closeDayBtn = e.target.closest('#close-day-btn'); if (closeDayBtn) return state.ordersSource === 'legacy-fallback' ? closeDayAction() : showCloseHistoryPending();
       const loadHistoryBtn = e.target.closest('#load-history-orders-btn'); if (loadHistoryBtn) return loadHistoryOrders(20);
     });
     document.querySelector('#modal-close')?.addEventListener('click', () => modal.classList.add('is-hidden'));

@@ -1,7 +1,7 @@
 # Normalized Operations Contract (Phase 3D-A)
 
 ## Scope
-Phase 3D-A adds backend Apps Script methods for Chekeo 2.0 operational writes against the normalized sheets. It does **not** re-enable Chekeo 2.0 UI buttons; UI activation is pending Phase 3D-B.
+Phase 3D-A added backend Apps Script methods for Chekeo 2.0 operational writes against the normalized sheets. Phase 3D-B connects Chekeo 2.0 UI controls to those normalized methods while preserving legacy fallback routing.
 
 ## Sheets written
 Operational writes use header-based access only and write to:
@@ -130,4 +130,19 @@ Every operational mutation method appends an audit row to `EVENTOS_PEDIDO` using
 1. Deploy the updated Apps Script files.
 2. Run `ensureNormalizedOperationalHeaders()` manually.
 3. Run `previewNormalizedOperationsReadiness()` and confirm `ok: true`.
-4. Keep Chekeo 2.0 operational buttons disabled until Phase 3D-B validates and connects the UI.
+4. Validate Chekeo 2.0 UI write flows after Phase 3D-B deployment; normalized UI controls now call these methods.
+
+## Phase 3D-B UI consumption
+Chekeo 2.0 now consumes the normalized operation methods when `state.ordersSource === "normalized"`. The UI keeps legacy fallback routing intact for `state.ordersSource === "legacy-fallback"` and does not call legacy order write methods from normalized mode. Cierre/resumen/archivo/histórico actions are not part of this normalized UI activation.
+
+### UI button to RPC mapping
+- Orders panel `Confirmar`, detail modal `Guardar estado`, and kitchen `Preparando`/`Pedido listo` status controls call `updateNormalizedOrderStatus(pedidoId, nextStatus, "chekeo-2-ui")`.
+- Orders panel `Pagado` and detail modal `Marcar pagado` call `markNormalizedOrderPaid(pedidoId, "chekeo-2-ui")`.
+- Orders and kitchen `Guarnición hecha` controls call `markNormalizedGuarnicionDone(pedidoIdOrGuarnicionId, "chekeo-2-ui")`.
+- Detail modal `Guardar notas` calls `updateNormalizedOrderNotes(pedidoId, notaInterna, notaCliente, "chekeo-2-ui")`.
+- Detail modal `Guardar pago` calls `updateNormalizedPaymentStatus(pedidoId, estadoPago, metodoPago, "chekeo-2-ui")`.
+- Detail modal `Marcar ticket enviado` calls `markNormalizedTicketSent(pedidoId, "chekeo-2-ui")`.
+
+### Still pending
+- Normalized WhatsApp send remains disabled in the UI pending a dedicated normalized ticket/phone send path.
+- Cierre/resumen/archivo/histórico migration remains outside this phase; normalized mode disables those legacy controls until a later normalized close/history path exists.
