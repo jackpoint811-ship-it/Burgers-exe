@@ -271,17 +271,14 @@
   }
 
   function renderNormalizedOrderActions(o, id, status, paymentStatus) {
-    const pendingGuarniciones = getPendingGuarniciones(o);
-    const hasSides = hasGuarniciones(o);
     const statusActions = {
       Nuevo: ['Confirmar', 'Confirmado'],
       Confirmado: ['Preparando', 'Preparando'],
-      Preparando: ['Preparando', 'Preparando'],
     };
     const statusAction = statusActions[status] || null;
     const statusButton = statusAction
       ? `<button class='ghost write-btn' data-write-action data-order-status='${id}' data-next-status='${escape(statusAction[1])}'>${escape(statusAction[0])}</button>`
-      : `<button class='ghost write-btn' disabled>Estado OK</button>`;
+      : `<button class='ghost write-btn' disabled>${escape(status || 'Estado')}</button>`;
     const paidButton = paymentStatus === 'Pagado'
       ? `<button class='ghost write-btn' disabled>Pagado</button>`
       : `<button class='ghost write-btn' data-write-action data-mark-paid='${id}'>Pagado</button>`;
@@ -335,24 +332,25 @@
       }).join('')}</ul>`;
       return;
     }
-    const burgerTickets = pending.map((o) => {
+    const burgerOrders = pending.filter((o) => (Number(o?.production?.burgers_total) || 0) > 0);
+    const burgerTickets = burgerOrders.map((o) => {
       const id = escape(o.pedido_id || '');
       const burgers = Array.isArray(o.burgers) ? o.burgers : [];
       const lines = burgers.map((b) => `<li><strong>${escape(b.burger_base_id || 'burger')}</strong> <span class='badge-status'>${escape(b.estado_burger || 'Pendiente')}</span><p>Extras: ${escape((b.extras || []).join(', ') || 'Extras No')}</p><p>Sin: ${escape((b.sin_ingredientes || []).join(', ') || 'Sin cambios')}</p>${b.comentarios ? `<p>Comentario: ${escape(b.comentarios)}</p>` : ''}</li>`).join('');
-      return `<li><small>${escape(o.folio || '-')}</small><p><strong>${escape(o.cliente_nombre || 'Sin nombre')}</strong></p><p>${escape((o.production?.burgers_listas || 0) + '/' + (o.production?.burgers_total || 0))} listas</p><ul>${lines || '<li>Sin burgers</li>'}</ul><div class='row'><button class='write-btn' data-write-action data-burgers-preparing='${id}'>Burgers preparando</button><button class='write-btn' data-write-action data-burgers-ready='${id}' ${o.production?.burgers_ready ? 'disabled' : ''}>Burgers listas</button></div></li>`;
+      return `<li><small>${escape(o.folio || '-')}</small><p><strong>${escape(o.cliente_nombre || 'Sin nombre')}</strong></p><p><span class='badge-status'>${escape(o.estado || '-')}</span></p><p>${escape((o.production?.burgers_listas || 0) + '/' + (o.production?.burgers_total || 0))} listas</p><ul>${lines || '<li>Sin burgers</li>'}</ul><div class='row'><button class='write-btn' data-write-action data-burgers-preparing='${id}'>Burgers preparando</button><button class='write-btn' data-write-action data-burgers-ready='${id}' ${o.production?.burgers_ready ? 'disabled' : ''}>Burgers listas</button></div></li>`;
     }).join('');
     const guarnicionOrders = pending.filter((o) => hasGuarniciones(o));
     const guarnicionTickets = guarnicionOrders.map((o) => {
       const id = escape(o.pedido_id || '');
       const guas = Array.isArray(o.guarniciones) ? o.guarniciones : [];
-      const lines = guas.map((g) => `<li><strong>${escape(g.producto_id || g.nombre || 'Guarnición')}</strong> x${escape(g.cantidad || 0)} <span class='badge-status'>${escape(g.estado_guarnicion || 'Pendiente')}</span></li>`).join('');
+      const lines = guas.map((g) => `<li><strong>${escape(g.producto_id || 'Guarnición')}</strong> x${escape(g.cantidad || 0)} <span class='badge-status'>${escape(g.estado_guarnicion || 'Pendiente')}</span></li>`).join('');
       return `<li><small>${escape(o.folio || '-')}</small><p><strong>${escape(o.cliente_nombre || 'Sin nombre')}</strong></p><p>${escape((o.production?.guarniciones_hechas || 0) + '/' + (o.production?.guarniciones_total || 0))} hechas</p><ul>${lines || '<li>Sin guarniciones</li>'}</ul><div class='row'><button class='write-btn' data-write-action data-guarniciones-preparing='${id}'>Guarniciones preparando</button><button class='write-btn' data-write-action data-guarniciones-ready='${id}' ${(o.production?.guarniciones_ready) ? 'disabled' : ''}>Guarniciones hechas</button></div></li>`;
     }).join('');
     const readyOrders = state.orders.filter((o) => o.production?.order_ready && o.estado !== 'Listo');
-    const readyTickets = readyOrders.map((o) => `<li><small>${escape(o.folio || '-')}</small><p><strong>${escape(o.cliente_nombre || 'Sin nombre')}</strong></p><button class='write-btn' data-write-action data-complete-order='${escape(o.pedido_id || '')}'>Completar orden</button></li>`).join('');
+    const readyTickets = readyOrders.map((o) => `<li><small>${escape(o.folio || '-')}</small><p><strong>${escape(o.cliente_nombre || 'Sin nombre')}</strong></p><p><span class='badge-payment'>Pago ${o.production?.payment_ready ? 'OK' : 'Pendiente'}</span> <span class='badge-status'>Burgers ${o.production?.burgers_ready ? 'OK' : 'Pendientes'}</span> <span class='badge-status'>Guarniciones ${o.production?.guarniciones_ready ? 'OK' : 'Pendientes'}</span></p><button class='write-btn' data-write-action data-complete-order='${escape(o.pedido_id || '')}'>Completar orden</button></li>`).join('');
     document.querySelector('#cocina-content').innerHTML = `<h2>Cocina</h2>
-      <h3>Burgers</h3>${burgerTickets ? `<ul class='readonly-list'>${burgerTickets}</ul>` : `<p class='empty-state'>Sin tickets de burgers.</p>`}
-      <h3>Guarniciones</h3>${guarnicionTickets ? `<ul class='readonly-list'>${guarnicionTickets}</ul>` : `<p class='empty-state'>Sin guarniciones pendientes.</p>`}
+      <h3>Burgers</h3>${burgerTickets ? `<ul class='readonly-list'>${burgerTickets}</ul>` : `<p class='empty-state'>No hay burgers pendientes.</p>`}
+      <h3>Guarniciones</h3>${guarnicionTickets ? `<ul class='readonly-list'>${guarnicionTickets}</ul>` : `<p class='empty-state'>No hay guarniciones.</p>`}
       <h3>Listas para completar</h3>${readyTickets ? `<ul class='readonly-list'>${readyTickets}</ul>` : `<p class='empty-state'>Sin órdenes listas para completar.</p>`}`;
   }
 
@@ -456,6 +454,10 @@
       const initialNotaCliente = o.nota_cliente || '';
       const ticketSent = String(o.ticket_enviado).toLowerCase() === 'true' || o.ticket_enviado === true;
       const paidAlready = selectedPaymentStatus === 'Pagado';
+      const production = o.production || {};
+      const hasSideItems = Number(production.guarniciones_total || 0) > 0;
+      const hasPendingSides = !Boolean(production.guarniciones_ready);
+      const canComplete = Boolean(production.order_ready) && o.estado !== 'Listo';
       modalContent.innerHTML = `<h3>Detalle normalizado</h3>
         <div class='form-grid'>
           <p><strong>Pedido:</strong> ${escape(o.pedido_id || '-')} / ${escape(o.folio || '-')}</p>
@@ -475,6 +477,17 @@
           <button class='write-btn' data-write-action id='mark-normalized-paid-modal' ${paidAlready ? 'disabled' : ''}>${paidAlready ? 'Pagado' : 'Marcar pagado'}</button>
           <button class='write-btn' data-write-action id='mark-normalized-ticket-modal' ${ticketSent ? 'disabled' : ''}>${ticketSent ? 'Ticket enviado' : 'Marcar ticket enviado'}</button>
           <button class='ghost' disabled title='Pendiente migración'>WhatsApp pendiente migración</button>
+        </div>
+        <h4>Producción</h4>
+        <p>Bloqueos: ${escape((production.blockers || []).join(', ') || 'Sin bloqueos')}</p>
+        <p>Burgers: ${escape((production.burgers_listas || 0) + '/' + (production.burgers_total || 0))} listas</p>
+        <p>Guarniciones: ${hasSideItems ? escape((production.guarniciones_hechas || 0) + '/' + (production.guarniciones_total || 0)) + ' hechas' : 'Sin guarniciones'}</p>
+        <div class='row'>
+          <button class='write-btn' data-write-action data-burgers-preparing='${escape(orderId)}'>Burgers preparando</button>
+          <button class='write-btn' data-write-action data-burgers-ready='${escape(orderId)}' ${production.burgers_ready ? 'disabled' : ''}>Burgers listas</button>
+          ${hasSideItems ? `<button class='write-btn' data-write-action data-guarniciones-preparing='${escape(orderId)}'>Guarniciones preparando</button>` : ''}
+          ${hasSideItems ? `<button class='write-btn' data-write-action data-guarniciones-ready='${escape(orderId)}' ${hasPendingSides ? '' : 'disabled'}>Guarniciones hechas</button>` : ''}
+          <button class='write-btn' data-write-action data-complete-order='${escape(orderId)}' ${canComplete ? '' : 'disabled'}>Completar orden</button>
         </div>
         <h4>Items</h4><pre>${escape(JSON.stringify(items, null, 2))}</pre>
         <h4>Burgers</h4><pre>${escape(JSON.stringify(burgers, null, 2))}</pre>
