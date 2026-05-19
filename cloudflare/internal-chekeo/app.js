@@ -328,23 +328,32 @@
   function renderKitchen() {
     const normalized = state.ordersSource === 'normalized';
     const pending = state.orders.filter((o) => !String(normalized ? (o.estado || '') : (o['Estado Pedido'] || '')).toLowerCase().includes('listo'));
-    document.querySelector('#cocina-content').innerHTML = `<h2>Cocina</h2><ul class='readonly-list'>${pending.map((o) => {
-      const id = escape(normalized ? (o.pedido_id || '') : (o['ID Pedido'] || ''));
-      if (!normalized) return `<li>${id} <button class='write-btn' data-write-action data-ready='${id}'>Marcar pedido Listo</button> <button class='write-btn' data-write-action data-side-ready='${id}'>Marcar guarnición lista</button></li>`;
-      const rawStatus = o.estado || '';
+    if (!normalized) {
+      document.querySelector('#cocina-content').innerHTML = `<h2>Cocina</h2><ul class='readonly-list'>${pending.map((o) => {
+        const id = escape(o['ID Pedido'] || '');
+        return `<li>${id} <button class='write-btn' data-write-action data-ready='${id}'>Marcar pedido Listo</button> <button class='write-btn' data-write-action data-side-ready='${id}'>Marcar guarnición lista</button></li>`;
+      }).join('')}</ul>`;
+      return;
+    }
+    const burgerTickets = pending.map((o) => {
+      const id = escape(o.pedido_id || '');
       const burgers = Array.isArray(o.burgers) ? o.burgers : [];
-      const burgerTickets = burgers.map((b) => `<li><strong>${escape(b.burger_base_id || 'burger')}</strong><p>Extras: ${escape((b.extras || []).join(', ') || 'Extras No')}</p><p>Sin: ${escape((b.sin_ingredientes || []).join(', ') || 'Sin cambios')}</p>${b.comentarios ? `<p>Comentario: ${escape(b.comentarios)}</p>` : ''}</li>`).join('');
-      const pendingGuarniciones = getPendingGuarniciones(o);
-      const preparingButton = ['Nuevo', 'Confirmado'].includes(rawStatus)
-        ? `<button class='write-btn' data-write-action data-order-status='${id}' data-next-status='Preparando'>Preparando</button>`
-        : '';
-      const readyBurgersDisabled = Boolean(o.production?.burgers_ready);
-      const readyButton = `<button class='write-btn' data-write-action data-burgers-ready='${id}' ${readyBurgersDisabled ? 'disabled' : ''}>Burgers listas</button>`;
-      const preparingButton2 = `<button class='write-btn' data-write-action data-burgers-preparing='${id}'>Burgers preparando</button>`;
-      const sideButton = hasGuarniciones(o) ? `<button class='write-btn' data-write-action data-guarniciones-ready='${id}' ${pendingGuarniciones === 0 ? 'disabled' : ''}>Guarniciones hechas</button><button class='write-btn' data-write-action data-guarniciones-preparing='${id}'>Guarniciones preparando</button>` : `<button class='write-btn' disabled>Sin guarniciones</button>`;
-      const completeButton = o.production?.order_ready && rawStatus !== 'Listo' ? `<button class='write-btn' data-write-action data-complete-order='${id}'>Completar orden</button>` : '';
-      return `<li><small>${escape(o.folio || '-')}</small><p><strong>${escape(o.cliente_nombre || 'Sin nombre')}</strong></p><p><span class='badge-status'>${escape(rawStatus || '-')}</span></p><p>${escape(o.kitchen?.burger_summary || 'Sin burgers')}</p><ul>${burgerTickets || '<li>Sin burgers</li>'}</ul><p>${escape(o.kitchen?.guarnicion_summary || 'Sin guarniciones')}</p><p>Pendientes guarniciones: ${escape(pendingGuarniciones)}</p><div class='row'>${preparingButton2}${readyButton}${sideButton}${completeButton}</div></li>`;
-    }).join('')}</ul>`;
+      const lines = burgers.map((b) => `<li><strong>${escape(b.burger_base_id || 'burger')}</strong> <span class='badge-status'>${escape(b.estado_burger || 'Pendiente')}</span><p>Extras: ${escape((b.extras || []).join(', ') || 'Extras No')}</p><p>Sin: ${escape((b.sin_ingredientes || []).join(', ') || 'Sin cambios')}</p>${b.comentarios ? `<p>Comentario: ${escape(b.comentarios)}</p>` : ''}</li>`).join('');
+      return `<li><small>${escape(o.folio || '-')}</small><p><strong>${escape(o.cliente_nombre || 'Sin nombre')}</strong></p><p>${escape((o.production?.burgers_listas || 0) + '/' + (o.production?.burgers_total || 0))} listas</p><ul>${lines || '<li>Sin burgers</li>'}</ul><div class='row'><button class='write-btn' data-write-action data-burgers-preparing='${id}'>Burgers preparando</button><button class='write-btn' data-write-action data-burgers-ready='${id}' ${o.production?.burgers_ready ? 'disabled' : ''}>Burgers listas</button></div></li>`;
+    }).join('');
+    const guarnicionOrders = pending.filter((o) => hasGuarniciones(o));
+    const guarnicionTickets = guarnicionOrders.map((o) => {
+      const id = escape(o.pedido_id || '');
+      const guas = Array.isArray(o.guarniciones) ? o.guarniciones : [];
+      const lines = guas.map((g) => `<li><strong>${escape(g.producto_id || g.nombre || 'Guarnición')}</strong> x${escape(g.cantidad || 0)} <span class='badge-status'>${escape(g.estado_guarnicion || 'Pendiente')}</span></li>`).join('');
+      return `<li><small>${escape(o.folio || '-')}</small><p><strong>${escape(o.cliente_nombre || 'Sin nombre')}</strong></p><p>${escape((o.production?.guarniciones_hechas || 0) + '/' + (o.production?.guarniciones_total || 0))} hechas</p><ul>${lines || '<li>Sin guarniciones</li>'}</ul><div class='row'><button class='write-btn' data-write-action data-guarniciones-preparing='${id}'>Guarniciones preparando</button><button class='write-btn' data-write-action data-guarniciones-ready='${id}' ${(o.production?.guarniciones_ready) ? 'disabled' : ''}>Guarniciones hechas</button></div></li>`;
+    }).join('');
+    const readyOrders = state.orders.filter((o) => o.production?.order_ready && o.estado !== 'Listo');
+    const readyTickets = readyOrders.map((o) => `<li><small>${escape(o.folio || '-')}</small><p><strong>${escape(o.cliente_nombre || 'Sin nombre')}</strong></p><button class='write-btn' data-write-action data-complete-order='${escape(o.pedido_id || '')}'>Completar orden</button></li>`).join('');
+    document.querySelector('#cocina-content').innerHTML = `<h2>Cocina</h2>
+      <h3>Burgers</h3>${burgerTickets ? `<ul class='readonly-list'>${burgerTickets}</ul>` : `<p class='empty-state'>Sin tickets de burgers.</p>`}
+      <h3>Guarniciones</h3>${guarnicionTickets ? `<ul class='readonly-list'>${guarnicionTickets}</ul>` : `<p class='empty-state'>Sin guarniciones pendientes.</p>`}
+      <h3>Listas para completar</h3>${readyTickets ? `<ul class='readonly-list'>${readyTickets}</ul>` : `<p class='empty-state'>Sin órdenes listas para completar.</p>`}`;
   }
 
   function renderOthers() {

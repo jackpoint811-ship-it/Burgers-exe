@@ -170,7 +170,7 @@ function bogGetNormalizedReadSheetsWithHeaders_(ss) {
   return {
     pedidos: bogGetSheetWithHeaderContract_(ss, BOG_NORMALIZED_SHEETS.PEDIDOS, BOG_NORMALIZED_READ_PEDIDOS_REQUIRED_HEADERS),
     items: bogGetSheetWithHeaderContract_(ss, BOG_NORMALIZED_SHEETS.PEDIDO_ITEMS, BOG_NORMALIZED_HEADERS.PEDIDO_ITEMS),
-    burgers: bogGetSheetWithHeaderContract_(ss, BOG_NORMALIZED_SHEETS.PEDIDO_BURGERS, BOG_NORMALIZED_HEADERS.PEDIDO_BURGERS),
+    burgers: bogGetSheetWithHeaderContract_(ss, BOG_NORMALIZED_SHEETS.PEDIDO_BURGERS, BOG_PEDIDO_BURGERS_BASE_HEADERS),
     guarniciones: bogGetSheetWithHeaderContract_(ss, BOG_NORMALIZED_SHEETS.GUARNICIONES, BOG_NORMALIZED_HEADERS.GUARNICIONES),
     eventos: bogGetSheetWithHeaderContract_(ss, BOG_NORMALIZED_SHEETS.EVENTOS_PEDIDO, BOG_NORMALIZED_HEADERS.EVENTOS_PEDIDO)
   };
@@ -222,8 +222,8 @@ function bogMapPedidoBurger_(row, warnings) {
     sin_ingredientes: bogSafeParseJsonArray_(row.sin_ingredientes_json, 'sin_ingredientes_json', row.pedido_burger_id, warnings),
     comentarios: bogTrim_(row.comentarios),
     estado_burger: bogTrim_(row.estado_burger) || 'Pendiente',
-    responsable: bogTrim_(row.responsable),
-    actualizado_en: row.actualizado_en
+    responsable: bogTrim_(row.responsable) || '',
+    actualizado_en: row.actualizado_en || ''
   };
 }
 

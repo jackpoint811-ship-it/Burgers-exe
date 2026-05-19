@@ -13,6 +13,7 @@ var BOG_NORMALIZED_HEADERS = {
   GUARNICIONES: ['guarnicion_id', 'pedido_id', 'pedido_item_id', 'producto_id', 'cantidad', 'estado_guarnicion', 'responsable', 'actualizado_en'],
   EVENTOS_PEDIDO: ['evento_id', 'pedido_id', 'tipo_evento', 'estado_anterior', 'estado_nuevo', 'detalle', 'usuario', 'timestamp', 'origen_app']
 };
+var BOG_PEDIDO_BURGERS_BASE_HEADERS = ['pedido_burger_id', 'pedido_id', 'pedido_item_id', 'burger_base_id', 'extras_json', 'sin_ingredientes_json', 'comentarios'];
 
 var BOG_PUBLIC_SKU_FALLBACK_METADATA = {
   OG: { producto_id: 'OG', tipo: 'Burger', nombre: 'Burger OG', precio_publico: 85, activo: true },

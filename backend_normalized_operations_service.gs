@@ -489,3 +489,128 @@ function bogUpdateNormalizedGuarnicionStatus_(target, nextStatus, user) { bogAss
 function bogCompleteNormalizedOrderIfReady_(pedidoId, user) { var pid = bogTrim_(pedidoId); if (!pid) throw new Error('pedidoId es requerido.'); var ss = SpreadsheetApp.getActiveSpreadsheet(); var sh = bogGetNormalizedSheetsWithHeaders_(ss); var p = bogFindNormalizedRowById_(sh.pedidos.sheet, BOG_NORMALIZED_HEADERS.PEDIDOS, 'pedido_id', pid); if (!p) throw new Error('Pedido normalizado no encontrado: ' + pid); var burgers = bogReadSheetAsObjects_(sh.burgers.sheet, ['pedido_burger_id','pedido_id','pedido_item_id','burger_base_id','extras_json','sin_ingredientes_json','comentarios']).rows.filter(function (r) { return bogTrim_(r.data.pedido_id) === pid; }).map(function (r) { return r.data; }); var guas = bogReadSheetAsObjects_(sh.guarniciones.sheet, BOG_NORMALIZED_HEADERS.GUARNICIONES).rows.filter(function (r) { return bogTrim_(r.data.pedido_id) === pid; }).map(function (r) { return r.data; }); var blockers = []; var burgersReady = burgers.length > 0 && burgers.every(function (b) { return (bogTrim_(b.estado_burger) || 'Pendiente') === 'Lista'; }); var guaReady = guas.length === 0 || guas.every(function (g) { return (bogTrim_(g.estado_guarnicion) || 'Pendiente') === 'Hecha'; }); var payReady = (bogTrim_(p.rowData.estado_pago) || 'Pendiente') === 'Pagado'; if (!burgersReady) blockers.push('Burgers pendientes'); if (!guaReady) blockers.push('Guarniciones pendientes'); if (!payReady) blockers.push('Pago pendiente'); if (blockers.length) return { ok: true, blocked: true, pedido_id: pid, blockers: blockers, message: 'Orden no lista para completar' }; if (bogTrim_(p.rowData.estado) === 'Listo') return { ok: true, unchanged: true, pedido_id: pid }; var now = new Date(); bogPatchRowByHeaders_(sh.pedidos.sheet, p.rowNumber, p.headerMap, { estado: 'Listo', fecha_actualizacion: now }); bogAppendNormalizedEvent_(sh.eventos, pid, 'ORDEN_COMPLETADA_OPERATIVAMENTE', bogTrim_(p.rowData.estado), 'Listo', 'Completar orden explícito', user || 'chekeo-2-ui', now); return { ok: true, pedido_id: pid, estado_nuevo: 'Listo' }; }
 function bogEnsureNormalizedKitchenHeaders_() { var r = bogEnsureNormalizedOperationalHeaders_(); if (!r.ok) return r; var ss = SpreadsheetApp.getActiveSpreadsheet(); var sh = ss.getSheetByName(BOG_NORMALIZED_SHEETS.PEDIDO_BURGERS); var exp = BOG_NORMALIZED_HEADERS.PEDIDO_BURGERS; var hv = bogGetHeaderRowValues_(sh, exp.length); var fe = hv.length; while (fe > 0 && bogTrim_(hv[fe - 1]) === '') fe -= 1; for (var i = 0; i < Math.min(fe, exp.length); i += 1) { if (bogTrim_(hv[i]) !== exp[i]) { r.conflicts.push({ sheetName: sh.getName(), reason: 'Header mismatch', column: i + 1, expected: exp[i], actual: bogTrim_(hv[i]) }); return r; } } var miss = []; for (var j = fe; j < exp.length; j += 1) miss.push(exp[j]); if (miss.length) { sh.getRange(1, fe + 1, 1, miss.length).setValues([miss]); r.updatedSheets.push(sh.getName()); r.addedHeaders[sh.getName()] = miss; } else if (!r.addedHeaders[sh.getName()]) r.addedHeaders[sh.getName()] = []; r.ok = r.conflicts.length === 0; return r; }
 function bogPreviewNormalizedKitchenReadiness_() { var ss = SpreadsheetApp.getActiveSpreadsheet(); var s = bogGetNormalizedSheetsWithHeaders_(ss); var b = bogReadSheetAsObjects_(s.burgers.sheet, ['pedido_burger_id','pedido_id','pedido_item_id','burger_base_id','extras_json','sin_ingredientes_json','comentarios']).rows.map(function (r) { return r.data; }); var g = bogReadSheetAsObjects_(s.guarniciones.sheet, BOG_NORMALIZED_HEADERS.GUARNICIONES).rows.map(function (r) { return r.data; }); var hm = bogGetHeaderMap_(bogGetHeaderRowValues_(s.burgers.sheet, BOG_NORMALIZED_HEADERS.PEDIDO_BURGERS.length)); var miss = bogFindMissingHeaders_(hm, ['estado_burger','responsable','actualizado_en']); var bk = { total: b.length, pending: 0, preparing: 0, ready: 0 }; b.forEach(function (x) { var st = bogTrim_(x.estado_burger) || 'Pendiente'; if (st === 'Preparando') bk.preparing += 1; else if (st === 'Lista') bk.ready += 1; else bk.pending += 1; }); var gk = { total: g.length, pending: 0, preparing: 0, done: 0 }; g.forEach(function (x) { var st = bogTrim_(x.estado_guarnicion) || 'Pendiente'; if (st === 'Preparando') gk.preparing += 1; else if (st === 'Hecha') gk.done += 1; else gk.pending += 1; }); return { ok: miss.length === 0, missingHeadersBySheet: miss.length ? { PEDIDO_BURGERS: miss } : {}, burgerCounts: bk, guarnicionCounts: gk, timestamp: bogNowIso_() }; }
+
+// Phase 6 compatibility overrides
+function bogGetOperationalExpectedHeaders_(key) {
+  if (key === 'PEDIDO_BURGERS') return BOG_PEDIDO_BURGERS_BASE_HEADERS;
+  return BOG_NORMALIZED_HEADERS[key];
+}
+
+function previewNormalizedOperationsReadiness() {
+  return bogNormalizedRead_(function () {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheetNames = Object.keys(BOG_NORMALIZED_SHEETS);
+    var missingHeadersBySheet = {};
+    var pedidosCount = 0;
+    var openOrdersCount = 0;
+    var pendingGuarnicionesCount = 0;
+    sheetNames.forEach(function (key) {
+      var sheetName = BOG_NORMALIZED_SHEETS[key];
+      var expectedHeaders = bogGetOperationalExpectedHeaders_(key);
+      var sheet = ss.getSheetByName(sheetName);
+      if (!sheet) { missingHeadersBySheet[sheetName] = expectedHeaders.slice(); return; }
+      var headerValues = bogGetHeaderRowValues_(sheet, expectedHeaders.length);
+      var headerMap = bogGetHeaderMap_(headerValues);
+      var missing = bogFindMissingHeaders_(headerMap, expectedHeaders);
+      if (missing.length) missingHeadersBySheet[sheetName] = missing;
+      if (sheetName === BOG_NORMALIZED_SHEETS.PEDIDOS && missing.length === 0) {
+        var pedidosData = bogReadSheetAsObjects_(sheet, expectedHeaders).rows.map(function (row) { return row.data; });
+        pedidosCount = pedidosData.length;
+        openOrdersCount = pedidosData.filter(function (pedido) { return BOG_NORMALIZED_OPEN_ORDER_STATUSES.indexOf(bogTrim_(pedido.estado)) !== -1; }).length;
+      }
+      if (sheetName === BOG_NORMALIZED_SHEETS.GUARNICIONES && missing.length === 0) {
+        var guarnicionesData = bogReadSheetAsObjects_(sheet, expectedHeaders).rows.map(function (row) { return row.data; });
+        pendingGuarnicionesCount = guarnicionesData.filter(function (g) { return bogNormalizeHeaderKey_(g.estado_guarnicion) !== bogNormalizeHeaderKey_('Hecha'); }).length;
+      }
+    });
+    return { ok: Object.keys(missingHeadersBySheet).length === 0, missingHeadersBySheet: missingHeadersBySheet, pedidosCount: pedidosCount, openOrdersCount: openOrdersCount, pendingGuarnicionesCount: pendingGuarnicionesCount, timestamp: bogNowIso_() };
+  }, 'Diagnóstico de operaciones normalizadas obtenido.');
+}
+
+function bogEnsureNormalizedOperationalHeaders_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var result = { ok: true, updatedSheets: [], addedHeaders: {}, conflicts: [], timestamp: bogNowIso_() };
+  var pendingPedidosUpdate = null;
+  Object.keys(BOG_NORMALIZED_SHEETS).forEach(function (key) {
+    var sheetName = BOG_NORMALIZED_SHEETS[key];
+    var expectedHeaders = bogGetOperationalExpectedHeaders_(key);
+    var sheet = ss.getSheetByName(sheetName);
+    if (!sheet) { result.conflicts.push({ sheetName: sheetName, reason: 'Hoja normalizada requerida no encontrada.' }); return; }
+    if (sheetName === BOG_NORMALIZED_SHEETS.PEDIDOS) pendingPedidosUpdate = bogAnalyzePedidosOperationalHeaders_(sheet, expectedHeaders, result);
+    else bogVerifyExactHeaderContract_(sheet, expectedHeaders, result);
+  });
+  result.ok = result.conflicts.length === 0;
+  if (!result.ok) return result;
+  if (pendingPedidosUpdate && pendingPedidosUpdate.missingTrailing.length) {
+    pendingPedidosUpdate.sheet.getRange(1, pendingPedidosUpdate.startColumn, 1, pendingPedidosUpdate.missingTrailing.length).setValues([pendingPedidosUpdate.missingTrailing]);
+    result.updatedSheets.push(pendingPedidosUpdate.sheet.getName());
+    result.addedHeaders[pendingPedidosUpdate.sheet.getName()] = pendingPedidosUpdate.missingTrailing;
+  } else if (pendingPedidosUpdate) {
+    result.addedHeaders[pendingPedidosUpdate.sheet.getName()] = [];
+  }
+  return result;
+}
+
+function bogAssertBurgerKitchenHeadersReady_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = bogGetRequiredSheet_(ss, BOG_NORMALIZED_SHEETS.PEDIDO_BURGERS);
+  var headerMap = bogGetHeaderMap_(bogGetHeaderRowValues_(sheet, BOG_NORMALIZED_HEADERS.PEDIDO_BURGERS.length));
+  var missing = bogFindMissingHeaders_(headerMap, ['estado_burger', 'responsable', 'actualizado_en']);
+  if (missing.length) throw new Error('Ejecuta ensureNormalizedKitchenHeaders() antes de usar cocina.');
+}
+
+function bogUpdateNormalizedBurgerStatus_(target, nextStatus, user) {
+  bogAssertBurgerKitchenHeadersReady_();
+  bogAssertAllowedValue_(nextStatus, BOG_BURGER_STATUSES, 'estado_burger');
+  var t = bogTrim_(target);
+  if (!t) throw new Error('pedidoBurgerIdOrPedidoId es requerido.');
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = bogGetNormalizedSheetsWithHeaders_(ss);
+  var d = bogReadSheetAsObjects_(sh.burgers.sheet, BOG_NORMALIZED_HEADERS.PEDIDO_BURGERS);
+  var rows = d.rows.filter(function (r) { return bogTrim_(r.data.pedido_burger_id) === t; });
+  if (!rows.length) rows = d.rows.filter(function (r) { return bogTrim_(r.data.pedido_id) === t; });
+  if (!rows.length) throw new Error('No se encontraron burgers para: ' + t);
+  var u = rows.filter(function (r) { return (bogTrim_(r.data.estado_burger) || 'Pendiente') !== nextStatus; });
+  var pedidoIdsMap = {}; rows.forEach(function (r) { pedidoIdsMap[bogTrim_(r.data.pedido_id)] = true; });
+  var pedidoIds = Object.keys(pedidoIdsMap);
+  if (!u.length) return { ok: true, unchanged: true, affectedCount: 0, pedidoIds: pedidoIds, message: 'Burgers sin cambios' };
+  var now = new Date();
+  var actor = bogTrim_(user) || 'chekeo-2';
+  var by = {};
+  u.forEach(function (r) {
+    var pid = bogTrim_(r.data.pedido_id);
+    if (!by[pid]) by[pid] = [];
+    by[pid].push({ id: bogTrim_(r.data.pedido_burger_id), previous: bogTrim_(r.data.estado_burger) || 'Pendiente' });
+    bogPatchRowByHeaders_(sh.burgers.sheet, r.rowNumber, d.headerMap, { estado_burger: nextStatus, responsable: actor, actualizado_en: now });
+  });
+  Object.keys(by).forEach(function (pid) {
+    var ent = by[pid];
+    bogAppendNormalizedEvent_(sh.eventos, pid, 'BURGER_ESTADO_ACTUALIZADO', ent.map(function (e) { return e.id + ':' + e.previous; }).join(', '), nextStatus, 'burgers=' + ent.map(function (e) { return e.id; }).join(',') + '; count=' + ent.length, user || 'chekeo-2-ui', now);
+  });
+  return { ok: true, affectedCount: u.length, pedidoIds: Object.keys(by), estado_nuevo: nextStatus };
+}
+
+function bogCompleteNormalizedOrderIfReady_(pedidoId, user) {
+  bogAssertBurgerKitchenHeadersReady_();
+  var pid = bogTrim_(pedidoId);
+  if (!pid) throw new Error('pedidoId es requerido.');
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = bogGetNormalizedSheetsWithHeaders_(ss);
+  var p = bogFindNormalizedRowById_(sh.pedidos.sheet, BOG_NORMALIZED_HEADERS.PEDIDOS, 'pedido_id', pid);
+  if (!p) throw new Error('Pedido normalizado no encontrado: ' + pid);
+  var burgers = bogReadSheetAsObjects_(sh.burgers.sheet, BOG_NORMALIZED_HEADERS.PEDIDO_BURGERS).rows.filter(function (r) { return bogTrim_(r.data.pedido_id) === pid; }).map(function (r) { return r.data; });
+  var guas = bogReadSheetAsObjects_(sh.guarniciones.sheet, BOG_NORMALIZED_HEADERS.GUARNICIONES).rows.filter(function (r) { return bogTrim_(r.data.pedido_id) === pid; }).map(function (r) { return r.data; });
+  var blockers = [];
+  var burgersReady = burgers.length > 0 && burgers.every(function (b) { return (bogTrim_(b.estado_burger) || 'Pendiente') === 'Lista'; });
+  var guaReady = guas.length === 0 || guas.every(function (g) { return (bogTrim_(g.estado_guarnicion) || 'Pendiente') === 'Hecha'; });
+  var payReady = (bogTrim_(p.rowData.estado_pago) || 'Pendiente') === 'Pagado';
+  if (!burgersReady) blockers.push('Burgers pendientes');
+  if (!guaReady) blockers.push('Guarniciones pendientes');
+  if (!payReady) blockers.push('Pago pendiente');
+  if (blockers.length) return { ok: true, blocked: true, pedido_id: pid, blockers: blockers, message: 'Orden no lista para completar' };
+  if (bogTrim_(p.rowData.estado) === 'Listo') return { ok: true, unchanged: true, pedido_id: pid };
+  var now = new Date();
+  bogPatchRowByHeaders_(sh.pedidos.sheet, p.rowNumber, p.headerMap, { estado: 'Listo', fecha_actualizacion: now });
+  bogAppendNormalizedEvent_(sh.eventos, pid, 'ORDEN_COMPLETADA_OPERATIVAMENTE', bogTrim_(p.rowData.estado), 'Listo', 'Completar orden explícito', user || 'chekeo-2-ui', now);
+  return { ok: true, pedido_id: pid, estado_nuevo: 'Listo' };
+}
