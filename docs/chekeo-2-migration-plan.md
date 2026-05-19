@@ -258,6 +258,9 @@ Se completó la sincronización de pricing backend con el catálogo dinámico:
 - `PEDIDOS` operational fields are appended safely via manual `ensureNormalizedOperationalHeaders()` after Apps Script deployment.
 - Operational methods write audit rows to `EVENTOS_PEDIDO` and continue avoiding `Pedidos Master`.
 
-## Phase 3D-B — Pending
-- Re-enable/connect Chekeo 2.0 UI buttons to normalized operational methods after end-to-end validation.
-- Keep normalized-mode write controls disabled until Phase 3D-B is implemented.
+## Phase 3D-B — Internal UI normalized operational actions (implemented)
+- Chekeo 2.0 normalized mode now connects order, payment, guarnición, notes, and ticket-sent buttons to the normalized operational RPC methods validated in Phase 3D-A.
+- Normalized mode keeps the source banner visible as `Modo normalizado activo` and uses refresh-only behavior via `Actualizar`.
+- Legacy fallback mode continues routing operational actions to the existing legacy RPC methods when `state.ordersSource === "legacy-fallback"`.
+- WhatsApp actual send remains pending in normalized mode; UI controls continue to show disabled `WhatsApp pendiente` / `WhatsApp pendiente migración` labels.
+- Cierre/histórico migration remains pending; existing close/history controls are unchanged in this phase.
