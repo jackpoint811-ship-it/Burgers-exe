@@ -119,3 +119,6 @@ Phase 3B/3C read model:
 - does not delete/clear/migrate sheets
 - UI read integration in Chekeo 2.0 is enabled in Phase 3C (read-only mode for normalized orders/detail paths)
 - write/status/payment/guarnición actions from normalized UI remain disabled until Phase 3D-B
+
+## Phase 6 production object
+Added `production` and expanded `kitchen` flags for burgers/guarniciones readiness and blockers.

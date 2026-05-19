@@ -134,7 +134,7 @@ function bogReadAndComposeNormalizedOrders_(warnings) {
 
   var pedidos = bogReadSheetAsObjects_(sheets.pedidos.sheet, BOG_NORMALIZED_READ_PEDIDOS_REQUIRED_HEADERS).rows.map(function (row) { return row.data; });
   var items = bogReadSheetAsObjects_(sheets.items.sheet, BOG_NORMALIZED_HEADERS.PEDIDO_ITEMS).rows.map(function (row) { return row.data; });
-  var burgers = bogReadSheetAsObjects_(sheets.burgers.sheet, BOG_NORMALIZED_HEADERS.PEDIDO_BURGERS).rows.map(function (row) { return row.data; });
+  var burgers = bogReadSheetAsObjects_(sheets.burgers.sheet, ['pedido_burger_id', 'pedido_id', 'pedido_item_id', 'burger_base_id', 'extras_json', 'sin_ingredientes_json', 'comentarios']).rows.map(function (row) { return row.data; });
   var guarniciones = bogReadSheetAsObjects_(sheets.guarniciones.sheet, BOG_NORMALIZED_HEADERS.GUARNICIONES).rows.map(function (row) { return row.data; });
   var eventos = bogReadSheetAsObjects_(sheets.eventos.sheet, BOG_NORMALIZED_HEADERS.EVENTOS_PEDIDO).rows.map(function (row) { return row.data; });
 
@@ -170,10 +170,21 @@ function bogGetNormalizedReadSheetsWithHeaders_(ss) {
   return {
     pedidos: bogGetSheetWithHeaderContract_(ss, BOG_NORMALIZED_SHEETS.PEDIDOS, BOG_NORMALIZED_READ_PEDIDOS_REQUIRED_HEADERS),
     items: bogGetSheetWithHeaderContract_(ss, BOG_NORMALIZED_SHEETS.PEDIDO_ITEMS, BOG_NORMALIZED_HEADERS.PEDIDO_ITEMS),
-    burgers: bogGetSheetWithHeaderContract_(ss, BOG_NORMALIZED_SHEETS.PEDIDO_BURGERS, BOG_NORMALIZED_HEADERS.PEDIDO_BURGERS),
+    burgers: bogGetSheetWithHeaderContract_(ss, BOG_NORMALIZED_SHEETS.PEDIDO_BURGERS, BOG_PEDIDO_BURGERS_BASE_HEADERS),
     guarniciones: bogGetSheetWithHeaderContract_(ss, BOG_NORMALIZED_SHEETS.GUARNICIONES, BOG_NORMALIZED_HEADERS.GUARNICIONES),
     eventos: bogGetSheetWithHeaderContract_(ss, BOG_NORMALIZED_SHEETS.EVENTOS_PEDIDO, BOG_NORMALIZED_HEADERS.EVENTOS_PEDIDO)
   };
+}
+function bogComputeProduction_(pedido, burgers, guarniciones) {
+  var bt = burgers.length, bp = 0, bpr = 0, bl = 0;
+  burgers.forEach(function (b) { var s = bogTrim_(b.estado_burger) || 'Pendiente'; if (s === 'Lista') bl += 1; else if (s === 'Preparando') bpr += 1; else bp += 1; });
+  var gt = guarniciones.length, gp = 0, gpr = 0, gh = 0;
+  guarniciones.forEach(function (g) { var s = bogTrim_(g.estado_guarnicion) || 'Pendiente'; if (s === 'Hecha') gh += 1; else if (s === 'Preparando') gpr += 1; else gp += 1; });
+  var burgersReady = bt > 0 && bl === bt;
+  var guaReady = gt === 0 || gh === gt;
+  var payReady = (bogTrim_(pedido.estado_pago) || 'Pendiente') === 'Pagado';
+  var blockers = []; if (!burgersReady) blockers.push('Burgers pendientes'); if (!guaReady) blockers.push('Guarniciones pendientes'); if (!payReady) blockers.push('Pago pendiente');
+  return { burgers_total: bt, burgers_pendientes: bp, burgers_preparando: bpr, burgers_listas: bl, burgers_ready: burgersReady, guarniciones_total: gt, guarniciones_pendientes: gp, guarniciones_preparando: gpr, guarniciones_hechas: gh, guarniciones_ready: guaReady, payment_ready: payReady, order_ready: burgersReady && guaReady && payReady, blockers: blockers };
 }
 
 function bogGroupByPedidoId_(rows) {
@@ -209,7 +220,10 @@ function bogMapPedidoBurger_(row, warnings) {
     burger_base_id: bogTrim_(row.burger_base_id),
     extras: bogSafeParseJsonArray_(row.extras_json, 'extras_json', row.pedido_burger_id, warnings),
     sin_ingredientes: bogSafeParseJsonArray_(row.sin_ingredientes_json, 'sin_ingredientes_json', row.pedido_burger_id, warnings),
-    comentarios: bogTrim_(row.comentarios)
+    comentarios: bogTrim_(row.comentarios),
+    estado_burger: bogTrim_(row.estado_burger) || 'Pendiente',
+    responsable: bogTrim_(row.responsable) || '',
+    actualizado_en: row.actualizado_en || ''
   };
 }
 
@@ -258,9 +272,7 @@ function bogComposeNormalizedOrder_(pedido, items, burgers, guarniciones) {
     }).join(', ')
     : 'Sin guarniciones';
 
-  var pendingGuarniciones = guarniciones.filter(function (g) {
-    return bogNormalizeHeaderKey_(g.estado_guarnicion) !== bogNormalizeHeaderKey_('Hecha');
-  }).length;
+  var production = bogComputeProduction_(pedido, burgers, guarniciones);
 
   var extrasTotal = burgers.reduce(function (acc, burger) {
     return acc + (Array.isArray(burger.extras) ? burger.extras.length : 0);
@@ -297,8 +309,13 @@ function bogComposeNormalizedOrder_(pedido, items, burgers, guarniciones) {
       burger_summary: burgerSummary || 'Sin burgers',
       guarnicion_summary: guarnicionSummary,
       has_guarniciones: guarniciones.length > 0,
-      pending_guarniciones: pendingGuarniciones
+      pending_guarniciones: production.guarniciones_pendientes,
+      pending_burgers: production.burgers_pendientes,
+      burgers_ready: production.burgers_ready,
+      guarniciones_ready: production.guarniciones_ready,
+      order_ready: production.order_ready
     },
+    production: production,
     payment: {
       metodo_pago: bogTrim_(pedido.metodo_pago),
       estado_pago: bogTrim_(pedido.estado_pago) || 'Pendiente'

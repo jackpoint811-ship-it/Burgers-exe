@@ -271,3 +271,6 @@ Se completó la sincronización de pricing backend con el catálogo dinámico:
 - `markNormalizedTicketSent` and `markNormalizedOrderPaid` are now explicitly protected against duplicate event writes when already completed.
 - Internal Chekeo normalized UI now disables completed quick actions (`Pagado`, `Ticket enviado`) and adds detail-modal change listeners to enable save buttons only after field edits.
 - Write feedback now distinguishes no-op vs mutation (`Sin cambios: ...` vs `OK: ...`).
+
+## Phase 6 (Cocina + guarniciones separadas)
+Implemented backend/header/UI/RPC split production flow with explicit completion gate.
