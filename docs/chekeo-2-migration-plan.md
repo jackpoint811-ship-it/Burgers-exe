@@ -274,3 +274,9 @@ Se completó la sincronización de pricing backend con el catálogo dinámico:
 
 ## Phase 6 (Cocina + guarniciones separadas)
 Implemented backend/header/UI/RPC split production flow with explicit completion gate.
+
+## Phase 6 correction (2026-05-19)
+- Producción, pago y entrega son procesos separados.
+- Cocina no depende del pago para marcar producción `Preparada`.
+- Finalización para cierre: `estado_produccion=Preparada` + `estado_pago=Pagado` + `estado_entrega=Entregada`.
+

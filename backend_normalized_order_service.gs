@@ -7,7 +7,7 @@ var BOG_NORMALIZED_SHEETS = {
 };
 
 var BOG_NORMALIZED_HEADERS = {
-  PEDIDOS: ['pedido_id', 'folio', 'canal', 'cliente_nombre', 'cliente_telefono', 'metodo_pago', 'total', 'estado', 'fecha_creacion', 'fecha_actualizacion', 'origen_app', 'estado_pago', 'nota_interna', 'nota_cliente', 'ticket_enviado', 'ticket_enviado_en'],
+  PEDIDOS: ['pedido_id', 'folio', 'canal', 'cliente_nombre', 'cliente_telefono', 'metodo_pago', 'total', 'estado', 'fecha_creacion', 'fecha_actualizacion', 'origen_app', 'estado_pago', 'nota_interna', 'nota_cliente', 'ticket_enviado', 'ticket_enviado_en', 'estado_produccion', 'estado_entrega'],
   PEDIDO_ITEMS: ['pedido_item_id', 'pedido_id', 'producto_id', 'tipo', 'nombre', 'cantidad', 'precio_unitario', 'subtotal', 'notas'],
   PEDIDO_BURGERS: ['pedido_burger_id', 'pedido_id', 'pedido_item_id', 'burger_base_id', 'extras_json', 'sin_ingredientes_json', 'comentarios', 'estado_burger', 'responsable', 'actualizado_en'],
   GUARNICIONES: ['guarnicion_id', 'pedido_id', 'pedido_item_id', 'producto_id', 'cantidad', 'estado_guarnicion', 'responsable', 'actualizado_en'],
@@ -175,7 +175,9 @@ function bogCreateNormalizedPublicOrderFromCloudflare_(requestBody) {
       nota_interna: '',
       nota_cliente: '',
       ticket_enviado: false,
-      ticket_enviado_en: ''
+      ticket_enviado_en: '',
+      estado_produccion: 'Pendiente',
+      estado_entrega: 'Pendiente'
     });
 
     bogAppendRecordsByHeaders_(sheets.items.sheet, sheets.items.headers, sheets.items.headerMap, itemRows);
