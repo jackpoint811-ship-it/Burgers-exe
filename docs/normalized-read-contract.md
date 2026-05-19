@@ -1,7 +1,7 @@
 # Normalized Read Contract (Phase 3B/3C)
 
 ## Scope
-Phase 3B adds a **read-only** normalized backend service for Chekeo 2.0.
+Phase 3B added a **read-only** normalized backend service for Chekeo 2.0; Phase 3D-A extends the read contract with operational fields stored on `PEDIDOS`.
 
 This phase introduces:
 - `getNormalizedAppOrders(filters)`
@@ -9,7 +9,7 @@ This phase introduces:
 - `previewNormalizedOrdersRead()`
 
 Phase 3C updates internal UI read path to consume this normalized model (`cloudflare/internal-chekeo/app.js`) with legacy fallback.
-Operational writes/status transitions remain pending migration in Phase 3D.
+Operational write methods are added in Phase 3D-A, but UI button activation remains pending Phase 3D-B.
 
 ## Source sheets
 Read model composes data from:
@@ -40,6 +40,7 @@ Optional `filters` object:
 - Header fields from `PEDIDOS`:
   - `pedido_id`, `folio`, `canal`, `cliente_nombre`, `cliente_telefono`
   - `metodo_pago`, `total`, `estado`, `fecha_creacion`, `fecha_actualizacion`, `origen_app`
+  - Operational fields when present: `estado_pago`, `nota_interna`, `nota_cliente`, `ticket_enviado`, `ticket_enviado_en`
 - Children:
   - `items[]` from `PEDIDO_ITEMS`
   - `burgers[]` from `PEDIDO_BURGERS`
@@ -87,14 +88,10 @@ If JSON parse fails, service returns `[]` and appends a warning in response.
   - `Listo -> Listo`
   - fallback to raw `estado`
 
-## Payment behavior (temporary)
-Current normalized `PEDIDOS` does not include dedicated paid-state column.
-
-Temporary behavior in Phase 3B:
-- `payment.metodo_pago` comes from `PEDIDOS.metodo_pago`
-- `payment.estado_pago` is hardcoded to `Pendiente`
-
-This remains temporary until payment state migration phase.
+## Payment behavior
+- `payment.metodo_pago` comes from `PEDIDOS.metodo_pago`.
+- `payment.estado_pago` comes from `PEDIDOS.estado_pago` when the column/value is present.
+- If `PEDIDOS.estado_pago` is missing or blank, the read model falls back to `Pendiente` for backward compatibility with pre-Phase 3D-A rows.
 
 ## getNormalizedOrderDetail(pedidoId)
 Returns a single composed order by `pedido_id`, including `eventos[]` from `EVENTOS_PEDIDO`.
@@ -121,4 +118,4 @@ Phase 3B/3C read model:
 - does not write to any sheet
 - does not delete/clear/migrate sheets
 - UI read integration in Chekeo 2.0 is enabled in Phase 3C (read-only mode for normalized orders/detail paths)
-- write/status/payment/guarnición actions from normalized UI remain disabled until Phase 3D
+- write/status/payment/guarnición actions from normalized UI remain disabled until Phase 3D-B

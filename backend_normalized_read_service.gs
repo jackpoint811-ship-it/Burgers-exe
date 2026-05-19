@@ -1,3 +1,5 @@
+var BOG_NORMALIZED_READ_PEDIDOS_REQUIRED_HEADERS = ['pedido_id', 'folio', 'canal', 'cliente_nombre', 'cliente_telefono', 'metodo_pago', 'total', 'estado', 'fecha_creacion', 'fecha_actualizacion', 'origen_app'];
+
 function getNormalizedAppOrders(filters) {
   var parsedFilters = bogNormalizeReadFilters_(filters);
   var warnings = [];
@@ -128,9 +130,9 @@ function bogParseFilterDate_(value, endOfDay) {
 
 function bogReadAndComposeNormalizedOrders_(warnings) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheets = bogGetNormalizedSheetsWithHeaders_(ss);
+  var sheets = bogGetNormalizedReadSheetsWithHeaders_(ss);
 
-  var pedidos = bogReadSheetAsObjects_(sheets.pedidos.sheet, BOG_NORMALIZED_HEADERS.PEDIDOS).rows.map(function (row) { return row.data; });
+  var pedidos = bogReadSheetAsObjects_(sheets.pedidos.sheet, BOG_NORMALIZED_READ_PEDIDOS_REQUIRED_HEADERS).rows.map(function (row) { return row.data; });
   var items = bogReadSheetAsObjects_(sheets.items.sheet, BOG_NORMALIZED_HEADERS.PEDIDO_ITEMS).rows.map(function (row) { return row.data; });
   var burgers = bogReadSheetAsObjects_(sheets.burgers.sheet, BOG_NORMALIZED_HEADERS.PEDIDO_BURGERS).rows.map(function (row) { return row.data; });
   var guarniciones = bogReadSheetAsObjects_(sheets.guarniciones.sheet, BOG_NORMALIZED_HEADERS.GUARNICIONES).rows.map(function (row) { return row.data; });
@@ -160,6 +162,17 @@ function bogReadAndComposeNormalizedOrders_(warnings) {
     eventos: eventos,
     orders: orders,
     eventosByPedido: eventosByPedido
+  };
+}
+
+
+function bogGetNormalizedReadSheetsWithHeaders_(ss) {
+  return {
+    pedidos: bogGetSheetWithHeaderContract_(ss, BOG_NORMALIZED_SHEETS.PEDIDOS, BOG_NORMALIZED_READ_PEDIDOS_REQUIRED_HEADERS),
+    items: bogGetSheetWithHeaderContract_(ss, BOG_NORMALIZED_SHEETS.PEDIDO_ITEMS, BOG_NORMALIZED_HEADERS.PEDIDO_ITEMS),
+    burgers: bogGetSheetWithHeaderContract_(ss, BOG_NORMALIZED_SHEETS.PEDIDO_BURGERS, BOG_NORMALIZED_HEADERS.PEDIDO_BURGERS),
+    guarniciones: bogGetSheetWithHeaderContract_(ss, BOG_NORMALIZED_SHEETS.GUARNICIONES, BOG_NORMALIZED_HEADERS.GUARNICIONES),
+    eventos: bogGetSheetWithHeaderContract_(ss, BOG_NORMALIZED_SHEETS.EVENTOS_PEDIDO, BOG_NORMALIZED_HEADERS.EVENTOS_PEDIDO)
   };
 }
 
@@ -265,6 +278,11 @@ function bogComposeNormalizedOrder_(pedido, items, burgers, guarniciones) {
     fecha_creacion: pedido.fecha_creacion,
     fecha_actualizacion: pedido.fecha_actualizacion,
     origen_app: bogTrim_(pedido.origen_app),
+    estado_pago: bogTrim_(pedido.estado_pago) || 'Pendiente',
+    nota_interna: bogTrim_(pedido.nota_interna),
+    nota_cliente: bogTrim_(pedido.nota_cliente),
+    ticket_enviado: bogNormalizeBoolean_(pedido.ticket_enviado),
+    ticket_enviado_en: pedido.ticket_enviado_en || '',
     items: items,
     burgers: burgers,
     guarniciones: guarniciones,
@@ -283,11 +301,17 @@ function bogComposeNormalizedOrder_(pedido, items, burgers, guarniciones) {
     },
     payment: {
       metodo_pago: bogTrim_(pedido.metodo_pago),
-      estado_pago: 'Pendiente'
+      estado_pago: bogTrim_(pedido.estado_pago) || 'Pendiente'
     }
   };
 }
 
+function bogNormalizeBoolean_(value) {
+  if (value === true) return true;
+  if (value === false) return false;
+  var normalized = bogNormalizeHeaderKey_(value);
+  return ['true', 'si', 'sí', 'yes', '1'].indexOf(normalized) !== -1;
+}
 
 function bogBuildItemNameByItemId_(items) {
   var out = {};
