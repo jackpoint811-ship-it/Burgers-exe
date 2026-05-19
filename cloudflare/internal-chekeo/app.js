@@ -185,7 +185,7 @@
       try {
         const result = await rpcCall(rpcMethod, args);
         await loadOperationalPanel();
-        showToast(`OK: ${label}`);
+        showToast(result?.data?.unchanged || result?.unchanged ? `Sin cambios: ${label}` : `OK: ${label}`);
         return result;
       } catch (e) {
         showToast(e?.message || 'Error en operación', true);
@@ -295,11 +295,13 @@
       const paymentStatus = escape(rawPaymentStatus);
       const burgerSummary = escape(normalized ? (o.kitchen?.burger_summary || 'Sin burgers') : '-');
       const guarnicionSummary = escape(normalized ? (o.kitchen?.guarnicion_summary || 'Sin guarniciones') : '-');
+      const ticketEnviado = normalized && (String(o.ticket_enviado).toLowerCase() === 'true' || o.ticket_enviado === true);
+      const ticketBadge = ticketEnviado ? ` <span class='badge-payment'>Ticket enviado</span>` : '';
       const operationalActions = normalized
         ? renderNormalizedOrderActions(o, id, rawStatus, rawPaymentStatus)
         : `<button class='ghost write-btn' data-write-action data-mark-paid='${id}'>Marcar pagado</button><button class='ghost write-btn' data-write-action data-ready='${id}'>Listo</button><button class='ghost write-btn' data-write-action data-side-ready='${id}'>Guarnición lista</button>`;
       const whatsappLabel = normalized ? 'WhatsApp pendiente' : 'WhatsApp';
-      return `<li class='order-item'><div><small>${folio}</small><p><strong>${customer}</strong></p><p>${phone}</p><p>Total: ${total}</p><small><span class='badge-status'>${status}</span> <span class='badge-payment'>${paymentStatus}</span></small><p>${burgerSummary}</p><p>${guarnicionSummary}</p></div>
+      return `<li class='order-item'><div><small>${folio}</small><p><strong>${customer}</strong></p><p>${phone}</p><p>Total: ${total}</p><small><span class='badge-status'>${status}</span> <span class='badge-payment'>${paymentStatus}</span>${ticketBadge}</small><p>${burgerSummary}</p><p>${guarnicionSummary}</p></div>
       <div class='order-actions'>
       <button class='ghost' data-detail='${id}'>Detalle</button>
       ${operationalActions}
@@ -431,6 +433,10 @@
       const selectedStatus = o.estado || 'Nuevo';
       const selectedPaymentStatus = payment.estado_pago || o.estado_pago || 'Pendiente';
       const selectedPaymentMethod = payment.metodo_pago || o.metodo_pago || 'No definido';
+      const initialNotaInterna = o.nota_interna || '';
+      const initialNotaCliente = o.nota_cliente || '';
+      const ticketSent = String(o.ticket_enviado).toLowerCase() === 'true' || o.ticket_enviado === true;
+      const paidAlready = selectedPaymentStatus === 'Pagado';
       modalContent.innerHTML = `<h3>Detalle normalizado</h3>
         <div class='form-grid'>
           <p><strong>Pedido:</strong> ${escape(o.pedido_id || '-')} / ${escape(o.folio || '-')}</p>
@@ -440,15 +446,15 @@
           <label>Estado Pedido<select id='norm-status'>${NORMALIZED_ORDER_STATUSES.map((status) => `<option ${status === selectedStatus ? 'selected' : ''}>${status}</option>`).join('')}</select></label>
           <label>Estado Pago<select id='norm-pay-status'>${NORMALIZED_PAYMENT_STATUSES.map((status) => `<option ${status === selectedPaymentStatus ? 'selected' : ''}>${status}</option>`).join('')}</select></label>
           <label>Método Pago<select id='norm-pay-method'>${PAYMENT_METHODS.map((method) => `<option ${method === selectedPaymentMethod ? 'selected' : ''}>${method}</option>`).join('')}</select></label>
-          <label>Nota interna<textarea id='norm-note-internal'>${escape(o.nota_interna || '')}</textarea></label>
-          <label>Nota cliente<textarea id='norm-note-client'>${escape(o.nota_cliente || '')}</textarea></label>
+          <label>Nota interna<textarea id='norm-note-internal'>${escape(initialNotaInterna)}</textarea></label>
+          <label>Nota cliente<textarea id='norm-note-client'>${escape(initialNotaCliente)}</textarea></label>
         </div>
         <div class='row'>
-          <button class='write-btn' data-write-action id='save-normalized-status'>Guardar estado</button>
-          <button class='write-btn' data-write-action id='save-normalized-payment'>Guardar pago</button>
-          <button class='write-btn' data-write-action id='save-normalized-notes'>Guardar notas</button>
-          <button class='write-btn' data-write-action id='mark-normalized-paid-modal'>Marcar pagado</button>
-          <button class='write-btn' data-write-action id='mark-normalized-ticket-modal'>Marcar ticket enviado</button>
+          <button class='write-btn' data-write-action id='save-normalized-status' disabled>Guardar estado</button>
+          <button class='write-btn' data-write-action id='save-normalized-payment' disabled>Guardar pago</button>
+          <button class='write-btn' data-write-action id='save-normalized-notes' disabled>Guardar notas</button>
+          <button class='write-btn' data-write-action id='mark-normalized-paid-modal' ${paidAlready ? 'disabled' : ''}>${paidAlready ? 'Pagado' : 'Marcar pagado'}</button>
+          <button class='write-btn' data-write-action id='mark-normalized-ticket-modal' ${ticketSent ? 'disabled' : ''}>${ticketSent ? 'Ticket enviado' : 'Marcar ticket enviado'}</button>
           <button class='ghost' disabled title='Pendiente migración'>WhatsApp pendiente migración</button>
         </div>
         <h4>Items</h4><pre>${escape(JSON.stringify(items, null, 2))}</pre>
@@ -461,6 +467,24 @@
       document.querySelector('#save-normalized-notes').onclick = () => saveNotes(orderId, document.querySelector('#norm-note-internal').value, document.querySelector('#norm-note-client').value);
       document.querySelector('#mark-normalized-paid-modal').onclick = () => markPaid(orderId);
       document.querySelector('#mark-normalized-ticket-modal').onclick = () => markTicketSent(orderId);
+      const statusSelect = document.querySelector('#norm-status');
+      const payStatusSelect = document.querySelector('#norm-pay-status');
+      const payMethodSelect = document.querySelector('#norm-pay-method');
+      const noteInternal = document.querySelector('#norm-note-internal');
+      const noteClient = document.querySelector('#norm-note-client');
+      const saveStatusBtn = document.querySelector('#save-normalized-status');
+      const savePaymentBtn = document.querySelector('#save-normalized-payment');
+      const saveNotesBtn = document.querySelector('#save-normalized-notes');
+      const syncNormalizedDetailButtons = () => {
+        saveStatusBtn.disabled = statusSelect.value === selectedStatus;
+        savePaymentBtn.disabled = payStatusSelect.value === selectedPaymentStatus && payMethodSelect.value === selectedPaymentMethod;
+        saveNotesBtn.disabled = noteInternal.value.trim() === initialNotaInterna.trim() && noteClient.value.trim() === initialNotaCliente.trim();
+      };
+      [statusSelect, payStatusSelect, payMethodSelect, noteInternal, noteClient].forEach((node) => {
+        node.addEventListener('change', syncNormalizedDetailButtons);
+        node.addEventListener('input', syncNormalizedDetailButtons);
+      });
+      syncNormalizedDetailButtons();
       return;
     }
     const d = await rpcCall('getOrderDetail', [orderId]);

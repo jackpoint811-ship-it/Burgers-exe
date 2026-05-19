@@ -264,3 +264,10 @@ Se completó la sincronización de pricing backend con el catálogo dinámico:
 - Legacy fallback mode continues routing operational actions to the existing legacy RPC methods when `state.ordersSource === "legacy-fallback"`.
 - WhatsApp actual send remains pending in normalized mode; UI controls continue to show disabled `WhatsApp pendiente` / `WhatsApp pendiente migración` labels.
 - Cierre/resumen/archivo/histórico migration remains pending; those legacy close/archive controls are disabled in normalized mode until a later phase.
+
+## Phase 3D-C — Normalized operations hardening/idempotency (implemented)
+- Backend normalized write methods now enforce idempotency for no-op requests (status, payment, mark-paid, notes, ticket-sent, and guarnición-done).
+- No-op requests now return `ok: true` with `unchanged: true` and do not append duplicate `EVENTOS_PEDIDO` rows.
+- `markNormalizedTicketSent` and `markNormalizedOrderPaid` are now explicitly protected against duplicate event writes when already completed.
+- Internal Chekeo normalized UI now disables completed quick actions (`Pagado`, `Ticket enviado`) and adds detail-modal change listeners to enable save buttons only after field edits.
+- Write feedback now distinguishes no-op vs mutation (`Sin cambios: ...` vs `OK: ...`).
