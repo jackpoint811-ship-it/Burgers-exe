@@ -1,6 +1,6 @@
 (() => {
   const ORDER_STATUSES = ['Nuevo', 'Confirmado', 'Preparando', 'Listo'];
-  const NORMALIZED_ORDER_STATUSES = ['Nuevo', 'Confirmado', 'Preparando', 'Listo', 'Cancelado', 'Completado'];
+  const NORMALIZED_ORDER_STATUSES = ['Nuevo', 'Confirmado', 'Preparando', 'Preparada', 'Cancelado', 'Completado'];
   const PAYMENT_STATUSES = ['Pendiente', 'Pagado'];
   const NORMALIZED_PAYMENT_STATUSES = ['Pendiente', 'Pagado', 'Parcial', 'Cancelado'];
   const PAYMENT_METHODS = ['Efectivo', 'Transferencia', 'Mixto', 'No definido'];
@@ -283,8 +283,11 @@
     const paidButton = paymentStatus === 'Pagado'
       ? `<button class='ghost write-btn' disabled>Pagado</button>`
       : `<button class='ghost write-btn' data-write-action data-mark-paid='${id}'>Pagado</button>`;
+    const productionState = o.production?.estado_produccion || o.estado_produccion || (o.estado === 'Listo' ? 'Preparada' : 'Pendiente');
     const ready = Boolean(o.production?.production_ready || o.production?.order_ready);
-    const completeButton = ready ? `<button class='ghost write-btn' data-write-action data-complete-order='${id}'>Marcar como preparada</button>` : `<button class='ghost write-btn' disabled title='${escape((o.production?.blockers || []).join(', ') || 'Faltan pasos')}'>Faltan pasos</button>`;
+    const completeButton = productionState === 'Preparada'
+      ? `<button class='ghost write-btn' disabled>Producción preparada</button>`
+      : (ready ? `<button class='ghost write-btn' data-write-action data-complete-order='${id}'>Marcar como preparada</button>` : `<button class='ghost write-btn' disabled title='${escape((o.production?.blockers || []).join(', ') || 'Faltan pasos')}'>Faltan pasos</button>`);
     return `${paidButton}${statusButton}${completeButton}`;
   }
 
@@ -345,7 +348,7 @@
     if (!normalized) {
       document.querySelector('#cocina-content').innerHTML = `<h2>Cocina</h2><ul class='readonly-list'>${pending.map((o) => {
         const id = escape(o['ID Pedido'] || '');
-        return `<li>${id} <button class='write-btn' data-write-action data-complete-order='${id}'>Marcar como preparada</button> <button class='write-btn' data-write-action data-side-ready='${id}'>Marcar guarnición lista</button></li>`;
+        return `<li>${id} <button class='write-btn' data-write-action data-ready='${id}'>Marcar pedido Listo</button> <button class='write-btn' data-write-action data-side-ready='${id}'>Marcar guarnición lista</button></li>`;
       }).join('')}</ul>`;
       return;
     }
@@ -467,7 +470,6 @@
       const guarniciones = Array.isArray(o.guarniciones) ? o.guarniciones : [];
       const eventos = Array.isArray(payload?.eventos) ? payload.eventos : [];
       const payment = o.payment || {};
-      const selectedStatus = o.estado || 'Nuevo';
       const selectedPaymentStatus = payment.estado_pago || o.estado_pago || 'Pendiente';
       const selectedPaymentMethod = payment.metodo_pago || o.metodo_pago || 'No definido';
       const initialNotaInterna = o.nota_interna || '';
@@ -492,14 +494,14 @@
           <p><strong>Cliente:</strong> ${escape(o.cliente_nombre || '-')}</p>
           <p><strong>Teléfono:</strong> ${escape(o.cliente_telefono || '-')}</p>
           <p><strong>Total:</strong> ${escape(o.total || '0')}</p>
-          <label>Estado Pedido<select id='norm-status'>${NORMALIZED_ORDER_STATUSES.map((status) => `<option ${status === selectedStatus ? 'selected' : ''}>${status}</option>`).join('')}</select></label>
+          <p><strong>Estado general:</strong> ${escape(o.estado || 'Nuevo')}</p>
+          <p><strong>Producción:</strong> ${escape(productionState)}</p>
           <label>Estado Pago<select id='norm-pay-status'>${NORMALIZED_PAYMENT_STATUSES.map((status) => `<option ${status === selectedPaymentStatus ? 'selected' : ''}>${status}</option>`).join('')}</select></label>
           <label>Método Pago<select id='norm-pay-method'>${PAYMENT_METHODS.map((method) => `<option ${method === selectedPaymentMethod ? 'selected' : ''}>${method}</option>`).join('')}</select></label>
           <label>Nota interna<textarea id='norm-note-internal'>${escape(initialNotaInterna)}</textarea></label>
           <label>Nota cliente<textarea id='norm-note-client'>${escape(initialNotaCliente)}</textarea></label>
         </div>
         <div class='row'>
-          <button class='write-btn' data-write-action id='save-normalized-status' disabled>Guardar estado</button>
           <button class='write-btn' data-write-action id='save-normalized-payment' disabled>Guardar pago</button>
           <button class='write-btn' data-write-action id='save-normalized-notes' disabled>Guardar notas</button>
           <button class='write-btn' data-write-action id='mark-normalized-paid-modal' ${paidAlready ? 'disabled' : ''}>${paidAlready ? 'Pagado' : 'Marcar pagado'}</button>
@@ -532,25 +534,21 @@
         <h4>Guarniciones</h4><pre>${escape(JSON.stringify(guarniciones, null, 2))}</pre>
         <h4>Eventos</h4><pre>${escape(JSON.stringify(eventos, null, 2))}</pre>`;
       modal.classList.remove('is-hidden');
-      document.querySelector('#save-normalized-status').onclick = () => changeOrderStatus(orderId, document.querySelector('#norm-status').value);
       document.querySelector('#save-normalized-payment').onclick = () => updatePayment(orderId, document.querySelector('#norm-pay-status').value, document.querySelector('#norm-pay-method').value);
       document.querySelector('#save-normalized-notes').onclick = () => saveNotes(orderId, document.querySelector('#norm-note-internal').value, document.querySelector('#norm-note-client').value);
       document.querySelector('#mark-normalized-paid-modal').onclick = () => markPaid(orderId);
       document.querySelector('#mark-normalized-ticket-modal').onclick = () => markTicketSent(orderId);
-      const statusSelect = document.querySelector('#norm-status');
       const payStatusSelect = document.querySelector('#norm-pay-status');
       const payMethodSelect = document.querySelector('#norm-pay-method');
       const noteInternal = document.querySelector('#norm-note-internal');
       const noteClient = document.querySelector('#norm-note-client');
-      const saveStatusBtn = document.querySelector('#save-normalized-status');
       const savePaymentBtn = document.querySelector('#save-normalized-payment');
       const saveNotesBtn = document.querySelector('#save-normalized-notes');
       const syncNormalizedDetailButtons = () => {
-        saveStatusBtn.disabled = statusSelect.value === selectedStatus;
         savePaymentBtn.disabled = payStatusSelect.value === selectedPaymentStatus && payMethodSelect.value === selectedPaymentMethod;
         saveNotesBtn.disabled = noteInternal.value.trim() === initialNotaInterna.trim() && noteClient.value.trim() === initialNotaCliente.trim();
       };
-      [statusSelect, payStatusSelect, payMethodSelect, noteInternal, noteClient].forEach((node) => {
+      [payStatusSelect, payMethodSelect, noteInternal, noteClient].forEach((node) => {
         node.addEventListener('change', syncNormalizedDetailButtons);
         node.addEventListener('input', syncNormalizedDetailButtons);
       });

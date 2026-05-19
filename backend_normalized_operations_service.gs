@@ -1,3 +1,5 @@
+// NOTE: 'Listo' remains only for legacy/backward compatibility of estado general.
+// Normalized production completion must use estado_produccion='Preparada' (not updateNormalizedOrderStatus -> 'Listo').
 var BOG_NORMALIZED_ORDER_STATUSES = ['Nuevo', 'Confirmado', 'Preparando', 'Listo', 'Cancelado', 'Completado'];
 var BOG_NORMALIZED_PAYMENT_STATUSES = ['Pendiente', 'Pagado', 'Parcial', 'Cancelado'];
 var BOG_NORMALIZED_OPERATIONAL_PEDIDOS_HEADERS = ['estado_pago', 'nota_interna', 'nota_cliente', 'ticket_enviado', 'ticket_enviado_en'];
