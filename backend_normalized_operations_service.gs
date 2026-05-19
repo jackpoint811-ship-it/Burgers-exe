@@ -248,6 +248,16 @@ function bogUpdateNormalizedOrderStatus_(pedidoId, nextStatus, user) {
 
   var now = new Date();
   var previousStatus = bogTrim_(found.rowData.estado);
+  if (previousStatus === nextStatus) {
+    return {
+      ok: true,
+      unchanged: true,
+      pedido_id: bogTrim_(pedidoId),
+      estado_anterior: previousStatus,
+      estado_nuevo: nextStatus,
+      message: 'Estado sin cambios'
+    };
+  }
   bogPatchRowByHeaders_(sheets.pedidos.sheet, found.rowNumber, found.headerMap, {
     estado: nextStatus,
     fecha_actualizacion: now
@@ -269,6 +279,18 @@ function bogUpdateNormalizedPaymentStatus_(pedidoId, estadoPago, metodoPago, use
   var previousPaymentStatus = bogTrim_(found.rowData.estado_pago) || 'Pendiente';
   var currentMetodoPago = bogTrim_(found.rowData.metodo_pago);
   var nextMetodoPago = bogTrim_(metodoPago) || currentMetodoPago;
+  var paymentUnchanged = previousPaymentStatus === estadoPago;
+  var methodUnchanged = nextMetodoPago === currentMetodoPago;
+  if (paymentUnchanged && methodUnchanged) {
+    return {
+      ok: true,
+      unchanged: true,
+      pedido_id: bogTrim_(pedidoId),
+      estado_pago: estadoPago,
+      metodo_pago: nextMetodoPago,
+      message: 'Pago sin cambios'
+    };
+  }
   var patch = {
     estado_pago: estadoPago,
     fecha_actualizacion: now
@@ -300,12 +322,25 @@ function bogMarkNormalizedGuarnicionDone_(guarnicionIdOrPedidoId, user) {
       return bogTrim_(row.data.pedido_id) === target;
     });
   }
-  if (!affectedRows.length) throw new Error('Guarnición o pedido normalizado no encontrado: ' + target);
+  if (!affectedRows.length) {
+    return { ok: true, unchanged: true, affectedCount: 0, pedidoIds: [], message: 'Sin guarniciones' };
+  }
 
   var now = new Date();
   var actor = bogTrim_(user) || 'chekeo-2';
   var byPedido = {};
   affectedRows.forEach(function (row) {
+    var pedidoId = bogTrim_(row.data.pedido_id);
+    if (!byPedido[pedidoId]) byPedido[pedidoId] = [];
+  });
+  var updatableRows = affectedRows.filter(function (row) {
+    return bogTrim_(row.data.estado_guarnicion) !== 'Hecha';
+  });
+  if (!updatableRows.length) {
+    return { ok: true, unchanged: true, affectedCount: 0, pedidoIds: Object.keys(byPedido), message: 'Guarniciones ya estaban hechas' };
+  }
+
+  updatableRows.forEach(function (row) {
     var pedidoId = bogTrim_(row.data.pedido_id);
     if (!byPedido[pedidoId]) byPedido[pedidoId] = [];
     byPedido[pedidoId].push({
@@ -329,7 +364,7 @@ function bogMarkNormalizedGuarnicionDone_(guarnicionIdOrPedidoId, user) {
     bogAppendNormalizedEvent_(sheets.eventos, pedidoId, 'GUARNICION_HECHA', previousSummary, 'Hecha', detail, user, now);
   });
 
-  return { ok: true, affectedCount: affectedRows.length, pedidoIds: pedidoIds };
+  return { ok: true, affectedCount: updatableRows.length, pedidoIds: pedidoIds };
 }
 
 function bogUpdateNormalizedOrderNotes_(pedidoId, notaInterna, notaCliente, user) {
@@ -340,10 +375,17 @@ function bogUpdateNormalizedOrderNotes_(pedidoId, notaInterna, notaCliente, user
   var found = bogFindNormalizedRowById_(sheets.pedidos.sheet, BOG_NORMALIZED_HEADERS.PEDIDOS, 'pedido_id', pedidoId);
   if (!found) throw new Error('Pedido normalizado no encontrado: ' + pedidoId);
 
+  var nextNotaInterna = bogTrim_(notaInterna);
+  var nextNotaCliente = bogTrim_(notaCliente);
+  var prevNotaInterna = bogTrim_(found.rowData.nota_interna);
+  var prevNotaCliente = bogTrim_(found.rowData.nota_cliente);
+  if (nextNotaInterna === prevNotaInterna && nextNotaCliente === prevNotaCliente) {
+    return { ok: true, unchanged: true, pedido_id: bogTrim_(pedidoId), message: 'Notas sin cambios' };
+  }
   var now = new Date();
   bogPatchRowByHeaders_(sheets.pedidos.sheet, found.rowNumber, found.headerMap, {
-    nota_interna: bogTrim_(notaInterna),
-    nota_cliente: bogTrim_(notaCliente),
+    nota_interna: nextNotaInterna,
+    nota_cliente: nextNotaCliente,
     fecha_actualizacion: now
   });
   bogAppendNormalizedEvent_(sheets.eventos, bogTrim_(pedidoId), 'NOTAS_ACTUALIZADAS', '', '', 'Notas actualizadas desde Chekeo 2.0', user, now);
@@ -359,6 +401,16 @@ function bogMarkNormalizedTicketSent_(pedidoId, user) {
   var found = bogFindNormalizedRowById_(sheets.pedidos.sheet, BOG_NORMALIZED_HEADERS.PEDIDOS, 'pedido_id', pedidoId);
   if (!found) throw new Error('Pedido normalizado no encontrado: ' + pedidoId);
 
+  var alreadySent = String(found.rowData.ticket_enviado).toLowerCase() === 'true';
+  if (alreadySent) {
+    return {
+      ok: true,
+      unchanged: true,
+      pedido_id: bogTrim_(pedidoId),
+      ticket_enviado: true,
+      message: 'Ticket ya marcado como enviado'
+    };
+  }
   var now = new Date();
   bogPatchRowByHeaders_(sheets.pedidos.sheet, found.rowNumber, found.headerMap, {
     ticket_enviado: true,
