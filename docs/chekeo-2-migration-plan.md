@@ -253,6 +253,11 @@ Se completó la sincronización de pricing backend con el catálogo dinámico:
   - WhatsApp action disabled in normalized mode pending ID-path migration.
   - sync behavior replaced by safe refresh (no automatic `syncOrdersFromMaster` in normalized mode).
 
-## Phase 3D — Pending
-- Migrate operational writes/status/payment/guarnición transitions to normalized contract.
-- Re-enable write controls in normalized mode once write path is validated end-to-end.
+## Phase 3D-A — Normalized operational backend writes (implemented)
+- Backend normalized operational methods added for order status, payment status, paid shortcut, guarnición completion, notes, ticket-sent flag, operational header setup, and readiness preview.
+- `PEDIDOS` operational fields are appended safely via manual `ensureNormalizedOperationalHeaders()` after Apps Script deployment.
+- Operational methods write audit rows to `EVENTOS_PEDIDO` and continue avoiding `Pedidos Master`.
+
+## Phase 3D-B — Pending
+- Re-enable/connect Chekeo 2.0 UI buttons to normalized operational methods after end-to-end validation.
+- Keep normalized-mode write controls disabled until Phase 3D-B is implemented.
