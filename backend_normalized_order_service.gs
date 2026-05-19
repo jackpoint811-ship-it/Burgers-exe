@@ -9,7 +9,7 @@ var BOG_NORMALIZED_SHEETS = {
 var BOG_NORMALIZED_HEADERS = {
   PEDIDOS: ['pedido_id', 'folio', 'canal', 'cliente_nombre', 'cliente_telefono', 'metodo_pago', 'total', 'estado', 'fecha_creacion', 'fecha_actualizacion', 'origen_app', 'estado_pago', 'nota_interna', 'nota_cliente', 'ticket_enviado', 'ticket_enviado_en'],
   PEDIDO_ITEMS: ['pedido_item_id', 'pedido_id', 'producto_id', 'tipo', 'nombre', 'cantidad', 'precio_unitario', 'subtotal', 'notas'],
-  PEDIDO_BURGERS: ['pedido_burger_id', 'pedido_id', 'pedido_item_id', 'burger_base_id', 'extras_json', 'sin_ingredientes_json', 'comentarios'],
+  PEDIDO_BURGERS: ['pedido_burger_id', 'pedido_id', 'pedido_item_id', 'burger_base_id', 'extras_json', 'sin_ingredientes_json', 'comentarios', 'estado_burger', 'responsable', 'actualizado_en'],
   GUARNICIONES: ['guarnicion_id', 'pedido_id', 'pedido_item_id', 'producto_id', 'cantidad', 'estado_guarnicion', 'responsable', 'actualizado_en'],
   EVENTOS_PEDIDO: ['evento_id', 'pedido_id', 'tipo_evento', 'estado_anterior', 'estado_nuevo', 'detalle', 'usuario', 'timestamp', 'origen_app']
 };
@@ -150,7 +150,10 @@ function bogCreateNormalizedPublicOrderFromCloudflare_(requestBody) {
           burger_base_id: burgerSku,
           extras_json: JSON.stringify(detail.extras || []),
           sin_ingredientes_json: JSON.stringify(detail.without || []),
-          comentarios: detail.comments || ''
+          comentarios: detail.comments || '',
+          estado_burger: 'Pendiente',
+          responsable: '',
+          actualizado_en: now
         });
       }
     });

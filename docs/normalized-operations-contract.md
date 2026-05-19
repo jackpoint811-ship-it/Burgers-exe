@@ -172,3 +172,6 @@ Chekeo 2.0 now consumes the normalized operation methods when `state.ordersSourc
 ### Still pending
 - Normalized WhatsApp send remains disabled in the UI pending a dedicated normalized ticket/phone send path.
 - Cierre/resumen/archivo/histórico migration remains outside this phase; normalized mode disables those legacy controls until a later normalized close/history path exists.
+
+## Phase 6 kitchen ops
+New RPC ops: ensureNormalizedKitchenHeaders, previewNormalizedKitchenReadiness, updateNormalizedBurgerStatus, markNormalizedBurgersReady, updateNormalizedGuarnicionStatus, completeNormalizedOrderIfReady.

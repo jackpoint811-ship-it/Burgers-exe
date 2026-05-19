@@ -185,7 +185,13 @@
       try {
         const result = await rpcCall(rpcMethod, args);
         await loadOperationalPanel();
-        showToast(result?.data?.unchanged || result?.unchanged ? `Sin cambios: ${label}` : `OK: ${label}`);
+        const data = result?.data || result || {};
+        if (data.blocked) {
+          const blockers = Array.isArray(data.blockers) ? data.blockers.join(', ') : '';
+          showToast(`Bloqueado: ${blockers || data.message || 'Operación bloqueada'}`, true);
+        } else {
+          showToast(data.unchanged ? `Sin cambios: ${label}` : `OK: ${label}`);
+        }
         return result;
       } catch (e) {
         showToast(e?.message || 'Error en operación', true);
@@ -200,7 +206,11 @@
   const isNormalizedMode = () => state.ordersSource === 'normalized';
   const changeNormalizedOrderStatus = (orderId, nextStatus) => runWrite(`Cambiar estado a ${nextStatus}`, 'updateNormalizedOrderStatus', [orderId, nextStatus, 'chekeo-2-ui']);
   const markNormalizedPaid = (orderId) => runWrite('Marcar pagado', 'markNormalizedOrderPaid', [orderId, 'chekeo-2-ui']);
-  const markNormalizedSideDone = (orderIdOrGuarnicionId) => runWrite('Marcar guarnición hecha', 'markNormalizedGuarnicionDone', [orderIdOrGuarnicionId, 'chekeo-2-ui']);
+  const markNormalizedSideDone = (orderIdOrGuarnicionId) => runWrite('Marcar guarnición hecha', 'updateNormalizedGuarnicionStatus', [orderIdOrGuarnicionId, 'Hecha', 'chekeo-2-ui']);
+  const markNormalizedSidesPreparing = (orderId) => runWrite('Guarniciones preparando', 'updateNormalizedGuarnicionStatus', [orderId, 'Preparando', 'chekeo-2-ui']);
+  const markNormalizedBurgersPreparing = (orderId) => runWrite('Burgers preparando', 'updateNormalizedBurgerStatus', [orderId, 'Preparando', 'chekeo-2-ui']);
+  const markNormalizedBurgersReady = (orderId) => runWrite('Burgers listas', 'updateNormalizedBurgerStatus', [orderId, 'Lista', 'chekeo-2-ui']);
+  const completeNormalizedReadyOrder = (orderId) => runWrite('Completar orden', 'completeNormalizedOrderIfReady', [orderId, 'chekeo-2-ui']);
   const saveNormalizedNotes = (orderId, notaInterna, notaCliente) => runWrite('Guardar notas', 'updateNormalizedOrderNotes', [orderId, notaInterna, notaCliente, 'chekeo-2-ui']);
   const markNormalizedTicketSentUi = (orderId) => runWrite('Marcar ticket enviado', 'markNormalizedTicketSent', [orderId, 'chekeo-2-ui']);
   const updateNormalizedPayment = (orderId, estadoPago, metodoPago) => runWrite('Actualizar pago', 'updateNormalizedPaymentStatus', [orderId, estadoPago, metodoPago, 'chekeo-2-ui']);
@@ -266,7 +276,7 @@
     const statusActions = {
       Nuevo: ['Confirmar', 'Confirmado'],
       Confirmado: ['Preparando', 'Preparando'],
-      Preparando: ['Listo', 'Listo'],
+      Preparando: ['Preparando', 'Preparando'],
     };
     const statusAction = statusActions[status] || null;
     const statusButton = statusAction
@@ -275,10 +285,9 @@
     const paidButton = paymentStatus === 'Pagado'
       ? `<button class='ghost write-btn' disabled>Pagado</button>`
       : `<button class='ghost write-btn' data-write-action data-mark-paid='${id}'>Pagado</button>`;
-    const sideButton = pendingGuarniciones > 0
-      ? `<button class='ghost write-btn' data-write-action data-side-ready='${id}'>Guarnición hecha</button>`
-      : `<button class='ghost write-btn' disabled>${hasSides ? 'Guarnición OK' : 'Sin guarniciones'}</button>`;
-    return `${paidButton}${statusButton}${sideButton}`;
+    const ready = Boolean(o.production?.order_ready);
+    const completeButton = ready ? `<button class='ghost write-btn' data-write-action data-complete-order='${id}'>Completar orden</button>` : `<button class='ghost write-btn' disabled title='${escape((o.production?.blockers || []).join(', ') || 'Faltan pasos')}'>Faltan pasos</button>`;
+    return `${paidButton}${statusButton}${completeButton}`;
   }
 
   function renderOrders() {
@@ -301,7 +310,9 @@
         ? renderNormalizedOrderActions(o, id, rawStatus, rawPaymentStatus)
         : `<button class='ghost write-btn' data-write-action data-mark-paid='${id}'>Marcar pagado</button><button class='ghost write-btn' data-write-action data-ready='${id}'>Listo</button><button class='ghost write-btn' data-write-action data-side-ready='${id}'>Guarnición lista</button>`;
       const whatsappLabel = normalized ? 'WhatsApp pendiente' : 'WhatsApp';
-      return `<li class='order-item'><div><small>${folio}</small><p><strong>${customer}</strong></p><p>${phone}</p><p>Total: ${total}</p><small><span class='badge-status'>${status}</span> <span class='badge-payment'>${paymentStatus}</span>${ticketBadge}</small><p>${burgerSummary}</p><p>${guarnicionSummary}</p></div>
+      const prod = o.production || {};
+      const prodBadges = normalized ? `<p>Burgers: ${escape(`${prod.burgers_listas || 0}/${prod.burgers_total || 0} listas`)}</p><p>Guarniciones: ${prod.guarniciones_total ? escape(`${prod.guarniciones_hechas || 0}/${prod.guarniciones_total || 0} hechas`) : 'Sin guarniciones'}</p><p>Pago: ${prod.payment_ready ? 'Pagado' : 'Pendiente'}</p><p>Orden lista: ${prod.order_ready ? 'Sí' : 'No'}</p>` : '';
+      return `<li class='order-item'><div><small>${folio}</small><p><strong>${customer}</strong></p><p>${phone}</p><p>Total: ${total}</p><small><span class='badge-status'>${status}</span> <span class='badge-payment'>${paymentStatus}</span>${ticketBadge}</small><p>${burgerSummary}</p><p>${guarnicionSummary}</p>${prodBadges}</div>
       <div class='order-actions'>
       <button class='ghost' data-detail='${id}'>Detalle</button>
       ${operationalActions}
@@ -327,13 +338,12 @@
       const preparingButton = ['Nuevo', 'Confirmado'].includes(rawStatus)
         ? `<button class='write-btn' data-write-action data-order-status='${id}' data-next-status='Preparando'>Preparando</button>`
         : '';
-      const readyButton = ['Preparando', 'Confirmado'].includes(rawStatus)
-        ? `<button class='write-btn' data-write-action data-order-status='${id}' data-next-status='Listo'>Pedido listo</button>`
-        : '';
-      const sideButton = pendingGuarniciones > 0
-        ? `<button class='write-btn' data-write-action data-side-ready='${id}'>Guarnición hecha</button>`
-        : `<button class='write-btn' disabled>${hasGuarniciones(o) ? 'Guarnición OK' : 'Sin guarniciones'}</button>`;
-      return `<li><small>${escape(o.folio || '-')}</small><p><strong>${escape(o.cliente_nombre || 'Sin nombre')}</strong></p><p><span class='badge-status'>${escape(rawStatus || '-')}</span></p><p>${escape(o.kitchen?.burger_summary || 'Sin burgers')}</p><ul>${burgerTickets || '<li>Sin burgers</li>'}</ul><p>${escape(o.kitchen?.guarnicion_summary || 'Sin guarniciones')}</p><p>Pendientes guarniciones: ${escape(pendingGuarniciones)}</p><div class='row'>${preparingButton}${readyButton}${sideButton}</div></li>`;
+      const readyBurgersDisabled = Boolean(o.production?.burgers_ready);
+      const readyButton = `<button class='write-btn' data-write-action data-burgers-ready='${id}' ${readyBurgersDisabled ? 'disabled' : ''}>Burgers listas</button>`;
+      const preparingButton2 = `<button class='write-btn' data-write-action data-burgers-preparing='${id}'>Burgers preparando</button>`;
+      const sideButton = hasGuarniciones(o) ? `<button class='write-btn' data-write-action data-guarniciones-ready='${id}' ${pendingGuarniciones === 0 ? 'disabled' : ''}>Guarniciones hechas</button><button class='write-btn' data-write-action data-guarniciones-preparing='${id}'>Guarniciones preparando</button>` : `<button class='write-btn' disabled>Sin guarniciones</button>`;
+      const completeButton = o.production?.order_ready && rawStatus !== 'Listo' ? `<button class='write-btn' data-write-action data-complete-order='${id}'>Completar orden</button>` : '';
+      return `<li><small>${escape(o.folio || '-')}</small><p><strong>${escape(o.cliente_nombre || 'Sin nombre')}</strong></p><p><span class='badge-status'>${escape(rawStatus || '-')}</span></p><p>${escape(o.kitchen?.burger_summary || 'Sin burgers')}</p><ul>${burgerTickets || '<li>Sin burgers</li>'}</ul><p>${escape(o.kitchen?.guarnicion_summary || 'Sin guarniciones')}</p><p>Pendientes guarniciones: ${escape(pendingGuarniciones)}</p><div class='row'>${preparingButton2}${readyButton}${sideButton}${completeButton}</div></li>`;
     }).join('')}</ul>`;
   }
 
@@ -515,6 +525,11 @@
       const orderStatus = e.target.closest('[data-order-status]'); if (orderStatus) return changeOrderStatus(orderStatus.dataset.orderStatus, orderStatus.dataset.nextStatus);
       const ready = e.target.closest('[data-ready]'); if (ready) return changeOrderStatus(ready.dataset.ready, 'Listo');
       const sideReady = e.target.closest('[data-side-ready]'); if (sideReady) return markSideReady(sideReady.dataset.sideReady);
+      const burgersPreparing = e.target.closest('[data-burgers-preparing]'); if (burgersPreparing) return markNormalizedBurgersPreparing(burgersPreparing.dataset.burgersPreparing);
+      const burgersReady = e.target.closest('[data-burgers-ready]'); if (burgersReady) return markNormalizedBurgersReady(burgersReady.dataset.burgersReady);
+      const guaPreparing = e.target.closest('[data-guarniciones-preparing]'); if (guaPreparing) return markNormalizedSidesPreparing(guaPreparing.dataset.guarnicionesPreparing);
+      const guaReady = e.target.closest('[data-guarniciones-ready]'); if (guaReady) return markNormalizedSideDone(guaReady.dataset.guarnicionesReady);
+      const completeOrder = e.target.closest('[data-complete-order]'); if (completeOrder) return completeNormalizedReadyOrder(completeOrder.dataset.completeOrder);
       const wa = e.target.closest('[data-wa]'); if (wa) return openWhatsAppForOrder(wa.dataset.wa);
       const writeSummary = e.target.closest('#write-summary-btn'); if (writeSummary) return state.ordersSource === 'legacy-fallback' ? writeDailySummaryAction() : showCloseHistoryPending();
       const archiveCompleted = e.target.closest('#archive-completed-btn'); if (archiveCompleted) return state.ordersSource === 'legacy-fallback' ? archiveCompletedOrdersAction() : showCloseHistoryPending();

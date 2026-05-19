@@ -69,6 +69,18 @@ function bogHandleInternalApiFromCloudflare_(requestBody) {
       return ensureNormalizedOperationalHeaders();
     case 'previewNormalizedOperationsReadiness':
       return previewNormalizedOperationsReadiness();
+    case 'ensureNormalizedKitchenHeaders':
+      return ensureNormalizedKitchenHeaders();
+    case 'previewNormalizedKitchenReadiness':
+      return previewNormalizedKitchenReadiness();
+    case 'updateNormalizedBurgerStatus':
+      return updateNormalizedBurgerStatus(args[0], args[1], args[2]);
+    case 'markNormalizedBurgersReady':
+      return markNormalizedBurgersReady(args[0], args[1]);
+    case 'updateNormalizedGuarnicionStatus':
+      return updateNormalizedGuarnicionStatus(args[0], args[1], args[2]);
+    case 'completeNormalizedOrderIfReady':
+      return completeNormalizedOrderIfReady(args[0], args[1]);
     case 'updateNormalizedOrderStatus':
       return updateNormalizedOrderStatus(args[0], args[1], args[2]);
     case 'updateNormalizedPaymentStatus':
