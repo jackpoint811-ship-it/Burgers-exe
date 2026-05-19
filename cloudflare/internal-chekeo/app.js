@@ -211,9 +211,13 @@
   const markSideReady = (orderId) => isNormalizedMode() ? markNormalizedSideDone(orderId) : runWrite('Marcar guarnición lista', 'markOrderSideReady', [orderId]);
   const saveNotes = (orderId, noteInternal, noteClient) => isNormalizedMode() ? saveNormalizedNotes(orderId, noteInternal, noteClient) : runWrite('Guardar notas', 'updateOrderNotes', [orderId, noteInternal, noteClient]);
   const markTicketSent = (orderId) => isNormalizedMode() ? markNormalizedTicketSentUi(orderId) : runWrite('Marcar ticket enviado', 'markTicketSent', [orderId]);
-  const writeDailySummaryAction = () => runWrite('Guardar resumen diario operativo', 'writeDailySummary', [], '¿Guardar el resumen diario operativo? Esta acción escribirá el resumen en la hoja correspondiente.');
-  const archiveCompletedOrdersAction = () => runWrite('Archivar pedidos completados', 'archiveCompletedOrders', [], '¿Archivar pedidos completados? Solo deben archivarse pedidos listos y pagados.');
-  const closeDayAction = () => runWrite('Cerrar el día', 'closeDay', [], '¿Cerrar el día? Esta acción puede guardar resumen y archivar pedidos según la lógica existente. Revisa el preview antes de continuar.');
+  const showCloseHistoryPending = () => {
+    showToast('Cierre/histórico pendiente migración en modo normalizado.', true);
+    return null;
+  };
+  const writeDailySummaryAction = () => state.ordersSource === 'legacy-fallback' ? runWrite('Guardar resumen diario operativo', 'writeDailySummary', [], '¿Guardar el resumen diario operativo? Esta acción escribirá el resumen en la hoja correspondiente.') : showCloseHistoryPending();
+  const archiveCompletedOrdersAction = () => state.ordersSource === 'legacy-fallback' ? runWrite('Archivar pedidos completados', 'archiveCompletedOrders', [], '¿Archivar pedidos completados? Solo deben archivarse pedidos listos y pagados.') : showCloseHistoryPending();
+  const closeDayAction = () => state.ordersSource === 'legacy-fallback' ? runWrite('Cerrar el día', 'closeDay', [], '¿Cerrar el día? Esta acción puede guardar resumen y archivar pedidos según la lógica existente. Revisa el preview antes de continuar.') : showCloseHistoryPending();
 
   async function openWhatsAppForOrder(orderId) {
     if (state.ordersSource === 'normalized') {
@@ -349,6 +353,13 @@
     const historyOrdersList = state.historyOrders.length
       ? `<ul class='readonly-list history-loaded-list'>${state.historyOrders.map((o) => `<li><strong>${escape(o['ID Pedido'] || o.id || '-')}</strong><p>${escape(o['Nombre'] || o.name || '')}</p></li>`).join('')}</ul>`
       : `<p class='empty-state'>No hay histórico cargado aún.</p>`;
+    const closeActions = isNormalizedMode()
+      ? `<button class='write-btn critical-btn' id='write-summary-btn' disabled title='Pendiente migración cierre/histórico'>Guardar resumen pendiente migración</button>
+          <button class='write-btn critical-btn' id='archive-completed-btn' disabled title='Pendiente migración cierre/histórico'>Archivar pendiente migración</button>
+          <button class='write-btn critical-btn' id='close-day-btn' disabled title='Pendiente migración cierre/histórico'>Cerrar día pendiente migración</button>`
+      : `<button class='write-btn critical-btn' data-write-action id='write-summary-btn'>Guardar resumen</button>
+          <button class='write-btn critical-btn' data-write-action id='archive-completed-btn'>Archivar completados</button>
+          <button class='write-btn critical-btn' data-write-action id='close-day-btn'>Cerrar día</button>`;
 
     document.querySelector('#otros-content').innerHTML = `
       <h2>Otros</h2>
@@ -363,9 +374,7 @@
           <article class='card'><h4>Pagados no listos</h4><p>${escape(totals.paidNotReady)}</p></article>
         </div>
         <div class='row'>
-          <button class='write-btn critical-btn' data-write-action id='write-summary-btn'>Guardar resumen</button>
-          <button class='write-btn critical-btn' data-write-action id='archive-completed-btn'>Archivar completados</button>
-          <button class='write-btn critical-btn' data-write-action id='close-day-btn'>Cerrar día</button>
+          ${closeActions}
         </div>
       </section>
 
@@ -483,9 +492,9 @@
       const ready = e.target.closest('[data-ready]'); if (ready) return changeOrderStatus(ready.dataset.ready, 'Listo');
       const sideReady = e.target.closest('[data-side-ready]'); if (sideReady) return markSideReady(sideReady.dataset.sideReady);
       const wa = e.target.closest('[data-wa]'); if (wa) return openWhatsAppForOrder(wa.dataset.wa);
-      const writeSummary = e.target.closest('#write-summary-btn'); if (writeSummary) return writeDailySummaryAction();
-      const archiveCompleted = e.target.closest('#archive-completed-btn'); if (archiveCompleted) return archiveCompletedOrdersAction();
-      const closeDayBtn = e.target.closest('#close-day-btn'); if (closeDayBtn) return closeDayAction();
+      const writeSummary = e.target.closest('#write-summary-btn'); if (writeSummary) return state.ordersSource === 'legacy-fallback' ? writeDailySummaryAction() : showCloseHistoryPending();
+      const archiveCompleted = e.target.closest('#archive-completed-btn'); if (archiveCompleted) return state.ordersSource === 'legacy-fallback' ? archiveCompletedOrdersAction() : showCloseHistoryPending();
+      const closeDayBtn = e.target.closest('#close-day-btn'); if (closeDayBtn) return state.ordersSource === 'legacy-fallback' ? closeDayAction() : showCloseHistoryPending();
       const loadHistoryBtn = e.target.closest('#load-history-orders-btn'); if (loadHistoryBtn) return loadHistoryOrders(20);
     });
     document.querySelector('#modal-close')?.addEventListener('click', () => modal.classList.add('is-hidden'));

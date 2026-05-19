@@ -133,7 +133,7 @@ Every operational mutation method appends an audit row to `EVENTOS_PEDIDO` using
 4. Validate Chekeo 2.0 UI write flows after Phase 3D-B deployment; normalized UI controls now call these methods.
 
 ## Phase 3D-B UI consumption
-Chekeo 2.0 now consumes the normalized operation methods when `state.ordersSource === "normalized"`. The UI keeps legacy fallback routing intact for `state.ordersSource === "legacy-fallback"` and does not call legacy order write methods from normalized mode.
+Chekeo 2.0 now consumes the normalized operation methods when `state.ordersSource === "normalized"`. The UI keeps legacy fallback routing intact for `state.ordersSource === "legacy-fallback"` and does not call legacy order write methods from normalized mode. Cierre/resumen/archivo/histórico actions are not part of this normalized UI activation.
 
 ### UI button to RPC mapping
 - Orders panel `Confirmar`, detail modal `Guardar estado`, and kitchen `Preparando`/`Pedido listo` status controls call `updateNormalizedOrderStatus(pedidoId, nextStatus, "chekeo-2-ui")`.
@@ -145,4 +145,4 @@ Chekeo 2.0 now consumes the normalized operation methods when `state.ordersSourc
 
 ### Still pending
 - Normalized WhatsApp send remains disabled in the UI pending a dedicated normalized ticket/phone send path.
-- Cierre/histórico migration remains outside this phase.
+- Cierre/resumen/archivo/histórico migration remains outside this phase; normalized mode disables those legacy controls until a later normalized close/history path exists.
