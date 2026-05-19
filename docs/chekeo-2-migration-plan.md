@@ -280,3 +280,12 @@ Implemented backend/header/UI/RPC split production flow with explicit completion
 - Cocina no depende del pago para marcar producción `Preparada`.
 - Finalización para cierre: `estado_produccion=Preparada` + `estado_pago=Pagado` + `estado_entrega=Entregada`.
 
+
+## Hotfix post-Phase 6 (2026-05-19): backfill estados de proceso normalizados
+- Se agrega backfill manual e idempotente para `PEDIDOS` legado-normalizado con columnas en blanco:
+  - `previewNormalizedProcessStateBackfill()` (solo lectura).
+  - `backfillNormalizedProcessStates()` (aplica parches por header sin sobreescribir valores no vacíos).
+- Reglas del hotfix:
+  - Solo completar `estado_produccion`/`estado_entrega` faltantes o inválidos.
+  - Nunca inferir `Entregada`; `estado_entrega` vacío pasa a `Pendiente`.
+  - Registrar evento `BACKFILL_ESTADOS_PROCESO` únicamente cuando una fila cambia.

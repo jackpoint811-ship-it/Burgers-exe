@@ -181,3 +181,12 @@ New RPC ops: ensureNormalizedKitchenHeaders, previewNormalizedKitchenReadiness, 
 - Cocina no depende del pago para marcar producción `Preparada`.
 - Finalización para cierre: `estado_produccion=Preparada` + `estado_pago=Pagado` + `estado_entrega=Entregada`.
 
+
+## Hotfix post-Phase 6 (2026-05-19): backfill manual
+- Funciones manuales:
+  - `previewNormalizedProcessStateBackfill()` (read-only, sin mutaciones).
+  - `backfillNormalizedProcessStates()` (idempotente; parchea solo `estado_produccion`/`estado_entrega` vacíos o inválidos).
+- Garantías:
+  - No sobrescribe `estado_produccion` ni `estado_entrega` cuando ya contienen valores válidos.
+  - `estado_entrega` vacío/inválido se normaliza a `Pendiente`; nunca se infiere `Entregada`.
+  - Evento `BACKFILL_ESTADOS_PROCESO` solo para filas realmente actualizadas.
