@@ -328,6 +328,13 @@ Se completó la sincronización de pricing backend con el catálogo dinámico:
 - Después de abrir WhatsApp, la UI intenta `markNormalizedTicketSent`; si responde `unchanged: true` se trata como resultado exitoso/idempotente.
 - En `legacy-fallback` no cambia el enrutamiento existente de WhatsApp.
 
+## Phase 9B — WhatsApp customer message polish (implemented)
+- Se ajusta **únicamente** el copy y formato del mensaje al cliente en `buildNormalizedWhatsAppMessage(order)` dentro de `cloudflare/internal-chekeo/app.js`.
+- Nuevo tono corto/alineado a Burger-OG, con bloques claros de `Estado`, `Pedido`, `Total` y `Método de pago`.
+- El flujo sigue abriendo solo `wa.me` con mensaje prellenado (**sin auto-envío**).
+- No hay cambios de backend, Apps Script, RPC allowlist ni escritura adicional en hojas fuera del comportamiento ya definido en Phase 9A.
+- El marcado de ticket enviado permanece igual a Phase 9A (silencioso/idempotente tras abrir WhatsApp).
+
 ## Phase 6 (Cocina + guarniciones separadas)
 Implemented backend/header/UI/RPC split production flow with explicit completion gate.
 
