@@ -4,6 +4,7 @@
 Definir una migración segura hacia la arquitectura Burgers.exe + Chekeo 2.0 sin afectar producción durante las fases iniciales.
 
 ## Restricciones de esta etapa
+- Branding standard: customer/admin-facing copy uses Burgers.exe. Technical identifiers such as BOG_* may remain for compatibility.
 - Documentación únicamente (Phase 0/1 de preparación).
 - No borrar ni modificar hojas legacy en esta PR.
 - No cambiar comportamiento actual de producción.
@@ -330,7 +331,7 @@ Se completó la sincronización de pricing backend con el catálogo dinámico:
 
 ## Phase 9B — WhatsApp customer message polish (implemented)
 - Se ajusta **únicamente** el copy y formato del mensaje al cliente en `buildNormalizedWhatsAppMessage(order)` dentro de `cloudflare/internal-chekeo/app.js`.
-- Nuevo tono corto/alineado a Burger-OG, con bloques claros de `Estado`, `Pedido`, `Total` y `Método de pago`.
+- Nuevo tono corto/alineado a Burgers.exe, con bloques claros de `Estado`, `Pedido`, `Total` y `Método de pago`.
 - El flujo sigue abriendo solo `wa.me` con mensaje prellenado (**sin auto-envío**).
 - No hay cambios de backend, Apps Script, RPC allowlist ni escritura adicional en hojas fuera del comportamiento ya definido en Phase 9A.
 - El marcado de ticket enviado permanece igual a Phase 9A (silencioso/idempotente tras abrir WhatsApp).

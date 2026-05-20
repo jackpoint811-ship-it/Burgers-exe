@@ -180,7 +180,7 @@ Chekeo 2.0 now consumes the normalized operation methods when `state.ordersSourc
 
 ### Phase 9B update (customer-facing message polish)
 - Scope is limited to the normalized UI customer message builder (`buildNormalizedWhatsAppMessage(order)`).
-- Customer copy is shorter and clearer (Burger-OG tone) while preserving the same open-only WhatsApp flow (no auto-send).
+- Customer copy is shorter and clearer (Burgers.exe tone) while preserving the same open-only WhatsApp flow (no auto-send).
 - No backend changes, no Apps Script changes, and no RPC contract/allowlist changes.
 - Ticket marking behavior remains unchanged from Phase 9A: UI still calls `markNormalizedTicketSent` after opening WhatsApp and accepts `unchanged: true` as idempotent success.
 
@@ -247,3 +247,6 @@ New RPC ops: ensureNormalizedKitchenHeaders, previewNormalizedKitchenReadiness, 
 - En tarjetas de Pedidos normalizadas se retiran acciones de estado general (`Confirmar`/`Preparando`) y se mantienen acciones operativas por proceso.
 - El detalle normalizado conserva funcionalidad completa (pago/notas/ticket/producción/entrega) con JSON técnico colapsado por defecto.
 - `legacy-fallback` conserva rutas y acciones legacy preexistentes sin cambios funcionales.
+
+
+- BOG_* remains a technical namespace for compatibility and must not be renamed without a dedicated migration.

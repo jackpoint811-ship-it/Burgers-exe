@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Burgers OG main logo">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Burgers.exe main logo">
 <rect width="512" height="512" rx="32" fill="#0D0D0D"/>
 <circle cx="256" cy="256" r="198" fill="none" stroke="#39FF14" stroke-width="10"/>
-<text x="256" y="100" text-anchor="middle" fill="#FFFFFF" font-family="monospace" font-size="42" font-weight="700">BURGERS.OG</text>
+<text x="256" y="100" text-anchor="middle" fill="#FFFFFF" font-family="monospace" font-size="42" font-weight="700">BURGERS.EXE</text>
 <g fill="none" stroke="#39FF14" stroke-width="9" shape-rendering="crispEdges">
 <path d="M152 238h208M138 260h236M128 282h256M146 306h220M170 330h172"/>
 <path d="M162 206h188M146 222h220"/>
