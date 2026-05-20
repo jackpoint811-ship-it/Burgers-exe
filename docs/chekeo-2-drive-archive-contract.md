@@ -89,3 +89,10 @@ Campos recomendados:
 - La UI mantiene modo `legacy-fallback` sin cambios funcionales en `writeDailySummary`, `archiveCompletedOrders` y `closeDay`.
 - Esta integración **no** elimina ni limpia filas activas; no hay borrado destructivo en hojas operativas.
 - Drive sigue siendo el historial detallado del cierre, y `ARCHIVO_CORTES` permanece como índice liviano del corte.
+
+## Phase 7C — UX hardened en Otros (normalized)
+
+- En `ordersSource=normalized`, Chekeo 2.0 oculta secciones legacy de archivo/resumen/histórico y prioriza el bloque de cierre Drive-first.
+- Se mantiene visibilidad de `Finalizados nuevos`, `Bloqueados`, `Ya archivados`, `Resultado último archivo` y un `Diagnóstico normalizado` compacto.
+- En `ordersSource=legacy-fallback`, se preserva el comportamiento legacy completo sin cambios funcionales.
+- La persistencia visual del último resultado de archivo se mantiene en memoria de sesión UI y no implica escrituras adicionales en hojas.

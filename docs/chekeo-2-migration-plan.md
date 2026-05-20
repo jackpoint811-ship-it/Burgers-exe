@@ -127,6 +127,25 @@ Definir una migración segura hacia la arquitectura Burgers.exe + Chekeo 2.0 sin
 **Acciones:**
 - Remover hojas legacy únicamente después de cumplir precondiciones.
 
+## Phase 7C – Limpieza UX de Otros (normalized)
+**Objetivo:** reducir ruido legacy en Chekeo 2.0 cuando la operación corre en modo normalizado Drive-first.
+
+**Cambios:**
+- En modo `normalized`, la pestaña **Otros** muestra solo:
+  - Cierre Drive-first
+  - Finalizados nuevos
+  - Bloqueados
+  - Ya archivados
+  - Resultado último archivo (si existe)
+  - Diagnóstico normalizado compacto
+- En modo `legacy-fallback`, se conservan las secciones legacy existentes (resumen, cierre, histórico y diagnósticos legacy).
+- `loadOperationalPanel()` prioriza `getNormalizedAppOrders`; las llamadas legacy de cierre/resumen/histórico se ejecutan solo en fallback legacy.
+
+**Garantías:**
+- Sin operaciones destructivas de hojas.
+- Sin limpieza/eliminación de filas activas.
+- Cierre normalizado permanece no destructivo y Drive-first.
+
 ---
 
 ## Criterios de seguridad transversales

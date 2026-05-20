@@ -209,3 +209,10 @@ New RPC ops: ensureNormalizedKitchenHeaders, previewNormalizedKitchenReadiness, 
 - La UI mantiene modo `legacy-fallback` sin cambios funcionales en `writeDailySummary`, `archiveCompletedOrders` y `closeDay`.
 - Esta integración **no** elimina ni limpia filas activas; no hay borrado destructivo en hojas operativas.
 - Drive sigue siendo el historial detallado del cierre, y `ARCHIVO_CORTES` permanece como índice liviano del corte.
+
+## Phase 7C — Limpieza de Otros en modo normalizado
+
+- La UI de Chekeo 2.0 en modo `normalized` limita la pestaña Otros a flujo Drive-first (cierre, listas de finalizados/bloqueados/ya archivados y diagnóstico compacto).
+- Las secciones legacy (`Archivables`, `No archivables`, `Resumen diario operativo`, `Histórico` y previews JSON legacy) se muestran solo en `legacy-fallback`.
+- `loadOperationalPanel()` evita depender de RPCs legacy cuando `getNormalizedAppOrders` está disponible; fallback legacy mantiene el comportamiento previo.
+- No hay cambios destructivos de datos: sin borrado/clear de hojas ni eliminación de filas activas.

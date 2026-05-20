@@ -133,19 +133,18 @@
     render();
 
     try {
-      const [health, summary, bank, closePreview, historyPreview, productionValidation, migrationPreview] = await Promise.all([
+      const [health, bank] = await Promise.all([
         rpcCall('healthCheck'),
-        rpcCall('getDailySummary'),
         rpcCall('getBankConfig'),
-        rpcCall('getCloseDayPreview'),
-        rpcCall('getHistoryPreview'),
-        rpcCall('validateProductionReadiness'),
-        rpcCall('getProductionMigrationPreview'),
       ]);
-
       let orders = [];
       let ordersSource = 'normalized';
       let normalizedClosePreview = null;
+      let summary = null;
+      let closePreview = null;
+      let historyPreview = null;
+      let productionValidation = null;
+      let migrationPreview = null;
       try {
         const normalizedOrders = await rpcCall('getNormalizedAppOrders', [{}]);
         orders = Array.isArray(normalizedOrders?.orders)
@@ -161,9 +160,21 @@
           };
         }
       } catch (normalizedError) {
-        const legacyOrders = await rpcCall('getAppOrders');
+        const [legacyOrders, legacySummary, legacyClosePreview, legacyHistoryPreview, legacyProductionValidation, legacyMigrationPreview] = await Promise.all([
+          rpcCall('getAppOrders'),
+          rpcCall('getDailySummary'),
+          rpcCall('getCloseDayPreview'),
+          rpcCall('getHistoryPreview'),
+          rpcCall('validateProductionReadiness'),
+          rpcCall('getProductionMigrationPreview'),
+        ]);
         orders = Array.isArray(legacyOrders?.data) ? legacyOrders.data : [];
         ordersSource = 'legacy-fallback';
+        summary = legacySummary;
+        closePreview = legacyClosePreview;
+        historyPreview = legacyHistoryPreview;
+        productionValidation = legacyProductionValidation;
+        migrationPreview = legacyMigrationPreview;
       }
 
       state.health = health?.data || null;
@@ -462,6 +473,29 @@
       <section class='card'>
         <h3>Ya archivados</h3>
         ${normalizedArchived.length ? `<ul class='readonly-list'>${normalizedArchived.map((o) => `<li><strong>${escape(o.folio || o.pedido_id || '-')}</strong><p>${escape(o.archived_event_id_or_timestamp || '-')}</p></li>`).join('')}</ul>` : `<p class='empty-state'>No hay pedidos ya archivados.</p>`}
+      </section>
+
+      <section class='card diagnostic-section'>
+        <h3>Diagnóstico normalizado</h3>
+        <ul class='readonly-list'>
+          <li><strong>ordersSource:</strong> ${escape(state.ordersSource || '-')}</li>
+          <li><strong>orders count:</strong> ${escape(state.orders.length || 0)}</li>
+          <li><strong>fecha_corte:</strong> ${escape(normalizedClosePreview.fecha_corte || '-')}</li>
+          <li><strong>finalizedCount:</strong> ${escape(normalizedClosePreview.finalizedCount ?? 0)}</li>
+          <li><strong>blockedCount:</strong> ${escape(normalizedClosePreview.blockedCount ?? 0)}</li>
+          <li><strong>alreadyArchivedCount:</strong> ${escape(normalizedClosePreview.alreadyArchivedCount ?? 0)}</li>
+          ${archiveResult ? `<li><strong>lastArchiveResult.archived:</strong> ${escape(String(Boolean(archiveResult.archived)))}</li>
+          <li><strong>lastArchiveResult.duplicate:</strong> ${escape(String(Boolean(archiveResult.duplicate)))}</li>
+          <li><strong>lastArchiveResult.message:</strong> ${escape(archiveResult.message || '-')}</li>
+          <li><strong>lastArchiveResult.corte_id:</strong> ${escape(archiveResult.corte_id || '-')}</li>` : ''}
+        </ul>
+        <details>
+          <summary>Ver JSON técnico</summary>
+          <pre>${escape(JSON.stringify({
+            normalizedClosePreview,
+            normalizedCloseArchiveResult: archiveResult,
+          }, null, 2))}</pre>
+        </details>
       </section>`;
 
     const legacyCloseSection = `
@@ -482,9 +516,17 @@
         </div>
       </section>`;
 
+    if (isNormalizedMode()) {
+      document.querySelector('#otros-content').innerHTML = `
+        <h2>Otros</h2>
+        ${normalizedCloseSection}
+      `;
+      return;
+    }
+
     document.querySelector('#otros-content').innerHTML = `
       <h2>Otros</h2>
-      ${isNormalizedMode() ? normalizedCloseSection : legacyCloseSection}
+      ${legacyCloseSection}
 
       <section class='card'>
         <h3>Archivables</h3>
@@ -509,8 +551,7 @@
       </section>
 
       <section class='card diagnostic-section'>
-        <h3>Diagnóstico avanzado</h3>
-        <p class='scope-banner'>Cierre Drive-first activo. Operación normalizada sin borrado de filas.</p>
+        <h3>Diagnóstico legacy</h3>
         <pre>${escape(JSON.stringify({ health: state.health, productionValidation: state.productionValidation, migrationPreview: state.migrationPreview }, null, 2))}</pre>
       </section>
     `;
