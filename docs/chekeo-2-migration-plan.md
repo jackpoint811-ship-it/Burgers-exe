@@ -179,6 +179,18 @@ Definir una migración segura hacia la arquitectura Burgers.exe + Chekeo 2.0 sin
 
 ---
 
+
+## Phase 10B – Final normalized production audit (pendiente de sign-off manual)
+**Objetivo:** ejecutar checklist final de producción en modo normalizado antes del cierre funcional de migración.
+
+**Entregables:**
+- `docs/normalized-production-final-audit.md` con checklist integral de branding, operación normalizada, WhatsApp y cierre Drive-first.
+- Plantilla de sign-off manual con evidencia y blockers.
+
+**Estado:**
+- **Pendiente** hasta confirmación explícita del usuario/equipo tras auditoría manual en producción.
+- Esta fase no implica cambios runtime ni deploy nuevo de Apps Script.
+
 ## Criterios de seguridad transversales
 - Cambios incrementales por fase con rollback claro.
 - Sin cambios de producción en fases documentales.
