@@ -510,7 +510,7 @@
 
       <section class='card diagnostic-section'>
         <h3>Diagnóstico avanzado</h3>
-        <p class='scope-banner'>Preparación de estructura/producción queda para Fase 7.</p>
+        <p class='scope-banner'>Cierre Drive-first activo. Operación normalizada sin borrado de filas.</p>
         <pre>${escape(JSON.stringify({ health: state.health, productionValidation: state.productionValidation, migrationPreview: state.migrationPreview }, null, 2))}</pre>
       </section>
     `;
@@ -521,7 +521,7 @@
       ? `<p class="scope-banner">Cargando panel operativo...</p>`
       : '';
     const err = state.panelError ? `<p class='empty-state'>${escape(state.panelError)}</p>` : '';
-    document.querySelector('#inicio-content').innerHTML = `<h2>Inicio</h2>${loading}${err}<p>Fase 6 activa: Cocina + guarniciones separadas.</p>`;
+    document.querySelector('#inicio-content').innerHTML = `<h2>Inicio</h2>${loading}${err}<p>Fase 7B activa: Cierre Drive-first integrado.</p>`;
   }
   function renderTabs() { document.querySelectorAll('[data-tab-target]').forEach((b) => b.classList.toggle('is-active', b.dataset.tabTarget === state.activeTab)); document.querySelectorAll('[data-tab-panel]').forEach((p) => p.classList.toggle('is-hidden', p.dataset.tabPanel !== state.activeTab)); }
   function render() { renderTabs(); renderHome(); renderOrders(); renderKitchen(); renderOthers(); }
