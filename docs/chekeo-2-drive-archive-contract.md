@@ -67,3 +67,15 @@ Campos recomendados:
 - Hoja principal más rápida y mantenible.
 - Historial detallado preservado para auditoría.
 - Escalabilidad: crecimiento histórico desacoplado del runtime principal en Sheets.
+
+
+## Phase 7 implementation notes
+- Drive-first archive is now implemented via manual Apps Script function `archiveNormalizedCloseDayToDrive()`.
+- `ARCHIVO_CORTES` remains a lightweight index row per day with pointers (`drive_folder_url`, `drive_summary_file_url`).
+- No destructive sheet operations are part of this phase (no clear/delete/rename operations).
+- Active order rows are not removed in this phase.
+- Same-day close is idempotent and duplicate-safe by `fecha_corte`.
+
+- `eventos_pedidos.json` ahora contiene filas reales de `EVENTOS_PEDIDO` de los pedidos archivados y también los eventos `PEDIDO_ARCHIVADO_DRIVE` generados en el corte.
+- El preview/archivo excluye pedidos ya archivados detectando `EVENTOS_PEDIDO.tipo_evento=PEDIDO_ARCHIVADO_DRIVE` y expone `alreadyArchivedCount`/`alreadyArchivedOrders`.
+- La regla de finalización de cierre usa modelo fallback-safe (estado_produccion o legado estado Listo/Preparada o readiness de burgers/guarniciones) + pago + entrega.
