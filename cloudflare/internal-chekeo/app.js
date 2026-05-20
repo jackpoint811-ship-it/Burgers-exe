@@ -241,6 +241,7 @@
   };
   const archiveNormalizedCloseDayAction = () => runWrite('Archivar cierre en Drive', 'archiveNormalizedCloseDayToDrive', [], '¿Archivar cierre en Drive para pedidos finalizados nuevos?').then((result) => {
     state.normalizedCloseArchiveResult = result?.data || result || null;
+    render();
     return result;
   });
   const writeDailySummaryAction = () => state.ordersSource === 'legacy-fallback' ? runWrite('Guardar resumen diario operativo', 'writeDailySummary', [], '¿Guardar el resumen diario operativo? Esta acción escribirá el resumen en la hoja correspondiente.') : showCloseHistoryPending();
