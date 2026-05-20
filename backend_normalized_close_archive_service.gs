@@ -39,11 +39,12 @@ function archiveNormalizedCloseDayToDrive() {
 
     var corteId = 'CORTE-' + analysis.fecha_corte.replace(/-/g, '') + '-' + Utilities.getUuid().slice(0, 8).toUpperCase();
     var createdAt = new Date();
+    var folderInfo = bogEnsureDriveArchiveFolder_(analysis.fecha_corte);
     var archiveEvents = analysis.finalizedOrders.map(function (order) {
-      return bogBuildArchiveEventRecord_(bogTrim_(order.pedido_id), corteId, '', createdAt);
+      return bogBuildArchiveEventRecord_(bogTrim_(order.pedido_id), corteId, folderInfo.folderUrl, createdAt);
     });
 
-    var folderInfo = bogEnsureDriveArchiveFiles_(analysis, corteId, archiveEvents);
+    folderInfo = bogEnsureDriveArchiveFiles_(folderInfo.folder, folderInfo.folderUrl, analysis, corteId, archiveEvents);
 
     bogAppendRecordByHeaders_(archivoSheet.sheet, archivoSheet.headers, archivoSheet.headerMap, {
       corte_id: corteId,
@@ -272,10 +273,13 @@ function bogFindExistingCorteByFecha_(archivoRows, fechaCorte) {
   return null;
 }
 
-function bogEnsureDriveArchiveFiles_(analysis, corteId, archiveEvents) {
+function bogEnsureDriveArchiveFolder_(fechaCorte) {
   var rootFolder = bogGetOrCreateFolderByName_(DriveApp, null, 'Burgers.exe Cortes');
-  var dayFolder = bogGetOrCreateFolderByName_(DriveApp, rootFolder, 'Corte ' + analysis.fecha_corte);
-  var folderUrl = dayFolder.getUrl();
+  var dayFolder = bogGetOrCreateFolderByName_(DriveApp, rootFolder, 'Corte ' + fechaCorte);
+  return { folder: dayFolder, folderUrl: dayFolder.getUrl() };
+}
+
+function bogEnsureDriveArchiveFiles_(dayFolder, folderUrl, analysis, corteId, archiveEvents) {
 
   var summaryPayload = {
     corte_id: corteId,
@@ -304,7 +308,7 @@ function bogEnsureDriveArchiveFiles_(analysis, corteId, archiveEvents) {
     eventos: allEvents
   });
 
-  return { folderUrl: folderUrl, summaryFileUrl: summaryFile.getUrl() };
+  return { folder: dayFolder, folderUrl: folderUrl, summaryFileUrl: summaryFile.getUrl() };
 }
 
 function bogGetOrCreateFolderByName_(driveApp, parentFolder, folderName) {
