@@ -297,3 +297,13 @@ Implemented backend/header/UI/RPC split production flow with explicit completion
 - `ARCHIVO_CORTES` permanece como índice liviano (métricas + links Drive), sin guardar historial detallado en la hoja principal.
 - Esta fase **no elimina ni limpia** filas activas de `PEDIDOS`.
 - El cierre del mismo `fecha_corte` es idempotente: se bloquea duplicado y no duplica eventos.
+
+
+## Phase 7B — Integración UI Chekeo 2.0 (Drive-first)
+
+- Chekeo 2.0 en modo `normalized` ahora consume `previewNormalizedCloseDay()` para mostrar el panel de cierre.
+- La acción `Archivar cierre en Drive` llama `archiveNormalizedCloseDayToDrive()` desde UI interna.
+- Si el resultado indica `archived:false` con `alreadyArchivedCount > 0` o `duplicate:true`, se muestra como estado válido (no error).
+- La UI mantiene modo `legacy-fallback` sin cambios funcionales en `writeDailySummary`, `archiveCompletedOrders` y `closeDay`.
+- Esta integración **no** elimina ni limpia filas activas; no hay borrado destructivo en hojas operativas.
+- Drive sigue siendo el historial detallado del cierre, y `ARCHIVO_CORTES` permanece como índice liviano del corte.

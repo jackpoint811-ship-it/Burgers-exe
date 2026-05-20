@@ -199,3 +199,13 @@ New RPC ops: ensureNormalizedKitchenHeaders, previewNormalizedKitchenReadiness, 
 - Detailed close history is persisted in Drive JSON files, not in main active sheet history rows.
 - This phase does not delete/clear active rows and does not move rows to `HISTORICO_PEDIDOS`.
 - Duplicate archive for same `fecha_corte` returns non-archived duplicate response and skips duplicate events.
+
+
+## Phase 7B — Integración UI Chekeo 2.0 (Drive-first)
+
+- Chekeo 2.0 en modo `normalized` ahora consume `previewNormalizedCloseDay()` para mostrar el panel de cierre.
+- La acción `Archivar cierre en Drive` llama `archiveNormalizedCloseDayToDrive()` desde UI interna.
+- Si el resultado indica `archived:false` con `alreadyArchivedCount > 0` o `duplicate:true`, se muestra como estado válido (no error).
+- La UI mantiene modo `legacy-fallback` sin cambios funcionales en `writeDailySummary`, `archiveCompletedOrders` y `closeDay`.
+- Esta integración **no** elimina ni limpia filas activas; no hay borrado destructivo en hojas operativas.
+- Drive sigue siendo el historial detallado del cierre, y `ARCHIVO_CORTES` permanece como índice liviano del corte.
