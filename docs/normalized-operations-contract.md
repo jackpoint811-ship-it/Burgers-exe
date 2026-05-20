@@ -216,3 +216,16 @@ New RPC ops: ensureNormalizedKitchenHeaders, previewNormalizedKitchenReadiness, 
 - Las secciones legacy (`Archivables`, `No archivables`, `Resumen diario operativo`, `Histórico` y previews JSON legacy) se muestran solo en `legacy-fallback`.
 - `loadOperationalPanel()` evita depender de RPCs legacy cuando `getNormalizedAppOrders` está disponible; fallback legacy mantiene el comportamiento previo.
 - No hay cambios destructivos de datos: sin borrado/clear de hojas ni eliminación de filas activas.
+
+## Phase 8A — Normalized-first UI cleanup (2026-05-20)
+
+- La UI de Chekeo 2.0 en modo `normalized` se considera experiencia primaria.
+- `estado` general del pedido (`PEDIDOS.estado`) permanece como campo interno/compatibilidad y ya no es el eje visual principal en tarjetas.
+- El flujo principal visible queda definido por:
+  - `estado_produccion` (Producción)
+  - `estado_pago` (Pago)
+  - `estado_entrega` (Entrega)
+  - `finalization.finalized` / regla de finalización (Finalización)
+- En tarjetas de Pedidos normalizadas se retiran acciones de estado general (`Confirmar`/`Preparando`) y se mantienen acciones operativas por proceso.
+- El detalle normalizado conserva funcionalidad completa (pago/notas/ticket/producción/entrega) con JSON técnico colapsado por defecto.
+- `legacy-fallback` conserva rutas y acciones legacy preexistentes sin cambios funcionales.

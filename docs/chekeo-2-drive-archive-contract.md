@@ -96,3 +96,13 @@ Campos recomendados:
 - Se mantiene visibilidad de `Finalizados nuevos`, `Bloqueados`, `Ya archivados`, `Resultado último archivo` y un `Diagnóstico normalizado` compacto.
 - En `ordersSource=legacy-fallback`, se preserva el comportamiento legacy completo sin cambios funcionales.
 - La persistencia visual del último resultado de archivo se mantiene en memoria de sesión UI y no implica escrituras adicionales en hojas.
+
+## Phase 8A — Consolidación visual normalized-first (2026-05-20)
+
+- La pestaña Otros en modo `normalized` mantiene nomenclatura orientada a producto:
+  - `Cierre Drive-first`
+  - `Finalizados nuevos`
+  - `Bloqueados`
+  - `Ya archivados`
+  - `Diagnóstico normalizado`
+- En modo normalizado no se exponen labels legacy en Otros; esos labels quedan reservados a `legacy-fallback`.
