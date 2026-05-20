@@ -169,8 +169,13 @@ Chekeo 2.0 now consumes the normalized operation methods when `state.ordersSourc
 - Detail modal `Guardar pago` calls `updateNormalizedPaymentStatus(pedidoId, estadoPago, metodoPago, "chekeo-2-ui")`.
 - Detail modal `Marcar ticket enviado` calls `markNormalizedTicketSent(pedidoId, "chekeo-2-ui")`.
 
-### Still pending
-- Normalized WhatsApp send remains disabled in the UI pending a dedicated normalized ticket/phone send path.
+### Phase 9A update (normalized WhatsApp enabled)
+- Chekeo 2.0 normalized mode now enables `WhatsApp cliente` using normalized order data only.
+- Message text is generated in UI from normalized read fields and opens `https://wa.me/{telefono}?text={mensaje}` in a new tab (no auto-send).
+- Phone normalization is Mexico-specific (`52` prefix handling + old `521` cleanup).
+- After opening WhatsApp, UI calls `markNormalizedTicketSent(pedidoId, "chekeo-2-ui")`.
+- `unchanged: true` from `markNormalizedTicketSent` is treated as successful idempotent behavior (no duplicate ticket event).
+- Legacy fallback WhatsApp routing remains unchanged.
 - Cierre/resumen/archivo/histórico migration remains outside this phase; normalized mode disables those legacy controls until a later normalized close/history path exists.
 
 ## Phase 6 kitchen ops

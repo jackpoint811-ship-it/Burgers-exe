@@ -257,9 +257,89 @@
   const archiveCompletedOrdersAction = () => state.ordersSource === 'legacy-fallback' ? runWrite('Archivar pedidos completados', 'archiveCompletedOrders', [], '¿Archivar pedidos completados? Solo deben archivarse pedidos listos y pagados.') : showCloseHistoryPending();
   const closeDayAction = () => state.ordersSource === 'legacy-fallback' ? runWrite('Cerrar el día', 'closeDay', [], '¿Cerrar el día? Esta acción puede guardar resumen y archivar pedidos según la lógica existente. Revisa el preview antes de continuar.') : showCloseHistoryPending();
 
+  function normalizeMexicanWhatsAppPhone(phone) {
+    const digits = String(phone || '').replace(/\D/g, '');
+    if (!digits || digits.length < 10) return null;
+    if (digits.length === 10) return `52${digits}`;
+    if (digits.length === 12 && digits.startsWith('52')) return digits;
+    if (digits.startsWith('521') && digits.length === 13) return `52${digits.slice(3)}`;
+    return null;
+  }
+
+  function buildWhatsAppUrl(phone, message) {
+    const normalizedPhone = normalizeMexicanWhatsAppPhone(phone);
+    if (!normalizedPhone) return null;
+    return `https://wa.me/${normalizedPhone}?text=${encodeURIComponent(String(message || ''))}`;
+  }
+
+  function buildNormalizedWhatsAppMessage(order) {
+    const customerName = String(order?.cliente_nombre || '').trim() || 'cliente';
+    const folioOrId = String(order?.folio || order?.pedido_id || '').trim() || '-';
+    const total = Number.isFinite(Number(order?.total)) ? Number(order.total) : 0;
+    const productionState = order?.production?.estado_produccion || order?.estado_produccion || 'Pendiente';
+    const paymentState = order?.payment?.estado_pago || order?.estado_pago || 'Pendiente';
+    const deliveryState = order?.delivery?.estado_entrega || order?.estado_entrega || 'Pendiente';
+    const metodoPago = order?.payment?.metodo_pago || order?.metodo_pago || 'No definido';
+    const items = Array.isArray(order?.items) ? order.items : [];
+    const burgers = Array.isArray(order?.burgers) ? order.burgers : [];
+    const guarniciones = Array.isArray(order?.guarniciones) ? order.guarniciones : [];
+    const orderLines = items.map((item) => {
+      const qty = Number(item?.cantidad);
+      const lineQty = Number.isFinite(qty) && qty > 0 ? qty : 1;
+      const itemName = String(item?.nombre || item?.producto_id || 'Producto').trim();
+      const subtotalRaw = Number(item?.subtotal);
+      const subtotalPart = Number.isFinite(subtotalRaw) ? ` $${subtotalRaw}` : '';
+      return `- ${lineQty}x ${itemName}${subtotalPart}`;
+    });
+    if (!orderLines.length) {
+      const burgerCount = burgers.reduce((acc, burger) => acc + (Number(burger?.cantidad) || 1), 0);
+      const guarnicionCount = guarniciones.reduce((acc, side) => acc + (Number(side?.cantidad) || 0), 0);
+      orderLines.push(`- Burgers: ${burgerCount || burgers.length || 0}`);
+      orderLines.push(`- Guarniciones: ${guarnicionCount || guarniciones.length || 0}`);
+    }
+    const noteClient = String(order?.notas_cliente || order?.nota_cliente || '').trim();
+    const safeCustomerNote = noteClient && !/json|script|<|>|\{|\}/i.test(noteClient) ? noteClient : '';
+    return [
+      `Hola ${customerName}, soy de Burger-OG 🍔`,
+      '',
+      `Tu pedido ${folioOrId} va así:`,
+      '',
+      `Producción: ${productionState}`,
+      `Pago: ${paymentState}`,
+      `Entrega: ${deliveryState}`,
+      '',
+      'Pedido:',
+      ...orderLines,
+      '',
+      `Total: $${total}`,
+      `Pago: ${metodoPago}`,
+      safeCustomerNote ? `Nota: ${safeCustomerNote}` : '',
+      '',
+      'Gracias por tu orden.',
+    ].filter(Boolean).join('\n');
+  }
+
+  async function markNormalizedTicketSentAfterWhatsApp(orderId) {
+    try {
+      const result = await rpcCall('markNormalizedTicketSent', [orderId, 'chekeo-2-ui']);
+      await loadOperationalPanel();
+      const data = result?.data || result || {};
+      showToast(data.unchanged ? 'Ticket enviado' : 'Ticket enviado');
+      return result;
+    } catch (error) {
+      showToast('WhatsApp abierto; no se pudo marcar ticket enviado', true);
+      return null;
+    }
+  }
+
   async function openWhatsAppForOrder(orderId) {
     if (state.ordersSource === 'normalized') {
-      showToast('WhatsApp pendiente migración para modo normalizado.', true);
+      const order = state.orders.find((candidate) => String(candidate?.pedido_id || candidate?.id || '') === String(orderId));
+      const url = buildWhatsAppUrl(order?.cliente_telefono, buildNormalizedWhatsAppMessage(order || {}));
+      if (!url) return showToast('Sin teléfono válido', true);
+      window.open(url, '_blank', 'noopener');
+      showToast('Mensaje abierto en WhatsApp');
+      await markNormalizedTicketSentAfterWhatsApp(orderId);
       return;
     }
     const d = await rpcCall('getClientTicketData', [orderId]);
@@ -328,7 +408,8 @@
       const operationalActions = normalized
         ? renderNormalizedOrderActions(o, id, rawPaymentStatus)
         : `<button class='ghost write-btn' data-write-action data-mark-paid='${id}'>Marcar pagado</button><button class='ghost write-btn' data-write-action data-ready='${id}'>Listo</button><button class='ghost write-btn' data-write-action data-side-ready='${id}'>Guarnición lista</button>`;
-      const whatsappLabel = normalized ? 'WhatsApp pendiente' : 'WhatsApp';
+      const normalizedWaPhone = normalized ? normalizeMexicanWhatsAppPhone(o.cliente_telefono) : null;
+      const whatsappLabel = normalized ? (normalizedWaPhone ? 'WhatsApp cliente' : 'Sin teléfono válido') : 'WhatsApp';
       const prod = o.production || {};
       const prodBadges = normalized ? `<p>Producción: ${escape(productionState)}</p><p>Pago: ${escape(paymentState)}</p><p>Entrega: ${escape(deliveryState)}</p><p>Finalización: ${finalized ? 'Finalizada' : 'Pendiente'}</p><p>Burgers ${escape(`${prod.burgers_listas || 0}/${prod.burgers_total || 0}`)} listas</p><p>${prod.guarniciones_total ? `Guarniciones ${escape(`${prod.guarniciones_hechas || 0}/${prod.guarniciones_total || 0}`)} hechas` : 'Sin guarniciones'}</p><p><small>Estado interno: ${status}</small></p>` : '';
       let processActions = '';
@@ -343,7 +424,7 @@
       <button class='ghost' data-detail='${id}'>Detalle</button>
       ${operationalActions}
       ${processActions}
-      <button class='ghost' data-wa='${id}' ${normalized ? 'disabled title="Pendiente migración"' : ''}>${whatsappLabel}</button>
+      <button class='ghost' data-wa='${id}' ${normalized && !normalizedWaPhone ? 'disabled' : ''}>${whatsappLabel}</button>
       </div></li>`;
     }).join('');
     const banner = state.ordersSource === 'legacy-fallback'
@@ -628,7 +709,7 @@
         <h4>Ticket</h4>
         <div class='row'>
           <button class='write-btn' data-write-action id='mark-normalized-ticket-modal' ${ticketSent ? 'disabled' : ''}>${ticketSent ? 'Ticket enviado' : 'Marcar ticket enviado'}</button>
-          <button class='ghost' disabled title='Pendiente migración'>WhatsApp pendiente migración</button>
+          <button class='ghost' id='wa-normalized-modal' ${normalizeMexicanWhatsAppPhone(o.cliente_telefono) ? '' : 'disabled'}>${normalizeMexicanWhatsAppPhone(o.cliente_telefono) ? 'WhatsApp cliente' : 'Sin teléfono válido'}</button>
         </div>
         <h4>JSON técnico</h4>
         <details>
@@ -643,6 +724,7 @@
       document.querySelector('#save-normalized-notes').onclick = () => saveNotes(orderId, document.querySelector('#norm-note-internal').value, document.querySelector('#norm-note-client').value);
       document.querySelector('#mark-normalized-paid-modal').onclick = () => markPaid(orderId);
       document.querySelector('#mark-normalized-ticket-modal').onclick = () => markTicketSent(orderId);
+      document.querySelector('#wa-normalized-modal').onclick = () => openWhatsAppForOrder(orderId);
       const payStatusSelect = document.querySelector('#norm-pay-status');
       const payMethodSelect = document.querySelector('#norm-pay-method');
       const noteInternal = document.querySelector('#norm-note-internal');
