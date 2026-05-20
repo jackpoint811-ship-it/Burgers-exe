@@ -7,15 +7,6 @@ function previewNormalizedCloseDay() {
 function archiveNormalizedCloseDayToDrive() {
   return bogNormalizedWrite_(function () {
     var analysis = bogBuildNormalizedCloseDayAnalysis_();
-    if (analysis.finalizedCount === 0) {
-      return {
-        ok: true,
-        archived: false,
-        message: 'Sin pedidos finalizados para archivar.',
-        fecha_corte: analysis.fecha_corte,
-        timestamp: bogNowIso_()
-      };
-    }
 
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var archivoSheet = bogGetSheetWithHeaderContract_(ss, 'ARCHIVO_CORTES', CHEKEO_2_SHEET_HEADERS.ARCHIVO_CORTES);
@@ -35,9 +26,24 @@ function archiveNormalizedCloseDayToDrive() {
       };
     }
 
+    if (analysis.finalizedCount === 0) {
+      return {
+        ok: true,
+        archived: false,
+        message: analysis.alreadyArchivedCount > 0 ? 'Sin pedidos finalizados nuevos para archivar.' : 'Sin pedidos finalizados para archivar.',
+        fecha_corte: analysis.fecha_corte,
+        alreadyArchivedCount: analysis.alreadyArchivedCount,
+        timestamp: bogNowIso_()
+      };
+    }
+
     var corteId = 'CORTE-' + analysis.fecha_corte.replace(/-/g, '') + '-' + Utilities.getUuid().slice(0, 8).toUpperCase();
-    var folderInfo = bogEnsureDriveArchiveFiles_(analysis, corteId);
     var createdAt = new Date();
+    var archiveEvents = analysis.finalizedOrders.map(function (order) {
+      return bogBuildArchiveEventRecord_(bogTrim_(order.pedido_id), corteId, '', createdAt);
+    });
+
+    var folderInfo = bogEnsureDriveArchiveFiles_(analysis, corteId, archiveEvents);
 
     bogAppendRecordByHeaders_(archivoSheet.sheet, archivoSheet.headers, archivoSheet.headerMap, {
       corte_id: corteId,
@@ -53,17 +59,8 @@ function archiveNormalizedCloseDayToDrive() {
     });
 
     var normalizedSheets = bogGetNormalizedSheetsWithHeaders_(ss);
-    analysis.finalizedOrders.forEach(function (order) {
-      bogAppendNormalizedEvent_(
-        normalizedSheets.eventos,
-        bogTrim_(order.pedido_id),
-        'PEDIDO_ARCHIVADO_DRIVE',
-        'Finalizada',
-        'Archivado en Drive',
-        corteId + ' | ' + folderInfo.folderUrl,
-        'chekeo-2-close',
-        createdAt
-      );
+    archiveEvents.forEach(function (eventRecord) {
+      bogAppendRecordByHeaders_(normalizedSheets.eventos.sheet, normalizedSheets.eventos.headers, normalizedSheets.eventos.headerMap, eventRecord);
     });
 
     return {
@@ -74,6 +71,7 @@ function archiveNormalizedCloseDayToDrive() {
       fecha_corte: analysis.fecha_corte,
       finalizedCount: analysis.finalizedCount,
       blockedCount: analysis.blockedCount,
+      alreadyArchivedCount: analysis.alreadyArchivedCount,
       drive_folder_url: folderInfo.folderUrl,
       drive_summary_file_url: folderInfo.summaryFileUrl,
       timestamp: bogNowIso_()
@@ -86,6 +84,9 @@ function bogBuildNormalizedCloseDayAnalysis_() {
   var sheets = bogGetNormalizedSheetsWithHeaders_(ss);
   var pedidos = bogReadSheetAsObjects_(sheets.pedidos.sheet, BOG_NORMALIZED_HEADERS.PEDIDOS).rows.map(function (row) { return row.data; });
   var items = bogReadSheetAsObjects_(sheets.items.sheet, BOG_NORMALIZED_HEADERS.PEDIDO_ITEMS).rows.map(function (row) { return row.data; });
+  var burgers = bogReadSheetAsObjects_(sheets.burgers.sheet, BOG_NORMALIZED_HEADERS.PEDIDO_BURGERS).rows.map(function (row) { return row.data; });
+  var guarniciones = bogReadSheetAsObjects_(sheets.guarniciones.sheet, BOG_NORMALIZED_HEADERS.GUARNICIONES).rows.map(function (row) { return row.data; });
+  var eventos = bogReadSheetAsObjects_(sheets.eventos.sheet, BOG_NORMALIZED_HEADERS.EVENTOS_PEDIDO).rows.map(function (row) { return row.data; });
 
   var itemTotalsByPedido = {};
   items.forEach(function (item) {
@@ -99,17 +100,33 @@ function bogBuildNormalizedCloseDayAnalysis_() {
     if (tipo === 'Guarnicion') itemTotalsByPedido[pedidoId].guarniciones += cantidad;
   });
 
+  var burgersByPedido = bogGroupRowsByPedidoId_(burgers);
+  var guarnicionesByPedido = bogGroupRowsByPedidoId_(guarniciones);
+  var eventsByPedido = bogGroupRowsByPedidoId_(eventos);
+  var archivedEventsByPedido = bogBuildArchivedEventsMap_(eventos);
+
   var finalizedOrders = [];
   var blockedOrders = [];
+  var alreadyArchivedOrders = [];
   var totalVendido = 0;
   var totalBurgers = 0;
   var totalGuarniciones = 0;
 
   pedidos.forEach(function (pedido) {
     var order = bogBuildCloseDayOrderView_(pedido);
-    var blockers = bogBuildCloseDayBlockers_(pedido);
+    var finalization = bogGetCloseDayFinalizationState_(pedido, burgersByPedido[order.pedido_id] || [], guarnicionesByPedido[order.pedido_id] || []);
+    var archivedEvent = archivedEventsByPedido[order.pedido_id] || null;
 
-    if (blockers.length === 0) {
+    if (finalization.finalized && archivedEvent) {
+      alreadyArchivedOrders.push({
+        pedido_id: order.pedido_id,
+        folio: order.folio,
+        archived_event_id_or_timestamp: bogTrim_(archivedEvent.evento_id) || bogTrim_(archivedEvent.timestamp)
+      });
+      return;
+    }
+
+    if (finalization.finalized) {
       finalizedOrders.push(order);
       var total = Number(pedido.total);
       if (!isNaN(total)) totalVendido += total;
@@ -120,10 +137,12 @@ function bogBuildNormalizedCloseDayAnalysis_() {
       blockedOrders.push({
         pedido_id: order.pedido_id,
         folio: order.folio,
-        blockers: blockers
+        blockers: finalization.blockers
       });
     }
   });
+
+  var detailedEvents = bogCollectEventsForFinalizedOrders_(finalizedOrders, eventsByPedido);
 
   return {
     ok: true,
@@ -131,6 +150,7 @@ function bogBuildNormalizedCloseDayAnalysis_() {
     total_pedidos: pedidos.length,
     finalizedCount: finalizedOrders.length,
     blockedCount: blockedOrders.length,
+    alreadyArchivedCount: alreadyArchivedOrders.length,
     totals: {
       total_vendido: totalVendido,
       total_burgers: totalBurgers,
@@ -138,6 +158,8 @@ function bogBuildNormalizedCloseDayAnalysis_() {
     },
     finalizedOrders: finalizedOrders,
     blockedOrders: blockedOrders,
+    alreadyArchivedOrders: alreadyArchivedOrders,
+    finalizedOrderEvents: detailedEvents,
     timestamp: bogNowIso_()
   };
 }
@@ -154,15 +176,93 @@ function bogBuildCloseDayOrderView_(pedido) {
   };
 }
 
-function bogBuildCloseDayBlockers_(pedido) {
-  var blockers = [];
+function bogGetCloseDayFinalizationState_(pedido, burgers, guarniciones) {
+  var estadoLegacy = bogTrim_(pedido.estado);
   var estadoProduccion = bogTrim_(pedido.estado_produccion) || 'Pendiente';
   var estadoPago = bogTrim_(pedido.estado_pago) || 'Pendiente';
   var estadoEntrega = bogTrim_(pedido.estado_entrega) || 'Pendiente';
-  if (estadoProduccion !== 'Preparada') blockers.push('Producción pendiente');
-  if (estadoPago !== 'Pagado') blockers.push('Pago pendiente');
-  if (estadoEntrega !== 'Entregada') blockers.push('Entrega pendiente');
-  return blockers;
+
+  var burgersReady = burgers.length > 0 && burgers.every(function (b) { return (bogTrim_(b.estado_burger) || 'Pendiente') === 'Lista'; });
+  var guarnicionesReady = guarniciones.length === 0 || guarniciones.every(function (g) { return (bogTrim_(g.estado_guarnicion) || 'Pendiente') === 'Hecha'; });
+
+  var productionReady = estadoProduccion === 'Preparada' || estadoLegacy === 'Listo' || estadoLegacy === 'Preparada' || (burgersReady && guarnicionesReady);
+  var paymentReady = estadoPago === 'Pagado';
+  var deliveryReady = estadoEntrega === 'Entregada';
+
+  var blockers = [];
+  if (!productionReady) blockers.push('Producción pendiente');
+  if (!paymentReady) blockers.push('Pago pendiente');
+  if (!deliveryReady) blockers.push('Entrega pendiente');
+
+  return {
+    production_ready: productionReady,
+    payment_ready: paymentReady,
+    delivery_ready: deliveryReady,
+    finalized: productionReady && paymentReady && deliveryReady,
+    blockers: blockers
+  };
+}
+
+function bogBuildArchivedEventsMap_(eventos) {
+  var map = {};
+  eventos.forEach(function (eventRow) {
+    if (bogTrim_(eventRow.tipo_evento) !== 'PEDIDO_ARCHIVADO_DRIVE') return;
+    var pedidoId = bogTrim_(eventRow.pedido_id);
+    if (!pedidoId) return;
+    if (!map[pedidoId]) map[pedidoId] = eventRow;
+  });
+  return map;
+}
+
+function bogCollectEventsForFinalizedOrders_(finalizedOrders, eventsByPedido) {
+  var merged = [];
+  finalizedOrders.forEach(function (order) {
+    var pedidoId = bogTrim_(order.pedido_id);
+    var rows = eventsByPedido[pedidoId] || [];
+    rows.forEach(function (eventRow) {
+      merged.push(bogMapNormalizedEventRecord_(eventRow));
+    });
+  });
+  return merged;
+}
+
+function bogMapNormalizedEventRecord_(eventRow) {
+  return {
+    evento_id: bogTrim_(eventRow.evento_id),
+    pedido_id: bogTrim_(eventRow.pedido_id),
+    tipo_evento: bogTrim_(eventRow.tipo_evento),
+    estado_anterior: bogTrim_(eventRow.estado_anterior),
+    estado_nuevo: bogTrim_(eventRow.estado_nuevo),
+    detalle: bogTrim_(eventRow.detalle),
+    usuario: bogTrim_(eventRow.usuario),
+    timestamp: eventRow.timestamp,
+    origen_app: bogTrim_(eventRow.origen_app)
+  };
+}
+
+function bogBuildArchiveEventRecord_(pedidoId, corteId, folderUrl, createdAt) {
+  return {
+    evento_id: bogBuildNormalizedEventId_(pedidoId, createdAt),
+    pedido_id: pedidoId,
+    tipo_evento: 'PEDIDO_ARCHIVADO_DRIVE',
+    estado_anterior: 'Finalizada',
+    estado_nuevo: 'Archivado en Drive',
+    detalle: corteId + (folderUrl ? ' | ' + folderUrl : ''),
+    usuario: 'chekeo-2-close',
+    timestamp: createdAt,
+    origen_app: 'chekeo-2'
+  };
+}
+
+function bogGroupRowsByPedidoId_(rows) {
+  var map = {};
+  rows.forEach(function (row) {
+    var pedidoId = bogTrim_(row.pedido_id);
+    if (!pedidoId) return;
+    if (!map[pedidoId]) map[pedidoId] = [];
+    map[pedidoId].push(row);
+  });
+  return map;
 }
 
 function bogFindExistingCorteByFecha_(archivoRows, fechaCorte) {
@@ -172,9 +272,10 @@ function bogFindExistingCorteByFecha_(archivoRows, fechaCorte) {
   return null;
 }
 
-function bogEnsureDriveArchiveFiles_(analysis, corteId) {
+function bogEnsureDriveArchiveFiles_(analysis, corteId, archiveEvents) {
   var rootFolder = bogGetOrCreateFolderByName_(DriveApp, null, 'Burgers.exe Cortes');
   var dayFolder = bogGetOrCreateFolderByName_(DriveApp, rootFolder, 'Corte ' + analysis.fecha_corte);
+  var folderUrl = dayFolder.getUrl();
 
   var summaryPayload = {
     corte_id: corteId,
@@ -182,21 +283,28 @@ function bogEnsureDriveArchiveFiles_(analysis, corteId) {
     total_pedidos: analysis.total_pedidos,
     finalizedCount: analysis.finalizedCount,
     blockedCount: analysis.blockedCount,
+    alreadyArchivedCount: analysis.alreadyArchivedCount,
     totals: analysis.totals,
     timestamp: analysis.timestamp
   };
+
+  var allEvents = analysis.finalizedOrderEvents.slice();
+  archiveEvents.forEach(function (eventRecord) {
+    var mapped = bogMapNormalizedEventRecord_(eventRecord);
+    mapped.detalle = eventRecord.detalle ? eventRecord.detalle : (corteId + ' | ' + folderUrl);
+    allEvents.push(mapped);
+  });
 
   var summaryFile = bogUpsertJsonFile_(dayFolder, 'resumen_corte.json', summaryPayload);
   bogUpsertJsonFile_(dayFolder, 'pedidos_finalizados.json', analysis.finalizedOrders);
   bogUpsertJsonFile_(dayFolder, 'pedidos_bloqueados.json', analysis.blockedOrders);
   bogUpsertJsonFile_(dayFolder, 'eventos_pedidos.json', {
     corte_id: corteId,
-    tipo_evento: 'PEDIDO_ARCHIVADO_DRIVE',
-    pedidos: analysis.finalizedOrders.map(function (order) { return order.pedido_id; }),
-    timestamp: bogNowIso_()
+    fecha_corte: analysis.fecha_corte,
+    eventos: allEvents
   });
 
-  return { folderUrl: dayFolder.getUrl(), summaryFileUrl: summaryFile.getUrl() };
+  return { folderUrl: folderUrl, summaryFileUrl: summaryFile.getUrl() };
 }
 
 function bogGetOrCreateFolderByName_(driveApp, parentFolder, folderName) {
