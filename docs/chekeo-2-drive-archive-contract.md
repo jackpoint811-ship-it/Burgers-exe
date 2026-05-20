@@ -79,3 +79,13 @@ Campos recomendados:
 - `eventos_pedidos.json` ahora contiene filas reales de `EVENTOS_PEDIDO` de los pedidos archivados y también los eventos `PEDIDO_ARCHIVADO_DRIVE` generados en el corte.
 - El preview/archivo excluye pedidos ya archivados detectando `EVENTOS_PEDIDO.tipo_evento=PEDIDO_ARCHIVADO_DRIVE` y expone `alreadyArchivedCount`/`alreadyArchivedOrders`.
 - La regla de finalización de cierre usa modelo fallback-safe (estado_produccion o legado estado Listo/Preparada o readiness de burgers/guarniciones) + pago + entrega.
+
+
+## Phase 7B — Integración UI Chekeo 2.0 (Drive-first)
+
+- Chekeo 2.0 en modo `normalized` ahora consume `previewNormalizedCloseDay()` para mostrar el panel de cierre.
+- La acción `Archivar cierre en Drive` llama `archiveNormalizedCloseDayToDrive()` desde UI interna.
+- Si el resultado indica `archived:false` con `alreadyArchivedCount > 0` o `duplicate:true`, se muestra como estado válido (no error).
+- La UI mantiene modo `legacy-fallback` sin cambios funcionales en `writeDailySummary`, `archiveCompletedOrders` y `closeDay`.
+- Esta integración **no** elimina ni limpia filas activas; no hay borrado destructivo en hojas operativas.
+- Drive sigue siendo el historial detallado del cierre, y `ARCHIVO_CORTES` permanece como índice liviano del corte.

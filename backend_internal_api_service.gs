@@ -101,6 +101,10 @@ function bogHandleInternalApiFromCloudflare_(requestBody) {
       return updateNormalizedOrderNotes(args[0], args[1], args[2], args[3]);
     case 'markNormalizedTicketSent':
       return markNormalizedTicketSent(args[0], args[1]);
+    case 'previewNormalizedCloseDay':
+      return previewNormalizedCloseDay();
+    case 'archiveNormalizedCloseDayToDrive':
+      return archiveNormalizedCloseDayToDrive();
     case 'syncOrdersFromMaster':
       return syncOrdersFromMaster();
     case 'updateOrderStatus':

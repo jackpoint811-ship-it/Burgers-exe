@@ -33,6 +33,8 @@ const ALLOWED_METHODS = new Set([
   'markNormalizedGuarnicionDone',
   'updateNormalizedOrderNotes',
   'markNormalizedTicketSent',
+  'previewNormalizedCloseDay',
+  'archiveNormalizedCloseDayToDrive',
   'syncOrdersFromMaster',
   'updateOrderStatus',
   'updateOrderOperationalData',

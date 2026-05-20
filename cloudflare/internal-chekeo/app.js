@@ -18,6 +18,8 @@
     historyPreview: null,
     productionValidation: null,
     migrationPreview: null,
+    normalizedClosePreview: null,
+    normalizedCloseArchiveResult: null,
     historyOrders: [],
     filter: 'Todos',
     loadingWrite: false,
@@ -143,11 +145,21 @@
 
       let orders = [];
       let ordersSource = 'normalized';
+      let normalizedClosePreview = null;
       try {
         const normalizedOrders = await rpcCall('getNormalizedAppOrders', [{}]);
         orders = Array.isArray(normalizedOrders?.orders)
           ? normalizedOrders.orders
           : (Array.isArray(normalizedOrders?.data) ? normalizedOrders.data : []);
+        try {
+          const normalizedCloseResult = await rpcCall('previewNormalizedCloseDay');
+          normalizedClosePreview = normalizedCloseResult?.data || normalizedCloseResult || null;
+        } catch (closePreviewError) {
+          normalizedClosePreview = {
+            warning: true,
+            message: closePreviewError?.message || 'No se pudo cargar el preview de cierre normalizado.'
+          };
+        }
       } catch (normalizedError) {
         const legacyOrders = await rpcCall('getAppOrders');
         orders = Array.isArray(legacyOrders?.data) ? legacyOrders.data : [];
@@ -163,6 +175,7 @@
       state.historyPreview = historyPreview?.data || null;
       state.productionValidation = productionValidation?.data || null;
       state.migrationPreview = migrationPreview?.data || null;
+      state.normalizedClosePreview = ordersSource === 'normalized' ? normalizedClosePreview : null;
       state.panelError = '';
     } catch (error) {
       state.panelError = error?.message || 'No se pudo cargar el panel operativo.';
@@ -226,6 +239,11 @@
     showToast('Cierre/histórico pendiente migración en modo normalizado.', true);
     return null;
   };
+  const archiveNormalizedCloseDayAction = () => runWrite('Archivar cierre en Drive', 'archiveNormalizedCloseDayToDrive', [], '¿Archivar cierre en Drive para pedidos finalizados nuevos?').then((result) => {
+    state.normalizedCloseArchiveResult = result?.data || result || null;
+    render();
+    return result;
+  });
   const writeDailySummaryAction = () => state.ordersSource === 'legacy-fallback' ? runWrite('Guardar resumen diario operativo', 'writeDailySummary', [], '¿Guardar el resumen diario operativo? Esta acción escribirá el resumen en la hoja correspondiente.') : showCloseHistoryPending();
   const archiveCompletedOrdersAction = () => state.ordersSource === 'legacy-fallback' ? runWrite('Archivar pedidos completados', 'archiveCompletedOrders', [], '¿Archivar pedidos completados? Solo deben archivarse pedidos listos y pagados.') : showCloseHistoryPending();
   const closeDayAction = () => state.ordersSource === 'legacy-fallback' ? runWrite('Cerrar el día', 'closeDay', [], '¿Cerrar el día? Esta acción puede guardar resumen y archivar pedidos según la lógica existente. Revisa el preview antes de continuar.') : showCloseHistoryPending();
@@ -381,6 +399,8 @@
     const closePreview = state.closePreview || {};
     const summary = state.summary || {};
     const historyPreview = state.historyPreview || {};
+    const normalizedClosePreview = state.normalizedClosePreview || {};
+    const archiveResult = state.normalizedCloseArchiveResult || null;
     const archivables = closePreview.archivables || closePreview.archiveableOrders || [];
     const noArchivables = closePreview.noArchivables || closePreview.nonArchiveableOrders || [];
     const totals = {
@@ -395,16 +415,56 @@
     const historyOrdersList = state.historyOrders.length
       ? `<ul class='readonly-list history-loaded-list'>${state.historyOrders.map((o) => `<li><strong>${escape(o['ID Pedido'] || o.id || '-')}</strong><p>${escape(o['Nombre'] || o.name || '')}</p></li>`).join('')}</ul>`
       : `<p class='empty-state'>No hay histórico cargado aún.</p>`;
-    const closeActions = isNormalizedMode()
-      ? `<button class='write-btn critical-btn' id='write-summary-btn' disabled title='Pendiente migración cierre/histórico'>Guardar resumen pendiente migración</button>
-          <button class='write-btn critical-btn' id='archive-completed-btn' disabled title='Pendiente migración cierre/histórico'>Archivar pendiente migración</button>
-          <button class='write-btn critical-btn' id='close-day-btn' disabled title='Pendiente migración cierre/histórico'>Cerrar día pendiente migración</button>`
-      : `<button class='write-btn critical-btn' data-write-action id='write-summary-btn'>Guardar resumen</button>
-          <button class='write-btn critical-btn' data-write-action id='archive-completed-btn'>Archivar completados</button>
-          <button class='write-btn critical-btn' data-write-action id='close-day-btn'>Cerrar día</button>`;
 
-    document.querySelector('#otros-content').innerHTML = `
-      <h2>Otros</h2>
+    const normalizedFinalized = Array.isArray(normalizedClosePreview.finalizedOrders) ? normalizedClosePreview.finalizedOrders : [];
+    const normalizedBlocked = Array.isArray(normalizedClosePreview.blockedOrders) ? normalizedClosePreview.blockedOrders : [];
+    const normalizedArchived = Array.isArray(normalizedClosePreview.alreadyArchivedOrders) ? normalizedClosePreview.alreadyArchivedOrders : [];
+    const normalizedTotals = normalizedClosePreview.totals || {};
+    const normalizedHasWarning = Boolean(normalizedClosePreview.warning);
+    const normalizedCloseActions = `<button class='write-btn critical-btn' data-write-action id='archive-normalized-close-btn' ${Number(normalizedClosePreview.finalizedCount || 0) > 0 ? '' : 'disabled'}>Archivar cierre en Drive</button>`;
+    const archiveResultLinks = archiveResult
+      ? `<div class='card'><h4>Resultado último archivo</h4><p><strong>corte_id:</strong> ${escape(archiveResult.corte_id || '-')}</p>
+        ${archiveResult.drive_folder_url ? `<p><a href='${escape(archiveResult.drive_folder_url)}' target='_blank' rel='noopener'>Ver carpeta Drive</a></p>` : ''}
+        ${archiveResult.drive_summary_file_url ? `<p><a href='${escape(archiveResult.drive_summary_file_url)}' target='_blank' rel='noopener'>Ver resumen JSON</a></p>` : ''}
+        <p><strong>archived:</strong> ${escape(String(Boolean(archiveResult.archived)))}</p>
+        <p><strong>duplicate:</strong> ${escape(String(Boolean(archiveResult.duplicate)))}</p>
+        <p>${escape(archiveResult.message || (archiveResult.archived ? 'Cierre archivado en Drive.' : ((archiveResult.alreadyArchivedCount || 0) > 0 ? 'Sin pedidos finalizados nuevos para archivar.' : 'Sin cambios en el archivo.')))}</p></div>`
+      : '';
+
+    const normalizedCloseSection = `
+      <section class='card close-section'>
+        <h3>Cierre Drive-first</h3>
+        ${normalizedHasWarning ? `<p class='empty-state'>${escape(normalizedClosePreview.message || 'No se pudo cargar el preview normalizado de cierre.')}</p>` : ''}
+        <div class='card-grid close-totals'>
+          <article class='card'><h4>Fecha corte</h4><p>${escape(normalizedClosePreview.fecha_corte || '-')}</p></article>
+          <article class='card'><h4>Total pedidos</h4><p>${escape(normalizedClosePreview.total_pedidos ?? 0)}</p></article>
+          <article class='card'><h4>Finalizados nuevos</h4><p>${escape(normalizedClosePreview.finalizedCount ?? 0)}</p></article>
+          <article class='card'><h4>Bloqueados</h4><p>${escape(normalizedClosePreview.blockedCount ?? 0)}</p></article>
+          <article class='card'><h4>Ya archivados</h4><p>${escape(normalizedClosePreview.alreadyArchivedCount ?? 0)}</p></article>
+          <article class='card'><h4>Total vendido</h4><p>${escape(normalizedTotals.total_vendido ?? 0)}</p></article>
+          <article class='card'><h4>Total burgers</h4><p>${escape(normalizedTotals.total_burgers ?? 0)}</p></article>
+          <article class='card'><h4>Total guarniciones</h4><p>${escape(normalizedTotals.total_guarniciones ?? 0)}</p></article>
+        </div>
+        <div class='row'>${normalizedCloseActions}</div>
+        ${archiveResultLinks}
+      </section>
+
+      <section class='card'>
+        <h3>Finalizados nuevos</h3>
+        ${normalizedFinalized.length ? `<ul class='readonly-list'>${normalizedFinalized.map((o) => `<li><strong>${escape(o.folio || o.pedido_id || '-')}</strong><p>${escape(o.cliente_nombre || 'Sin nombre')}</p><p>Total: ${escape(o.total || 0)} | Producción: ${escape(o.estado_produccion || '-')} | Pago: ${escape(o.estado_pago || '-')} | Entrega: ${escape(o.estado_entrega || '-')}</p></li>`).join('')}</ul>` : `<p class='empty-state'>Sin pedidos finalizados nuevos</p>`}
+      </section>
+
+      <section class='card'>
+        <h3>Bloqueados</h3>
+        ${normalizedBlocked.length ? `<ul class='readonly-list'>${normalizedBlocked.map((o) => `<li><strong>${escape(o.folio || o.pedido_id || '-')}</strong><p>${escape(Array.isArray(o.blockers) ? o.blockers.join(', ') : '-')}</p></li>`).join('')}</ul>` : `<p class='empty-state'>No hay pedidos bloqueados.</p>`}
+      </section>
+
+      <section class='card'>
+        <h3>Ya archivados</h3>
+        ${normalizedArchived.length ? `<ul class='readonly-list'>${normalizedArchived.map((o) => `<li><strong>${escape(o.folio || o.pedido_id || '-')}</strong><p>${escape(o.archived_event_id_or_timestamp || '-')}</p></li>`).join('')}</ul>` : `<p class='empty-state'>No hay pedidos ya archivados.</p>`}
+      </section>`;
+
+    const legacyCloseSection = `
       <section class='card close-section'>
         <h3>Cierre y resumen</h3>
         <div class='card-grid close-totals'>
@@ -416,9 +476,15 @@
           <article class='card'><h4>Pagados no listos</h4><p>${escape(totals.paidNotReady)}</p></article>
         </div>
         <div class='row'>
-          ${closeActions}
+          <button class='write-btn critical-btn' data-write-action id='write-summary-btn'>Guardar resumen</button>
+          <button class='write-btn critical-btn' data-write-action id='archive-completed-btn'>Archivar completados</button>
+          <button class='write-btn critical-btn' data-write-action id='close-day-btn'>Cerrar día</button>
         </div>
-      </section>
+      </section>`;
+
+    document.querySelector('#otros-content').innerHTML = `
+      <h2>Otros</h2>
+      ${isNormalizedMode() ? normalizedCloseSection : legacyCloseSection}
 
       <section class='card'>
         <h3>Archivables</h3>
@@ -444,7 +510,7 @@
 
       <section class='card diagnostic-section'>
         <h3>Diagnóstico avanzado</h3>
-        <p class='scope-banner'>Preparación de estructura/producción queda para Fase 7.</p>
+        <p class='scope-banner'>Cierre Drive-first activo. Operación normalizada sin borrado de filas.</p>
         <pre>${escape(JSON.stringify({ health: state.health, productionValidation: state.productionValidation, migrationPreview: state.migrationPreview }, null, 2))}</pre>
       </section>
     `;
@@ -455,7 +521,7 @@
       ? `<p class="scope-banner">Cargando panel operativo...</p>`
       : '';
     const err = state.panelError ? `<p class='empty-state'>${escape(state.panelError)}</p>` : '';
-    document.querySelector('#inicio-content').innerHTML = `<h2>Inicio</h2>${loading}${err}<p>Fase 6 activa: Cocina + guarniciones separadas.</p>`;
+    document.querySelector('#inicio-content').innerHTML = `<h2>Inicio</h2>${loading}${err}<p>Fase 7B activa: Cierre Drive-first integrado.</p>`;
   }
   function renderTabs() { document.querySelectorAll('[data-tab-target]').forEach((b) => b.classList.toggle('is-active', b.dataset.tabTarget === state.activeTab)); document.querySelectorAll('[data-tab-panel]').forEach((p) => p.classList.toggle('is-hidden', p.dataset.tabPanel !== state.activeTab)); }
   function render() { renderTabs(); renderHome(); renderOrders(); renderKitchen(); renderOthers(); }
@@ -593,6 +659,7 @@
       const writeSummary = e.target.closest('#write-summary-btn'); if (writeSummary) return state.ordersSource === 'legacy-fallback' ? writeDailySummaryAction() : showCloseHistoryPending();
       const archiveCompleted = e.target.closest('#archive-completed-btn'); if (archiveCompleted) return state.ordersSource === 'legacy-fallback' ? archiveCompletedOrdersAction() : showCloseHistoryPending();
       const closeDayBtn = e.target.closest('#close-day-btn'); if (closeDayBtn) return state.ordersSource === 'legacy-fallback' ? closeDayAction() : showCloseHistoryPending();
+      const archiveNormalizedCloseBtn = e.target.closest('#archive-normalized-close-btn'); if (archiveNormalizedCloseBtn) return isNormalizedMode() ? archiveNormalizedCloseDayAction() : null;
       const loadHistoryBtn = e.target.closest('#load-history-orders-btn'); if (loadHistoryBtn) return loadHistoryOrders(20);
     });
     document.querySelector('#modal-close')?.addEventListener('click', () => modal.classList.add('is-hidden'));
