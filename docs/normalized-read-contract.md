@@ -11,6 +11,8 @@ This phase introduces:
 Phase 3C updates internal UI read path to consume this normalized model (`cloudflare/internal-chekeo/app.js`) with legacy fallback.
 Operational write methods are added in Phase 3D-A, but UI button activation remains pending Phase 3D-B.
 
+Phase 9A consumes this same normalized read model for customer WhatsApp message composition in Chekeo 2.0 normalized mode (open `wa.me` with prefilled text only, no auto-send).
+
 ## Source sheets
 Read model composes data from:
 - `PEDIDOS` (parent)
@@ -127,4 +129,3 @@ Added `production` and expanded `kitchen` flags for burgers/guarniciones readine
 - Producción, pago y entrega son procesos separados.
 - Cocina no depende del pago para marcar producción `Preparada`.
 - Finalización para cierre: `estado_produccion=Preparada` + `estado_pago=Pagado` + `estado_entrega=Entregada`.
-

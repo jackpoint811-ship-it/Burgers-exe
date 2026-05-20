@@ -321,6 +321,13 @@ Se completó la sincronización de pricing backend con el catálogo dinámico:
 - Internal Chekeo normalized UI now disables completed quick actions (`Pagado`, `Ticket enviado`) and adds detail-modal change listeners to enable save buttons only after field edits.
 - Write feedback now distinguishes no-op vs mutation (`Sin cambios: ...` vs `OK: ...`).
 
+## Phase 9A — WhatsApp cliente en modo normalizado (implemented)
+- `cloudflare/internal-chekeo/app.js` habilita WhatsApp para pedidos normalizados con mensaje construido desde el read model normalizado (`pedido_id`, `folio`, `cliente_nombre`, `cliente_telefono`, `total`, estados operativos, `items`/`burgers`/`guarniciones`, `payment.metodo_pago`, `nota_cliente`).
+- El flujo abre únicamente URL `wa.me` con texto prellenado; no hace auto-envío.
+- El botón pasa a `WhatsApp cliente` cuando hay teléfono válido y `Sin teléfono válido` cuando falla la normalización.
+- Después de abrir WhatsApp, la UI intenta `markNormalizedTicketSent`; si responde `unchanged: true` se trata como resultado exitoso/idempotente.
+- En `legacy-fallback` no cambia el enrutamiento existente de WhatsApp.
+
 ## Phase 6 (Cocina + guarniciones separadas)
 Implemented backend/header/UI/RPC split production flow with explicit completion gate.
 
