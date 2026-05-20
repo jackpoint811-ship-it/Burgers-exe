@@ -370,3 +370,9 @@ Implemented backend/header/UI/RPC split production flow with explicit completion
 - La UI mantiene modo `legacy-fallback` sin cambios funcionales en `writeDailySummary`, `archiveCompletedOrders` y `closeDay`.
 - Esta integración **no** elimina ni limpia filas activas; no hay borrado destructivo en hojas operativas.
 - Drive sigue siendo el historial detallado del cierre, y `ARCHIVO_CORTES` permanece como índice liviano del corte.
+
+## Phase 9B-A — Hotfix copy WhatsApp (2026-05-20)
+- Se ajusta únicamente el copy del mensaje normalizado de WhatsApp cliente para alinearlo al nombre vigente **Burgers.exe**.
+- El mensaje cliente omite intencionalmente identificadores internos/operativos (pedido_id, folio, número de pedido) y líneas de estado de proceso (Cocina/Producción, Pago, Entrega).
+- Se conserva un formato corto y amigable con: items (o fallback), total, método de pago y nota cliente segura si existe.
+- Sin cambios en backend, Apps Script, RPC, legacy, ni superficie `public-order`.
