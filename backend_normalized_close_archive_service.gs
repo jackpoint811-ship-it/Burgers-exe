@@ -325,5 +325,5 @@ function bogUpsertJsonFile_(folder, fileName, payload) {
     existing.setContent(json);
     return existing;
   }
-  return folder.createFile(fileName, json, MimeType.JSON);
+  return folder.createFile(fileName, json, 'application/json');
 }
