@@ -1,4 +1,4 @@
-# Burgers.exe / Burgers OG Assets
+# Burgers.exe Assets
 
 Generated from the visual direction of the provided Brand Board: terminal retro gamer, pixel art, black background, neon green #39FF14, glitch/CRT details, and meme-gamer copy.
 

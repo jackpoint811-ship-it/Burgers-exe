@@ -1,4 +1,4 @@
-# Burger-OG
+# Burgers.exe
 
 ## Estado final del proyecto
 Proyecto operativo por fases con transición hacia arquitectura de dos superficies: **Burgers.exe** (pública) y **Chekeo 2.0** (interna), usando Google Sheets como backend.

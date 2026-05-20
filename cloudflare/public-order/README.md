@@ -27,7 +27,7 @@ Ejemplo: dos burgers con `Tocino` extra en cada una -> `items` contiene `{ sku: 
 
 ## UX Fase 2 (backend Apps Script)
 El backend ahora persiste detalle por burger en columnas existentes:
-- `Burger OG`
+- `Burgers.exe`
 - `BBQ Burger`
 - `Describe como quieres tus Burgers`
 
