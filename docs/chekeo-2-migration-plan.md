@@ -127,7 +127,7 @@ Definir una migración segura hacia la arquitectura Burgers.exe + Chekeo 2.0 sin
 **Acciones:**
 - Remover hojas legacy únicamente después de cumplir precondiciones.
 
-## Phase 8A – Normalized-first UI cleanup
+## Phase 8A – Normalized-first UI cleanup ✅ Completada
 **Objetivo:** consolidar la experiencia visual principal de Chekeo 2.0 en modo normalizado, preservando fallback legacy interno.
 
 **Cambios UX esperados:**
@@ -142,6 +142,20 @@ Definir una migración segura hacia la arquitectura Burgers.exe + Chekeo 2.0 sin
 **Garantías:**
 - `legacy-fallback` mantiene comportamiento legacy existente.
 - Sin cambios destructivos en hojas.
+
+
+## Phase 8B – QA checklist + hardening seguro (sin features nuevas)
+**Objetivo:** ejecutar validación estructurada end-to-end del flujo normalizado y agregar únicamente instrumentación de prueba segura cuando haga falta.
+
+**Alcance:**
+- Documentar checklist E2E manual para creación pública, pedidos, cocina, detalle, finalización y cierre Drive-first.
+- Verificar regresión de UX normalizada en Chekeo 2.0 sin reintroducir secciones legacy en modo normalizado.
+- Permitir helpers de prueba **solo lectura** (si se agregan), sin wrappers de escritura/patch/backfill/archive.
+
+**No objetivo (explícito):**
+- No introducir features nuevas de producto en esta fase.
+- No hacer operaciones destructivas en hojas.
+- No reemplazar ni remover fallback legacy interno.
 
 ## Phase 7C – Limpieza UX de Otros (normalized)
 **Objetivo:** reducir ruido legacy en Chekeo 2.0 cuando la operación corre en modo normalizado Drive-first.
