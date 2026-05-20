@@ -178,6 +178,12 @@ Chekeo 2.0 now consumes the normalized operation methods when `state.ordersSourc
 - Legacy fallback WhatsApp routing remains unchanged.
 - Cierre/resumen/archivo/histórico migration remains outside this phase; normalized mode disables those legacy controls until a later normalized close/history path exists.
 
+### Phase 9B update (customer-facing message polish)
+- Scope is limited to the normalized UI customer message builder (`buildNormalizedWhatsAppMessage(order)`).
+- Customer copy is shorter and clearer (Burger-OG tone) while preserving the same open-only WhatsApp flow (no auto-send).
+- No backend changes, no Apps Script changes, and no RPC contract/allowlist changes.
+- Ticket marking behavior remains unchanged from Phase 9A: UI still calls `markNormalizedTicketSent` after opening WhatsApp and accepts `unchanged: true` as idempotent success.
+
 ## Phase 6 kitchen ops
 New RPC ops: ensureNormalizedKitchenHeaders, previewNormalizedKitchenReadiness, updateNormalizedBurgerStatus, markNormalizedBurgersReady, updateNormalizedGuarnicionStatus, completeNormalizedOrderIfReady.
 

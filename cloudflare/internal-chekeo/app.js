@@ -273,6 +273,12 @@
   }
 
   function buildNormalizedWhatsAppMessage(order) {
+    const formatMoneyForWhatsApp = (value) => {
+      const amount = Number(value);
+      if (!Number.isFinite(amount)) return null;
+      const fixed = amount.toFixed(2);
+      return fixed.endsWith('.00') ? String(Math.trunc(amount)) : String(Number(fixed));
+    };
     const customerName = String(order?.cliente_nombre || '').trim() || 'cliente';
     const folioOrId = String(order?.folio || order?.pedido_id || '').trim() || '-';
     const total = Number.isFinite(Number(order?.total)) ? Number(order.total) : 0;
@@ -285,38 +291,42 @@
     const guarniciones = Array.isArray(order?.guarniciones) ? order.guarniciones : [];
     const orderLines = items.map((item) => {
       const qty = Number(item?.cantidad);
-      const lineQty = Number.isFinite(qty) && qty > 0 ? qty : 1;
+      const lineQty = Number.isFinite(qty) && qty > 0 ? (Number.isInteger(qty) ? qty : Number(qty.toFixed(2))) : 1;
       const itemName = String(item?.nombre || item?.producto_id || 'Producto').trim();
-      const subtotalRaw = Number(item?.subtotal);
-      const subtotalPart = Number.isFinite(subtotalRaw) ? ` $${subtotalRaw}` : '';
-      return `- ${lineQty}x ${itemName}${subtotalPart}`;
+      const subtotalPart = formatMoneyForWhatsApp(item?.subtotal);
+      return `• ${lineQty}x ${itemName}${subtotalPart !== null ? ` — $${subtotalPart}` : ''}`;
     });
     if (!orderLines.length) {
       const burgerCount = burgers.reduce((acc, burger) => acc + (Number(burger?.cantidad) || 1), 0);
       const guarnicionCount = guarniciones.reduce((acc, side) => acc + (Number(side?.cantidad) || 0), 0);
-      orderLines.push(`- Burgers: ${burgerCount || burgers.length || 0}`);
-      orderLines.push(`- Guarniciones: ${guarnicionCount || guarniciones.length || 0}`);
+      if (burgers.length) orderLines.push(`• Burgers: ${burgerCount || burgers.length || 0}`);
+      if (guarniciones.length) orderLines.push(`• Guarniciones: ${guarnicionCount || guarniciones.length || 0}`);
+      if (!orderLines.length) orderLines.push('• Pedido registrado');
     }
     const noteClient = String(order?.notas_cliente || order?.nota_cliente || '').trim();
     const safeCustomerNote = noteClient && !/json|script|<|>|\{|\}/i.test(noteClient) ? noteClient : '';
+    const maxNoteLength = 200;
+    const clippedNote = safeCustomerNote.length > maxNoteLength ? `${safeCustomerNote.slice(0, maxNoteLength - 1).trimEnd()}…` : safeCustomerNote;
+    const totalMoney = formatMoneyForWhatsApp(total) || '0';
     return [
-      `Hola ${customerName}, soy de Burger-OG 🍔`,
+      `Hola ${customerName} 🍔`,
       '',
-      `Tu pedido ${folioOrId} va así:`,
+      `Tu pedido ${folioOrId} ya está registrado en Burger-OG.`,
       '',
-      `Producción: ${productionState}`,
-      `Pago: ${paymentState}`,
-      `Entrega: ${deliveryState}`,
+      'Estado:',
+      `• Cocina: ${productionState}`,
+      `• Pago: ${paymentState}`,
+      `• Entrega: ${deliveryState}`,
       '',
       'Pedido:',
       ...orderLines,
       '',
-      `Total: $${total}`,
-      `Pago: ${metodoPago}`,
-      safeCustomerNote ? `Nota: ${safeCustomerNote}` : '',
+      `Total: $${totalMoney}`,
+      `Método de pago: ${metodoPago}`,
+      clippedNote ? `Nota: ${clippedNote}` : '',
       '',
-      'Gracias por tu orden.',
-    ].filter(Boolean).join('\n');
+      'Gracias por pedir con Burger-OG.',
+    ].filter(Boolean).join('\n').slice(0, 900);
   }
 
   async function markNormalizedTicketSentAfterWhatsApp(orderId) {
