@@ -1,6 +1,5 @@
 (() => {
   const ORDER_STATUSES = ['Nuevo', 'Confirmado', 'Preparando', 'Listo'];
-  const NORMALIZED_ORDER_STATUSES = ['Nuevo', 'Confirmado', 'Preparando', 'Preparada', 'Cancelado', 'Completado'];
   const PAYMENT_STATUSES = ['Pendiente', 'Pagado'];
   const NORMALIZED_PAYMENT_STATUSES = ['Pendiente', 'Pagado', 'Parcial', 'Cancelado'];
   const PAYMENT_METHODS = ['Efectivo', 'Transferencia', 'Mixto', 'No definido'];
@@ -228,7 +227,6 @@
 
   const refreshOrders = () => loadOperationalPanel();
   const isNormalizedMode = () => state.ordersSource === 'normalized';
-  const changeNormalizedOrderStatus = (orderId, nextStatus) => runWrite(`Cambiar estado a ${nextStatus}`, 'updateNormalizedOrderStatus', [orderId, nextStatus, 'chekeo-2-ui']);
   const markNormalizedPaid = (orderId) => runWrite('Marcar pagado', 'markNormalizedOrderPaid', [orderId, 'chekeo-2-ui']);
   const markNormalizedSideDone = (orderIdOrGuarnicionId) => runWrite('Marcar guarnición hecha', 'updateNormalizedGuarnicionStatus', [orderIdOrGuarnicionId, 'Hecha', 'chekeo-2-ui']);
   const markNormalizedSidesPreparing = (orderId) => runWrite('Guarniciones preparando', 'updateNormalizedGuarnicionStatus', [orderId, 'Preparando', 'chekeo-2-ui']);
@@ -239,7 +237,7 @@
   const saveNormalizedNotes = (orderId, notaInterna, notaCliente) => runWrite('Guardar notas', 'updateNormalizedOrderNotes', [orderId, notaInterna, notaCliente, 'chekeo-2-ui']);
   const markNormalizedTicketSentUi = (orderId) => runWrite('Marcar ticket enviado', 'markNormalizedTicketSent', [orderId, 'chekeo-2-ui']);
   const updateNormalizedPayment = (orderId, estadoPago, metodoPago) => runWrite('Actualizar pago', 'updateNormalizedPaymentStatus', [orderId, estadoPago, metodoPago, 'chekeo-2-ui']);
-  const changeOrderStatus = (orderId, nextStatus) => isNormalizedMode() ? changeNormalizedOrderStatus(orderId, nextStatus) : runWrite(`Cambiar estado a ${nextStatus}`, 'updateOrderStatus', [orderId, nextStatus]);
+  const changeOrderStatus = (orderId, nextStatus) => runWrite(`Cambiar estado a ${nextStatus}`, 'updateOrderStatus', [orderId, nextStatus]);
   const saveOrderOperationalData = (orderId, payload) => runWrite('Guardar cambios operativos', 'updateOrderOperationalData', [orderId, payload]);
   const updatePayment = (orderId, paymentStatus, paymentMethod) => isNormalizedMode() ? updateNormalizedPayment(orderId, paymentStatus, paymentMethod) : runWrite('Actualizar pago', 'updateOrderPayment', [orderId, paymentStatus, paymentMethod]);
   const markPaid = (orderId) => isNormalizedMode() ? markNormalizedPaid(orderId) : runWrite('Marcar pagado', 'markOrderPaid', [orderId]);
@@ -300,24 +298,11 @@
     return getPendingGuarniciones(order) > 0 || Boolean(order?.kitchen?.guarnicion_summary && order.kitchen.guarnicion_summary !== 'Sin guarniciones');
   }
 
-  function renderNormalizedOrderActions(o, id, status, paymentStatus) {
-    const statusActions = {
-      Nuevo: ['Confirmar', 'Confirmado'],
-      Confirmado: ['Preparando', 'Preparando'],
-    };
-    const statusAction = statusActions[status] || null;
-    const statusButton = statusAction
-      ? `<button class='ghost write-btn' data-write-action data-order-status='${id}' data-next-status='${escape(statusAction[1])}'>${escape(statusAction[0])}</button>`
-      : `<button class='ghost write-btn' disabled>${escape(status || 'Estado')}</button>`;
+  function renderNormalizedOrderActions(o, id, paymentStatus) {
     const paidButton = paymentStatus === 'Pagado'
       ? `<button class='ghost write-btn' disabled>Pagado</button>`
-      : `<button class='ghost write-btn' data-write-action data-mark-paid='${id}'>Pagado</button>`;
-    const productionState = o.production?.estado_produccion || o.estado_produccion || (o.estado === 'Listo' ? 'Preparada' : 'Pendiente');
-    const ready = Boolean(o.production?.production_ready || o.production?.order_ready);
-    const completeButton = productionState === 'Preparada'
-      ? `<button class='ghost write-btn' disabled>Producción preparada</button>`
-      : (ready ? `<button class='ghost write-btn' data-write-action data-complete-order='${id}'>Marcar como preparada</button>` : `<button class='ghost write-btn' disabled title='${escape((o.production?.blockers || []).join(', ') || 'Faltan pasos')}'>Faltan pasos</button>`);
-    return `${paidButton}${statusButton}${completeButton}`;
+      : `<button class='ghost write-btn' data-write-action data-mark-paid='${id}'>Marcar pagado</button>`;
+    return paidButton;
   }
 
   function renderOrders() {
@@ -341,11 +326,11 @@
       const deliveryState = normalized ? (o.delivery?.estado_entrega || o.estado_entrega || 'Pendiente') : 'Pendiente';
       const finalized = normalized ? Boolean(o.finalization?.finalized) : false;
       const operationalActions = normalized
-        ? renderNormalizedOrderActions(o, id, rawStatus, rawPaymentStatus)
+        ? renderNormalizedOrderActions(o, id, rawPaymentStatus)
         : `<button class='ghost write-btn' data-write-action data-mark-paid='${id}'>Marcar pagado</button><button class='ghost write-btn' data-write-action data-ready='${id}'>Listo</button><button class='ghost write-btn' data-write-action data-side-ready='${id}'>Guarnición lista</button>`;
       const whatsappLabel = normalized ? 'WhatsApp pendiente' : 'WhatsApp';
       const prod = o.production || {};
-      const prodBadges = normalized ? `<p>Producción: ${escape(productionState)}</p><p>Pago: ${escape(paymentState)}</p><p>Entrega: ${escape(deliveryState)}</p><p>Finalización: ${finalized ? 'Finalizada' : 'Pendiente'}</p><p>Burgers: ${escape(`${prod.burgers_listas || 0}/${prod.burgers_total || 0} listas`)}</p><p>Guarniciones: ${prod.guarniciones_total ? escape(`${prod.guarniciones_hechas || 0}/${prod.guarniciones_total || 0} hechas`) : 'Sin guarniciones'}</p>` : '';
+      const prodBadges = normalized ? `<p>Producción: ${escape(productionState)}</p><p>Pago: ${escape(paymentState)}</p><p>Entrega: ${escape(deliveryState)}</p><p>Finalización: ${finalized ? 'Finalizada' : 'Pendiente'}</p><p>Burgers ${escape(`${prod.burgers_listas || 0}/${prod.burgers_total || 0}`)} listas</p><p>${prod.guarniciones_total ? `Guarniciones ${escape(`${prod.guarniciones_hechas || 0}/${prod.guarniciones_total || 0}`)} hechas` : 'Sin guarniciones'}</p><p><small>Estado interno: ${status}</small></p>` : '';
       let processActions = '';
       if (normalized) {
         if (finalized) processActions = `<button class='ghost write-btn' disabled>Finalizada</button>`;
@@ -353,7 +338,7 @@
         else if (productionState === 'Preparada' && paymentState !== 'Pagado') processActions = `<button class='ghost write-btn' disabled>Pendiente de pago</button>`;
         else if (paymentState === 'Pagado' && productionState !== 'Preparada') processActions = `<button class='ghost write-btn' disabled>Pendiente de cocina</button>`;
       }
-      return `<li class='order-item'><div><small>${folio}</small><p><strong>${customer}</strong></p><p>${phone}</p><p>Total: ${total}</p><small><span class='badge-status'>${status}</span> <span class='badge-payment'>${paymentStatus}</span>${ticketBadge}</small><p>${burgerSummary}</p><p>${guarnicionSummary}</p>${prodBadges}</div>
+      return `<li class='order-item'><div><p><strong>${folio} · ${customer}</strong></p><p>${phone}</p><p>Total: ${total}</p><small>${ticketBadge}</small><p>${burgerSummary}</p><p>${guarnicionSummary}</p>${prodBadges}</div>
       <div class='order-actions'>
       <button class='ghost' data-detail='${id}'>Detalle</button>
       ${operationalActions}
@@ -386,7 +371,7 @@
       const id = escape(o.pedido_id || '');
       const burgers = Array.isArray(o.burgers) ? o.burgers : [];
       const lines = burgers.map((b) => `<li><strong>${escape(b.burger_base_id || 'burger')}</strong> <span class='badge-status'>${escape(b.estado_burger || 'Pendiente')}</span><p>Extras: ${escape((b.extras || []).join(', ') || 'Extras No')}</p><p>Sin: ${escape((b.sin_ingredientes || []).join(', ') || 'Sin cambios')}</p>${b.comentarios ? `<p>Comentario: ${escape(b.comentarios)}</p>` : ''}</li>`).join('');
-      return `<li><small>${escape(o.folio || '-')}</small><p><strong>${escape(o.cliente_nombre || 'Sin nombre')}</strong></p><p><span class='badge-status'>${escape(o.estado || '-')}</span></p><p>${escape((o.production?.burgers_listas || 0) + '/' + (o.production?.burgers_total || 0))} listas</p><ul>${lines || '<li>Sin burgers</li>'}</ul><div class='row'><button class='write-btn' data-write-action data-burgers-preparing='${id}'>Burgers preparando</button><button class='write-btn' data-write-action data-burgers-ready='${id}' ${o.production?.burgers_ready ? 'disabled' : ''}>Burgers listas</button></div></li>`;
+      return `<li><small>${escape(o.folio || '-')}</small><p><strong>${escape(o.cliente_nombre || 'Sin nombre')}</strong></p><p>Producción: ${escape(o.production?.estado_produccion || o.estado_produccion || 'Pendiente')}</p><p>${escape((o.production?.burgers_listas || 0) + '/' + (o.production?.burgers_total || 0))} listas</p><ul>${lines || '<li>Sin burgers</li>'}</ul><div class='row'><button class='write-btn' data-write-action data-burgers-preparing='${id}'>Burgers preparando</button><button class='write-btn' data-write-action data-burgers-ready='${id}' ${o.production?.burgers_ready ? 'disabled' : ''}>Burgers listas</button></div></li>`;
     }).join('');
     const guarnicionOrders = pending.filter((o) => hasGuarniciones(o));
     const guarnicionTickets = guarnicionOrders.map((o) => {
@@ -402,8 +387,8 @@
     }).join('');
     document.querySelector('#cocina-content').innerHTML = `<h2>Cocina</h2>
       <h3>Burgers</h3>${burgerTickets ? `<ul class='readonly-list'>${burgerTickets}</ul>` : `<p class='empty-state'>No hay burgers pendientes.</p>`}
-      <h3>Guarniciones</h3>${guarnicionTickets ? `<ul class='readonly-list'>${guarnicionTickets}</ul>` : `<p class='empty-state'>No hay guarniciones.</p>`}
-      <h3>Listas para marcar preparadas</h3>${readyTickets ? `<ul class='readonly-list'>${readyTickets}</ul>` : `<p class='empty-state'>Sin órdenes listas para marcar preparadas.</p>`}`;
+      <h3>Guarniciones</h3>${guarnicionTickets ? `<ul class='readonly-list'>${guarnicionTickets}</ul>` : `<p class='empty-state'>No hay guarniciones pendientes.</p>`}
+      <h3>Listas para marcar preparadas</h3>${readyTickets ? `<ul class='readonly-list'>${readyTickets}</ul>` : `<p class='empty-state'>No hay órdenes listas para marcar preparadas.</p>`}`;
   }
 
   function renderOthers() {
@@ -562,7 +547,10 @@
       ? `<p class="scope-banner">Cargando panel operativo...</p>`
       : '';
     const err = state.panelError ? `<p class='empty-state'>${escape(state.panelError)}</p>` : '';
-    document.querySelector('#inicio-content').innerHTML = `<h2>Inicio</h2>${loading}${err}<p>Fase 7B activa: Cierre Drive-first integrado.</p>`;
+    const modeCopy = state.ordersSource === 'legacy-fallback'
+      ? 'Modo fallback legacy activo.'
+      : 'Chekeo 2.0 normalizado activo: pedidos, cocina y cierre Drive-first.';
+    document.querySelector('#inicio-content').innerHTML = `<h2>Inicio</h2>${loading}${err}<p>${modeCopy}</p>`;
   }
   function renderTabs() { document.querySelectorAll('[data-tab-target]').forEach((b) => b.classList.toggle('is-active', b.dataset.tabTarget === state.activeTab)); document.querySelectorAll('[data-tab-panel]').forEach((p) => p.classList.toggle('is-hidden', p.dataset.tabPanel !== state.activeTab)); }
   function render() { renderTabs(); renderHome(); renderOrders(); renderKitchen(); renderOthers(); }
@@ -596,24 +584,15 @@
       const canComplete = productionReady && productionState !== 'Preparada';
       const finalizationBlockers = [].concat(!productionReady ? ['Producción pendiente'] : [], !paymentReady ? ['Pago pendiente'] : [], !deliveryReady ? ['Entrega pendiente'] : []);
       modalContent.innerHTML = `<h3>Detalle normalizado</h3>
+        <h4>Pedido</h4>
         <div class='form-grid'>
           <p><strong>Pedido:</strong> ${escape(o.pedido_id || '-')} / ${escape(o.folio || '-')}</p>
           <p><strong>Cliente:</strong> ${escape(o.cliente_nombre || '-')}</p>
           <p><strong>Teléfono:</strong> ${escape(o.cliente_telefono || '-')}</p>
           <p><strong>Total:</strong> ${escape(o.total || '0')}</p>
-          <p><strong>Estado general:</strong> ${escape(o.estado || 'Nuevo')}</p>
-          <p><strong>Producción:</strong> ${escape(productionState)}</p>
+          <p><strong>Estado interno:</strong> ${escape(o.estado || 'Nuevo')}</p>
           <label>Estado Pago<select id='norm-pay-status'>${NORMALIZED_PAYMENT_STATUSES.map((status) => `<option ${status === selectedPaymentStatus ? 'selected' : ''}>${status}</option>`).join('')}</select></label>
           <label>Método Pago<select id='norm-pay-method'>${PAYMENT_METHODS.map((method) => `<option ${method === selectedPaymentMethod ? 'selected' : ''}>${method}</option>`).join('')}</select></label>
-          <label>Nota interna<textarea id='norm-note-internal'>${escape(initialNotaInterna)}</textarea></label>
-          <label>Nota cliente<textarea id='norm-note-client'>${escape(initialNotaCliente)}</textarea></label>
-        </div>
-        <div class='row'>
-          <button class='write-btn' data-write-action id='save-normalized-payment' disabled>Guardar pago</button>
-          <button class='write-btn' data-write-action id='save-normalized-notes' disabled>Guardar notas</button>
-          <button class='write-btn' data-write-action id='mark-normalized-paid-modal' ${paidAlready ? 'disabled' : ''}>${paidAlready ? 'Pagado' : 'Marcar pagado'}</button>
-          <button class='write-btn' data-write-action id='mark-normalized-ticket-modal' ${ticketSent ? 'disabled' : ''}>${ticketSent ? 'Ticket enviado' : 'Marcar ticket enviado'}</button>
-          <button class='ghost' disabled title='Pendiente migración'>WhatsApp pendiente migración</button>
         </div>
         <h4>Producción</h4>
         <p>Estado producción: ${escape(productionState)}</p>
@@ -629,6 +608,10 @@
         </div>
         <h4>Pago</h4>
         <p>Estado pago: ${escape(selectedPaymentStatus)} (${paymentReady ? 'OK' : 'Pendiente'})</p>
+        <div class='row'>
+          <button class='write-btn' data-write-action id='save-normalized-payment' disabled>Guardar pago</button>
+          <button class='write-btn' data-write-action id='mark-normalized-paid-modal' ${paidAlready ? 'disabled' : ''}>${paidAlready ? 'Pagado' : 'Marcar pagado'}</button>
+        </div>
         <h4>Entrega</h4>
         <p>Estado entrega: ${escape(deliveryState)}</p>
         <div class='row'>
@@ -636,10 +619,25 @@
         </div>
         <h4>Finalización</h4>
         <p>${finalized ? 'Finalizada' : `Pendiente: ${escape(finalizationBlockers.join(', '))}`}</p>
-        <h4>Items</h4><pre>${escape(JSON.stringify(items, null, 2))}</pre>
-        <h4>Burgers</h4><pre>${escape(JSON.stringify(burgers, null, 2))}</pre>
-        <h4>Guarniciones</h4><pre>${escape(JSON.stringify(guarniciones, null, 2))}</pre>
-        <h4>Eventos</h4><pre>${escape(JSON.stringify(eventos, null, 2))}</pre>`;
+        <h4>Notas</h4>
+        <div class='form-grid'>
+          <label>Nota interna<textarea id='norm-note-internal'>${escape(initialNotaInterna)}</textarea></label>
+          <label>Nota cliente<textarea id='norm-note-client'>${escape(initialNotaCliente)}</textarea></label>
+        </div>
+        <div class='row'><button class='write-btn' data-write-action id='save-normalized-notes' disabled>Guardar notas</button></div>
+        <h4>Ticket</h4>
+        <div class='row'>
+          <button class='write-btn' data-write-action id='mark-normalized-ticket-modal' ${ticketSent ? 'disabled' : ''}>${ticketSent ? 'Ticket enviado' : 'Marcar ticket enviado'}</button>
+          <button class='ghost' disabled title='Pendiente migración'>WhatsApp pendiente migración</button>
+        </div>
+        <h4>JSON técnico</h4>
+        <details>
+          <summary>Ver JSON técnico</summary>
+          <h5>Items</h5><pre>${escape(JSON.stringify(items, null, 2))}</pre>
+          <h5>Burgers</h5><pre>${escape(JSON.stringify(burgers, null, 2))}</pre>
+          <h5>Guarniciones</h5><pre>${escape(JSON.stringify(guarniciones, null, 2))}</pre>
+          <h5>Eventos</h5><pre>${escape(JSON.stringify(eventos, null, 2))}</pre>
+        </details>`;
       modal.classList.remove('is-hidden');
       document.querySelector('#save-normalized-payment').onclick = () => updatePayment(orderId, document.querySelector('#norm-pay-status').value, document.querySelector('#norm-pay-method').value);
       document.querySelector('#save-normalized-notes').onclick = () => saveNotes(orderId, document.querySelector('#norm-note-internal').value, document.querySelector('#norm-note-client').value);
@@ -687,7 +685,6 @@
       const sync = e.target.closest('#sync-orders-btn'); if (sync) return refreshOrders();
       const detail = e.target.closest('[data-detail]'); if (detail) return openOrderDetail(detail.dataset.detail);
       const markPaidBtn = e.target.closest('[data-mark-paid]'); if (markPaidBtn) return markPaid(markPaidBtn.dataset.markPaid);
-      const orderStatus = e.target.closest('[data-order-status]'); if (orderStatus) return changeOrderStatus(orderStatus.dataset.orderStatus, orderStatus.dataset.nextStatus);
       const ready = e.target.closest('[data-ready]'); if (ready) return changeOrderStatus(ready.dataset.ready, 'Listo');
       const sideReady = e.target.closest('[data-side-ready]'); if (sideReady) return markSideReady(sideReady.dataset.sideReady);
       const burgersPreparing = e.target.closest('[data-burgers-preparing]'); if (burgersPreparing) return markNormalizedBurgersPreparing(burgersPreparing.dataset.burgersPreparing);
