@@ -184,6 +184,13 @@ Chekeo 2.0 now consumes the normalized operation methods when `state.ordersSourc
 - No backend changes, no Apps Script changes, and no RPC contract/allowlist changes.
 - Ticket marking behavior remains unchanged from Phase 9A: UI still calls `markNormalizedTicketSent` after opening WhatsApp and accepts `unchanged: true` as idempotent success.
 
+### Phase 9B-A hotfix update (Burgers.exe copy alignment)
+- Scope remains limited to `buildNormalizedWhatsAppMessage(order)` in `cloudflare/internal-chekeo/app.js`.
+- Normalized customer-facing WhatsApp copy now uses **Burgers.exe** branding.
+- The customer message intentionally omits order identifiers (`pedido_id`, folio, order number) and process status lines (Cocina/Producción, Pago, Entrega).
+- Message keeps only customer-safe fields: item lines (or fallback counts), total, método de pago, and optional safe customer note.
+- No backend, Apps Script, RPC, legacy fallback routing, or public-order behavior changes.
+
 ## Phase 6 kitchen ops
 New RPC ops: ensureNormalizedKitchenHeaders, previewNormalizedKitchenReadiness, updateNormalizedBurgerStatus, markNormalizedBurgersReady, updateNormalizedGuarnicionStatus, completeNormalizedOrderIfReady.
 

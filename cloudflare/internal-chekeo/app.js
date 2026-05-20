@@ -280,11 +280,7 @@
       return fixed.endsWith('.00') ? String(Math.trunc(amount)) : String(Number(fixed));
     };
     const customerName = String(order?.cliente_nombre || '').trim() || 'cliente';
-    const folioOrId = String(order?.folio || order?.pedido_id || '').trim() || '-';
     const total = Number.isFinite(Number(order?.total)) ? Number(order.total) : 0;
-    const productionState = order?.production?.estado_produccion || order?.estado_produccion || 'Pendiente';
-    const paymentState = order?.payment?.estado_pago || order?.estado_pago || 'Pendiente';
-    const deliveryState = order?.delivery?.estado_entrega || order?.estado_entrega || 'Pendiente';
     const metodoPago = order?.payment?.metodo_pago || order?.metodo_pago || 'No definido';
     const items = Array.isArray(order?.items) ? order.items : [];
     const burgers = Array.isArray(order?.burgers) ? order.burgers : [];
@@ -311,12 +307,7 @@
     return [
       `Hola ${customerName} 🍔`,
       '',
-      `Tu pedido ${folioOrId} ya está registrado en Burger-OG.`,
-      '',
-      'Estado:',
-      `• Cocina: ${productionState}`,
-      `• Pago: ${paymentState}`,
-      `• Entrega: ${deliveryState}`,
+      'Tu pedido ya está registrado en Burgers.exe.',
       '',
       'Pedido:',
       ...orderLines,
@@ -325,7 +316,7 @@
       `Método de pago: ${metodoPago}`,
       clippedNote ? `Nota: ${clippedNote}` : '',
       '',
-      'Gracias por pedir con Burger-OG.',
+      'Gracias por pedir con Burgers.exe.',
     ].filter(Boolean).join('\n').slice(0, 900);
   }
 
