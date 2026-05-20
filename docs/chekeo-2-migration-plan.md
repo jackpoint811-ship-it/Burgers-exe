@@ -289,3 +289,11 @@ Implemented backend/header/UI/RPC split production flow with explicit completion
   - Solo completar `estado_produccion`/`estado_entrega` faltantes o inválidos.
   - Nunca inferir `Entregada`; `estado_entrega` vacío pasa a `Pendiente`.
   - Registrar evento `BACKFILL_ESTADOS_PROCESO` únicamente cuando una fila cambia.
+
+
+## Phase 7 — Cierre diario normalizado (Drive-first)
+- Se agrega `previewNormalizedCloseDay()` como vista previa **solo lectura** del corte del día usando regla finalizada: `Preparada + Pagado + Entregada`.
+- Se agrega `archiveNormalizedCloseDayToDrive()` para archivar en Drive (carpeta raíz `Burgers.exe Cortes` y carpeta diaria `Corte YYYY-MM-DD`) con JSONs de resumen/detalle.
+- `ARCHIVO_CORTES` permanece como índice liviano (métricas + links Drive), sin guardar historial detallado en la hoja principal.
+- Esta fase **no elimina ni limpia** filas activas de `PEDIDOS`.
+- El cierre del mismo `fecha_corte` es idempotente: se bloquea duplicado y no duplica eventos.

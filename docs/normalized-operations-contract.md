@@ -190,3 +190,12 @@ New RPC ops: ensureNormalizedKitchenHeaders, previewNormalizedKitchenReadiness, 
   - No sobrescribe `estado_produccion` ni `estado_entrega` cuando ya contienen valores válidos.
   - `estado_entrega` vacío/inválido se normaliza a `Pendiente`; nunca se infiere `Entregada`.
   - Evento `BACKFILL_ESTADOS_PROCESO` solo para filas realmente actualizadas.
+
+
+## Phase 7: normalized close-day preview + Drive-first archive
+- New manual functions: `previewNormalizedCloseDay()` (read-only) and `archiveNormalizedCloseDayToDrive()` (manual archive action).
+- Finalized order criteria for close-day: `estado_produccion=Preparada`, `estado_pago=Pagado`, `estado_entrega=Entregada`.
+- `ARCHIVO_CORTES` is index-only (light metadata + Drive links).
+- Detailed close history is persisted in Drive JSON files, not in main active sheet history rows.
+- This phase does not delete/clear active rows and does not move rows to `HISTORICO_PEDIDOS`.
+- Duplicate archive for same `fecha_corte` returns non-archived duplicate response and skips duplicate events.
