@@ -319,6 +319,19 @@
     ].filter(Boolean).join('\n');
   }
 
+  async function markNormalizedTicketSentAfterWhatsApp(orderId) {
+    try {
+      const result = await rpcCall('markNormalizedTicketSent', [orderId, 'chekeo-2-ui']);
+      await loadOperationalPanel();
+      const data = result?.data || result || {};
+      showToast(data.unchanged ? 'Ticket enviado' : 'Ticket enviado');
+      return result;
+    } catch (error) {
+      showToast('WhatsApp abierto; no se pudo marcar ticket enviado', true);
+      return null;
+    }
+  }
+
   async function openWhatsAppForOrder(orderId) {
     if (state.ordersSource === 'normalized') {
       const order = state.orders.find((candidate) => String(candidate?.pedido_id || candidate?.id || '') === String(orderId));
@@ -326,12 +339,7 @@
       if (!url) return showToast('Sin teléfono válido', true);
       window.open(url, '_blank', 'noopener');
       showToast('Mensaje abierto en WhatsApp');
-      try {
-        const result = await markNormalizedTicketSentUi(orderId);
-        if (result?.unchanged || result?.data?.unchanged) showToast('Ticket enviado');
-      } catch (error) {
-        showToast('WhatsApp abierto; no se pudo marcar ticket enviado', true);
-      }
+      await markNormalizedTicketSentAfterWhatsApp(orderId);
       return;
     }
     const d = await rpcCall('getClientTicketData', [orderId]);
