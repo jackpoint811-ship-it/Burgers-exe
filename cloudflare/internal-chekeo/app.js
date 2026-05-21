@@ -40,6 +40,8 @@
 
   const escape = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const showAuthStatus = (m) => { if (authStatus) authStatus.textContent = m; };
+  const query = (selector, root = document) => root.querySelector(selector);
+  const queryAll = (selector, root = document) => Array.from(root.querySelectorAll(selector));
   const setPinVisibility = (v) => pinScreen?.classList.toggle('is-hidden', !v);
   const setAppVisibility = (v) => internalApp?.classList.toggle('is-hidden', !v);
 
@@ -53,7 +55,7 @@
   }
 
   function setButtonsDisabled(disabled) {
-    document.querySelectorAll('[data-write-action]').forEach((btn) => {
+    queryAll('[data-write-action]').forEach((btn) => {
       btn.disabled = disabled;
       btn.classList.toggle('is-loading', disabled);
     });
@@ -362,7 +364,7 @@
     const message = escape(state.panelError || 'No se pudo cargar el panel operativo.');
     const html = `<h2>Error de carga</h2><p class='empty-state'>${message}</p>`;
     ['pedidos-content', 'cocina-content', 'otros-content'].forEach((id) => {
-      const node = document.querySelector(`#${id}`);
+      const node = query(`#${id}`);
       if (node) node.innerHTML = html;
     });
   }
@@ -431,7 +433,7 @@
     const banner = state.ordersSource === 'legacy-fallback'
       ? `<p class='scope-banner'>Modo fallback legacy</p>`
       : `<p class='scope-banner'>Modo normalizado activo</p>`;
-    document.querySelector('#pedidos-content').innerHTML = `<h2>Pedidos</h2>${banner}<button class='write-btn' id='sync-orders-btn'>Actualizar</button><ul class='readonly-list'>${list}</ul>`;
+    query('#pedidos-content').innerHTML = `<h2>Pedidos</h2>${banner}<button class='write-btn' id='sync-orders-btn'>Actualizar</button><ul class='readonly-list'>${list}</ul>`;
   }
 
   function renderKitchen() {
@@ -442,7 +444,7 @@
       return productionState !== 'Preparada';
     });
     if (!normalized) {
-      document.querySelector('#cocina-content').innerHTML = `<h2>Cocina</h2><ul class='readonly-list'>${pending.map((o) => {
+      query('#cocina-content').innerHTML = `<h2>Cocina</h2><ul class='readonly-list'>${pending.map((o) => {
         const id = escape(o['ID Pedido'] || '');
         return `<li>${id} <button class='write-btn' data-write-action data-ready='${id}'>Marcar pedido Listo</button> <button class='write-btn' data-write-action data-side-ready='${id}'>Marcar guarnición lista</button></li>`;
       }).join('')}</ul>`;
@@ -467,7 +469,7 @@
       const productionState = o.production?.estado_produccion || o.estado_produccion || (o.estado === 'Listo' ? 'Preparada' : 'Pendiente');
       return `<li><small>${escape(o.folio || '-')}</small><p><strong>${escape(o.cliente_nombre || 'Sin nombre')}</strong></p><p><span class='badge-status'>Burgers ${o.production?.burgers_ready ? 'OK' : 'Pendientes'}</span> <span class='badge-status'>Guarniciones ${o.production?.guarniciones_ready ? 'OK' : 'Pendientes'}</span> <span class='badge-status'>Producción ${escape(productionState)}</span></p><button class='write-btn' data-write-action data-complete-order='${escape(o.pedido_id || '')}'>Marcar como preparada</button></li>`;
     }).join('');
-    document.querySelector('#cocina-content').innerHTML = `<h2>Cocina</h2>
+    query('#cocina-content').innerHTML = `<h2>Cocina</h2>
       <h3>Burgers</h3>${burgerTickets ? `<ul class='readonly-list'>${burgerTickets}</ul>` : `<p class='empty-state'>No hay burgers pendientes.</p>`}
       <h3>Guarniciones</h3>${guarnicionTickets ? `<ul class='readonly-list'>${guarnicionTickets}</ul>` : `<p class='empty-state'>No hay guarniciones pendientes.</p>`}
       <h3>Listas para marcar preparadas</h3>${readyTickets ? `<ul class='readonly-list'>${readyTickets}</ul>` : `<p class='empty-state'>No hay órdenes listas para marcar preparadas.</p>`}`;
@@ -584,14 +586,14 @@
       </section>`;
 
     if (isNormalizedMode()) {
-      document.querySelector('#otros-content').innerHTML = `
+      query('#otros-content').innerHTML = `
         <h2>Otros</h2>
         ${normalizedCloseSection}
       `;
       return;
     }
 
-    document.querySelector('#otros-content').innerHTML = `
+    query('#otros-content').innerHTML = `
       <h2>Otros</h2>
       ${legacyCloseSection}
 
@@ -632,9 +634,9 @@
     const modeCopy = state.ordersSource === 'legacy-fallback'
       ? 'Modo fallback legacy activo.'
       : 'Chekeo 2.0 normalizado activo: pedidos, cocina y cierre Drive-first.';
-    document.querySelector('#inicio-content').innerHTML = `<h2>Inicio</h2>${loading}${err}<p>${modeCopy}</p>`;
+    query('#inicio-content').innerHTML = `<h2>Inicio</h2>${loading}${err}<p>${modeCopy}</p>`;
   }
-  function renderTabs() { document.querySelectorAll('[data-tab-target]').forEach((b) => b.classList.toggle('is-active', b.dataset.tabTarget === state.activeTab)); document.querySelectorAll('[data-tab-panel]').forEach((p) => p.classList.toggle('is-hidden', p.dataset.tabPanel !== state.activeTab)); }
+  function renderTabs() { queryAll('[data-tab-target]').forEach((b) => b.classList.toggle('is-active', b.dataset.tabTarget === state.activeTab)); queryAll('[data-tab-panel]').forEach((p) => p.classList.toggle('is-hidden', p.dataset.tabPanel !== state.activeTab)); }
   function render() { renderTabs(); renderHome(); renderOrders(); renderKitchen(); renderOthers(); }
 
   async function openOrderDetail(orderId) {
@@ -721,17 +723,17 @@
           <h5>Eventos</h5><pre>${escape(JSON.stringify(eventos, null, 2))}</pre>
         </details>`;
       modal.classList.remove('is-hidden');
-      document.querySelector('#save-normalized-payment').onclick = () => updatePayment(orderId, document.querySelector('#norm-pay-status').value, document.querySelector('#norm-pay-method').value);
-      document.querySelector('#save-normalized-notes').onclick = () => saveNotes(orderId, document.querySelector('#norm-note-internal').value, document.querySelector('#norm-note-client').value);
-      document.querySelector('#mark-normalized-paid-modal').onclick = () => markPaid(orderId);
-      document.querySelector('#mark-normalized-ticket-modal').onclick = () => markTicketSent(orderId);
-      document.querySelector('#wa-normalized-modal').onclick = () => openWhatsAppForOrder(orderId);
-      const payStatusSelect = document.querySelector('#norm-pay-status');
-      const payMethodSelect = document.querySelector('#norm-pay-method');
-      const noteInternal = document.querySelector('#norm-note-internal');
-      const noteClient = document.querySelector('#norm-note-client');
-      const savePaymentBtn = document.querySelector('#save-normalized-payment');
-      const saveNotesBtn = document.querySelector('#save-normalized-notes');
+      const payStatusSelect = query('#norm-pay-status');
+      const payMethodSelect = query('#norm-pay-method');
+      const noteInternal = query('#norm-note-internal');
+      const noteClient = query('#norm-note-client');
+      const savePaymentBtn = query('#save-normalized-payment');
+      const saveNotesBtn = query('#save-normalized-notes');
+      query('#mark-normalized-paid-modal').onclick = () => markPaid(orderId);
+      query('#mark-normalized-ticket-modal').onclick = () => markTicketSent(orderId);
+      query('#wa-normalized-modal').onclick = () => openWhatsAppForOrder(orderId);
+      savePaymentBtn.onclick = () => updatePayment(orderId, payStatusSelect.value, payMethodSelect.value);
+      saveNotesBtn.onclick = () => saveNotes(orderId, noteInternal.value, noteClient.value);
       const syncNormalizedDetailButtons = () => {
         savePaymentBtn.disabled = payStatusSelect.value === selectedPaymentStatus && payMethodSelect.value === selectedPaymentMethod;
         saveNotesBtn.disabled = noteInternal.value.trim() === initialNotaInterna.trim() && noteClient.value.trim() === initialNotaCliente.trim();
@@ -747,23 +749,23 @@
     const o = d?.data || {};
     modalContent.innerHTML = `<h3>Detalle operativo</h3><div class='form-grid'><label>Estado Pedido<select id='op-status'>${ORDER_STATUSES.map((s) => `<option ${s === o['Estado Pedido'] ? 'selected' : ''}>${s}</option>`).join('')}</select></label><label>Estado Pago<select id='op-pay-status'>${PAYMENT_STATUSES.map((s) => `<option ${s === o['Estado Pago'] ? 'selected' : ''}>${s}</option>`).join('')}</select></label><label>Método Pago<select id='op-pay-method'>${PAYMENT_METHODS.map((s) => `<option ${s === o['Método Pago'] ? 'selected' : ''}>${s}</option>`).join('')}</select></label><label>Nota interna<textarea id='op-note-internal'>${escape(o['Nota Interna'] || '')}</textarea></label><label>Nota cliente<textarea id='op-note-client'>${escape(o['Nota Cliente'] || '')}</textarea></label></div><div class='row'><button class='write-btn' data-write-action id='save-op'>Guardar cambios operativos</button><button class='write-btn' data-write-action id='mark-paid-modal'>Marcar pagado</button><button class='ghost' id='wa-modal'>Abrir WhatsApp</button><button class='write-btn' data-write-action id='mark-ticket-modal'>Marcar ticket enviado</button></div>`;
     modal.classList.remove('is-hidden');
-    document.querySelector('#save-op').onclick = async () => {
+    query('#save-op').onclick = async () => {
       const payload = {
-        status: document.querySelector('#op-status').value,
-        paymentStatus: document.querySelector('#op-pay-status').value,
-        paymentMethod: document.querySelector('#op-pay-method').value,
-        noteInternal: document.querySelector('#op-note-internal').value,
-        noteClient: document.querySelector('#op-note-client').value,
+        status: query('#op-status').value,
+        paymentStatus: query('#op-pay-status').value,
+        paymentMethod: query('#op-pay-method').value,
+        noteInternal: query('#op-note-internal').value,
+        noteClient: query('#op-note-client').value,
       };
       await saveOrderOperationalData(orderId, payload);
     };
-    document.querySelector('#mark-paid-modal').onclick = () => markPaid(orderId);
-    document.querySelector('#wa-modal').onclick = () => openWhatsAppForOrder(orderId);
-    document.querySelector('#mark-ticket-modal').onclick = () => markTicketSent(orderId);
+    query('#mark-paid-modal').onclick = () => markPaid(orderId);
+    query('#wa-modal').onclick = () => openWhatsAppForOrder(orderId);
+    query('#mark-ticket-modal').onclick = () => markTicketSent(orderId);
   }
 
   function initScaffold() {
-    document.querySelectorAll('[data-tab-target]').forEach((b) => b.addEventListener('click', () => { state.activeTab = b.dataset.tabTarget; render(); }));
+    queryAll('[data-tab-target]').forEach((b) => b.addEventListener('click', () => { state.activeTab = b.dataset.tabTarget; render(); }));
     document.body.addEventListener('click', async (e) => {
       const sync = e.target.closest('#sync-orders-btn'); if (sync) return refreshOrders();
       const detail = e.target.closest('[data-detail]'); if (detail) return openOrderDetail(detail.dataset.detail);
@@ -783,8 +785,8 @@
       const archiveNormalizedCloseBtn = e.target.closest('#archive-normalized-close-btn'); if (archiveNormalizedCloseBtn) return isNormalizedMode() ? archiveNormalizedCloseDayAction() : null;
       const loadHistoryBtn = e.target.closest('#load-history-orders-btn'); if (loadHistoryBtn) return loadHistoryOrders(20);
     });
-    document.querySelector('#modal-close')?.addEventListener('click', () => modal.classList.add('is-hidden'));
-    document.querySelector('#logout-button')?.addEventListener('click', async () => { await logoutSession(); setAppVisibility(false); setPinVisibility(true); showAuthStatus('Sesión cerrada.'); });
+    query('#modal-close')?.addEventListener('click', () => modal.classList.add('is-hidden'));
+    query('#logout-button')?.addEventListener('click', async () => { await logoutSession(); setAppVisibility(false); setPinVisibility(true); showAuthStatus('Sesión cerrada.'); });
   }
 
   function bootInternalAppOnce() {
