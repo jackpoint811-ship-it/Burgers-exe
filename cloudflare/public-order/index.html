@@ -21,11 +21,11 @@
         <p class="tag">MENU &gt; BURGERS &gt; CUSTOM &gt; EXTRAS &gt; GUARNICIONES &gt; DATOS &gt; RESUMEN</p>
       </header>
 
-      <section class="panel">
+      <section class="panel" aria-label="Progreso del pedido">
         <div id="stepper" class="stepper"></div>
       </section>
 
-      <section class="panel" id="stepContent"></section>
+      <section class="panel" id="stepContent" role="region" aria-live="polite" aria-atomic="false" aria-label="Contenido del paso actual"></section>
 
       <section class="panel nav-panel">
         <button id="loadLastBtn" type="button" class="ghost"><img src="./assets/icon-load-save.svg" alt="" aria-hidden="true" />Cargar</button>
@@ -34,8 +34,8 @@
         <button id="nextBtn" type="button" class="primary">Siguiente</button>
       </section>
 
-      <section id="successPanel" class="panel success hidden"></section>
-      <pre id="status" class="panel status">READY</pre>
+      <section id="successPanel" class="panel success hidden" role="status" aria-live="assertive" aria-atomic="true"></section>
+      <pre id="status" class="panel status" role="status" aria-live="polite" aria-atomic="true">READY</pre>
     </main>
     <script src="./app.js"></script>
   </body>

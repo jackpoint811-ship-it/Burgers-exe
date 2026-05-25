@@ -199,8 +199,6 @@
   function setStatus(message) {
     var statusNode = document.getElementById('status');
     statusNode.textContent = message || '';
-    statusNode.setAttribute('tabindex', '-1');
-    statusNode.focus({ preventScroll: true });
   }
 
   function hideSuccessPanel() {
@@ -238,6 +236,7 @@
     redraw();
     setStatus('Listo. Volviste al menú.');
     scrollToCurrentStep();
+    focusStepContext(getCurrentStepName());
   }
 
   // ---------------------------------------------------------------------------
@@ -381,7 +380,9 @@
       var classes = 'step ' + (i === state.step ? 'active' : i < state.step ? 'done' : '');
       var disabled = i > state.step ? 'disabled' : '';
       var ariaCurrent = i === state.step ? 'aria-current="step"' : '';
-      var ariaLabel = 'aria-label="Ir al paso ' + (i + 1) + ': ' + stepName + '"';
+      var stateLabel = i === state.step ? 'actual' : (i < state.step ? 'completado' : 'pendiente');
+      var actionLabel = i > state.step ? 'No disponible aún' : 'Ir al paso';
+      var ariaLabel = 'aria-label="' + actionLabel + ' ' + (i + 1) + ': ' + stepName + '. Estado: ' + stateLabel + '."';
       return '<button type="button" class="' + classes + '" data-step-index="' + i + '" ' + disabled + ' ' + ariaCurrent + ' ' + ariaLabel + '>' + stepName + '</button>';
     }).join('');
     document.getElementById('stepper').innerHTML =
@@ -501,7 +502,7 @@
       phoneError +
       '<label class="field data-field ' + (dataStepErrors.location ? 'has-error' : '') + '" for="location"><span class="field-title">Ubicación</span><span class="field-required-badge">Obligatorio</span><select id="location" aria-describedby="location-help' + (dataStepErrors.location ? ' location-error' : '') + '" aria-invalid="' + (dataStepErrors.location ? 'true' : 'false') + '"><option value="">Selecciona</option><option ' + (state.customer.location === 'Torre GGA' ? 'selected' : '') + '>Torre GGA</option><option ' + (state.customer.location === 'Torre Valcob' ? 'selected' : '') + '>Torre Valcob</option></select><span class="field-help" id="location-help">Selecciona dónde entregamos tu pedido.</span></label>' +
       locationError +
-      '<fieldset class="pay-group ' + (dataStepErrors.pay ? 'has-error' : '') + '" aria-describedby="pay-help' + (dataStepErrors.pay ? ' pay-error' : '') + '" aria-invalid="' + (dataStepErrors.pay ? 'true' : 'false') + '">' +
+      '<fieldset id="paymentMethodGroup" class="pay-group ' + (dataStepErrors.pay ? 'has-error' : '') + '" aria-describedby="pay-help' + (dataStepErrors.pay ? ' pay-error' : '') + '" aria-invalid="' + (dataStepErrors.pay ? 'true' : 'false') + '">' +
       '<legend><span class="field-title">Forma de pago</span><span class="field-required-badge">Obligatorio</span></legend>' +
       '<p class="field-help" id="pay-help">Elige cómo quieres liquidar tu pedido.</p>' +
       '<div class="pay-options">' +
@@ -611,6 +612,19 @@
     window.requestAnimationFrame(function () {
       container.classList.add('step-enter');
     });
+  }
+
+  function focusStepContext(stepName) {
+    var panel = document.getElementById('successPanel');
+    if (panel && !panel.classList.contains('hidden')) return;
+    if (stepName === 'DATOS' && Object.keys(dataStepErrors).length) return;
+
+    var stepRoot = document.getElementById('stepContent');
+    if (!stepRoot) return;
+    var heading = stepRoot.querySelector('h2');
+    var target = heading || stepRoot;
+    target.setAttribute('tabindex', '-1');
+    target.focus({ preventScroll: true });
   }
 
   function toggleNav() {
@@ -787,12 +801,17 @@
     saveDraft();
   }
 
+  function redrawAndFocusCurrentStep() {
+    redraw();
+    scrollToCurrentStep();
+    focusStepContext(getCurrentStepName());
+  }
+
   function moveStep(targetStep) {
     var nextStep = Math.max(0, Math.min(STEPS.length - 1, targetStep));
     if (nextStep > state.step) return;
     state.step = nextStep;
-    redraw();
-    scrollToCurrentStep();
+    redrawAndFocusCurrentStep();
   }
 
   function scrollToCurrentStep() {
@@ -815,7 +834,7 @@
 
     if (button.id === 'startBtn') {
       state.step = 1;
-      redraw();
+      redrawAndFocusCurrentStep();
       return;
     }
 
@@ -978,6 +997,7 @@
     } else if (errorNode) {
       errorNode.remove();
     }
+    group.setAttribute('aria-invalid', errorMessage ? 'true' : 'false');
   }
 
   function updateDataErrorsUI() {
@@ -1033,14 +1053,12 @@
     var err = validate();
     if (err) return setStatus(err);
     state.step = Math.min(STEPS.length - 1, state.step + 1);
-    redraw();
-    scrollToCurrentStep();
+    redrawAndFocusCurrentStep();
   }
 
   function onBackClick() {
     state.step = Math.max(0, state.step - 1);
-    redraw();
-    scrollToCurrentStep();
+    redrawAndFocusCurrentStep();
   }
 
   function onStepperClick(e) {
@@ -1126,6 +1144,7 @@
   // ---------------------------------------------------------------------------
   var stepContent = document.getElementById('stepContent');
   stepContent.classList.add('step-content');
+  stepContent.setAttribute('aria-busy', 'false');
   stepContent.addEventListener('click', onStepContentClick);
   stepContent.addEventListener('change', onStepContentChange);
   stepContent.addEventListener('input', onStepContentInput);
