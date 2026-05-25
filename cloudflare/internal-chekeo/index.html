@@ -9,26 +9,26 @@
     <script src="./app.js" defer></script>
   </head>
   <body>
-    <section id="pin-screen" class="is-hidden" aria-labelledby="pin-title">
+    <main id="pin-screen" class="is-hidden" aria-labelledby="pin-title">
       <div class="auth-card"><h1 id="pin-title">Chekeo Interno</h1><p>Ingresa el PIN para continuar.</p><form id="pin-form"><label for="pin-input">PIN</label><input id="pin-input" name="pin" type="password" inputmode="numeric" autocomplete="off" required /><button id="pin-submit" type="submit">Entrar</button></form><p id="auth-status" class="auth-status" role="status" aria-live="polite"></p></div>
-    </section>
-    <div id="internal-app" class="is-hidden">
-      <div class="app-shell">
+    </main>
+    <section id="internal-app" class="is-hidden" aria-label="Panel interno">
+      <div class="app-shell" aria-busy="false">
         <header class="app-header"><p class="eyebrow">Burgers.exe</p><h1>Chekeo Interno</h1><p class="subtitle">Panel interno · Operación normalizada</p><div class="header-actions"><span class="badge">PIN/session activo</span><button id="logout-button" class="logout-button" type="button">Salir</button></div></header>
         <p class="scope-banner">Panel interno listo para QA/deploy controlado. Mantén variables y rollback verificados antes de usarlo en operación real.</p>
-        <nav class="tab-nav" aria-label="Navegación principal"><button class="tab-button is-active" data-tab-target="inicio" type="button">Inicio</button><button class="tab-button" data-tab-target="pedidos" type="button">Pedidos</button><button class="tab-button" data-tab-target="cocina" type="button">Cocina</button><button class="tab-button" data-tab-target="otros" type="button">Otros</button></nav>
+        <nav class="tab-nav" aria-label="Navegación principal"><div role="tablist" aria-label="Secciones internas"><button class="tab-button is-active" data-tab-target="inicio" id="tab-top-inicio" role="tab" aria-selected="true" aria-controls="panel-inicio" type="button">Inicio</button><button class="tab-button" data-tab-target="pedidos" id="tab-top-pedidos" role="tab" aria-selected="false" aria-controls="panel-pedidos" tabindex="-1" type="button">Pedidos</button><button class="tab-button" data-tab-target="cocina" id="tab-top-cocina" role="tab" aria-selected="false" aria-controls="panel-cocina" tabindex="-1" type="button">Cocina</button><button class="tab-button" data-tab-target="otros" id="tab-top-otros" role="tab" aria-selected="false" aria-controls="panel-otros" tabindex="-1" type="button">Otros</button></div></nav>
         <main>
-          <section class="tab-panel" data-tab-panel="inicio"><div id="inicio-content"></div></section>
-          <section class="tab-panel is-hidden" data-tab-panel="pedidos"><div id="pedidos-content"></div></section>
-          <section class="tab-panel is-hidden" data-tab-panel="cocina"><div id="cocina-content"></div></section>
-          <section class="tab-panel is-hidden" data-tab-panel="otros"><div id="otros-content"></div></section>
+          <section class="tab-panel" id="panel-inicio" role="tabpanel" aria-labelledby="tab-top-inicio" data-tab-panel="inicio"><div id="inicio-content"></div></section>
+          <section class="tab-panel is-hidden" id="panel-pedidos" role="tabpanel" aria-labelledby="tab-top-pedidos" data-tab-panel="pedidos" tabindex="0"><div id="pedidos-content"></div></section>
+          <section class="tab-panel is-hidden" id="panel-cocina" role="tabpanel" aria-labelledby="tab-top-cocina" data-tab-panel="cocina" tabindex="0"><div id="cocina-content"></div></section>
+          <section class="tab-panel is-hidden" id="panel-otros" role="tabpanel" aria-labelledby="tab-top-otros" data-tab-panel="otros" tabindex="0"><div id="otros-content"></div></section>
         </main>
-        <div id="modal" class="modal is-hidden"><div class="modal-card"><button id="modal-close" class="ghost" type="button">Cerrar</button><div id="modal-content"></div></div></div>
+        <div id="modal" class="modal is-hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby="modal-content"><div class="modal-card" tabindex="-1"><button id="modal-close" class="ghost" type="button">Cerrar</button><div id="modal-content"></div></div></div>
         
-        <div id="confirm-modal" class="modal is-hidden" role="dialog" aria-modal="true" aria-labelledby="confirm-title"><div class="modal-card"><h3 id="confirm-title">Confirmar acción</h3><p id="confirm-message"></p><div class="row"><button id="confirm-cancel" class="ghost" type="button">Cancelar</button><button id="confirm-accept" class="write-btn" type="button">Confirmar</button></div></div></div>
-        <p class="status-toast is-hidden" role="status" aria-live="polite"></p>
-        <nav class="bottom-nav" aria-label="Navegación inferior"><button class="tab-button is-active" data-tab-target="inicio" type="button">Inicio</button><button class="tab-button" data-tab-target="pedidos" type="button">Pedidos</button><button class="tab-button" data-tab-target="cocina" type="button">Cocina</button><button class="tab-button" data-tab-target="otros" type="button">Otros</button></nav>
+        <div id="confirm-modal" class="modal is-hidden" role="dialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-message"><div class="modal-card" tabindex="-1"><h3 id="confirm-title">Confirmar acción</h3><p id="confirm-message"></p><div class="row"><button id="confirm-cancel" class="ghost" type="button">Cancelar</button><button id="confirm-accept" class="write-btn" type="button">Confirmar</button></div></div></div>
+        <p class="status-toast is-hidden" role="status" aria-live="polite" aria-atomic="true"></p>
+        <nav class="bottom-nav" aria-label="Navegación inferior"><div role="tablist" aria-label="Secciones inferiores"><button class="tab-button is-active" data-tab-target="inicio" id="tab-bottom-inicio" role="tab" aria-selected="true" aria-controls="panel-inicio" type="button">Inicio</button><button class="tab-button" data-tab-target="pedidos" id="tab-bottom-pedidos" role="tab" aria-selected="false" aria-controls="panel-pedidos" tabindex="-1" type="button">Pedidos</button><button class="tab-button" data-tab-target="cocina" id="tab-bottom-cocina" role="tab" aria-selected="false" aria-controls="panel-cocina" tabindex="-1" type="button">Cocina</button><button class="tab-button" data-tab-target="otros" id="tab-bottom-otros" role="tab" aria-selected="false" aria-controls="panel-otros" tabindex="-1" type="button">Otros</button></div></nav>
       </div>
-    </div>
+    </section>
   </body>
 </html>

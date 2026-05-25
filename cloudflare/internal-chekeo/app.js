@@ -38,11 +38,59 @@
   const confirmCancel = document.querySelector('#confirm-cancel');
   const confirmAccept = document.querySelector('#confirm-accept');
 
+  const appShell = document.querySelector('.app-shell');
+  let lastFocusedBeforeModal = null;
+
+  function getFocusableElements(root) {
+    if (!root) return [];
+    return queryAll('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])', root)
+      .filter((node) => !node.closest('.is-hidden'));
+  }
+
+  function trapFocusInModal(modalNode, event) {
+    if (!modalNode || modalNode.classList.contains('is-hidden') || event.key !== 'Tab') return;
+    const focusable = getFocusableElements(modalNode);
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+      return;
+    }
+    if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  function openModalAccessible(modalNode, fallbackSelector) {
+    if (!modalNode) return;
+    lastFocusedBeforeModal = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    modalNode.classList.remove('is-hidden');
+    window.setTimeout(() => {
+      const nextFocus = query(fallbackSelector, modalNode) || getFocusableElements(modalNode)[0];
+      nextFocus?.focus();
+    }, 0);
+  }
+
+  function closeModalAccessible(modalNode) {
+    if (!modalNode) return;
+    modalNode.classList.add('is-hidden');
+    if (lastFocusedBeforeModal && document.contains(lastFocusedBeforeModal)) {
+      lastFocusedBeforeModal.focus();
+    }
+    lastFocusedBeforeModal = null;
+  }
+
   const escape = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const showAuthStatus = (m) => { if (authStatus) authStatus.textContent = m; };
   const query = (selector, root = document) => root.querySelector(selector);
   const queryAll = (selector, root = document) => Array.from(root.querySelectorAll(selector));
-  const setPinVisibility = (v) => pinScreen?.classList.toggle('is-hidden', !v);
+  const setPinVisibility = (v) => {
+    pinScreen?.classList.toggle('is-hidden', !v);
+    if (v) window.setTimeout(() => pinInput?.focus(), 0);
+  };
   const setAppVisibility = (v) => internalApp?.classList.toggle('is-hidden', !v);
 
   function showToast(message, isError = false) {
@@ -58,17 +106,20 @@
     queryAll('[data-write-action]').forEach((btn) => {
       btn.disabled = disabled;
       btn.classList.toggle('is-loading', disabled);
+      btn.setAttribute('aria-disabled', disabled ? 'true' : 'false');
     });
   }
 
   function beginWrite(label) {
     state.loadingWrite = true;
+    appShell?.setAttribute('aria-busy', 'true');
     setButtonsDisabled(true);
     showToast(`Procesando: ${label}...`);
   }
 
   function endWrite() {
     state.loadingWrite = false;
+    appShell?.setAttribute('aria-busy', 'false');
     setButtonsDisabled(false);
   }
 
@@ -79,12 +130,12 @@
     }
 
     confirmMessage.textContent = message;
-    confirmModal.classList.remove('is-hidden');
+    openModalAccessible(confirmModal, '#confirm-cancel');
 
     return new Promise((resolve, reject) => {
       let settled = false;
       const cleanup = () => {
-        confirmModal.classList.add('is-hidden');
+        closeModalAccessible(confirmModal);
         confirmAccept.onclick = null;
         confirmCancel.onclick = null;
         confirmAccept.disabled = false;
@@ -636,7 +687,19 @@
       : 'Chekeo 2.0 normalizado activo: pedidos, cocina y cierre Drive-first.';
     query('#inicio-content').innerHTML = `<h2>Inicio</h2>${loading}${err}<p>${modeCopy}</p>`;
   }
-  function renderTabs() { queryAll('[data-tab-target]').forEach((b) => b.classList.toggle('is-active', b.dataset.tabTarget === state.activeTab)); queryAll('[data-tab-panel]').forEach((p) => p.classList.toggle('is-hidden', p.dataset.tabPanel !== state.activeTab)); }
+  function renderTabs() {
+    queryAll('[data-tab-target]').forEach((b) => {
+      const active = b.dataset.tabTarget === state.activeTab;
+      b.classList.toggle('is-active', active);
+      b.setAttribute('aria-selected', active ? 'true' : 'false');
+      b.tabIndex = active ? 0 : -1;
+    });
+    queryAll('[data-tab-panel]').forEach((p) => {
+      const active = p.dataset.tabPanel === state.activeTab;
+      p.classList.toggle('is-hidden', !active);
+      p.setAttribute('aria-hidden', active ? 'false' : 'true');
+    });
+  }
   function render() { renderTabs(); renderHome(); renderOrders(); renderKitchen(); renderOthers(); }
 
   async function openOrderDetail(orderId) {
@@ -667,7 +730,7 @@
       const finalized = Boolean(o.finalization?.finalized) || (productionReady && paymentReady && deliveryReady);
       const canComplete = productionReady && productionState !== 'Preparada';
       const finalizationBlockers = [].concat(!productionReady ? ['Producción pendiente'] : [], !paymentReady ? ['Pago pendiente'] : [], !deliveryReady ? ['Entrega pendiente'] : []);
-      modalContent.innerHTML = `<h3>Detalle normalizado</h3>
+      modalContent.innerHTML = `<h3 id="modal-title">Detalle normalizado</h3>
         <h4>Pedido</h4>
         <div class='form-grid'>
           <p><strong>Pedido:</strong> ${escape(o.pedido_id || '-')} / ${escape(o.folio || '-')}</p>
@@ -722,7 +785,7 @@
           <h5>Guarniciones</h5><pre>${escape(JSON.stringify(guarniciones, null, 2))}</pre>
           <h5>Eventos</h5><pre>${escape(JSON.stringify(eventos, null, 2))}</pre>
         </details>`;
-      modal.classList.remove('is-hidden');
+      openModalAccessible(modal, '#modal-close');
       const payStatusSelect = query('#norm-pay-status');
       const payMethodSelect = query('#norm-pay-method');
       const noteInternal = query('#norm-note-internal');
@@ -747,8 +810,8 @@
     }
     const d = await rpcCall('getOrderDetail', [orderId]);
     const o = d?.data || {};
-    modalContent.innerHTML = `<h3>Detalle operativo</h3><div class='form-grid'><label>Estado Pedido<select id='op-status'>${ORDER_STATUSES.map((s) => `<option ${s === o['Estado Pedido'] ? 'selected' : ''}>${s}</option>`).join('')}</select></label><label>Estado Pago<select id='op-pay-status'>${PAYMENT_STATUSES.map((s) => `<option ${s === o['Estado Pago'] ? 'selected' : ''}>${s}</option>`).join('')}</select></label><label>Método Pago<select id='op-pay-method'>${PAYMENT_METHODS.map((s) => `<option ${s === o['Método Pago'] ? 'selected' : ''}>${s}</option>`).join('')}</select></label><label>Nota interna<textarea id='op-note-internal'>${escape(o['Nota Interna'] || '')}</textarea></label><label>Nota cliente<textarea id='op-note-client'>${escape(o['Nota Cliente'] || '')}</textarea></label></div><div class='row'><button class='write-btn' data-write-action id='save-op'>Guardar cambios operativos</button><button class='write-btn' data-write-action id='mark-paid-modal'>Marcar pagado</button><button class='ghost' id='wa-modal'>Abrir WhatsApp</button><button class='write-btn' data-write-action id='mark-ticket-modal'>Marcar ticket enviado</button></div>`;
-    modal.classList.remove('is-hidden');
+    modalContent.innerHTML = `<h3 id="modal-title">Detalle operativo</h3><div class='form-grid'><label>Estado Pedido<select id='op-status'>${ORDER_STATUSES.map((s) => `<option ${s === o['Estado Pedido'] ? 'selected' : ''}>${s}</option>`).join('')}</select></label><label>Estado Pago<select id='op-pay-status'>${PAYMENT_STATUSES.map((s) => `<option ${s === o['Estado Pago'] ? 'selected' : ''}>${s}</option>`).join('')}</select></label><label>Método Pago<select id='op-pay-method'>${PAYMENT_METHODS.map((s) => `<option ${s === o['Método Pago'] ? 'selected' : ''}>${s}</option>`).join('')}</select></label><label>Nota interna<textarea id='op-note-internal'>${escape(o['Nota Interna'] || '')}</textarea></label><label>Nota cliente<textarea id='op-note-client'>${escape(o['Nota Cliente'] || '')}</textarea></label></div><div class='row'><button class='write-btn' data-write-action id='save-op'>Guardar cambios operativos</button><button class='write-btn' data-write-action id='mark-paid-modal'>Marcar pagado</button><button class='ghost' id='wa-modal'>Abrir WhatsApp</button><button class='write-btn' data-write-action id='mark-ticket-modal'>Marcar ticket enviado</button></div>`;
+    openModalAccessible(modal, '#modal-close');
     query('#save-op').onclick = async () => {
       const payload = {
         status: query('#op-status').value,
@@ -785,8 +848,23 @@
       const archiveNormalizedCloseBtn = e.target.closest('#archive-normalized-close-btn'); if (archiveNormalizedCloseBtn) return isNormalizedMode() ? archiveNormalizedCloseDayAction() : null;
       const loadHistoryBtn = e.target.closest('#load-history-orders-btn'); if (loadHistoryBtn) return loadHistoryOrders(20);
     });
-    query('#modal-close')?.addEventListener('click', () => modal.classList.add('is-hidden'));
+    query('#modal-close')?.addEventListener('click', () => closeModalAccessible(modal));
     query('#logout-button')?.addEventListener('click', async () => { await logoutSession(); setAppVisibility(false); setPinVisibility(true); showAuthStatus('Sesión cerrada.'); });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        if (confirmModal && !confirmModal.classList.contains('is-hidden')) {
+          event.preventDefault();
+          confirmCancel?.click();
+          return;
+        }
+        if (modal && !modal.classList.contains('is-hidden')) {
+          event.preventDefault();
+          closeModalAccessible(modal);
+        }
+      }
+      trapFocusInModal(confirmModal, event);
+      trapFocusInModal(modal, event);
+    });
   }
 
   function bootInternalAppOnce() {
