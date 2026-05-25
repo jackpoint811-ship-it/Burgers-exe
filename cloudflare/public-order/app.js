@@ -236,6 +236,7 @@
     redraw();
     setStatus('Listo. Volviste al menú.');
     scrollToCurrentStep();
+    focusStepContext(getCurrentStepName());
   }
 
   // ---------------------------------------------------------------------------
@@ -611,7 +612,6 @@
     window.requestAnimationFrame(function () {
       container.classList.add('step-enter');
     });
-    focusStepContext(stepName);
   }
 
   function focusStepContext(stepName) {
@@ -801,12 +801,17 @@
     saveDraft();
   }
 
+  function redrawAndFocusCurrentStep() {
+    redraw();
+    scrollToCurrentStep();
+    focusStepContext(getCurrentStepName());
+  }
+
   function moveStep(targetStep) {
     var nextStep = Math.max(0, Math.min(STEPS.length - 1, targetStep));
     if (nextStep > state.step) return;
     state.step = nextStep;
-    redraw();
-    scrollToCurrentStep();
+    redrawAndFocusCurrentStep();
   }
 
   function scrollToCurrentStep() {
@@ -829,7 +834,7 @@
 
     if (button.id === 'startBtn') {
       state.step = 1;
-      redraw();
+      redrawAndFocusCurrentStep();
       return;
     }
 
@@ -1048,14 +1053,12 @@
     var err = validate();
     if (err) return setStatus(err);
     state.step = Math.min(STEPS.length - 1, state.step + 1);
-    redraw();
-    scrollToCurrentStep();
+    redrawAndFocusCurrentStep();
   }
 
   function onBackClick() {
     state.step = Math.max(0, state.step - 1);
-    redraw();
-    scrollToCurrentStep();
+    redrawAndFocusCurrentStep();
   }
 
   function onStepperClick(e) {
