@@ -692,7 +692,7 @@
       const active = b.dataset.tabTarget === state.activeTab;
       b.classList.toggle('is-active', active);
       b.setAttribute('aria-selected', active ? 'true' : 'false');
-      b.tabIndex = active ? 0 : -1;
+      b.tabIndex = 0;
     });
     queryAll('[data-tab-panel]').forEach((p) => {
       const active = p.dataset.tabPanel === state.activeTab;
