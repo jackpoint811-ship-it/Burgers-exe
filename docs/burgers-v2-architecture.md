@@ -77,3 +77,8 @@
 - Se agrega documentación para configurar 2 proyectos de Cloudflare Pages de preview sin reemplazar producción.
 - V2 permanece mock-only: sin `/api/order`, sin `/api/rpc`, sin auth real, sin Sheets, sin D1/R2.
 - Confirmación explícita de no-touch en V1, backend operativo, legacy, `BOG_ACTIVE_ENV` y Functions actuales.
+
+## V2-5 live QA polish (2026-05-26)
+- Public-order-v2 and internal-chekeo-v2 received UI/UX polish for preview QA only.
+- Scope remained mock-only local flows; no backend, V1, or production endpoints were touched.
+- Added stronger visual hierarchy, placeholder variants, denser operator layouts, and refined microcopy.

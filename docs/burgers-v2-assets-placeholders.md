@@ -13,3 +13,8 @@
 | success mascot | Confirmación orden | 3:2 | 1200x800 | PNG | Success screen | badge success |
 | admin/operator icons | Íconos consola interna | 1:1 | 512x512 | SVG | internal-chekeo-v2 | lucide icons |
 | brand stickers | Decoradores visuales | variable | 1024 base | PNG/SVG | UI accents | chips tipográficos |
+
+## Placeholder variants added in V2-5 (2026-05-26)
+- CSS placeholder families now include: burger, spicy-burger, fries, drink, combo, dip.
+- Variants are gradient-based (no binary image assets).
+- Applied to hero/promo/menu cards for stronger visual distinction in previews.

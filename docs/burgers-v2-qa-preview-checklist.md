@@ -45,3 +45,8 @@ Checklist para validar V2 en URL de preview (Cloudflare Pages o local preview), 
 
 ## Criterio de bloqueo
 Si aparece conexión real a backend productivo o dependencia operativa (auth/sheets/rpc real), el preview se considera bloqueado para aprobación.
+
+## V2-5 polish validation (2026-05-26)
+- Hero/promos/menu/cart were refined to feel commercial and brand-forward on 320/390 widths.
+- Internal console header/tabs/cards/kitchen/modal were compacted for higher operator density.
+- Confirmed all actions remain local mock interactions.

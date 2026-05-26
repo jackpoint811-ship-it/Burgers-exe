@@ -1,17 +1,18 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-body{font-family:Inter,system-ui,sans-serif;background:#050507;color:#f4f4f5}
-.shell{@apply mx-auto min-h-screen max-w-6xl space-y-3 p-3 md:p-6}
-.card{@apply rounded-2xl border border-zinc-800 bg-zinc-950/90 p-4 shadow-xl}
-.muted{@apply text-sm text-zinc-400}
+body{font-family:Inter,system-ui,sans-serif;background:#050507;color:#f4f4f5;min-width:320px}
+.shell{@apply mx-auto min-h-screen max-w-6xl space-y-2 p-2 md:p-4}
+.card{@apply rounded-xl border border-zinc-800 bg-zinc-950/90 p-3 shadow-xl}
+.header-compact{@apply flex items-center justify-between gap-2 py-2}
+.muted{@apply text-xs text-zinc-400}
 .btn{@apply rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400}
-.btn-sm{@apply rounded border border-zinc-700 px-2 py-1 text-xs}
+.btn-sm{@apply rounded border border-zinc-700 px-2 py-1 text-[11px]}
 .danger{@apply border-rose-700 text-rose-300}
 .input{@apply mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2}
-.tabs{@apply flex flex-wrap gap-2}
-.tab{@apply rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm data-[state=active]:border-cyan-500 data-[state=active]:text-cyan-200}
-.row{@apply flex items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-zinc-900/60 p-2 text-left}
-.chip{@apply rounded-full px-2 py-0.5 text-xs}
+.tabs{@apply flex overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-950 p-1}
+.tab{@apply rounded-lg px-3 py-1.5 text-xs text-zinc-300 data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400}
+.row{@apply flex items-center justify-between gap-2 rounded-lg border border-zinc-800 bg-zinc-900/60 p-2 text-left}
+.chip{@apply rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-xs text-cyan-200}
 .overlay{@apply fixed inset-0 bg-black/70}
-.modal{@apply fixed left-1/2 top-1/2 w-[calc(100%-1rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl border border-zinc-700 bg-zinc-950 p-4 focus:outline-none}
+.modal{@apply fixed left-1/2 top-1/2 w-[calc(100%-1rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 rounded-xl border border-zinc-700 bg-zinc-950 p-4}

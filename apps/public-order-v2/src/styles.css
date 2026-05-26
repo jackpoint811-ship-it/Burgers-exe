@@ -13,14 +13,19 @@ body {
   min-width: 320px;
 }
 
-* {
-  scrollbar-width: thin;
-}
+* { scrollbar-width: thin; }
 
-a,
-button,
-input,
-textarea,
-select {
+.hero-card { background: radial-gradient(circle at 75% 5%, rgba(34, 211, 238, 0.26), transparent 32%), linear-gradient(145deg, rgba(24,24,27,0.98), rgba(9,9,11,0.92)); border: 1px solid rgba(255,255,255,0.16); }
+.placeholder { @apply relative h-40 overflow-hidden rounded-2xl border border-white/15 p-3; }
+.placeholder span { @apply absolute bottom-2 left-3 text-[10px] uppercase tracking-[0.2em] text-zinc-300; }
+.placeholder::after { content:''; position:absolute; inset:0; background:radial-gradient(circle at 20% 15%, rgba(255,255,255,.26), transparent 40%); }
+.placeholder-burger { background:linear-gradient(155deg,#78350f,#f97316 45%,#854d0e); }
+.placeholder-spicy-burger { background:linear-gradient(145deg,#7f1d1d,#ef4444 45%,#f97316); }
+.placeholder-fries { background:linear-gradient(145deg,#f59e0b,#facc15 45%,#92400e); }
+.placeholder-drink { background:linear-gradient(145deg,#0f172a,#1d4ed8 40%,#38bdf8); }
+.placeholder-combo { background:linear-gradient(145deg,#4c1d95,#ec4899 45%,#f59e0b); }
+.placeholder-dip { background:linear-gradient(145deg,#334155,#14b8a6 45%,#e2e8f0); }
+
+a,button,input,textarea,select {
   @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950;
 }
