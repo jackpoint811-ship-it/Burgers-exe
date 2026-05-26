@@ -1,9 +1,17 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-body {
-  font-family: Inter, system-ui, sans-serif;
-  background: #050505;
-  color: #e4e4e7;
-}
+body{font-family:Inter,system-ui,sans-serif;background:#050507;color:#f4f4f5}
+.shell{@apply mx-auto min-h-screen max-w-6xl space-y-3 p-3 md:p-6}
+.card{@apply rounded-2xl border border-zinc-800 bg-zinc-950/90 p-4 shadow-xl}
+.muted{@apply text-sm text-zinc-400}
+.btn{@apply rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400}
+.btn-sm{@apply rounded border border-zinc-700 px-2 py-1 text-xs}
+.danger{@apply border-rose-700 text-rose-300}
+.input{@apply mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2}
+.tabs{@apply flex flex-wrap gap-2}
+.tab{@apply rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm data-[state=active]:border-cyan-500 data-[state=active]:text-cyan-200}
+.row{@apply flex items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-zinc-900/60 p-2 text-left}
+.chip{@apply rounded-full px-2 py-0.5 text-xs}
+.overlay{@apply fixed inset-0 bg-black/70}
+.modal{@apply fixed left-1/2 top-1/2 w-[calc(100%-1rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl border border-zinc-700 bg-zinc-950 p-4 focus:outline-none}

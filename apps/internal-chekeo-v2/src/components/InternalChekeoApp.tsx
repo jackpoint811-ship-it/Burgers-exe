@@ -1,0 +1,26 @@
+import { useMemo, useState } from 'react';
+import * as Tabs from '@radix-ui/react-tabs';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { mockOrders, operatorStats } from '@config/index';
+import type { MockOrder, OrderStatus } from '@config/index';
+
+type TabKey = 'inicio'|'pedidos'|'cocina'|'pagos'|'historial';
+
+const statusTone: Record<OrderStatus,string> = {new:'bg-sky-500/20 text-sky-200',preparing:'bg-amber-500/20 text-amber-200',ready:'bg-emerald-500/20 text-emerald-200',delivered:'bg-zinc-500/20 text-zinc-200',cancelled:'bg-rose-500/20 text-rose-200'};
+
+export function InternalChekeoApp(){
+  const [logged,setLogged]=useState(false); const [tab,setTab]=useState<TabKey>('inicio');
+  const [orders,setOrders]=useState(mockOrders); const [selected,setSelected]=useState<MockOrder|null>(null); const reduce=useReducedMotion();
+  const active=orders.filter(o=>o.status!=='delivered'&&o.status!=='cancelled');
+  const move=(id:string,s:OrderStatus)=>setOrders(p=>p.map(o=>o.id===id?{...o,status:s}:o));
+  const content = useMemo(()=>({inicio:<section className='grid gap-3 md:grid-cols-3'>{['activeOrders','pendingOrders','kitchenLoad','paymentsPending'].map((k)=><article key={k} className='card'><p className='muted'>{k}</p><p className='text-2xl font-bold'>{(operatorStats as any)[k]}</p></article>)}<article className='card md:col-span-2'><h3>Pedidos urgentes</h3>{orders.filter(o=>o.priority==='urgent').map(o=><button key={o.id} className='row' onClick={()=>setSelected(o)}>{o.folio} · {o.customer}</button>)}</article><article className='card'><h3>Actividad</h3><p className='muted'>Operación estable · mock success</p></article></section>,
+  pedidos:<section className='grid gap-3'>{orders.map(o=><article key={o.id} className='card'><div className='flex items-center justify-between'><strong>{o.folio} · {o.customer}</strong><span className={`chip ${statusTone[o.status]}`}>{o.status}</span></div><p className='muted'>{o.items.length} items · ${o.total} · {o.paymentMethod}/{o.paymentState}</p><button className='btn mt-2' onClick={()=>setSelected(o)}>Ver detalle</button></article>)}</section>,
+  cocina:<section className='grid gap-3 md:grid-cols-2'>{(['new','preparing','ready','delivered'] as OrderStatus[]).map(s=><article key={s} className='card'><h3 className='mb-2'>{s}</h3>{orders.filter(o=>o.status===s).map(o=><div key={o.id} className='row'><span>{o.folio}</span><div className='flex gap-1'><button className='btn-sm' onClick={()=>move(o.id,s==='new'?'preparing':s==='preparing'?'ready':s==='ready'?'delivered':'delivered')}>Mover</button><button className='btn-sm' onClick={()=>move(o.id,'ready')}>Listo</button><button className='btn-sm danger' onClick={()=>move(o.id,'cancelled')}>Cancelar</button></div></div>)}</article>)}</section>,
+  pagos:<section className='card'><h3>Pagos pendientes y notas</h3>{orders.filter(o=>o.paymentState==='pending'||o.note).map(o=><div key={o.id} className='row'><span>{o.folio} · {o.paymentMethod}</span><span className='muted'>{o.note??'Sin nota'}</span></div>)}</section>,
+  historial:<section className='card'><h3>Historial mock</h3>{orders.filter(o=>o.status==='delivered'||o.status==='cancelled').map(o=><div key={o.id} className='row'><span>{o.folio}</span><span className='muted'>{o.status}</span></div>)}</section>})[tab],[orders,tab]);
+
+  if(!logged){return <main className='shell'><section className='login card'><h1>Internal Chekeo V2</h1><p className='muted'>V2 mock / no conecta sesión real</p><label htmlFor='pin'>PIN</label><input id='pin' type='password' className='input' placeholder='••••' /><button className='btn mt-3' onClick={()=>setLogged(true)}>Entrar a consola</button></section></main>;}
+
+  return <main className='shell'><header className='card flex flex-wrap items-center justify-between gap-2'><div><h1 className='text-xl font-bold'>Burgers.exe Operator Console</h1><p className='muted'>Activos {active.length} · {new Date().toLocaleTimeString()}</p></div><button className='btn' onClick={()=>setLogged(false)}>Logout mock</button></header><Tabs.Root value={tab} onValueChange={(v)=>setTab(v as TabKey)}><Tabs.List className='tabs'>{[['inicio','Inicio'],['pedidos','Pedidos'],['cocina','Cocina'],['pagos','Pagos/Notas'],['historial','Historial']].map(([k,l])=><Tabs.Trigger key={k} value={k} className='tab'>{l}</Tabs.Trigger>)}</Tabs.List><AnimatePresence mode='wait'><motion.div key={tab} initial={reduce?false:{opacity:0,y:8}} animate={{opacity:1,y:0}} exit={reduce?{}:{opacity:0,y:-8}} transition={{duration:0.18}} className='mt-3'>{content}</motion.div></AnimatePresence></Tabs.Root>
+  {selected ? <div className='overlay' role='dialog' aria-modal='true' aria-label='Detalle de pedido' onClick={()=>setSelected(null)}><section className='modal' onClick={(e)=>e.stopPropagation()}><h2>{selected.folio} detalle</h2><p className='muted'>{selected.customer}</p><div className='mt-2 space-y-1'>{selected.items.map((i,idx)=><div key={idx} className='row'><span>{i.qty}x {i.name}</span><span>${i.price}</span></div>)}</div><p className='muted mt-2'>Timeline: {selected.timeline.map(t=>`${t.time} ${t.label}`).join(' · ')}</p><button className='btn mt-3' onClick={()=>setSelected(null)}>Cerrar</button></section></div> : null}</main>;
+}
