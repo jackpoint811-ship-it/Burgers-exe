@@ -50,3 +50,12 @@ Si aparece conexión real a backend productivo o dependencia operativa (auth/she
 - Hero/promos/menu/cart were refined to feel commercial and brand-forward on 320/390 widths.
 - Internal console header/tabs/cards/kitchen/modal were compacted for higher operator density.
 - Confirmed all actions remain local mock interactions.
+
+## V2-5.2 final preview polish validation (2026-05-26)
+- Header interno validado como barra operativa compacta (no hero) en mobile 320/390.
+- Tabs internas validadas sin overflow horizontal a 320px y active state claro.
+- Dashboard/KPIs internos validados en versión compacta de alta densidad.
+- Kitchen queue/modal validados sin acciones operativas en estados terminales (`delivered`, `cancelled`).
+- Public V2 validado con micro ajustes de legibilidad/spacing en iPhone SE sin cambiar flujo.
+- Confirmación explícita: mock-only, sin tocar V1/backend/producción.
+- Gate de avance: con screenshots QA aprobados, iniciar V2-6 datos reales.

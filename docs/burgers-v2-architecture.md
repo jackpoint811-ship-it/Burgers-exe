@@ -82,3 +82,9 @@
 - Public-order-v2 and internal-chekeo-v2 received UI/UX polish for preview QA only.
 - Scope remained mock-only local flows; no backend, V1, or production endpoints were touched.
 - Added stronger visual hierarchy, placeholder variants, denser operator layouts, and refined microcopy.
+
+## V2-5.2 final preview polish before real data (2026-05-26)
+- Se aplicó polish final de preview enfocado en densidad operativa y legibilidad mobile-first antes de conectar datos reales.
+- Continúa 100% mock-only local (sin integración backend, sin endpoints productivos, sin auth real).
+- No se modificó V1, backend operativo actual, legacy ni Cloudflare Functions actuales.
+- Si QA de screenshots de preview pasa, la siguiente fase habilitada es V2-6 para integración con datos reales.
