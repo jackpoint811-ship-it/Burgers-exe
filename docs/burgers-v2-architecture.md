@@ -62,3 +62,11 @@
 - No conecta auth/session/rpc reales ni endpoints productivos; toda la interacción es local mock.
 - Acciones (mover estado, marcar listo, cancelar, logout) son simuladas en estado cliente.
 - V1 interna y backend operativo permanecen intactos.
+
+
+## V2-3 componentization + shared UI
+- Se componentizan `apps/public-order-v2` e `apps/internal-chekeo-v2` en bloques reutilizables para evitar componentes gigantes.
+- Se introduce una capa shared UI en `packages/ui` (Button, Badge, Card, SectionHeader, EmptyState, StatusPill, IconButton).
+- Se mantiene comportamiento mock 100% local (sin fetch, sin auth real, sin endpoints productivos).
+- No se toca backend operativo, Cloudflare Functions actuales, ni V1/legacy.
+- La base queda lista para siguiente fase de integración o deploy preview V2.
