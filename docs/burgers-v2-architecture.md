@@ -56,3 +56,9 @@
 ## V2-1 public-order mock experience
 - `apps/public-order-v2` ahora implementa landing + flujo de pedido mock en una sola página.
 - El submit de checkout es simulado localmente y no llama endpoints productivos.
+
+## V2-2 internal-chekeo operator console mock
+- `apps/internal-chekeo-v2` evoluciona de placeholder a consola operativa mock con PIN shell, tabs, dashboard, pedidos, cocina, pagos/notas e historial.
+- No conecta auth/session/rpc reales ni endpoints productivos; toda la interacción es local mock.
+- Acciones (mover estado, marcar listo, cancelar, logout) son simuladas en estado cliente.
+- V1 interna y backend operativo permanecen intactos.
