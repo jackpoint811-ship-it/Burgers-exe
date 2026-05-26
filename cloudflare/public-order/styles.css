@@ -74,6 +74,10 @@ body {
   overflow-x: hidden;
 }
 
+html {
+  scroll-padding-bottom: calc(clamp(196px, 34vh, 248px) + env(safe-area-inset-bottom, 0px));
+}
+
 body {
   background: var(--bg);
   color: var(--text);
@@ -152,6 +156,16 @@ small {
   max-width: 100%;
   min-width: 0;
   position: relative;
+}
+
+.panel,
+.step,
+button,
+input,
+select,
+textarea,
+a {
+  scroll-margin-bottom: calc(clamp(196px, 34vh, 248px) + env(safe-area-inset-bottom, 0px));
 }
 
 .hero {
@@ -484,6 +498,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 #clearBtn:not(:focus-visible):not(:hover) { box-shadow: none; }
 #loadLastBtn,#clearBtn { font-size: 0.83rem; padding: 8px 10px; }
 .nav-panel button:active { transform: translateY(1px); }
+.nav-panel button,
+.mini-summary,
+.mini-storage-hint { overflow-wrap: anywhere; word-break: break-word; }
 .step-content {
   transition: opacity 150ms ease, transform 150ms ease;
 }
@@ -599,6 +616,18 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 }
 
 @media (max-width: 320px) {
+  html {
+    scroll-padding-bottom: calc(clamp(248px, 52vh, 332px) + env(safe-area-inset-bottom, 0px));
+  }
+  .panel,
+  .step,
+  button,
+  input,
+  select,
+  textarea,
+  a {
+    scroll-margin-bottom: calc(clamp(248px, 52vh, 332px) + env(safe-area-inset-bottom, 0px));
+  }
   .nav-panel {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas: "mini" "hint" "load" "clear" "back" "next";
@@ -630,6 +659,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 
 .ordering-gate-modal {
   width: min(100%, 520px);
+  max-height: min(88dvh, 620px);
+  overflow: auto;
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   padding: var(--space-4);
