@@ -218,3 +218,14 @@ Restricciones respetadas:
 
 Justificación:
 - La base post-rediseño está sólida, pero quedan hallazgos P1/P2 centrados en verificación de foco/modal/write states y ajustes móviles finos que deben cerrarse en un PR de fixes pequeños antes del cierre visual final.
+
+
+## 9) Estado BLOQUE 6 (fixes P1/P2 aplicados)
+
+- [x] B5-001 DATOS/formulario: reforzado `aria-describedby` dinámico, foco al primer error visible y visibilidad de foco en campos con error (sin tocar validaciones ni payload).
+- [x] B5-002 Modales/confirmaciones Chekeo: endurecido retorno de foco por modal y mantenido trap + Escape existentes.
+- [x] B5-003 Write buttons Chekeo: reforzado estado visual loading/disabled con `aria-disabled` + `aria-busy` por botón.
+- [x] B5-004 Sticky nav public-order: ajuste fino de `scroll-padding`/`scroll-margin` móvil 320/390 para evitar solape de foco.
+- [x] B5-005 Top/bottom nav Chekeo: afinado estado selected/current (`aria-selected` + `aria-current`) sin cambiar orden/tabs.
+- [x] B5-006 Resumen/ticket public-order: pequeños ajustes de legibilidad del total y densidad de líneas en móvil.
+- [x] B5-007 Mini estándar feedback: refuerzo visual menor para estados disabled/loading/success/error en ambas apps.

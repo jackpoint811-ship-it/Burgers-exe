@@ -39,7 +39,7 @@
   const confirmAccept = document.querySelector('#confirm-accept');
 
   const appShell = document.querySelector('.app-shell');
-  let lastFocusedBeforeModal = null;
+  const lastFocusedBeforeModal = new WeakMap();
 
   function getFocusableElements(root) {
     if (!root) return [];
@@ -66,7 +66,8 @@
 
   function openModalAccessible(modalNode, fallbackSelector) {
     if (!modalNode) return;
-    lastFocusedBeforeModal = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const focusedBeforeOpen = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    lastFocusedBeforeModal.set(modalNode, focusedBeforeOpen);
     modalNode.classList.remove('is-hidden');
     window.setTimeout(() => {
       const nextFocus = query(fallbackSelector, modalNode) || getFocusableElements(modalNode)[0];
@@ -77,10 +78,11 @@
   function closeModalAccessible(modalNode) {
     if (!modalNode) return;
     modalNode.classList.add('is-hidden');
-    if (lastFocusedBeforeModal && document.contains(lastFocusedBeforeModal)) {
-      lastFocusedBeforeModal.focus();
+    const previousFocus = lastFocusedBeforeModal.get(modalNode);
+    if (previousFocus && document.contains(previousFocus)) {
+      previousFocus.focus();
     }
-    lastFocusedBeforeModal = null;
+    lastFocusedBeforeModal.delete(modalNode);
   }
 
   const escape = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -107,6 +109,7 @@
       btn.disabled = disabled;
       btn.classList.toggle('is-loading', disabled);
       btn.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+      btn.setAttribute('aria-busy', disabled ? 'true' : 'false');
     });
   }
 
@@ -692,6 +695,7 @@
       const active = b.dataset.tabTarget === state.activeTab;
       b.classList.toggle('is-active', active);
       b.setAttribute('aria-selected', active ? 'true' : 'false');
+      b.setAttribute('aria-current', active ? 'page' : 'false');
       b.tabIndex = 0;
     });
     queryAll('[data-tab-panel]').forEach((p) => {
