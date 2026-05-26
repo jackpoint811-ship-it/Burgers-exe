@@ -2,6 +2,7 @@
 /* TOKENS                                                                      */
 /* -------------------------------------------------------------------------- */
 :root {
+  /* legacy/current tokens (compatibility-first) */
   --bg: #07090f;
   --panel: #111521;
   --panel-soft: #0d1320;
@@ -23,8 +24,36 @@
   --space-3: 10px;
   --space-4: 12px;
   --space-5: 16px;
-
   --tap-min: 44px;
+
+  /* visual-system v1 aliases */
+  --color-bg-base: var(--bg);
+  --color-bg-surface: var(--panel);
+  --color-bg-surface-alt: var(--panel-soft);
+  --color-fg-primary: var(--text);
+  --color-fg-muted: var(--muted);
+  --color-brand-primary: var(--line);
+  --color-brand-line-soft: var(--line-soft);
+  --color-brand-line-muted: var(--line-muted);
+  --color-status-danger: var(--danger);
+  --color-status-danger-text: var(--danger-text);
+  --color-focus-ring: var(--focus);
+  --glow-brand-soft: var(--glow-soft);
+  --glow-brand-strong: var(--glow-strong);
+
+  /* component sizing aliases */
+  --radius-component-sm: var(--radius-sm);
+  --radius-component-md: var(--radius-md);
+  --space-component-1: var(--space-1);
+  --space-component-2: var(--space-2);
+  --space-component-3: var(--space-3);
+  --space-component-4: var(--space-4);
+  --space-component-5: var(--space-5);
+  --size-tap-min: var(--tap-min);
+
+  /* motion/easing aliases */
+  --motion-duration-fast: 160ms;
+  --motion-easing-standard: ease;
 }
 
 /* -------------------------------------------------------------------------- */
