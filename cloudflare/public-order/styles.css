@@ -537,7 +537,6 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .summary-total { border-color: #4aa86f; background: linear-gradient(180deg, rgba(17, 41, 30, 0.7) 0%, rgba(8, 16, 22, 0.9) 100%); box-shadow: 0 0 0 1px rgba(96, 224, 145, 0.24), 0 0 18px rgba(96, 224, 145, 0.18); }
 .summary-total h3 { color: #ebfff3; font-size: 0.95rem; letter-spacing: 0.03em; text-transform: uppercase; }
 .summary-total p { margin: 0; font-size: 1.7rem; font-weight: 700; color: var(--line); text-shadow: 0 0 12px rgba(60, 255, 123, 0.24); }
-.summary-total p::before { content: "$ "; color: #dfffea; font-size: 0.95rem; vertical-align: middle; }
 .status { white-space: pre-wrap; min-height: 84px; font-size: 0.86rem; line-height: 1.45; color: #caefda; border-color: #3f8a61; background: #0f1c18; overflow-wrap: anywhere; }
 .success { border-color: var(--line); background: linear-gradient(180deg, rgba(18, 53, 30, 0.62) 0%, rgba(10, 24, 18, 0.92) 100%); box-shadow: 0 0 0 1px color-mix(in srgb, var(--line) 35%, transparent), 0 0 16px var(--glow-soft); min-width: 0; animation: successIn 220ms ease-out; }
 .success h2 { margin-bottom: var(--space-2); color: var(--line); font-size: 1.1rem; overflow-wrap: anywhere; }
