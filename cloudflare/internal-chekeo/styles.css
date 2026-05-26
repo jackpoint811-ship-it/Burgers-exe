@@ -71,7 +71,7 @@ body{margin:0;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Libe
 .tab-nav{display:flex;gap:.5rem;overflow:auto;margin:.9rem 0 1rem;padding-bottom:.2rem;scrollbar-width:thin}
 .tab-button{padding:.48rem .8rem;white-space:nowrap;font-weight:620}
 .tab-button:hover,.chip:hover,.ghost:hover{border-color:#3c5265;background:#1c2a36}
-.tab-button.is-active,.chip.is-active{background:linear-gradient(180deg,#8dffd3,#67f3b4);color:#052318;border-color:transparent;box-shadow:0 0 0 1px rgb(141 255 211 / 32%)}
+.tab-button.is-active,.chip.is-active,.tab-button[aria-current="page"]{background:linear-gradient(180deg,#8dffd3,#67f3b4);color:#052318;border-color:transparent;box-shadow:0 0 0 1px rgb(141 255 211 / 32%)}
 
 .card-grid{display:grid;gap:.75rem}
 .card{overflow:hidden}
@@ -134,3 +134,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
 }
+
+
+.write-btn[aria-disabled="true"],.ghost[aria-disabled="true"]{opacity:.62;cursor:not-allowed}
+.write-btn[aria-busy="true"]::after{content:" · Procesando";font-size:.78em;font-weight:700}
+.status-toast:not(.is-error){color:#073020}

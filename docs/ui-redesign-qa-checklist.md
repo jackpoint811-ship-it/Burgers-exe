@@ -76,3 +76,13 @@ Checklist de pulido posterior al rediseño visual controlado para `public-order`
 - `git diff --name-only`
 - Confirmación explícita de archivos permitidos solamente.
 - Confirmación explícita: sin cambios de API/RPC/payload/backend/deps/legacy/BOG_ACTIVE_ENV.
+
+
+## Checklist BLOQUE 6 (post-auditoría P1/P2)
+- [ ] DATOS vacío en `public-order` enfoca primer error visible y mantiene mensaje asociado (`aria-describedby`).
+- [ ] Sticky nav `public-order` no tapa foco/CTA en 320px ni 390px.
+- [ ] Resumen/ticket `public-order` conserva legibilidad en casos densos y total claro.
+- [ ] Modal detalle/confirmación `internal-chekeo` mantiene trap con Tab/Shift+Tab y cierre Escape.
+- [ ] Al cerrar modal/confirmación en Chekeo, el foco regresa al trigger si sigue en DOM.
+- [ ] Botones write Chekeo muestran loading/disabled perceptible y evitan doble acción percibida.
+- [ ] Tabs top/bottom Chekeo muestran estado activo coherente (`selected/current`) en todos los cambios de pestaña.

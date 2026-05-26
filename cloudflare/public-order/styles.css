@@ -692,3 +692,49 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   text-decoration: none;
   padding: 10px 12px;
 }
+
+
+/* Bloque 6: mobile/a11y polish */
+.step-content input:focus-visible,
+.step-content select:focus-visible,
+.step-content textarea:focus-visible,
+.step-content .pay-option-card:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.data-field.has-error input:focus-visible,
+.data-field.has-error select:focus-visible,
+.pay-group.has-error:focus-within {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 34%, transparent);
+}
+
+@media (max-width: 430px) {
+  html {
+    scroll-padding-bottom: calc(clamp(214px, 36vh, 268px) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .app {
+    padding-bottom: calc(clamp(214px, 36vh, 268px) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .panel,
+  .step,
+  button,
+  input,
+  select,
+  textarea,
+  a {
+    scroll-margin-bottom: calc(clamp(214px, 36vh, 268px) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .summary-total p {
+    font-size: clamp(1.28rem, 4.8vw, 1.5rem);
+    line-height: 1.25;
+  }
+
+  .ticket-line {
+    gap: var(--space-2);
+    padding: 7px 0;
+  }
+}

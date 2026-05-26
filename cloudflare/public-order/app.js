@@ -964,7 +964,14 @@
     var label = field ? field.closest('label') : null;
 
     if (label) label.classList.toggle('has-error', Boolean(errorMessage));
-    if (field) field.setAttribute('aria-invalid', errorMessage ? 'true' : 'false');
+    if (field) {
+      field.setAttribute('aria-invalid', errorMessage ? 'true' : 'false');
+      var describedBy = (field.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+      describedBy = describedBy.filter(function (id) { return id !== errorId; });
+      if (errorMessage) describedBy.push(errorId);
+      if (describedBy.length) field.setAttribute('aria-describedby', describedBy.join(' '));
+      else field.removeAttribute('aria-describedby');
+    }
 
     if (errorMessage) {
       if (!errorNode && label && label.parentNode) {
@@ -1018,7 +1025,7 @@
     if (!first) return;
     var node = document.querySelector(first.selector);
     if (!node) return;
-    node.scrollIntoView({ behavior: getScrollBehavior(), block: 'center' });
+    node.scrollIntoView({ behavior: getScrollBehavior(), block: 'nearest' });
     node.focus({ preventScroll: true });
   }
 
