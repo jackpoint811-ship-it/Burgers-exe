@@ -70,3 +70,10 @@
 - Se mantiene comportamiento mock 100% local (sin fetch, sin auth real, sin endpoints productivos).
 - No se toca backend operativo, Cloudflare Functions actuales, ni V1/legacy.
 - La base queda lista para siguiente fase de integración o deploy preview V2.
+
+## V2-4 safe deploy preview preparation
+- Se formaliza workflow de build/preview independiente para `public-order-v2` e `internal-chekeo-v2`.
+- Outputs separados para despliegue seguro en preview (`dist/public-order-v2`, `dist/internal-chekeo-v2`).
+- Se agrega documentación para configurar 2 proyectos de Cloudflare Pages de preview sin reemplazar producción.
+- V2 permanece mock-only: sin `/api/order`, sin `/api/rpc`, sin auth real, sin Sheets, sin D1/R2.
+- Confirmación explícita de no-touch en V1, backend operativo, legacy, `BOG_ACTIVE_ENV` y Functions actuales.

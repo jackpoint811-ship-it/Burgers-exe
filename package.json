@@ -10,7 +10,9 @@
     "build": "npm run build:public && npm run build:internal",
     "build:public": "APP_TARGET=public vite build",
     "build:internal": "APP_TARGET=internal vite build",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "preview:public": "npm run build:public && APP_TARGET=public vite preview --outDir dist/public-order-v2",
+    "preview:internal": "npm run build:internal && APP_TARGET=internal vite preview --outDir dist/internal-chekeo-v2"
   },
   "dependencies": {
     "@radix-ui/react-tabs": "^1.1.12",
