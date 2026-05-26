@@ -35,6 +35,7 @@
   --color-brand-primary: var(--line);
   --color-brand-line-soft: var(--line-soft);
   --color-brand-line-muted: var(--line-muted);
+  --color-status-success: var(--line);
   --color-status-danger: var(--danger);
   --color-status-danger-text: var(--danger-text);
   --color-focus-ring: var(--focus);
