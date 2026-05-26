@@ -2,11 +2,12 @@ import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { mockOrders, operatorStats, type MockOrder, type OrderStatus } from '@config/index';
-import { Badge, Button, Card, SectionHeader, StatusPill } from '@ui/index';
+import { Button, Card, SectionHeader, StatusPill } from '@ui/index';
 
 type TabKey = 'inicio' | 'pedidos' | 'cocina' | 'pagos' | 'historial';
 const statusLabel: Record<OrderStatus, string> = { new: 'Nuevo', preparing: 'En preparación', ready: 'Listo', delivered: 'Entregado', cancelled: 'Cancelado' };
 const statusTone: Record<OrderStatus, string> = { new: 'border-sky-400/40 text-sky-200', preparing: 'border-amber-400/40 text-amber-200', ready: 'border-emerald-400/40 text-emerald-200', delivered: 'border-zinc-500/40 text-zinc-200', cancelled: 'border-rose-500/40 text-rose-300' };
+type OperatorShellProps = { active: number; onLogout: () => void; children: ReactNode };
 
 const KpiCard = ({ label, value }: { label: string; value: number }) => <Card><p className='text-sm text-zinc-400'>{label}</p><p className='text-3xl font-black'>{value}</p></Card>;
 const StatusBadge = ({ status }: { status: OrderStatus }) => <StatusPill className={statusTone[status]}>{statusLabel[status]}</StatusPill>;
@@ -24,7 +25,7 @@ const OrderDetailModal = ({ selected, onClose }: { selected: MockOrder | null; o
   return <div className='overlay' role='dialog' aria-modal='true' aria-labelledby='order-title' onClick={onClose}><section className='modal' onClick={(e) => e.stopPropagation()}><h2 id='order-title'>{selected.folio} detalle</h2><p className='muted'>{selected.customer}</p><div className='mt-2 space-y-1'>{selected.items.map((i, idx) => <div key={idx} className='row'><span>{i.qty}x {i.name}</span><span>${i.price}</span></div>)}</div><p className='muted mt-2'>Timeline: {selected.timeline.map((t) => `${t.time} ${t.label}`).join(' · ')}</p><Button className='mt-3 border border-zinc-700 bg-zinc-900' onClick={onClose}>Cerrar</Button></section></div>;
 };
 const OperatorTabs = ({ tab, setTab, content }: { tab: TabKey; setTab: (v: TabKey) => void; content: ReactNode }) => <Tabs.Root value={tab} onValueChange={(v) => setTab(v as TabKey)}><Tabs.List className='tabs'>{[['inicio', 'Inicio'], ['pedidos', 'Pedidos'], ['cocina', 'Cocina'], ['pagos', 'Pagos/Notas'], ['historial', 'Historial']].map(([k, l]) => <Tabs.Trigger key={k} value={k} className='tab'>{l}</Tabs.Trigger>)}</Tabs.List>{content}</Tabs.Root>;
-const OperatorShell = ({ active, onLogout, children }: any) => <main className='shell'><OperatorHeader active={active} onLogout={onLogout} />{children}</main>;
+const OperatorShell = ({ active, onLogout, children }: OperatorShellProps) => <main className='shell'><OperatorHeader active={active} onLogout={onLogout} />{children}</main>;
 
 export function InternalChekeoApp() {
   const [logged, setLogged] = useState(false); const [tab, setTab] = useState<TabKey>('inicio'); const [orders, setOrders] = useState(mockOrders); const [selected, setSelected] = useState<MockOrder | null>(null); const reduce = useReducedMotion();
