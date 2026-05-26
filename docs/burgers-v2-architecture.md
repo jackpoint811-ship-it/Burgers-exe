@@ -52,3 +52,7 @@
 - Verificar no-touch zones.
 - Exigir compatibilidad con contratos actuales.
 - Exigir evidencia de build + typecheck.
+
+## V2-1 public-order mock experience
+- `apps/public-order-v2` ahora implementa landing + flujo de pedido mock en una sola página.
+- El submit de checkout es simulado localmente y no llama endpoints productivos.

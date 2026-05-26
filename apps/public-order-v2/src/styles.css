@@ -2,8 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  color-scheme: dark;
+}
+
 body {
   font-family: Inter, system-ui, sans-serif;
-  background: radial-gradient(circle at top, #27272a 0%, #09090b 50%, #020617 100%);
+  background: radial-gradient(circle at top, #27272a 0%, #09090b 45%, #020617 100%);
   color: #fafafa;
+  min-width: 320px;
+}
+
+* {
+  scrollbar-width: thin;
+}
+
+a,
+button,
+input,
+textarea,
+select {
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950;
 }
