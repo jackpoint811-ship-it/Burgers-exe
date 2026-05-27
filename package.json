@@ -12,7 +12,11 @@
     "build:internal": "APP_TARGET=internal vite build",
     "typecheck": "tsc --noEmit",
     "preview:public": "npm run build:public && APP_TARGET=public vite preview",
-    "preview:internal": "npm run build:internal && APP_TARGET=internal vite preview"
+    "preview:internal": "npm run build:internal && APP_TARGET=internal vite preview",
+    "db:v2:migrate:local": "wrangler d1 execute burgers-exe-menu-v2-preview --local --file=./migrations/0001_v2_menu_schema.sql",
+    "db:v2:migrate:remote": "wrangler d1 execute burgers-exe-menu-v2-preview --remote --file=./migrations/0001_v2_menu_schema.sql",
+    "db:v2:seed:local": "wrangler d1 execute burgers-exe-menu-v2-preview --local --file=./migrations/0002_v2_menu_seed.sql",
+    "db:v2:seed:remote": "wrangler d1 execute burgers-exe-menu-v2-preview --remote --file=./migrations/0002_v2_menu_seed.sql"
   },
   "dependencies": {
     "@radix-ui/react-tabs": "^1.1.12",
@@ -31,6 +35,8 @@
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2",
     "vite": "^6.0.3",
-    "@types/node": "^22.10.2"
+    "@types/node": "^22.10.2",
+    "@cloudflare/workers-types": "^4.20260523.0",
+    "wrangler": "^4.19.1"
   }
 }

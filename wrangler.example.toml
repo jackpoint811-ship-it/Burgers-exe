@@ -1,0 +1,7 @@
+name = "burgers-exe-v2"
+compatibility_date = "2026-05-27"
+
+[[d1_databases]]
+binding = "BOG_MENU_DB"
+database_name = "burgers-exe-menu-v2-preview"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
