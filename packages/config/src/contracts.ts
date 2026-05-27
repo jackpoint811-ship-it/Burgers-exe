@@ -5,6 +5,8 @@ export type Availability = {
   days?: number[];
 };
 
+export type DataSource = 'd1' | 'mock' | 'fallback';
+
 export type AssetRef = {
   imageUrl?: string;
   imageKey?: string;
@@ -17,6 +19,7 @@ export type MenuCategory = {
   key: 'burgers' | 'extras' | 'guarniciones' | 'drinks';
   name: string;
   sortOrder: number;
+  updatedAt?: string;
 };
 
 export type MenuItem = {
@@ -35,6 +38,7 @@ export type MenuItem = {
   tags: string[];
   upsellItems: string[];
   comboLinks: string[];
+  updatedAt?: string;
   availability?: Availability;
 };
 
@@ -50,6 +54,7 @@ export type PromoCard = {
   tags: string[];
   comboLinks: string[];
   asset: AssetRef;
+  updatedAt?: string;
 };
 
 export type SiteConfig = {
@@ -59,6 +64,16 @@ export type SiteConfig = {
   supportPhone: string;
   heroCta: string;
   notice: string;
+  updatedAt?: string;
+};
+
+export type MenuV2Response = {
+  categories: MenuCategory[];
+  items: MenuItem[];
+  promos: PromoCard[];
+  siteConfig: SiteConfig;
+  updatedAt: string;
+  source: DataSource;
 };
 
 export type OrderStatus = 'new' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
