@@ -11,7 +11,7 @@
 npx wrangler d1 create burgers-exe-menu-v2-preview
 ```
 
-Actualiza `database_id` en `wrangler.toml` con el ID real.
+Usa `wrangler.example.toml` como plantilla local. Si necesitas Wrangler local, copia a `wrangler.toml` y reemplaza `database_id` con el ID real. En Pages preview, configura `BOG_MENU_DB` desde el dashboard.
 
 ## Migraciones
 - Schema: `migrations/0001_v2_menu_schema.sql`

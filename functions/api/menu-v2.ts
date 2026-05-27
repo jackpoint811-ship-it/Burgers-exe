@@ -40,7 +40,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
       category: row.category,
       name: row.name,
       description: row.description,
-      price: Number(row.price),
+      price: Number(row.price) / 100,
       tags: parseJsonArray(row.tags_json),
       badge: row.badge ?? undefined,
       promoLabel: row.promoLabel ?? undefined,

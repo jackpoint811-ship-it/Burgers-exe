@@ -24,11 +24,15 @@
         "packages/config/src/*"
       ]
     },
-    "ignoreDeprecations": "5.0"
+    "ignoreDeprecations": "5.0",
+    "types": [
+      "@cloudflare/workers-types"
+    ]
   },
   "include": [
     "apps",
     "packages",
-    "vite.config.ts"
+    "vite.config.ts",
+    "functions"
   ]
 }
