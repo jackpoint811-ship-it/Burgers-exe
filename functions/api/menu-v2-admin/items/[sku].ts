@@ -1,3 +1,4 @@
+import { validateAssetKey, validateImageUrl } from '../../_asset-utils';
 import { mapD1ItemToMenuItem } from '../../_menu-v2-utils';
 
 type Env = { BOG_MENU_DB?: D1Database; BOG_MENU_ADMIN_TOKEN?: string };
@@ -10,6 +11,8 @@ type UpdatePayload = {
   badge: string | null;
   promoLabel: string | null;
   sortOrder: number;
+  imageUrl: string | null;
+  imageKey: string | null;
 };
 
 const json = (status: number, payload: unknown) =>
@@ -37,8 +40,10 @@ const parseBody = (input: unknown): UpdatePayload | null => {
   const price = typeof body.price === 'number' ? body.price : Number.NaN;
   const isAvailable = body.isAvailable;
   const sortOrder = typeof body.sortOrder === 'number' ? body.sortOrder : Number.NaN;
+  const imageUrl = validateImageUrl(body.imageUrl);
+  const imageKey = validateAssetKey(body.imageKey);
 
-  if (!name || !description || !Number.isFinite(price) || price <= 0 || !Number.isInteger(sortOrder) || typeof isAvailable !== 'boolean') {
+  if (!name || !description || !Number.isFinite(price) || price <= 0 || !Number.isInteger(sortOrder) || typeof isAvailable !== 'boolean' || imageUrl === undefined || imageKey === undefined) {
     return null;
   }
 
@@ -49,7 +54,9 @@ const parseBody = (input: unknown): UpdatePayload | null => {
     isAvailable,
     badge: normalizeOptionalString(body.badge),
     promoLabel: normalizeOptionalString(body.promoLabel),
-    sortOrder
+    sortOrder,
+    imageUrl,
+    imageKey
   };
 };
 
@@ -78,10 +85,10 @@ export const onRequestPatch: PagesFunction<Env> = async ({ env, params, request 
 
   const result = await env.BOG_MENU_DB.prepare(
     `UPDATE menu_items
-     SET name = ?, description = ?, price_cents = ?, is_available = ?, badge = ?, promo_label = ?, sort_order = ?, updated_at = CURRENT_TIMESTAMP
+     SET name = ?, description = ?, price_cents = ?, is_available = ?, badge = ?, promo_label = ?, sort_order = ?, image_url = ?, image_key = ?, updated_at = CURRENT_TIMESTAMP
      WHERE sku = ?`
   )
-    .bind(payload.name, payload.description, priceCents, payload.isAvailable ? 1 : 0, payload.badge, payload.promoLabel, payload.sortOrder, sku)
+    .bind(payload.name, payload.description, priceCents, payload.isAvailable ? 1 : 0, payload.badge, payload.promoLabel, payload.sortOrder, payload.imageUrl, payload.imageKey, sku)
     .run();
 
   if (!result.success || (result.meta?.changes ?? 0) < 1) return json(404, { ok: false, error: 'Invalid payload' });

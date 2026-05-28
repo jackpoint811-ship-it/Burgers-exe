@@ -10,6 +10,7 @@ export type DataSource = 'd1' | 'mock' | 'fallback';
 export type AssetRef = {
   imageUrl?: string;
   imageKey?: string;
+  contentType?: string;
   alt: string;
   placeholder: string;
 };
