@@ -142,3 +142,76 @@ bucket_name = "burgers-exe-assets-v2-preview"
 - El botón “Quitar imagen / usar placeholder” limpia referencias en D1 y, si hay bucket, intenta borrar el objeto anterior bajo `promos/`; Public V2 vuelve al placeholder.
 - No existe upload público, no hay listado de bucket, no se expone el token y Public V2 solo lee assets desde `/api/assets-v2/<key>`.
 - Este flujo sigue siendo preview/admin-only y no conecta órdenes reales, pagos reales, `/api/order`, `/api/rpc`, Apps Script, Sheets, V1 ni producción.
+
+## V2-9A órdenes reales: backend base D1
+
+Esta fase agrega la base backend para órdenes reales V2 sin conectar todavía Public V2 UI ni Internal V2 UI.
+
+### Persistencia
+- Fuente principal: D1 usando el binding existente `BOG_MENU_DB`.
+- Tablas nuevas:
+  - `orders_v2`
+  - `order_items_v2`
+  - `order_events_v2`
+- No se usa Sheets como fuente de órdenes V2 en esta fase.
+- No se exporta a Apps Script/Sheets en esta fase.
+- No se envía WhatsApp real.
+- No hay pagos reales; `payment_status` inicia como `pending`.
+
+### Migración
+
+Local:
+
+```bash
+npm run db:v2:orders:migrate:local
+```
+
+Remota preview:
+
+```bash
+npm run db:v2:orders:migrate:remote
+```
+
+Ambos scripts ejecutan `migrations/0003_v2_orders_schema.sql` sobre `burgers-exe-menu-v2-preview`, el D1 usado por `BOG_MENU_DB`.
+
+### Variables y flags
+- `BOG_MENU_DB`: requerido para todos los endpoints de órdenes V2.
+- `ORDERS_V2_WRITE_ENABLED`: opcional para `POST /api/orders-v2`.
+  - Si no existe, la escritura se permite para preview.
+  - Si existe y es exactamente `false`, el endpoint responde `ORDERING_DISABLED`.
+- `BOG_ORDERS_ADMIN_TOKEN`: token admin opcional para endpoints admin.
+- `BOG_MENU_ADMIN_TOKEN`: fallback para endpoints admin si `BOG_ORDERS_ADMIN_TOKEN` no existe.
+
+### Endpoints
+
+#### `POST /api/orders-v2`
+- Crea una orden V2 en D1.
+- Acepta `Idempotency-Key` por header o `idempotencyKey` en body.
+- Si no recibe idempotency key, genera una server-side y la devuelve en la respuesta para facilitar pruebas con curl.
+- Recalcula subtotal/total desde `menu_items.price_cents`; no confía en totales del cliente.
+- Valida que todos los SKUs existan y estén disponibles.
+- Inserta evento `ORDER_CREATED`.
+
+#### `GET /api/orders-v2-admin`
+- Lista órdenes V2 desde D1.
+- Requiere `Authorization: Bearer <token>`.
+- Soporta filtros `status`, `includeTerminal`, `limit`, `from`, `to`.
+- Por defecto excluye órdenes terminales (`delivered`, `cancelled`).
+
+#### `PATCH /api/orders-v2-admin/:id/status`
+- Cambia estado de una orden V2.
+- Requiere `Authorization: Bearer <token>`.
+- Transiciones permitidas:
+  - `new -> preparing | cancelled`
+  - `preparing -> ready | cancelled`
+  - `ready -> delivered | cancelled`
+  - `delivered` y `cancelled` son terminales.
+- Inserta `STATUS_CHANGED` u `ORDER_CANCELLED` en `order_events_v2`.
+
+### No cambia en V2-9A
+- No se toca `/api/order` legacy.
+- No se toca `/api/rpc` legacy.
+- No se toca Apps Script.
+- No se tocan Sheets.
+- No se toca `BOG_ACTIVE_ENV`.
+- No se conecta UI pública o interna todavía.

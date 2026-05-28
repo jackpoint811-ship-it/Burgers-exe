@@ -102,6 +102,97 @@ export type MockOrder = {
   timeline: OrderTimelineEvent[];
 };
 
+
+export type OrderV2Status = 'new' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
+export type OrderV2Mode = 'pickup' | 'delivery';
+export type OrderV2PaymentMethod = 'cash' | 'transfer' | 'card' | 'unknown';
+export type OrderV2PaymentStatus = 'pending' | 'paid' | 'cancelled';
+export type OrderV2Source = 'public-v2' | 'internal-v2' | 'seed' | 'import';
+
+export type OrderV2Item = {
+  id: string;
+  orderId: string;
+  sku: string;
+  name: string;
+  qty: number;
+  unitPrice: number;
+  lineTotal: number;
+  snapshot?: Record<string, unknown>;
+  createdAt?: string;
+};
+
+export type OrderV2Event = {
+  id: string;
+  orderId: string;
+  type: string;
+  previousStatus?: OrderV2Status;
+  nextStatus?: OrderV2Status;
+  detail?: Record<string, unknown>;
+  actor: string;
+  createdAt: string;
+};
+
+export type OrderV2 = {
+  id: string;
+  folio: string;
+  customerName: string;
+  customerPhone: string;
+  orderMode: OrderV2Mode;
+  paymentMethod: OrderV2PaymentMethod;
+  paymentStatus: OrderV2PaymentStatus;
+  notes?: string;
+  subtotal: number;
+  total: number;
+  status: OrderV2Status;
+  source: OrderV2Source;
+  createdAt: string;
+  updatedAt: string;
+  items: OrderV2Item[];
+  events?: OrderV2Event[];
+};
+
+export type OrderV2Error = { code: string; message: string };
+
+export type CreateOrderV2Payload = {
+  customer: { name: string; phone: string };
+  orderMode: OrderV2Mode;
+  paymentMethod?: OrderV2PaymentMethod;
+  notes?: string;
+  items: Array<{ sku: string; qty: number }>;
+  idempotencyKey?: string;
+};
+
+export type CreateOrderV2Response = {
+  ok: boolean;
+  data?: {
+    order: Pick<OrderV2, 'id' | 'folio' | 'status' | 'createdAt'> & {
+      subtotal: number;
+      total: number;
+      currency: 'MXN';
+      idempotencyKey: string;
+    };
+    idempotent?: boolean;
+  };
+  error?: OrderV2Error;
+};
+
+export type OrdersV2AdminResponse = {
+  ok: boolean;
+  data?: { orders: OrderV2[]; source?: 'd1' };
+  error?: OrderV2Error;
+};
+
+export type UpdateOrderV2StatusPayload = {
+  status: OrderV2Status;
+  reason?: string;
+};
+
+export type UpdateOrderV2StatusResponse = {
+  ok: boolean;
+  data?: { order: OrderV2; event?: OrderV2Event };
+  error?: OrderV2Error;
+};
+
 export type KitchenEvent = { id: string; orderId: string; label: string; at: string };
 export type OperatorStats = {
   activeOrders: number;

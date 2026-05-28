@@ -127,3 +127,50 @@ Si aparece conexión real a backend productivo o dependencia operativa (auth/she
 - Confirmar que sin token admin no edita, no sube y no quita imágenes.
 - Confirmar que Public V2 no contiene upload ni llama endpoints admin de promos.
 - Confirmar que no se agregaron llamadas a `/api/order` ni `/api/rpc`.
+
+## V2-9A órdenes D1 backend base
+
+### Migración
+- [ ] Ejecutar local: `npm run db:v2:orders:migrate:local`.
+- [ ] Ejecutar remoto preview cuando aplique: `npm run db:v2:orders:migrate:remote`.
+- [ ] Confirmar que existen `orders_v2`, `order_items_v2`, `order_events_v2` en el D1 ligado a `BOG_MENU_DB`.
+
+### POST /api/orders-v2
+- [ ] Probar creación con curl y `Idempotency-Key`:
+
+```bash
+curl -i -X POST "$PUBLIC_V2_URL/api/orders-v2" \
+  -H 'Content-Type: application/json' \
+  -H 'Idempotency-Key: qa-v2-9a-001' \
+  --data '{"customer":{"name":"QA Tester","phone":"5512345678"},"orderMode":"pickup","paymentMethod":"cash","items":[{"sku":"BRG-OG","qty":1}],"notes":"QA V2-9A"}'
+```
+
+- [ ] Repetir el mismo curl y confirmar respuesta `idempotent: true` sin duplicar orden.
+- [ ] Probar SKU inexistente/no disponible y confirmar `ITEM_UNAVAILABLE`.
+- [ ] Confirmar que el total viene de D1 y no de valores enviados por cliente.
+
+### GET /api/orders-v2-admin
+- [ ] Probar listado con token:
+
+```bash
+curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
+  -H "Authorization: Bearer $BOG_ORDERS_ADMIN_TOKEN"
+```
+
+- [ ] Confirmar que responde órdenes con items y eventos.
+- [ ] Confirmar que sin token responde 401 o 503 si no hay token configurado.
+
+### PATCH /api/orders-v2-admin/:id/status
+- [ ] Cambiar `new -> preparing`.
+- [ ] Cambiar `preparing -> ready`.
+- [ ] Cambiar `ready -> delivered`.
+- [ ] Intentar cambiar una orden `delivered` y confirmar `INVALID_STATUS_TRANSITION`.
+- [ ] Cancelar una orden no terminal y confirmar evento `ORDER_CANCELLED`.
+
+### No-touch checks
+- [ ] Confirmar que `/api/order` legacy no fue modificado.
+- [ ] Confirmar que `/api/rpc` legacy no fue modificado.
+- [ ] Confirmar que Apps Script y `.gs` no fueron modificados.
+- [ ] Confirmar que Sheets contracts no fueron modificados.
+- [ ] Confirmar que `BOG_ACTIVE_ENV` no fue modificado.
+- [ ] Confirmar que Public V2 UI e Internal V2 UI siguen sin conectarse a órdenes reales en este PR.
