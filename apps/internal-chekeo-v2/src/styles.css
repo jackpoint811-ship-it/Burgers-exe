@@ -10,8 +10,8 @@ body{font-family:Inter,system-ui,sans-serif;background:#050507;color:#f4f4f5;min
 .btn-sm{@apply rounded border border-zinc-700 px-2 py-1 text-[11px]}
 .danger{@apply border-rose-700 text-rose-300}
 .input{@apply mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2}
-.tabs{@apply grid grid-cols-5 gap-1 overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-950 p-1}
-.tab{@apply min-w-0 whitespace-nowrap rounded-lg px-2 py-1.5 text-[11px] text-zinc-300 data-[state=active]:bg-cyan-500/20 data-[state=active]:font-semibold data-[state=active]:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400}
+.tabs{@apply flex gap-1 overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-950 p-1}
+.tab{@apply shrink-0 whitespace-nowrap rounded-lg px-2 py-1.5 text-[11px] text-zinc-300 data-[state=active]:bg-cyan-500/20 data-[state=active]:font-semibold data-[state=active]:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400}
 .row{@apply flex items-center justify-between gap-2 rounded-lg border border-zinc-800 bg-zinc-900/60 p-2 text-left}
 .chip{@apply rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-xs text-cyan-200}
 .overlay{@apply fixed inset-0 bg-black/70}

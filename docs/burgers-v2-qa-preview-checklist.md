@@ -59,3 +59,16 @@ Si aparece conexión real a backend productivo o dependencia operativa (auth/she
 - Public V2 validado con micro ajustes de legibilidad/spacing en iPhone SE sin cambiar flujo.
 - Confirmación explícita: mock-only, sin tocar V1/backend/producción.
 - Gate de avance: con screenshots QA aprobados, iniciar V2-6 datos reales.
+
+## QA catálogo admin V2 (internal preview)
+- Abrir internal preview.
+- Entrar con PIN mock.
+- Ir a tab **Catálogo**.
+- Confirmar carga de catálogo live (`source=d1`).
+- Ingresar token admin preview y activar edición.
+- Editar descripción/precio/disponibilidad de un item.
+- Guardar y confirmar feedback "Producto actualizado".
+- Confirmar que `GET /api/menu-v2` refleja cambios.
+- Confirmar que public preview refleja cambios de catálogo.
+- Confirmar que sin token no permite editar.
+- Confirmar que con token incorrecto muestra error Unauthorized.
