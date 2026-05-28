@@ -88,3 +88,21 @@ Si aparece conexión real a backend productivo o dependencia operativa (auth/she
 - [ ] Confirmar que `/api/assets-v2/<key>` responde 404 para `..`, backslash, doble slash y extensiones no permitidas.
 - [ ] Confirmar que no hay llamadas productivas a `/api/order` ni `/api/rpc`.
 - [ ] Confirmar que no existe upload público ni listado público del bucket.
+
+## V2-8.2 Internal catalog image upload QA
+- [ ] Entrar a Internal Chekeo V2 preview.
+- [ ] Abrir tab Catálogo.
+- [ ] Activar modo admin con `BOG_MENU_ADMIN_TOKEN`; confirmar que el token se guarda solo en `sessionStorage`.
+- [ ] Editar un producto con `source: d1`.
+- [ ] En “Imagen del producto”, subir una imagen válida `.jpg`, `.png`, `.webp` o `.avif` menor o igual a 5 MB.
+- [ ] Confirmar estado “Subiendo…” y mensaje “Imagen actualizada”.
+- [ ] Confirmar que la card/lista del catálogo muestra el nuevo `imageKey` bajo `menu/`.
+- [ ] Confirmar que `GET /api/menu-v2` muestra `imageKey` actualizado e `imageUrl` vacío/nulo para ese SKU.
+- [ ] Confirmar que Public Order V2 muestra la imagen subida desde `/api/assets-v2/<imageKey>` sin redeploy.
+- [ ] Usar “Quitar imagen / usar placeholder”.
+- [ ] Confirmar que `GET /api/menu-v2` limpia `imageKey` e `imageUrl` para ese SKU.
+- [ ] Confirmar que Public Order V2 vuelve al placeholder visual.
+- [ ] Probar archivo mayor a 5 MB y confirmar rechazo frontend/backend.
+- [ ] Probar tipo no permitido (SVG, GIF, HTML o content-type vacío) y confirmar rechazo.
+- [ ] Confirmar que sin token admin no sube ni quita imágenes.
+- [ ] Confirmar que no existe upload en `public-order-v2` y que no se llama `/api/order` ni `/api/rpc`.

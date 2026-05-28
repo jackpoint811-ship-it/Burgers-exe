@@ -16,3 +16,5 @@ body{font-family:Inter,system-ui,sans-serif;background:#050507;color:#f4f4f5;min
 .chip{@apply rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-xs text-cyan-200}
 .overlay{@apply fixed inset-0 bg-black/70}
 .modal{@apply fixed left-1/2 top-1/2 w-[calc(100%-1rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 rounded-xl border border-zinc-700 bg-zinc-950 p-4}
+.image-preview{@apply flex h-28 w-full shrink-0 items-center justify-center overflow-hidden rounded-xl border border-zinc-700 bg-zinc-900 text-xs uppercase tracking-widest text-zinc-500 sm:w-32}
+.image-preview img{@apply h-full w-full object-cover}
