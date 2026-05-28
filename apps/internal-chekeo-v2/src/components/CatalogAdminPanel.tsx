@@ -74,8 +74,9 @@ export function CatalogAdminPanel() {
         headers: { 'content-type': 'application/json', Authorization: `Bearer ${adminToken}` },
         body: JSON.stringify({ name: form.name, description: form.description, price: Number(form.price), isAvailable: form.isAvailable, badge: form.badge || null, promoLabel: form.promoLabel || null, sortOrder: Number(form.sortOrder) })
       });
-      const data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data.error ?? 'Error al actualizar producto');
+      const data: unknown = await res.json();
+      const response = (data && typeof data === 'object') ? (data as { ok?: boolean; error?: string }) : {};
+      if (!res.ok || !response.ok) throw new Error(response.error ?? 'Error al actualizar producto');
       setEditing(null); setForm(null); setNotice('Producto actualizado');
       await loadMenu();
     } catch (e) {
