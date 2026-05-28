@@ -118,3 +118,27 @@ bucket_name = "burgers-exe-assets-v2-preview"
 - Después de configurar bindings + secret, hacer redeploy de internal preview.
 - Validar con curl/UI del tab Catálogo (Authorization Bearer token).
 - Este flujo es solo admin preview; no reemplaza producción final ni conecta órdenes reales.
+
+## V2-8.3 admin de promos con imágenes (preview)
+- Internal Chekeo V2 ahora administra promociones desde Catálogo > Promos usando el mismo token admin de productos.
+- Endpoints admin nuevos, same-origin y sin CORS:
+  - `PATCH /api/menu-v2-admin/promos/:id` edita texto y referencias seguras de asset para una promo existente.
+  - `POST /api/menu-v2-admin/promos/:id/image` sube una imagen de promo a R2 y actualiza D1.
+  - `DELETE /api/menu-v2-admin/promos/:id/image` quita `asset_image_key`/`asset_image_url` y fuerza placeholder público.
+- Requisitos:
+  - `BOG_MENU_DB` para leer/actualizar `promo_cards`.
+  - `BOG_MENU_ADMIN_TOKEN` para todos los endpoints admin con `Authorization: Bearer <token>`.
+  - `BOG_ASSETS_BUCKET` para `POST`; en `DELETE` es opcional y solo se usa para intentar borrar el objeto anterior.
+- `PATCH` solo permite campos seguros: `title`, `description`, `badge`, `promoLabel`, `isAvailable`, `isFeatured`, `sortOrder`, `imageUrl`, `imageKey`. No inserta, no borra, no modifica `id`, no toca productos, no toca órdenes.
+- Validación de imagen manual:
+  - `imageUrl` vacío/null, ruta same-origin que empieza con `/` o URL `https://`.
+  - `imageKey` vacío/null o key sin traversal (`..`), backslashes ni doble slash, con extensión `.jpg`, `.jpeg`, `.png`, `.webp` o `.avif`.
+- Upload usa `multipart/form-data` con exactamente un campo `file`.
+- Límite máximo: 5 MB.
+- Tipos aceptados: `image/jpeg`, `image/png`, `image/webp`, `image/avif`.
+- Tipos rechazados: SVG, GIF, data URLs, content-type vacío y múltiples archivos.
+- Las keys se generan automáticamente bajo el prefijo R2 `promos/`, con ID normalizado + timestamp, por ejemplo `promos/promo-combo-og-20260528T190000Z.jpg`.
+- Al subir una nueva imagen, si existía un `asset_image_key` previo bajo `promos/`, se intenta borrar de R2 best-effort sin bloquear la actualización. No se borran URLs externas.
+- El botón “Quitar imagen / usar placeholder” limpia referencias en D1 y, si hay bucket, intenta borrar el objeto anterior bajo `promos/`; Public V2 vuelve al placeholder.
+- No existe upload público, no hay listado de bucket, no se expone el token y Public V2 solo lee assets desde `/api/assets-v2/<key>`.
+- Este flujo sigue siendo preview/admin-only y no conecta órdenes reales, pagos reales, `/api/order`, `/api/rpc`, Apps Script, Sheets, V1 ni producción.
