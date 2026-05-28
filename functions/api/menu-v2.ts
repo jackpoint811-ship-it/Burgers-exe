@@ -1,5 +1,5 @@
 import { menuCategories, menuItems, promoCards, siteConfig, type MenuCategory, type MenuItem, type MenuV2Response, type PromoCard, type SiteConfig } from '../../packages/config/src';
-import { mapD1ItemToMenuItem, parseJsonArray } from './_menu-v2-utils';
+import { mapD1ItemToMenuItem, mapD1PromoToPromoCard, parseJsonArray } from './_menu-v2-utils';
 
 type Env = { BOG_MENU_DB?: D1Database };
 
@@ -27,25 +27,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
 
     const categories: MenuCategory[] = (categoriesResult.results ?? []).map((row: any) => ({ ...row }));
     const items: MenuItem[] = (itemsResult.results ?? []).map((row: any) => mapD1ItemToMenuItem(row));
-    const promos: PromoCard[] = (promosResult.results ?? []).map((row: any) => ({
-      id: row.id,
-      title: row.title,
-      description: row.description,
-      badge: row.badge ?? undefined,
-      promoLabel: row.promoLabel ?? undefined,
-      isFeatured: Boolean(row.isFeatured),
-      isAvailable: Boolean(row.isAvailable),
-      sortOrder: Number(row.sortOrder),
-      tags: parseJsonArray(row.tags_json),
-      comboLinks: parseJsonArray(row.combo_links_json),
-      asset: {
-        alt: row.asset_alt,
-        placeholder: row.asset_placeholder,
-        imageUrl: row.asset_image_url ?? undefined,
-        imageKey: row.asset_image_key ?? undefined
-      },
-      updatedAt: row.updatedAt
-    }));
+    const promos: PromoCard[] = (promosResult.results ?? []).map((row: any) => mapD1PromoToPromoCard(row));
 
     const configRow = siteResult as any;
     const resolvedSiteConfig: SiteConfig = configRow

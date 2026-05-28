@@ -106,3 +106,24 @@ Si aparece conexión real a backend productivo o dependencia operativa (auth/she
 - [ ] Probar tipo no permitido (SVG, GIF, HTML o content-type vacío) y confirmar rechazo.
 - [ ] Confirmar que sin token admin no sube ni quita imágenes.
 - [ ] Confirmar que no existe upload en `public-order-v2` y que no se llama `/api/order` ni `/api/rpc`.
+
+## V2-8.3 QA — Promos admin + imágenes R2
+- Entrar a Internal Chekeo V2 preview.
+- Abrir tab Catálogo.
+- Activar token admin preview.
+- Abrir la sección interna Promos.
+- Confirmar Source: `Catálogo live` (`source: d1`). Si aparece `Fallback local` o `Catálogo local`, validar que edición/upload quedan bloqueados.
+- Buscar y abrir la promo Combo OG.
+- Editar título y descripción, guardar y confirmar mensaje “Promo actualizada”.
+- Confirmar en `GET /api/menu-v2` que la promo refleja texto nuevo y `source: d1`.
+- Subir una imagen de promo válida JPG/PNG/WebP/AVIF menor o igual a 5 MB.
+- Confirmar que `GET /api/menu-v2` muestra `promo.asset.imageKey` con prefijo `promos/`.
+- Abrir Public V2 y confirmar que muestra la imagen de promo sin redeploy.
+- En Internal V2, usar “Quitar imagen / usar placeholder”.
+- Confirmar que `GET /api/menu-v2` deja `promo.asset.imageKey` y `promo.asset.imageUrl` vacíos/ausentes.
+- Confirmar que Public V2 vuelve al placeholder visual de promo.
+- Probar archivo mayor a 5 MB y confirmar rechazo claro.
+- Probar tipo no permitido (SVG/GIF u otro) y confirmar rechazo claro.
+- Confirmar que sin token admin no edita, no sube y no quita imágenes.
+- Confirmar que Public V2 no contiene upload ni llama endpoints admin de promos.
+- Confirmar que no se agregaron llamadas a `/api/order` ni `/api/rpc`.

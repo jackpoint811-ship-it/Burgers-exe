@@ -102,3 +102,9 @@
 - `DELETE /api/menu-v2-admin/items/:sku/image` limpia `image_key`/`image_url` para volver al placeholder y, si hay R2 disponible, intenta borrar el asset previo bajo `menu/`.
 - Public Order V2 no sube imágenes: solo lee `imageKey` desde `/api/assets-v2/<key>` y mantiene fallback visual si no hay imagen o si falla la carga.
 - Esta fase no conecta órdenes reales, pagos reales, `/api/order`, `/api/rpc`, Apps Script, Sheets, V1 ni producción.
+
+## V2-8.3 Internal promo admin + R2 images (preview)
+- Internal Chekeo V2 Catálogo agrega subtab Promos para editar `promo_cards` en D1 con `BOG_MENU_ADMIN_TOKEN`.
+- Se agregan endpoints admin protegidos para actualizar promos y subir/quitar imágenes de promo en R2 bajo `promos/`.
+- Public Order V2 continúa solo leyendo `/api/menu-v2` y `/api/assets-v2/<key>`; no tiene upload público ni endpoints admin.
+- La fase mantiene órdenes reales, pagos reales, `/api/order`, `/api/rpc`, Apps Script, Sheets, V1, legacy y `BOG_ACTIVE_ENV` sin cambios.
