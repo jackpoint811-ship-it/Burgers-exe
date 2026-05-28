@@ -4,7 +4,7 @@ import { Button, Card } from '@ui/index';
 
 const ADMIN_TOKEN_KEY = 'bog-menu-admin-token-v2';
 
-type EditForm = { name: string; description: string; price: string; isAvailable: boolean; badge: string; promoLabel: string; sortOrder: string };
+type EditForm = { name: string; description: string; price: string; isAvailable: boolean; badge: string; promoLabel: string; sortOrder: string; imageUrl: string; imageKey: string };
 
 export function CatalogAdminPanel() {
   const [menu, setMenu] = useState<MenuV2Response | null>(null);
@@ -52,7 +52,7 @@ export function CatalogAdminPanel() {
 
   const beginEdit = (item: MenuItem) => {
     setEditing(item);
-    setForm({ name: item.name, description: item.description, price: String(item.price), isAvailable: item.isAvailable, badge: item.badge ?? '', promoLabel: item.promoLabel ?? '', sortOrder: String(item.sortOrder) });
+    setForm({ name: item.name, description: item.description, price: String(item.price), isAvailable: item.isAvailable, badge: item.badge ?? '', promoLabel: item.promoLabel ?? '', sortOrder: String(item.sortOrder), imageUrl: item.imageUrl ?? '', imageKey: item.imageKey ?? '' });
     setSaveError(null);
   };
 
@@ -62,6 +62,11 @@ export function CatalogAdminPanel() {
     if (!form.description.trim()) return 'Descripción requerida';
     if (!(Number(form.price) > 0)) return 'Precio debe ser mayor a 0';
     if (!Number.isInteger(Number(form.sortOrder))) return 'Orden debe ser entero';
+    const imageUrl = form.imageUrl.trim();
+    if (imageUrl && !((imageUrl.startsWith('/') && !imageUrl.startsWith('//')) || imageUrl.startsWith('https://'))) return 'Image URL debe empezar con / o https://';
+    const imageKey = form.imageKey.trim();
+    if (imageKey && (imageKey.includes('..') || imageKey.includes('\\') || imageKey.includes('//'))) return 'Image key no debe contener .., \\ ni //';
+    if (imageKey && !/\.(jpe?g|png|webp|avif)$/i.test(imageKey)) return 'Image key debe terminar en .jpg, .jpeg, .png, .webp o .avif';
     return null;
   }, [form]);
 
@@ -72,7 +77,7 @@ export function CatalogAdminPanel() {
       const res = await fetch(`/api/menu-v2-admin/items/${encodeURIComponent(editing.sku)}`, {
         method: 'PATCH',
         headers: { 'content-type': 'application/json', Authorization: `Bearer ${adminToken}` },
-        body: JSON.stringify({ name: form.name, description: form.description, price: Number(form.price), isAvailable: form.isAvailable, badge: form.badge || null, promoLabel: form.promoLabel || null, sortOrder: Number(form.sortOrder) })
+        body: JSON.stringify({ name: form.name, description: form.description, price: Number(form.price), isAvailable: form.isAvailable, badge: form.badge || null, promoLabel: form.promoLabel || null, sortOrder: Number(form.sortOrder), imageUrl: form.imageUrl || null, imageKey: form.imageKey || null })
       });
       const data: unknown = await res.json();
       const response = (data && typeof data === 'object') ? (data as { ok?: boolean; error?: string }) : {};
@@ -101,8 +106,8 @@ export function CatalogAdminPanel() {
     {loading ? <Card>Cargando catálogo…</Card> : null}
     {error ? <Card className='text-rose-300'>{error}</Card> : null}
 
-    {!loading && !error ? <div className='grid gap-2'>{filtered.map((item) => <Card key={item.sku} className='p-3'><div className='flex flex-wrap items-start justify-between gap-2'><div><p className='font-semibold'>{item.name} <span className='muted'>({item.sku})</span></p><p className='text-xs text-zinc-400'>{item.description}</p><p className='text-xs'>${item.price} · {item.category} · {item.isAvailable ? 'Disponible' : 'Agotado'} · Orden {item.sortOrder}</p></div><Button disabled={!adminToken || menu?.source !== 'd1'} className='border border-zinc-700 bg-zinc-900 disabled:opacity-40' onClick={() => beginEdit(item)}>Editar</Button></div></Card>)}</div> : null}
+    {!loading && !error ? <div className='grid gap-2'>{filtered.map((item) => <Card key={item.sku} className='p-3'><div className='flex flex-wrap items-start justify-between gap-2'><div><p className='font-semibold'>{item.name} <span className='muted'>({item.sku})</span></p><p className='text-xs text-zinc-400'>{item.description}</p><p className='text-xs'>${item.price} · {item.category} · {item.isAvailable ? 'Disponible' : 'Agotado'} · Orden {item.sortOrder}</p>{item.imageKey || item.imageUrl ? <p className='text-xs text-cyan-200'>Asset: {item.imageKey ?? item.imageUrl}</p> : null}</div><Button disabled={!adminToken || menu?.source !== 'd1'} className='border border-zinc-700 bg-zinc-900 disabled:opacity-40' onClick={() => beginEdit(item)}>Editar</Button></div></Card>)}</div> : null}
 
-    {editing && form ? <div className='overlay' onClick={() => { if (!saving) { setEditing(null); setForm(null); } }}><section className='modal' onClick={(e) => e.stopPropagation()}><h3 className='font-bold'>Editar {editing.sku}</h3><p className='muted'>SKU solo lectura</p><div className='mt-2 grid gap-2'><input className='input md:mt-0' value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder='Nombre' /><textarea className='input md:mt-0' value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder='Descripción' /><input className='input md:mt-0' value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder='Precio' /><label className='flex items-center gap-2 text-sm'><input type='checkbox' checked={form.isAvailable} onChange={(e) => setForm({ ...form, isAvailable: e.target.checked })} /> Disponible</label><input className='input md:mt-0' value={form.badge} onChange={(e) => setForm({ ...form, badge: e.target.value })} placeholder='Badge (opcional)' /><input className='input md:mt-0' value={form.promoLabel} onChange={(e) => setForm({ ...form, promoLabel: e.target.value })} placeholder='Promo label (opcional)' /><input className='input md:mt-0' value={form.sortOrder} onChange={(e) => setForm({ ...form, sortOrder: e.target.value })} placeholder='Orden' /></div>{validationError ? <p className='mt-2 text-xs text-rose-300'>{validationError}</p> : null}{saveError ? <p className='mt-2 text-xs text-rose-300'>{saveError}</p> : null}<div className='mt-3 flex gap-2'><Button className='flex-1 border border-zinc-700 bg-zinc-900' onClick={() => { setEditing(null); setForm(null); }} disabled={saving}>Cancelar</Button><Button className='flex-1 bg-cyan-400 text-black disabled:opacity-40' onClick={onSave} disabled={saving || Boolean(validationError)}>Guardar</Button></div></section></div> : null}
+    {editing && form ? <div className='overlay' onClick={() => { if (!saving) { setEditing(null); setForm(null); } }}><section className='modal' onClick={(e) => e.stopPropagation()}><h3 className='font-bold'>Editar {editing.sku}</h3><p className='muted'>SKU solo lectura</p><div className='mt-2 grid gap-2'><input className='input md:mt-0' value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder='Nombre' /><textarea className='input md:mt-0' value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder='Descripción' /><input className='input md:mt-0' value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder='Precio' /><label className='flex items-center gap-2 text-sm'><input type='checkbox' checked={form.isAvailable} onChange={(e) => setForm({ ...form, isAvailable: e.target.checked })} /> Disponible</label><input className='input md:mt-0' value={form.badge} onChange={(e) => setForm({ ...form, badge: e.target.value })} placeholder='Badge (opcional)' /><input className='input md:mt-0' value={form.promoLabel} onChange={(e) => setForm({ ...form, promoLabel: e.target.value })} placeholder='Promo label (opcional)' /><input className='input md:mt-0' value={form.sortOrder} onChange={(e) => setForm({ ...form, sortOrder: e.target.value })} placeholder='Orden' /><label className='text-xs uppercase tracking-widest text-zinc-300'>Image URL<input className='input md:mt-1' value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} placeholder='Image URL' /></label><label className='text-xs uppercase tracking-widest text-zinc-300'>Image key<input className='input md:mt-1' value={form.imageKey} onChange={(e) => setForm({ ...form, imageKey: e.target.value })} placeholder='menu/burger-og.webp' /></label><p className='text-xs text-zinc-400'>Image URL puede ser /api/assets-v2/... o URL externa segura https://. Image key apunta a R2, ejemplo menu/burger-og.webp. No hay upload de imágenes en este PR.</p></div>{validationError ? <p className='mt-2 text-xs text-rose-300'>{validationError}</p> : null}{saveError ? <p className='mt-2 text-xs text-rose-300'>{saveError}</p> : null}<div className='mt-3 flex gap-2'><Button className='flex-1 border border-zinc-700 bg-zinc-900' onClick={() => { setEditing(null); setForm(null); }} disabled={saving}>Cancelar</Button><Button className='flex-1 bg-cyan-400 text-black disabled:opacity-40' onClick={onSave} disabled={saving || Boolean(validationError)}>Guardar</Button></div></section></div> : null}
   </section>;
 }

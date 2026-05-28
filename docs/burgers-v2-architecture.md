@@ -88,3 +88,10 @@
 - Continúa 100% mock-only local (sin integración backend, sin endpoints productivos, sin auth real).
 - No se modificó V1, backend operativo actual, legacy ni Cloudflare Functions actuales.
 - Si QA de screenshots de preview pasa, la siguiente fase habilitada es V2-6 para integración con datos reales.
+
+## V2-8 R2 catalog assets (preview)
+- `GET /api/assets-v2/<key>` sirve imágenes same-origin desde el binding R2 `BOG_ASSETS_BUCKET` para catálogo V2.
+- Public Order V2 resuelve `imageUrl` seguro o `imageKey` R2 y conserva placeholders visuales si falta o falla la imagen.
+- Internal Chekeo V2 permite editar referencias `imageUrl`/`imageKey` de productos; no sube archivos.
+- La validación bloquea traversal, backslashes, doble slash, esquemas inseguros y extensiones no permitidas.
+- No cambia V1, `/api/order`, `/api/rpc`, Apps Script, Sheets, legacy ni `BOG_ACTIVE_ENV`.

@@ -5,3 +5,7 @@ compatibility_date = "2026-05-27"
 binding = "BOG_MENU_DB"
 database_name = "burgers-exe-menu-v2-preview"
 database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+[[r2_buckets]]
+binding = "BOG_ASSETS_BUCKET"
+bucket_name = "burgers-exe-assets-v2-preview"

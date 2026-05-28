@@ -72,3 +72,19 @@ Si aparece conexión real a backend productivo o dependencia operativa (auth/she
 - Confirmar que public preview refleja cambios de catálogo.
 - Confirmar que sin token no permite editar.
 - Confirmar que con token incorrecto muestra error Unauthorized.
+
+
+## QA R2 assets catálogo V2 (preview)
+- [ ] Configurar binding R2 `BOG_ASSETS_BUCKET` en `burgers-exe-public-v2-preview`.
+- [ ] Configurar binding R2 `BOG_ASSETS_BUCKET` en `burgers-exe-internal-v2-preview`.
+- [ ] Redeploy después de configurar el binding.
+- [ ] Subir imagen de prueba a R2, por ejemplo `menu/burger-og.webp`.
+- [ ] En Internal Chekeo V2 > Catálogo, editar un producto y guardar `imageKey=menu/burger-og.webp`.
+- [ ] Confirmar que `GET /api/menu-v2` devuelve `imageKey` para ese item.
+- [ ] Confirmar que Public Order V2 carga la imagen real desde `/api/assets-v2/menu/burger-og.webp`.
+- [ ] Confirmar fallback visual si `imageKey` apunta a una key inexistente.
+- [ ] Confirmar `alt` correcto: nombre del item o `promo.asset.alt` en promos.
+- [ ] Confirmar que el contenedor mantiene aspect ratio estable y no genera layout shift perceptible.
+- [ ] Confirmar que `/api/assets-v2/<key>` responde 404 para `..`, backslash, doble slash y extensiones no permitidas.
+- [ ] Confirmar que no hay llamadas productivas a `/api/order` ni `/api/rpc`.
+- [ ] Confirmar que no existe upload público ni listado público del bucket.
