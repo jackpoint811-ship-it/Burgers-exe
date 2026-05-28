@@ -60,3 +60,12 @@ Quita temporalmente binding `BOG_MENU_DB` en local/preview y valida que:
 - Si existe `imageUrl`, UI puede renderizar esa URL.
 - Si solo existe `imageKey`, usar placeholder por ahora.
 - Upload/publicación de assets en R2 queda fuera de esta fase.
+
+## Preview admin de catálogo (V2)
+- Nuevo endpoint: `PATCH /api/menu-v2-admin/items/:sku` (solo preview/internal).
+- Requiere binding D1 en `burgers-exe-internal-v2-preview`: `BOG_MENU_DB`.
+- Requiere secret/env en `burgers-exe-internal-v2-preview`: `BOG_MENU_ADMIN_TOKEN`.
+- Si `BOG_MENU_ADMIN_TOKEN` no existe, el endpoint responde `503 { ok:false, error:"Admin disabled" }`.
+- Después de configurar binding + secret, hacer redeploy de internal preview.
+- Validar con curl/UI del tab Catálogo (Authorization Bearer token).
+- Este flujo es solo admin preview; no reemplaza producción final.

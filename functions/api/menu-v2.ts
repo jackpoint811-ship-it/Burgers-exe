@@ -1,16 +1,7 @@
 import { menuCategories, menuItems, promoCards, siteConfig, type MenuCategory, type MenuItem, type MenuV2Response, type PromoCard, type SiteConfig } from '../../packages/config/src';
+import { mapD1ItemToMenuItem, parseJsonArray } from './_menu-v2-utils';
 
 type Env = { BOG_MENU_DB?: D1Database };
-
-const parseJsonArray = (value: unknown): string[] => {
-  if (typeof value !== 'string') return [];
-  try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed.filter((entry): entry is string => typeof entry === 'string') : [];
-  } catch {
-    return [];
-  }
-};
 
 const fallbackPayload = (source: MenuV2Response['source']): MenuV2Response => ({
   categories: [...menuCategories].sort((a, b) => a.sortOrder - b.sortOrder),
@@ -35,24 +26,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
     ]);
 
     const categories: MenuCategory[] = (categoriesResult.results ?? []).map((row: any) => ({ ...row }));
-    const items: MenuItem[] = (itemsResult.results ?? []).map((row: any) => ({
-      sku: row.sku,
-      category: row.category,
-      name: row.name,
-      description: row.description,
-      price: Number(row.price) / 100,
-      tags: parseJsonArray(row.tags_json),
-      badge: row.badge ?? undefined,
-      promoLabel: row.promoLabel ?? undefined,
-      isAvailable: Boolean(row.isAvailable),
-      isFeatured: Boolean(row.isFeatured),
-      sortOrder: Number(row.sortOrder),
-      imageUrl: row.imageUrl ?? undefined,
-      imageKey: row.imageKey ?? undefined,
-      comboLinks: parseJsonArray(row.combo_links_json),
-      upsellItems: parseJsonArray(row.upsell_items_json),
-      updatedAt: row.updatedAt
-    }));
+    const items: MenuItem[] = (itemsResult.results ?? []).map((row: any) => mapD1ItemToMenuItem(row));
     const promos: PromoCard[] = (promosResult.results ?? []).map((row: any) => ({
       id: row.id,
       title: row.title,
