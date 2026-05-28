@@ -101,10 +101,20 @@ bucket_name = "burgers-exe-assets-v2-preview"
 - No usar `r2.dev` como estrategia final de producción. Para producción, usar custom domain o continuar sirviendo por Pages Function según la estrategia de cache/seguridad.
 
 ## Preview admin de catálogo (V2)
-- Nuevo endpoint: `PATCH /api/menu-v2-admin/items/:sku` (solo preview/internal).
+- Endpoint de edición existente: `PATCH /api/menu-v2-admin/items/:sku` (solo preview/internal).
+- Nuevos endpoints V2-8.2 para imágenes de catálogo:
+  - `POST /api/menu-v2-admin/items/:sku/image` sube una imagen desde Internal Chekeo Catálogo, la guarda en R2 y actualiza D1 (`image_key = <key>`, `image_url = NULL`).
+  - `DELETE /api/menu-v2-admin/items/:sku/image` quita la imagen del producto, limpia `image_key`/`image_url` en D1 y activa el placeholder público.
 - Requiere binding D1 en `burgers-exe-internal-v2-preview`: `BOG_MENU_DB`.
+- Requiere binding R2 en `burgers-exe-internal-v2-preview`: `BOG_ASSETS_BUCKET` para upload; en DELETE es opcional para limpiar D1, pero si existe intenta borrar el objeto R2 actual.
 - Requiere secret/env en `burgers-exe-internal-v2-preview`: `BOG_MENU_ADMIN_TOKEN`.
-- Si `BOG_MENU_ADMIN_TOKEN` no existe, el endpoint responde `503 { ok:false, error:"Admin disabled" }`.
-- Después de configurar binding + secret, hacer redeploy de internal preview.
+- Si `BOG_MENU_ADMIN_TOKEN`, `BOG_MENU_DB` o el R2 requerido para upload no existe, el endpoint responde `503 { ok:false, error:"Admin disabled" }`.
+- Upload usa `multipart/form-data` con un solo campo `file`. Límite máximo: 5 MB. Tipos aceptados: `image/jpeg`, `image/png`, `image/webp`, `image/avif`. No acepta SVG, GIF, data URLs, content-type vacío ni múltiples archivos.
+- El key se genera automáticamente bajo `menu/` con SKU normalizado y timestamp, por ejemplo `menu/brg-og-20260528T184000Z.webp`; no se confía en rutas del filename original.
+- Al subir una imagen nueva, si existía un `image_key` previo bajo `menu/`, se intenta borrar de R2 sin bloquear la actualización si falla el delete. No se borran URLs externas.
+- El flujo UI en Catálogo es: activar token admin en `sessionStorage`, editar producto, seleccionar archivo, `Subir imagen`, confirmar nuevo `imageKey` en la card/lista y validar Public V2 sin redeploy.
+- El botón `Quitar imagen / usar placeholder` llama DELETE, limpia referencias en D1 y Public V2 vuelve al placeholder por fallback.
+- No hay upload público ni upload desde el cliente público; los endpoints admin son same-origin y requieren `Authorization: Bearer <token>`.
+- Después de configurar bindings + secret, hacer redeploy de internal preview.
 - Validar con curl/UI del tab Catálogo (Authorization Bearer token).
-- Este flujo es solo admin preview; no reemplaza producción final.
+- Este flujo es solo admin preview; no reemplaza producción final ni conecta órdenes reales.

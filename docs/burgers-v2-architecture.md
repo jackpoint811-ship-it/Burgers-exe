@@ -95,3 +95,10 @@
 - Internal Chekeo V2 permite editar referencias `imageUrl`/`imageKey` de productos; no sube archivos.
 - La validación bloquea traversal, backslashes, doble slash, esquemas inseguros y extensiones no permitidas.
 - No cambia V1, `/api/order`, `/api/rpc`, Apps Script, Sheets, legacy ni `BOG_ACTIVE_ENV`.
+
+## V2-8.2 Internal catalog image upload (preview)
+- Internal Chekeo V2 Catálogo agrega upload protegido por `BOG_MENU_ADMIN_TOKEN` para imágenes de producto.
+- `POST /api/menu-v2-admin/items/:sku/image` valida `multipart/form-data`, limita a 5 MB, acepta solo JPG/PNG/WebP/AVIF, guarda en R2 (`BOG_ASSETS_BUCKET`) bajo `menu/` y actualiza D1 (`BOG_MENU_DB`).
+- `DELETE /api/menu-v2-admin/items/:sku/image` limpia `image_key`/`image_url` para volver al placeholder y, si hay R2 disponible, intenta borrar el asset previo bajo `menu/`.
+- Public Order V2 no sube imágenes: solo lee `imageKey` desde `/api/assets-v2/<key>` y mantiene fallback visual si no hay imagen o si falla la carga.
+- Esta fase no conecta órdenes reales, pagos reales, `/api/order`, `/api/rpc`, Apps Script, Sheets, V1 ni producción.
