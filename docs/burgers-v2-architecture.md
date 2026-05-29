@@ -233,3 +233,28 @@ No-touch confirmations:
 - No changes to `/api/order` legacy or `/api/rpc` legacy.
 - No Apps Script or Sheets sync is introduced.
 - No changes to `cloudflare/public-order`, `cloudflare/internal-chekeo`, legacy code, migrations, payments, WhatsApp, or `BOG_ACTIVE_ENV`.
+
+## V2-11A Manual WhatsApp order actions
+
+V2-11A agrega acciones manuales de WhatsApp en Internal Chekeo V2 para órdenes reales operadas desde D1.
+
+Alcance:
+- Internal Chekeo V2 muestra acciones compactas “WhatsApp” y “Copiar mensaje” en tarjetas de pedido y en el modal de detalle.
+- La acción “WhatsApp” solo abre un deep link `https://wa.me/<phone>?text=<mensaje>` en una pestaña nueva con mensaje prellenado.
+- La acción “Copiar mensaje” usa el portapapeles del navegador y muestra estado inline de éxito o error.
+- El modal permite elegir templates operativos: Recibido, En preparación, Listo y Entregado.
+- El template default se deriva del status de la orden; `cancelled` usa el copy seguro de entregado/seguimiento y no introduce copy de cancelación.
+
+Privacidad y seguridad:
+- No hay envío automático de WhatsApp.
+- No se integra WhatsApp Business/API ni proveedores externos.
+- No se guarda el mensaje en D1, no se insertan eventos y no se llama ningún endpoint para estas acciones.
+- No se loguea teléfono ni mensaje.
+- No se agregan pagos reales.
+- D1 sigue siendo source of truth para órdenes; WhatsApp manual es una acción local del navegador.
+
+No cambia en V2-11A:
+- No cambia backend (`functions/api/**`).
+- No cambia Public Order V2.
+- No cambia `/api/order` legacy ni `/api/rpc` legacy.
+- No cambia Apps Script, Sheets, legacy, migrations, Cloudflare legacy apps, pagos reales, WhatsApp real API ni `BOG_ACTIVE_ENV`.
