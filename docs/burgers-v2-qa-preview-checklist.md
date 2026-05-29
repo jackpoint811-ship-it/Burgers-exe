@@ -277,3 +277,37 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 ### No-touch checks
 - [ ] No llamadas a `/api/order` ni `/api/rpc` desde Public V2 o Internal V2.
 - [ ] No se modifican `/api/order`, `/api/rpc`, `functions/api`, migrations, Apps Script, Sheets, legacy, `cloudflare/public-order`, `cloudflare/internal-chekeo`, pagos, WhatsApp ni `BOG_ACTIVE_ENV`.
+
+## V2-10A.1 Orders V2 CSV export QA
+
+### Endpoint/auth
+- [ ] `GET /api/orders-v2-admin/export.csv` without token responds `401 UNAUTHORIZED` JSON envelope.
+- [ ] `GET /api/orders-v2-admin/export.csv` with valid admin token responds `text/csv; charset=utf-8`.
+- [ ] Response includes `Content-Disposition: attachment; filename="orders-v2-export.csv"`.
+- [ ] Response includes `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`.
+
+### Filters
+- [ ] `includeTerminal=false` excludes `delivered` and `cancelled` orders.
+- [ ] `includeTerminal=true` includes `delivered` and `cancelled` orders.
+- [ ] `status=delivered` filters to delivered orders.
+- [ ] Invalid `status` responds `400 INVALID_STATUS`.
+- [ ] Invalid `limit` responds `400 INVALID_LIMIT`.
+- [ ] Invalid `from` or `to` responds `400 INVALID_DATE`.
+
+### CSV contract and safety
+- [ ] CSV contains exact headers: `folio,order_id,created_at,updated_at,status,customer_name,customer_phone,order_mode,payment_method,payment_status,notes,subtotal,total,items_summary,item_skus,item_qtys,event_count,source`.
+- [ ] CSV exports one row per order.
+- [ ] `subtotal` and `total` are pesos with two decimals.
+- [ ] `items_summary` contains related order items.
+- [ ] `event_count` contains the related event count.
+- [ ] CSV opens/imports in Sheets as a manual export.
+- [ ] Fields with commas, quotes, or newlines are escaped correctly.
+- [ ] Values that start with `=`, `+`, `-`, `@`, tab, or carriage return do not execute as formulas after export/import.
+
+### No-touch checks
+- [ ] Confirm no changes to `/api/order` legacy.
+- [ ] Confirm no changes to `/api/rpc` legacy.
+- [ ] Confirm no changes to Apps Script or `.gs` files.
+- [ ] Confirm no changes to Sheets contracts or automatic Sheets sync.
+- [ ] Confirm no changes to Public V2 UI or Internal V2 UI.
+- [ ] Confirm no changes to `cloudflare/public-order`, `cloudflare/internal-chekeo`, `legacy`, migrations, payments, WhatsApp, or `BOG_ACTIVE_ENV`.
