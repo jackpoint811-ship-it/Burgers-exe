@@ -272,3 +272,58 @@ V2-9D no agrega endpoints, tablas, migrations ni bindings de Cloudflare. El fluj
 - `PATCH /api/orders-v2-admin/:id/status`
 
 La consola interna sigue usando D1 orders mediante Backend V2 y token admin compartido en `sessionStorage`; Public V2 sigue creando órdenes con `Idempotency-Key`. No se modifica `/api/order`, `/api/rpc`, Apps Script, Sheets, legacy, `cloudflare/public-order`, `cloudflare/internal-chekeo`, pagos, WhatsApp ni `BOG_ACTIVE_ENV`.
+
+## V2-10A.1 Protected orders CSV export
+
+V2-10A.1 adds a read-only CSV export endpoint for operational reporting from D1 orders. D1 remains the source of truth; Sheets can consume the downloaded CSV manually, but there is no automatic Sheets sync and no Apps Script integration.
+
+### Endpoint
+
+#### `GET /api/orders-v2-admin/export.csv`
+- Returns `text/csv; charset=utf-8` with `Content-Disposition: attachment; filename="orders-v2-export.csv"`.
+- Requires `Authorization: Bearer <token>`.
+- Uses the same admin token behavior as the V2 admin order endpoints: `BOG_ORDERS_ADMIN_TOKEN`, with fallback to `BOG_MENU_ADMIN_TOKEN`.
+- Requires the existing `BOG_MENU_DB` binding.
+- Does not require new bindings.
+- Reads from `orders_v2`, `order_items_v2`, and `order_events_v2`.
+- Does not update orders, insert events, write Apps Script, or sync Sheets.
+
+### Query params
+
+| Param | Default | Behavior |
+| --- | --- | --- |
+| `includeTerminal` | `false` | When false, excludes `delivered` and `cancelled`; when true, includes terminal orders. |
+| `status` | omitted | Optional filter: `new`, `preparing`, `ready`, `delivered`, or `cancelled`. Invalid values return `400 INVALID_STATUS`. |
+| `from` | omitted | Optional `YYYY-MM-DD`; filters `created_at >= fromT00:00:00.000Z`. Invalid values return `400 INVALID_DATE`. |
+| `to` | omitted | Optional `YYYY-MM-DD`; filters `created_at <= toT23:59:59.999Z`. Invalid values return `400 INVALID_DATE`. |
+| `limit` | `500` | Integer from 1 to 1000. Invalid values return `400 INVALID_LIMIT`. |
+
+Timestamps are exported exactly as stored in D1; no timezone conversion is performed in this phase.
+
+### CSV contract
+
+Headers are emitted exactly in this order:
+
+```csv
+folio,order_id,created_at,updated_at,status,customer_name,customer_phone,order_mode,payment_method,payment_status,notes,subtotal,total,items_summary,item_skus,item_qtys,event_count,source
+```
+
+Column notes:
+- `subtotal` and `total` are exported in pesos with two decimals.
+- `items_summary` is formatted like `2x Burger OG; 1x Fries OG`.
+- `item_skus` joins SKUs with `|`.
+- `item_qtys` joins quantities with `|` in the same order as `item_skus`.
+- `event_count` is the number of related `order_events_v2` records.
+- Empty notes export as an empty string.
+
+### Security and CSV safety
+
+The endpoint:
+- Requires admin authorization and returns JSON error envelopes for failures.
+- Uses `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`.
+- Escapes CSV values with RFC-style double quote escaping.
+- Prefixes string values that start with `=`, `+`, `-`, `@`, tab, or carriage return with an apostrophe to reduce CSV/Excel formula injection risk.
+
+### No changes in V2-10A.1
+
+V2-10A.1 does not change Public V2, Internal V2, `/api/order`, `/api/rpc`, Apps Script, Sheets, legacy code, `cloudflare/public-order`, `cloudflare/internal-chekeo`, migrations, payments, WhatsApp, or `BOG_ACTIVE_ENV`.

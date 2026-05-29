@@ -186,3 +186,13 @@ No cambia en V2-9D:
 - No se agregan endpoints ni bindings.
 - No se modifica `/api/order`, `/api/rpc`, `functions/api`, migrations, Apps Script, Sheets, legacy, `cloudflare/public-order`, `cloudflare/internal-chekeo` ni `BOG_ACTIVE_ENV`.
 - No se conectan pagos reales ni WhatsApp real.
+
+## V2-10A.1 Protected orders CSV export
+
+V2-10A.1 adds a protected backend-only CSV export for V2 orders while keeping D1 as the source of truth. The new `GET /api/orders-v2-admin/export.csv` endpoint reads `orders_v2`, `order_items_v2`, and `order_events_v2` from D1 and returns an operational CSV snapshot for manual reporting/import.
+
+Decisions:
+- D1 remains the canonical store for V2 orders.
+- Sheets is treated only as a manual/export destination, not a source of truth.
+- No automatic Sheets sync is introduced in this phase.
+- No Apps Script, legacy `/api/order`, legacy `/api/rpc`, Public V2 UI, Internal V2 UI, migrations, payments, WhatsApp, or `BOG_ACTIVE_ENV` are changed.
