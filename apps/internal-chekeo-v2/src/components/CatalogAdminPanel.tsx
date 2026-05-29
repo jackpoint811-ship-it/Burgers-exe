@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { MenuItem, MenuV2Response, PromoCard as PromoCardType } from '@config/index';
 import { Button, Card } from '@ui/index';
-
-const ADMIN_TOKEN_KEY = 'bog-menu-admin-token-v2';
+import { clearAdminToken, getAdminToken, setAdminToken as persistAdminToken } from '../lib/admin-token';
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
 const ACCEPTED_IMAGE_TYPES_LABEL = 'JPG, PNG, WebP o AVIF hasta 5 MB';
@@ -83,7 +82,7 @@ export function CatalogAdminPanel() {
   };
 
   useEffect(() => {
-    const stored = window.sessionStorage.getItem(ADMIN_TOKEN_KEY);
+    const stored = getAdminToken();
     if (stored) setAdminToken(stored);
     void loadMenu();
   }, []);
@@ -343,7 +342,7 @@ export function CatalogAdminPanel() {
         <div><h3 className='font-bold'>Catálogo V2</h3><p className='muted'>Source: {sourceLabel}</p></div>
         {menu?.source !== 'd1' ? <p className='text-xs text-amber-300'>Edición deshabilitada hasta conectar D1.</p> : null}
       </div>
-      {!adminToken ? <div className='mt-2 flex flex-col gap-2 md:flex-row'><input className='input md:mt-0' type='password' placeholder='Token admin preview' value={tokenInput} onChange={(e) => setTokenInput(e.target.value)} /><Button onClick={() => { if (!tokenInput.trim()) return; window.sessionStorage.setItem(ADMIN_TOKEN_KEY, tokenInput.trim()); setAdminToken(tokenInput.trim()); setTokenInput(''); }}>Activar edición</Button></div> : <div className='mt-2'><Button className='border border-zinc-700 bg-zinc-900' onClick={() => { window.sessionStorage.removeItem(ADMIN_TOKEN_KEY); setAdminToken(''); }}>Cerrar modo admin</Button></div>}
+      {!adminToken ? <div className='mt-2 flex flex-col gap-2 md:flex-row'><input className='input md:mt-0' type='password' placeholder='Token admin preview' value={tokenInput} onChange={(e) => setTokenInput(e.target.value)} /><Button onClick={() => { if (!tokenInput.trim()) return; persistAdminToken(tokenInput.trim()); setAdminToken(tokenInput.trim()); setTokenInput(''); }}>Activar edición</Button></div> : <div className='mt-2'><Button className='border border-zinc-700 bg-zinc-900' onClick={() => { clearAdminToken(); setAdminToken(''); }}>Cerrar modo admin</Button></div>}
     </Card>
 
     <div className='flex gap-2 overflow-x-auto pb-1'>
