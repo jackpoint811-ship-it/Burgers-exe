@@ -174,3 +174,40 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] Confirmar que Sheets contracts no fueron modificados.
 - [ ] Confirmar que `BOG_ACTIVE_ENV` no fue modificado.
 - [ ] Confirmar que Public V2 UI e Internal V2 UI siguen sin conectarse a órdenes reales en este PR.
+
+## V2-9B Public V2 → POST /api/orders-v2
+
+### Flujo público
+- [ ] Abrir Public V2 preview.
+- [ ] Confirmar que el catálogo carga desde `GET /api/menu-v2` o fallback visual sin romper layout mobile.
+- [ ] Agregar Burger OG al ticket.
+- [ ] Llenar nombre con al menos 2 caracteres.
+- [ ] Llenar teléfono con al menos 10 dígitos.
+- [ ] Elegir entrega: Pickup o Delivery.
+- [ ] Elegir pago: Efectivo, Transferencia, Tarjeta o Por confirmar.
+- [ ] Enviar pedido con “Confirmar pedido”.
+- [ ] Confirmar estado visible “Enviando pedido...”.
+- [ ] Confirmar que el botón queda deshabilitado mientras envía.
+- [ ] Confirmar success “Pedido recibido” con folio `BX-...`, estado `Nuevo`, total confirmado `MXN`, entrega y método de pago.
+- [ ] Confirmar que se informa “Pago pendiente de confirmación” y “No se realizó ningún cobro en línea”.
+
+### Backend y administración
+- [ ] Confirmar la orden creada en `GET /api/orders-v2-admin?includeTerminal=true&limit=10` con token admin.
+- [ ] Confirmar que el total guardado viene del backend y no de valores del cliente.
+- [ ] Confirmar que el payload público solo envía `{ sku, qty }` por item, sin precios ni total.
+
+### Idempotencia y errores
+- [ ] Hacer doble click en “Confirmar pedido” y confirmar que no duplica por UI disabled + `Idempotency-Key`.
+- [ ] Simular error recuperable de backend/red y confirmar que el carrito, nombre, teléfono, entrega, pago y notas se mantienen para reintento.
+- [ ] Reintentar el mismo draft después del error y confirmar que reutiliza la misma idempotency key.
+- [ ] Cambiar el draft después de un error y confirmar que un intento nuevo puede usar otra idempotency key.
+- [ ] Confirmar que un SKU no disponible no se puede agregar desde la UI y no debería enviarse desde Public V2.
+
+### No-touch / seguridad
+- [ ] Confirmar que Public V2 no llama `/api/order`.
+- [ ] Confirmar que Public V2 no llama `/api/rpc`.
+- [ ] Confirmar que Public V2 no llama `orders-v2-admin` ni endpoints admin.
+- [ ] Confirmar que Public V2 no usa ni expone `BOG_ORDERS_ADMIN_TOKEN` o `BOG_MENU_ADMIN_TOKEN`.
+- [ ] Confirmar que Public V2 no toca R2 upload y solo lee assets vía `/api/assets-v2/<key>` cuando aplica.
+- [ ] Confirmar que Internal Chekeo V2 todavía no consume live orders en esta fase.
+- [ ] Confirmar que Apps Script, Sheets, legacy, `cloudflare/public-order`, `cloudflare/internal-chekeo` y `BOG_ACTIVE_ENV` no fueron modificados.
