@@ -338,3 +338,48 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] Confirmar que este PR no toca `/api/order` legacy ni `/api/rpc` legacy.
 - [ ] Confirmar que este PR no toca Apps Script, `.gs`, Sheets API ni sync automático a Sheets.
 - [ ] Confirmar que este PR no toca `cloudflare/public-order`, `cloudflare/internal-chekeo`, `legacy`, migrations, pagos, WhatsApp ni `BOG_ACTIVE_ENV`.
+
+## V2-10B Operational close dashboard QA
+
+### Summary endpoint
+- [ ] `GET /api/orders-v2-admin/summary` without token returns `401 UNAUTHORIZED` or `503 ADMIN_DISABLED` when admin is not configured.
+- [ ] `GET /api/orders-v2-admin/summary` with valid admin token returns `ok: true` and `source: "d1"`.
+- [ ] Missing D1 binding returns `503 D1_NOT_CONFIGURED`.
+- [ ] Non-GET methods return `405 METHOD_NOT_ALLOWED`.
+- [ ] Invalid `from` or `to` returns `400 INVALID_DATE`.
+- [ ] `from > to` returns `400 INVALID_DATE_RANGE`.
+- [ ] Invalid `limit` returns `400 INVALID_LIMIT`.
+- [ ] Invalid `topLimit` returns `400 INVALID_TOP_LIMIT`.
+- [ ] Unexpected backend/query failure returns `500 SUMMARY_FAILED`.
+
+### Metrics validation
+- [ ] `grossSales` equals the sum of non-cancelled order totals in pesos.
+- [ ] `deliveredSales` equals the sum of delivered order totals in pesos.
+- [ ] `averageTicket` equals `grossSales / non-cancelled orders`.
+- [ ] `activeOrders` equals `new + preparing + ready`.
+- [ ] `byPaymentMethod` is labeled/understood as declared payment method, not real payment capture.
+- [ ] `byOrderMode` separates pickup and delivery.
+- [ ] `topItems` excludes cancelled orders.
+- [ ] `recentOrders` is sorted by `created_at desc`, respects `limit`, and does not include `customerPhone`.
+- [ ] `durations.newToReadyAvgSeconds` and `durations.newToDeliveredAvgSeconds` are populated when matching events exist.
+
+### Internal Cierre tab
+- [ ] Internal Chekeo V2 shows a new `Cierre` tab.
+- [ ] The tab shows “Cierre operativo preview”, “D1 source of truth”, and “Pagos declarados, no pagos reales”.
+- [ ] Without admin token, it shows “Activa modo admin para cargar cierre”.
+- [ ] Backend errors are visible and Cierre does not fall back to mock data.
+- [ ] Filters `Desde`, `Hasta`, and `Incluir terminales` call the summary endpoint with matching query params.
+- [ ] Cards show Venta bruta, Venta entregada, Órdenes totales, Entregadas, Canceladas, and Ticket promedio.
+- [ ] Sections show Por status, Por método de pago declarado, Pickup vs delivery, Top items, Órdenes recientes, and Tiempos promedio.
+- [ ] The layout is usable at 320px width without horizontal page overflow.
+- [ ] `Exportar CSV del rango` calls the existing protected CSV export with the same `from`, `to`, and `includeTerminal` filters.
+
+### Data policy / no-touch checks
+- [ ] D1 remains source of truth for reporting.
+- [ ] Sheets remains manual/export only; there is no automatic Sheets sync.
+- [ ] No timezone conversion is performed yet; `YYYY-MM-DD` maps to UTC day boundaries.
+- [ ] Confirm no changes to Public V2 (`apps/public-order-v2/**`).
+- [ ] Confirm no changes to `/api/order` legacy.
+- [ ] Confirm no changes to `/api/rpc` legacy.
+- [ ] Confirm no Apps Script or `.gs` changes.
+- [ ] Confirm no changes to `cloudflare/public-order`, `cloudflare/internal-chekeo`, `legacy`, migrations, payments, WhatsApp, or `BOG_ACTIVE_ENV`.

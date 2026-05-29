@@ -343,3 +343,56 @@ Cloudflare/data impact:
 - D1 remains the source of truth for orders.
 - Sheets remains a manual destination for downloaded/imported CSV files.
 - No automatic Sheets sync, Apps Script, Sheets API integration, backend change, migration, Public V2 change, legacy `/api/order`, legacy `/api/rpc`, payments, WhatsApp, Cloudflare legacy app, or `BOG_ACTIVE_ENV` change is introduced.
+
+## V2-10B Operational close summary endpoint
+
+V2-10B adds a read-only admin summary endpoint for shift close/reporting from real V2 orders in D1.
+
+### Endpoint
+
+#### `GET /api/orders-v2-admin/summary`
+- Requires `BOG_MENU_DB`.
+- Requires `Authorization: Bearer <token>` using the same admin-token behavior as other V2 order admin endpoints (`BOG_ORDERS_ADMIN_TOKEN`, with fallback to `BOG_MENU_ADMIN_TOKEN`).
+- Reads from `orders_v2`, `order_items_v2`, and `order_events_v2`.
+- Does not update orders, insert events, write Apps Script, sync Sheets, or require migrations.
+- Non-GET methods return `405 METHOD_NOT_ALLOWED`.
+
+### Query params
+
+| Param | Default | Max | Behavior |
+| --- | --- | --- | --- |
+| `from` | omitted | — | Optional `YYYY-MM-DD`; filters `created_at >= fromT00:00:00.000Z`. |
+| `to` | omitted | — | Optional `YYYY-MM-DD`; filters `created_at <= toT23:59:59.999Z`. |
+| `includeTerminal` | `true` | — | When false, excludes `delivered` and `cancelled` from the summary dataset. |
+| `limit` | `1000` | `5000` | Caps `recentOrders`. |
+| `topLimit` | `10` | `50` | Caps `topItems`. |
+
+Invalid dates return `400 INVALID_DATE`; `from > to` returns `400 INVALID_DATE_RANGE`. Invalid limits return `400 INVALID_LIMIT` or `400 INVALID_TOP_LIMIT`.
+
+### Metrics
+
+The summary response includes:
+- Totals: orders, active orders, delivered orders, cancelled orders, gross sales, delivered sales, average ticket.
+- `byStatus`: counts for `new`, `preparing`, `ready`, `delivered`, `cancelled`.
+- `byPaymentMethod`: declared payment method counts/totals; these are not real payment confirmations.
+- `byOrderMode`: pickup vs delivery counts/totals.
+- `topItems`: SKU/name/quantity/total/orders, excluding cancelled orders.
+- `recentOrders`: latest orders for the selected range, without `customerPhone`.
+- `durations`: average seconds for `new -> ready` and `new -> delivered` derived from `order_events_v2`.
+
+All money values are returned in pesos, not cents. Date filters use UTC boundaries and V2-10B does not perform timezone conversion.
+
+### Internal Cierre tab
+
+Internal Chekeo V2 adds a `Cierre` tab that calls `GET /api/orders-v2-admin/summary` with the selected range and shows:
+- “Cierre operativo preview”.
+- “D1 source of truth”.
+- “Pagos declarados, no pagos reales”.
+- Range filters, include-terminal toggle, close metrics, status/payment/mode breakdowns, top items, recent orders, and average times.
+- “Exportar CSV del rango”, which reuses the existing protected CSV export with the same date/include-terminal filters.
+
+The Cierre tab does not use mock fallback; missing token or backend errors are shown explicitly.
+
+### No changes in V2-10B
+
+V2-10B does not change Public V2, `/api/order`, `/api/rpc`, Apps Script, Sheets sync, `cloudflare/public-order`, `cloudflare/internal-chekeo`, legacy code, migrations, payments, WhatsApp, or `BOG_ACTIVE_ENV`. Sheets remains a manual destination for downloaded CSV files only.
