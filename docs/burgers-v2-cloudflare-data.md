@@ -215,3 +215,27 @@ Ambos scripts ejecutan `migrations/0003_v2_orders_schema.sql` sobre `burgers-exe
 - No se tocan Sheets.
 - No se toca `BOG_ACTIVE_ENV`.
 - No se conecta UI pública o interna todavía.
+
+## V2-9B Public Order V2 escribe órdenes reales
+
+Public Order V2 ahora usa `POST /api/orders-v2` para registrar pedidos reales en D1 durante preview. La UI pública continúa leyendo catálogo desde `GET /api/menu-v2` y assets desde `GET /api/assets-v2/<key>` cuando el catálogo entrega `imageKey`.
+
+### Requisitos de datos
+- `BOG_MENU_DB` debe estar configurado en el proyecto de Cloudflare Pages que sirve Public V2.
+- Las tablas V2 deben estar migradas en ese D1:
+  - `orders_v2`
+  - `order_items_v2`
+  - `order_events_v2`
+- `menu_items` debe contener los SKUs disponibles para que el backend pueda validar disponibilidad y recalcular precios.
+
+### Escritura pública
+- Public V2 manda `customer.name`, `customer.phone`, `orderMode`, `paymentMethod`, `notes` e `items` con pares `{ sku, qty }`.
+- Public V2 manda `Idempotency-Key` por header para evitar duplicados por doble click, reintentos o fallos recuperables de red.
+- Public V2 no manda precios ni total; `POST /api/orders-v2` recalcula subtotal/total desde `menu_items.price_cents`.
+- `ORDERS_V2_WRITE_ENABLED=false` apaga la escritura y hace que `POST /api/orders-v2` responda `ORDERING_DISABLED`.
+
+### Límites explícitos
+- No hay pagos reales: `paymentMethod` es intención y `payment_status` permanece `pending` hasta una fase posterior.
+- No hay WhatsApp real: el texto de confirmación solo indica que el equipo puede contactar por WhatsApp/teléfono si necesita confirmar algo.
+- No hay integración con Sheets ni Apps Script para órdenes V2.
+- Internal Chekeo V2 todavía no consume estas órdenes reales desde la UI en esta fase.

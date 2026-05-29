@@ -132,3 +132,22 @@ Decisiones de control:
 - No se envía WhatsApp real.
 - No se hacen pagos reales.
 - No se cambia `BOG_ACTIVE_ENV`.
+
+## V2-9B Public order flow conectado a D1
+
+V2-9B conecta `apps/public-order-v2` al backend real de órdenes V2. El checkout público deja de simular el submit localmente y ahora crea órdenes en D1 mediante `POST /api/orders-v2` con `Idempotency-Key` por intento/draft.
+
+Alcance de la fase:
+- Public Order V2 lee catálogo con `GET /api/menu-v2`, imágenes con `GET /api/assets-v2/<key>` cuando existen y crea órdenes con `POST /api/orders-v2`.
+- El cliente público envía `customer`, `orderMode`, `paymentMethod`, `notes` e `items` como `{ sku, qty }`.
+- El cliente público no envía precios ni total; el backend sigue recalculando subtotal/total desde D1.
+- `paymentMethod` representa solo intención de pago; no hay cobro en línea y `payment_status` sigue pendiente desde backend.
+- Internal Chekeo V2 todavía no consume órdenes reales en este PR.
+
+No cambia en V2-9B:
+- No se reutiliza ni se toca `/api/order` legacy.
+- No se reutiliza ni se toca `/api/rpc` legacy.
+- No se conectan pagos reales.
+- No se envía WhatsApp real.
+- No se exporta a Apps Script ni Sheets.
+- No se modifica `BOG_ACTIVE_ENV`.
