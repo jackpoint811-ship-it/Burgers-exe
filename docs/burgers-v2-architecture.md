@@ -108,3 +108,27 @@
 - Se agregan endpoints admin protegidos para actualizar promos y subir/quitar imágenes de promo en R2 bajo `promos/`.
 - Public Order V2 continúa solo leyendo `/api/menu-v2` y `/api/assets-v2/<key>`; no tiene upload público ni endpoints admin.
 - La fase mantiene órdenes reales, pagos reales, `/api/order`, `/api/rpc`, Apps Script, Sheets, V1, legacy y `BOG_ACTIVE_ENV` sin cambios.
+
+## V2-9A D1 orders backend foundation
+
+V2-9A introduce la base backend para órdenes reales V2 en Cloudflare Pages Functions usando D1 como fuente principal. Las órdenes viven en el mismo binding `BOG_MENU_DB` que el catálogo V2 para mantener el preview simple y reversible.
+
+Endpoints paralelos nuevos:
+- `POST /api/orders-v2`: crea órdenes V2 con validación server-side de catálogo/precios e idempotencia.
+- `GET /api/orders-v2-admin`: lista órdenes reales V2 para consola interna futura.
+- `PATCH /api/orders-v2-admin/:id/status`: cambia estados válidos y registra eventos.
+
+Tablas nuevas:
+- `orders_v2`
+- `order_items_v2`
+- `order_events_v2`
+
+Decisiones de control:
+- No se reutiliza `/api/order` legacy para V2 inicial.
+- No se reutiliza `/api/rpc` legacy para V2 inicial.
+- No se conecta Public V2 UI todavía.
+- No se conecta Internal V2 UI todavía.
+- No se exporta a Sheets todavía.
+- No se envía WhatsApp real.
+- No se hacen pagos reales.
+- No se cambia `BOG_ACTIVE_ENV`.
