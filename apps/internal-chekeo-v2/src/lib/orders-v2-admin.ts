@@ -5,6 +5,14 @@ type FetchOrdersV2AdminOptions = {
   limit?: number;
 };
 
+type ExportOrdersV2CsvOptions = {
+  includeTerminal?: boolean;
+  status?: OrderV2Status | '';
+  from?: string;
+  to?: string;
+  limit?: number;
+};
+
 const parseJsonEnvelope = async <T extends { ok: boolean; error?: { message?: string; code?: string } }>(res: Response): Promise<T> => {
   let envelope: T | null = null;
   try {
@@ -50,4 +58,34 @@ export const updateOrderV2Status = async (token: string, orderId: string, status
   const envelope = await parseJsonEnvelope<UpdateOrderV2StatusResponse>(res);
   if (!envelope.data?.order) throw new Error('Backend V2 no devolvió la orden actualizada');
   return envelope.data.order;
+};
+
+export const exportOrdersV2Csv = async (token: string, options: ExportOrdersV2CsvOptions = {}) => {
+  const trimmed = token.trim();
+  if (!trimmed) throw new Error('Activa modo admin para exportar CSV');
+
+  const params = new URLSearchParams();
+  if (typeof options.includeTerminal === 'boolean') params.set('includeTerminal', String(options.includeTerminal));
+  if (options.status) params.set('status', options.status);
+  if (options.from?.trim()) params.set('from', options.from.trim());
+  if (options.to?.trim()) params.set('to', options.to.trim());
+  if (typeof options.limit === 'number' && Number.isFinite(options.limit)) params.set('limit', String(options.limit));
+
+  const query = params.toString();
+  const res = await fetch(`/api/orders-v2-admin/export.csv${query ? `?${query}` : ''}`, {
+    headers: { Authorization: `Bearer ${trimmed}` }
+  });
+
+  if (!res.ok) {
+    let message = `HTTP ${res.status}`;
+    try {
+      const envelope = (await res.json()) as { error?: { message?: string; code?: string }; message?: string };
+      message = envelope.error?.message || envelope.error?.code || envelope.message || message;
+    } catch {
+      // Keep the error generic. Never include request headers or tokens.
+    }
+    throw new Error(`No se pudo exportar CSV desde Backend V2: ${message}`);
+  }
+
+  return res.blob();
 };
