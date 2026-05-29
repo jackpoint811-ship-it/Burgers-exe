@@ -383,3 +383,37 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] Confirm no changes to `/api/rpc` legacy.
 - [ ] Confirm no Apps Script or `.gs` changes.
 - [ ] Confirm no changes to `cloudflare/public-order`, `cloudflare/internal-chekeo`, `legacy`, migrations, payments, WhatsApp, or `BOG_ACTIVE_ENV`.
+
+## V2-11A Manual WhatsApp order actions QA
+
+### Internal Chekeo V2 UI
+- [ ] Abrir Internal V2 preview en mobile width (320px+) y desktop.
+- [ ] Activar token admin y cargar órdenes live D1.
+- [ ] Confirmar que cada tarjeta de Pedido muestra botones compactos “WhatsApp” y “Copiar mensaje”.
+- [ ] Abrir el modal de detalle y confirmar el copy “Acción manual: abre WhatsApp con mensaje prellenado.”
+- [ ] Confirmar que el modal muestra selector de template con Recibido, En preparación, Listo y Entregado.
+- [ ] Confirmar default por status: `new -> Recibido`, `preparing -> En preparación`, `ready -> Listo`, `delivered/cancelled -> Entregado`.
+- [ ] Confirmar que no existe template de cancelación.
+
+### WhatsApp manual behavior
+- [ ] Con teléfono válido de 10 dígitos, confirmar que “WhatsApp” abre una nueva pestaña con URL `https://wa.me/52...?...` y mensaje prellenado.
+- [ ] Con teléfono válido de 12 dígitos que empieza con `52`, confirmar que no duplica el prefijo.
+- [ ] Con teléfono inválido, confirmar texto “Teléfono inválido para WhatsApp” y botón “WhatsApp” deshabilitado.
+- [ ] Confirmar que abrir WhatsApp no cambia status, no escribe D1 y no inserta eventos.
+- [ ] Confirmar que la UI no usa `alert()`.
+
+### Clipboard behavior
+- [ ] Presionar “Copiar mensaje” y confirmar estado inline “Mensaje copiado”.
+- [ ] Simular navegador/contexto sin clipboard seguro y confirmar error inline claro.
+- [ ] Confirmar que el mensaje copiado corresponde al template seleccionado en el modal.
+
+### Privacy/security/no-touch checks
+- [ ] Confirmar que no hay envío automático de WhatsApp.
+- [ ] Confirmar que no hay WhatsApp Business/API ni proveedor externo.
+- [ ] Confirmar que no se guardan mensajes en D1 y no se insertan eventos.
+- [ ] Confirmar que no se loguea teléfono ni mensaje.
+- [ ] Confirmar que no hay pagos reales.
+- [ ] Confirmar que no se tocó backend (`functions/api/**`).
+- [ ] Confirmar que no se tocó Public V2 (`apps/public-order-v2/**`).
+- [ ] Confirmar que no se tocó `/api/order` legacy ni `/api/rpc` legacy.
+- [ ] Confirmar que no se tocó Apps Script, `.gs`, Sheets, legacy, migrations, Cloudflare legacy apps ni `BOG_ACTIVE_ENV`.

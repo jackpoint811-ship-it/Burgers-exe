@@ -396,3 +396,17 @@ The Cierre tab does not use mock fallback; missing token or backend errors are s
 ### No changes in V2-10B
 
 V2-10B does not change Public V2, `/api/order`, `/api/rpc`, Apps Script, Sheets sync, `cloudflare/public-order`, `cloudflare/internal-chekeo`, legacy code, migrations, payments, WhatsApp, or `BOG_ACTIVE_ENV`. Sheets remains a manual destination for downloaded CSV files only.
+
+## V2-11A Manual WhatsApp data policy
+
+V2-11A no agrega superficie de datos en Cloudflare. Las acciones de WhatsApp manual en Internal Chekeo V2 son completamente client-side:
+
+- El teléfono se normaliza en el navegador para construir un link `wa.me` manual.
+- El mensaje se arma en memoria desde los datos de la orden ya cargados en Internal Chekeo V2.
+- “WhatsApp” abre una pestaña nueva con mensaje prellenado; no confirma ni envía el mensaje automáticamente.
+- “Copiar mensaje” usa `navigator.clipboard.writeText` y no persiste el contenido.
+- No hay nuevas tablas, columnas, migraciones, eventos D1 ni escrituras asociadas al mensaje.
+- No hay llamadas a WhatsApp API, Sheets API, Apps Script ni servicios externos.
+- No se introducen tokens, secrets ni bindings nuevos.
+- D1 permanece como source of truth para órdenes; Sheets continúa siendo solo destino manual/export cuando aplica.
+- Los pagos siguen siendo declarados/operativos; no hay pagos reales ni captura de pago.

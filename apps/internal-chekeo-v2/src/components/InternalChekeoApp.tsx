@@ -5,6 +5,7 @@ import { mockOrders, operatorStats, type MockOrder, type OrdersV2SummaryResponse
 import { Button, Card, StatusPill } from '@ui/index';
 import { ADMIN_TOKEN_CHANGED_EVENT, clearAdminToken, getAdminToken, setAdminToken as persistAdminToken } from '../lib/admin-token';
 import { exportOrdersV2Csv, fetchOrdersV2Admin, fetchOrdersV2Summary, updateOrderV2Status } from '../lib/orders-v2-admin';
+import { buildWhatsappOrderMessage, buildWhatsappUrl, normalizeWhatsappPhone, type WhatsappOrderMessageType } from '../lib/whatsapp';
 import { CatalogAdminPanel } from './CatalogAdminPanel';
 
 type TabKey = 'inicio' | 'pedidos' | 'cocina' | 'pagos' | 'historial' | 'cierre' | 'catalogo';
@@ -42,6 +43,12 @@ type OrdersRuntime = {
 const statusLabel: Record<OrderStatus, string> = { new: 'Nuevo', preparing: 'En preparación', ready: 'Listo', delivered: 'Entregado', cancelled: 'Cancelado' };
 const statusTone: Record<OrderStatus, string> = { new: 'border-sky-400/40 text-sky-200', preparing: 'border-amber-400/40 text-amber-200', ready: 'border-emerald-400/40 text-emerald-200', delivered: 'border-zinc-500/40 text-zinc-200', cancelled: 'border-rose-500/40 text-rose-300' };
 const terminalStatuses = new Set<OrderStatus>(['delivered', 'cancelled']);
+const whatsappTemplateLabels: Array<{ value: Exclude<WhatsappOrderMessageType, 'custom'>; label: string }> = [
+  { value: 'received', label: 'Recibido' },
+  { value: 'preparing', label: 'En preparación' },
+  { value: 'ready', label: 'Listo' },
+  { value: 'delivered', label: 'Entregado' }
+];
 
 const asInternalOrders = (orders: MockOrder[]): InternalOrder[] => orders;
 const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
@@ -59,6 +66,12 @@ const formatDateTime = (value: string) => {
   return parsed.toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' });
 };
 const mapKitchenStation = (status: OrderV2Status): InternalOrder['kitchenStation'] => (status === 'new' ? 'grill' : status === 'preparing' ? 'assembly' : 'dispatch');
+const getWhatsappTemplateForStatus = (status: OrderStatus): Exclude<WhatsappOrderMessageType, 'custom'> => {
+  if (status === 'preparing') return 'preparing';
+  if (status === 'ready') return 'ready';
+  if (status === 'delivered' || status === 'cancelled') return 'delivered';
+  return 'received';
+};
 
 const getEventReason = (event: OrderV2Event): string | undefined => {
   const reason = event.detail?.reason;
@@ -241,8 +254,51 @@ const ActionButtons = ({ order, actions, onMove, actionOrderId }: { order: Inter
   return <div className='flex flex-wrap gap-1'>{actions.map((action) => <button key={action.status} className={`btn-sm ${action.tone === 'danger' ? 'danger' : ''}`} onClick={() => onMove(order.id, action.status)} disabled={busy}>{busy ? 'Actualizando…' : action.label}</button>)}</div>;
 };
 
+type WhatsappNotice = { tone: 'success' | 'error'; message: string } | null;
+
+const WhatsappOrderActions = ({ order, template = getWhatsappTemplateForStatus(order.status), showHint = false }: { order: InternalOrder; template?: WhatsappOrderMessageType; showHint?: boolean }) => {
+  const [notice, setNotice] = useState<WhatsappNotice>(null);
+  const phone = normalizeWhatsappPhone(order.customerPhone ?? '');
+  const message = buildWhatsappOrderMessage(order, template);
+  const whatsappUrl = phone ? buildWhatsappUrl(phone, message) : '';
+
+  useEffect(() => {
+    if (!notice) return;
+    const timeout = window.setTimeout(() => setNotice(null), 2500);
+    return () => window.clearTimeout(timeout);
+  }, [notice]);
+
+  const openWhatsapp = () => {
+    if (!whatsappUrl) return;
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const copyMessage = async () => {
+    setNotice(null);
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('Clipboard no disponible en este navegador');
+      await navigator.clipboard.writeText(message);
+      setNotice({ tone: 'success', message: 'Mensaje copiado' });
+    } catch {
+      setNotice({ tone: 'error', message: 'No se pudo copiar el mensaje. Copia manualmente desde un navegador seguro.' });
+    }
+  };
+
+  return (
+    <div className='mt-2 rounded-lg border border-cyan-400/20 bg-cyan-400/5 p-2'>
+      {showHint ? <p className='mb-2 text-[11px] text-cyan-100'>Acción manual: abre WhatsApp con mensaje prellenado.</p> : null}
+      {!phone ? <p className='mb-2 rounded bg-amber-500/10 px-2 py-1 text-[11px] text-amber-200'>Teléfono inválido para WhatsApp</p> : null}
+      <div className='grid grid-cols-2 gap-2'>
+        <Button className='border border-emerald-700 bg-emerald-950/50 px-2 py-1.5 text-[11px] text-emerald-100 disabled:opacity-40' onClick={openWhatsapp} disabled={!phone}>WhatsApp</Button>
+        <Button className='border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-[11px]' onClick={() => void copyMessage()}>Copiar mensaje</Button>
+      </div>
+      {notice ? <p className={`mt-2 rounded px-2 py-1 text-[11px] ${notice.tone === 'success' ? 'bg-emerald-500/10 text-emerald-200' : 'bg-rose-500/10 text-rose-200'}`}>{notice.message}</p> : null}
+    </div>
+  );
+};
+
 const OrderItems = ({ order }: { order: InternalOrder }) => <div className='mt-2 space-y-1 rounded-lg border border-dashed border-zinc-700 p-2'>{order.items.map((i, idx) => { const lineTotal = i.lineTotal ?? i.qty * i.price; return <div key={`${order.id}-${idx}`} className='row'><span>{i.qty}x {i.name}</span><span>{formatCurrency(i.price)} c/u · {formatCurrency(lineTotal)}</span></div>; })}</div>;
-const CompactRow = ({ order, onOpen }: { order: InternalOrder; onOpen: () => void }) => <Card className='p-2.5'><div className='flex items-start justify-between gap-2'><div><p className='text-sm font-bold'>{order.folio} · {order.customer}</p><p className='text-[11px] text-zinc-400'>{order.createdAt} · {order.channel} · {order.paymentMethod}/{order.paymentState}</p>{order.customerPhone ? <p className='text-[11px] text-zinc-500'>Tel: {order.customerPhone}</p> : null}</div><StatusBadge status={order.status} /></div>{order.note ? <p className='mt-1.5 rounded bg-amber-500/10 px-2 py-1 text-[11px] text-amber-200'>Nota crítica: {order.note}</p> : null}<Button className='mt-2 border border-zinc-700 bg-zinc-900 py-1 text-[11px]' onClick={onOpen}>Abrir ticket</Button></Card>;
+const CompactRow = ({ order, onOpen }: { order: InternalOrder; onOpen: () => void }) => <Card className='p-2.5'><div className='flex items-start justify-between gap-2'><div><p className='text-sm font-bold'>{order.folio} · {order.customer}</p><p className='text-[11px] text-zinc-400'>{order.createdAt} · {order.channel} · {order.paymentMethod}/{order.paymentState}</p>{order.customerPhone ? <p className='text-[11px] text-zinc-500'>Tel: {order.customerPhone}</p> : null}</div><StatusBadge status={order.status} /></div>{order.note ? <p className='mt-1.5 rounded bg-amber-500/10 px-2 py-1 text-[11px] text-amber-200'>Nota crítica: {order.note}</p> : null}<div className='mt-2 flex flex-col gap-2 sm:flex-row'><Button className='border border-zinc-700 bg-zinc-900 py-1 text-[11px]' onClick={onOpen}>Abrir ticket</Button></div><WhatsappOrderActions order={order} /></Card>;
 
 const OrdersBoard = ({ orders, setSelected, runtime, move }: { orders: InternalOrder[]; setSelected: (o: InternalOrder) => void; runtime: OrdersRuntime; move: (id: string, s: OrderStatus) => void }) => <section><SourcePanel runtime={runtime} />{runtime.source === 'd1' && orders.length === 0 ? <EmptyOrdersState title='No hay pedidos activos.' description='Cuando Public V2 reciba un pedido nuevo, aparecerá aquí.' /> : null}<div className='grid gap-2'>{orders.map((o) => <Card key={o.id} className='p-3'><CompactRow order={o} onOpen={() => setSelected(o)} /><div className='mt-2 grid gap-1 text-xs text-zinc-300 md:grid-cols-2'><span>Modo entrega: {o.channel}</span><span>Método de pago: {o.paymentMethod}</span><span>Payment status: {o.paymentState}</span><span>Total: {formatCurrency(o.total)}</span><span>Source: {o.source ?? 'mock'}</span><span>Creado: {o.createdAt}</span></div><OrderItems order={o} /><div className='mt-2'><ActionButtons order={o} actions={getPedidoActions(o.status)} onMove={move} actionOrderId={runtime.actionOrderId} /></div></Card>)}</div></section>;
 
@@ -375,7 +431,11 @@ const HistoryPanel = ({ orders, runtime }: { orders: InternalOrder[]; runtime: O
 const getNextStatus = (status: OrderStatus): OrderStatus => (status === 'new' ? 'preparing' : status === 'preparing' ? 'ready' : status === 'ready' ? 'delivered' : status);
 
 const OrderDetailModal = ({ selected, onClose, onMove, actionOrderId }: { selected: InternalOrder | null; onClose: () => void; onMove: (id: string, next: OrderStatus) => Promise<void>; actionOrderId: string | null }) => {
+  const [whatsappTemplate, setWhatsappTemplate] = useState<Exclude<WhatsappOrderMessageType, 'custom'>>('received');
+
   useEffect(() => { const h = (e: KeyboardEvent) => e.key === 'Escape' && onClose(); window.addEventListener('keydown', h); return () => window.removeEventListener('keydown', h); }, [onClose]);
+  useEffect(() => { if (selected) setWhatsappTemplate(getWhatsappTemplateForStatus(selected.status)); }, [selected?.id, selected?.status]);
+
   if (!selected) return null;
   const nextStatus = getNextStatus(selected.status);
   const canAdvance = nextStatus !== selected.status;
@@ -383,7 +443,46 @@ const OrderDetailModal = ({ selected, onClose, onMove, actionOrderId }: { select
   const detailActions = getPedidoActions(selected.status).filter((action) => action.status !== 'cancelled');
   const busy = actionOrderId === selected.id;
   const runAction = async (next: OrderStatus) => { if (busy) return; await onMove(selected.id, next); };
-  return <div className='overlay' role='dialog' aria-modal='true' aria-labelledby='order-title' onClick={onClose}><section className='modal' onClick={(e) => e.stopPropagation()}><div className='flex items-start justify-between'><div><h2 id='order-title' className='text-lg font-black'>{selected.folio}</h2><p className='text-xs text-zinc-400'>{selected.customer} · {selected.createdAt} · {selected.channel}</p>{selected.customerPhone ? <p className='text-xs text-zinc-500'>Tel: <a className='text-cyan-200 underline-offset-2 hover:underline' href={`tel:${selected.customerPhone}`}>{selected.customerPhone}</a></p> : null}</div><StatusBadge status={selected.status} /></div><div className='mt-3 grid grid-cols-2 gap-2 text-sm'><p>Pago: {selected.paymentMethod}/{selected.paymentState}</p><p>Total: {formatCurrency(selected.total)}</p><p>Source: {selected.source ?? 'fallback mock'}</p><p>Estación: {selected.kitchenStation}</p></div><OrderItems order={selected} />{selected.note ? <p className='mt-2 rounded bg-amber-500/10 px-2 py-1 text-xs text-amber-200'>Notas: {selected.note}</p> : null}<p className='mt-2 text-right text-sm font-bold'>Total: {formatCurrency(selected.total)}</p><div className='mt-3 space-y-1 rounded-lg border border-zinc-800 bg-zinc-900/60 p-2 text-xs text-zinc-300'>{selected.timeline.map((t) => <div key={t.id}><p>{t.time} · {t.label}{t.actor ? ` · ${t.actor}` : ''}</p>{t.previousStatus || t.nextStatus ? <p className='text-zinc-500'>{t.previousStatus ? statusLabel[t.previousStatus] : '—'} → {t.nextStatus ? statusLabel[t.nextStatus] : '—'}</p> : null}{t.reason ? <p className='text-amber-200'>Razón: {t.reason}</p> : null}</div>)}</div><div className='mt-3 flex flex-wrap gap-2'>{canAdvance ? detailActions.map((action) => <Button key={action.status} onClick={() => void runAction(action.status)} className='flex-1 border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs disabled:opacity-40' disabled={busy}>{busy ? 'Actualizando…' : action.label}</Button>) : null}{canCancel ? <Button onClick={() => void runAction('cancelled')} className='flex-1 border border-rose-700 bg-rose-950/50 px-3 py-1.5 text-xs text-rose-200 disabled:opacity-40' disabled={busy}>{busy ? 'Actualizando…' : 'Cancelar'}</Button> : null}</div><Button className='mt-2 w-full border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs' onClick={onClose}>Cerrar</Button></section></div>;
+
+  return (
+    <div className='overlay' role='dialog' aria-modal='true' aria-labelledby='order-title' onClick={onClose}>
+      <section className='modal max-h-[calc(100vh-1rem)] overflow-y-auto' onClick={(e) => e.stopPropagation()}>
+        <div className='flex items-start justify-between'>
+          <div>
+            <h2 id='order-title' className='text-lg font-black'>{selected.folio}</h2>
+            <p className='text-xs text-zinc-400'>{selected.customer} · {selected.createdAt} · {selected.channel}</p>
+            {selected.customerPhone ? <p className='text-xs text-zinc-500'>Tel: <a className='text-cyan-200 underline-offset-2 hover:underline' href={`tel:${selected.customerPhone}`}>{selected.customerPhone}</a></p> : null}
+          </div>
+          <StatusBadge status={selected.status} />
+        </div>
+        <div className='mt-3 grid grid-cols-2 gap-2 text-sm'>
+          <p>Pago: {selected.paymentMethod}/{selected.paymentState}</p>
+          <p>Total: {formatCurrency(selected.total)}</p>
+          <p>Source: {selected.source ?? 'fallback mock'}</p>
+          <p>Estación: {selected.kitchenStation}</p>
+        </div>
+        <OrderItems order={selected} />
+        {selected.note ? <p className='mt-2 rounded bg-amber-500/10 px-2 py-1 text-xs text-amber-200'>Notas: {selected.note}</p> : null}
+        <p className='mt-2 text-right text-sm font-bold'>Total: {formatCurrency(selected.total)}</p>
+        <div className='mt-3 rounded-lg border border-cyan-400/20 bg-cyan-400/5 p-2'>
+          <label className='text-[11px] font-semibold text-cyan-100'>Template WhatsApp manual
+            <select className='input mt-1 text-xs' value={whatsappTemplate} onChange={(event) => setWhatsappTemplate(event.target.value as Exclude<WhatsappOrderMessageType, 'custom'>)}>
+              {whatsappTemplateLabels.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </label>
+          <WhatsappOrderActions order={selected} template={whatsappTemplate} showHint />
+        </div>
+        <div className='mt-3 space-y-1 rounded-lg border border-zinc-800 bg-zinc-900/60 p-2 text-xs text-zinc-300'>
+          {selected.timeline.map((t) => <div key={t.id}><p>{t.time} · {t.label}{t.actor ? ` · ${t.actor}` : ''}</p>{t.previousStatus || t.nextStatus ? <p className='text-zinc-500'>{t.previousStatus ? statusLabel[t.previousStatus] : '—'} → {t.nextStatus ? statusLabel[t.nextStatus] : '—'}</p> : null}{t.reason ? <p className='text-amber-200'>Razón: {t.reason}</p> : null}</div>)}
+        </div>
+        <div className='mt-3 flex flex-wrap gap-2'>
+          {canAdvance ? detailActions.map((action) => <Button key={action.status} onClick={() => void runAction(action.status)} className='flex-1 border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs disabled:opacity-40' disabled={busy}>{busy ? 'Actualizando…' : action.label}</Button>) : null}
+          {canCancel ? <Button onClick={() => void runAction('cancelled')} className='flex-1 border border-rose-700 bg-rose-950/50 px-3 py-1.5 text-xs text-rose-200 disabled:opacity-40' disabled={busy}>{busy ? 'Actualizando…' : 'Cancelar'}</Button> : null}
+        </div>
+        <Button className='mt-2 w-full border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs' onClick={onClose}>Cerrar</Button>
+      </section>
+    </div>
+  );
 };
 
 const OperatorTabs = ({ tab, setTab, content }: { tab: TabKey; setTab: (v: TabKey) => void; content: ReactNode }) => <Tabs.Root value={tab} onValueChange={(v) => setTab(v as TabKey)}><Tabs.List className='tabs'>{[['inicio', 'Inicio'], ['pedidos', 'Pedidos'], ['cocina', 'Cocina'], ['pagos', 'Pagos'], ['historial', 'Historial'], ['cierre', 'Cierre'], ['catalogo', 'Catálogo']].map(([k, l]) => <Tabs.Trigger key={k} value={k} className='tab'>{l}</Tabs.Trigger>)}</Tabs.List>{content}</Tabs.Root>;
