@@ -327,3 +327,19 @@ The endpoint:
 ### No changes in V2-10A.1
 
 V2-10A.1 does not change Public V2, Internal V2, `/api/order`, `/api/rpc`, Apps Script, Sheets, legacy code, `cloudflare/public-order`, `cloudflare/internal-chekeo`, migrations, payments, WhatsApp, or `BOG_ACTIVE_ENV`.
+
+## V2-10A.2 Internal CSV export usage
+
+Internal Chekeo V2 can trigger the existing protected CSV export from the operator UI. Operators must first activate admin mode; the browser then reads the shared sessionStorage admin token and sends it only as `Authorization: Bearer <token>` when calling `GET /api/orders-v2-admin/export.csv`.
+
+The Internal UI can send these query params to the existing endpoint:
+- `includeTerminal`: defaults to `false` in Pedidos/Cocina and `true` in Historial.
+- `status`: optional status filter (`new`, `preparing`, `ready`, `delivered`, `cancelled`) or omitted for all statuses.
+- `from` and `to`: optional `YYYY-MM-DD` date filters.
+- `limit`: defaults to `500` and is blocked in the UI outside the backend-supported `1..1000` range.
+
+Cloudflare/data impact:
+- No new bindings are required.
+- D1 remains the source of truth for orders.
+- Sheets remains a manual destination for downloaded/imported CSV files.
+- No automatic Sheets sync, Apps Script, Sheets API integration, backend change, migration, Public V2 change, legacy `/api/order`, legacy `/api/rpc`, payments, WhatsApp, Cloudflare legacy app, or `BOG_ACTIVE_ENV` change is introduced.

@@ -4,7 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { mockOrders, operatorStats, type MockOrder, type OrderStatus, type OrderV2, type OrderV2Event, type OrderV2Status } from '@config/index';
 import { Button, Card, StatusPill } from '@ui/index';
 import { ADMIN_TOKEN_CHANGED_EVENT, clearAdminToken, getAdminToken, setAdminToken as persistAdminToken } from '../lib/admin-token';
-import { fetchOrdersV2Admin, updateOrderV2Status } from '../lib/orders-v2-admin';
+import { exportOrdersV2Csv, fetchOrdersV2Admin, updateOrderV2Status } from '../lib/orders-v2-admin';
 import { CatalogAdminPanel } from './CatalogAdminPanel';
 
 type TabKey = 'inicio' | 'pedidos' | 'cocina' | 'pagos' | 'historial' | 'catalogo';
@@ -111,6 +111,97 @@ const EmptyOrdersState = ({ title, description }: { title: string; description?:
   </Card>
 );
 
+const orderStatusOptions: Array<{ value: OrderV2Status | ''; label: string }> = [
+  { value: '', label: 'Todos' },
+  { value: 'new', label: 'Nuevo' },
+  { value: 'preparing', label: 'En preparación' },
+  { value: 'ready', label: 'Listo' },
+  { value: 'delivered', label: 'Entregado' },
+  { value: 'cancelled', label: 'Cancelado' }
+];
+
+const OrdersExportControls = ({ adminToken, defaultIncludeTerminal }: { adminToken: string; defaultIncludeTerminal: boolean }) => {
+  const [includeTerminal, setIncludeTerminal] = useState(defaultIncludeTerminal);
+  const [status, setStatus] = useState<OrderV2Status | ''>('');
+  const [limit, setLimit] = useState('500');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [exporting, setExporting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => { setIncludeTerminal(defaultIncludeTerminal); }, [defaultIncludeTerminal]);
+  useEffect(() => {
+    if (!success) return;
+    const timeout = window.setTimeout(() => setSuccess(null), 2500);
+    return () => window.clearTimeout(timeout);
+  }, [success]);
+
+  const parsedLimit = Number(limit);
+  const invalidLimit = !Number.isInteger(parsedLimit) || parsedLimit < 1 || parsedLimit > 1000;
+  const disabled = exporting || !adminToken || invalidLimit;
+
+  const downloadCsv = async () => {
+    setError(null);
+    setSuccess(null);
+    if (!adminToken) { setError('Activa modo admin para exportar CSV'); return; }
+    if (invalidLimit) { setError('El límite debe ser un entero entre 1 y 1000'); return; }
+    setExporting(true);
+    try {
+      const blob = await exportOrdersV2Csv(getAdminToken(), { includeTerminal, status, from, to, limit: parsedLimit });
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = 'orders-v2-export.csv';
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(url);
+      setSuccess('CSV descargado');
+    } catch (downloadError) {
+      setError(downloadError instanceof Error ? downloadError.message : 'No se pudo exportar CSV');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  return (
+    <div className='mt-3 rounded-lg border border-zinc-800 bg-zinc-950/70 p-2'>
+      <div className='flex flex-col gap-1 md:flex-row md:items-center md:justify-between'>
+        <div>
+          <p className='text-xs font-bold text-zinc-100'>Export CSV operativo</p>
+          <p className='text-[11px] text-zinc-400'>Descarga órdenes V2 desde D1 para reporting manual.</p>
+        </div>
+        {!adminToken ? <p className='text-[11px] text-amber-200'>Activa modo admin para exportar CSV</p> : null}
+      </div>
+      <div className='mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-5'>
+        <label className='flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-xs text-zinc-200 sm:col-span-2 lg:col-span-1'>
+          <input type='checkbox' checked={includeTerminal} onChange={(event) => setIncludeTerminal(event.target.checked)} />
+          Incluir entregados/cancelados
+        </label>
+        <label className='text-[11px] text-zinc-400'>Estado
+          <select className='input mt-1 text-xs' value={status} onChange={(event) => setStatus(event.target.value as OrderV2Status | '')}>
+            {orderStatusOptions.map((option) => <option key={option.value || 'all'} value={option.value}>{option.label}</option>)}
+          </select>
+        </label>
+        <label className='text-[11px] text-zinc-400'>Límite
+          <input className='input mt-1 text-xs' inputMode='numeric' type='number' min='1' max='1000' step='1' value={limit} onChange={(event) => setLimit(event.target.value)} />
+        </label>
+        <label className='text-[11px] text-zinc-400'>Desde
+          <input className='input mt-1 text-xs' type='date' value={from} onChange={(event) => setFrom(event.target.value)} />
+        </label>
+        <label className='text-[11px] text-zinc-400'>Hasta
+          <input className='input mt-1 text-xs' type='date' value={to} onChange={(event) => setTo(event.target.value)} />
+        </label>
+      </div>
+      {invalidLimit ? <p className='mt-2 rounded bg-rose-500/10 px-2 py-1 text-xs text-rose-200'>El límite debe ser un entero entre 1 y 1000.</p> : null}
+      {error ? <p className='mt-2 rounded bg-rose-500/10 px-2 py-1 text-xs text-rose-200'>{error}</p> : null}
+      {success ? <p className='mt-2 rounded bg-emerald-500/10 px-2 py-1 text-xs text-emerald-200'>{success}</p> : null}
+      <Button className='mt-2 w-full bg-cyan-400 px-3 py-2 text-sm font-bold text-black disabled:opacity-40 md:w-auto' onClick={() => void downloadCsv()} disabled={disabled}>{exporting ? 'Exportando…' : 'Exportar CSV'}</Button>
+    </div>
+  );
+};
+
 const SourcePanel = ({ runtime, includeTerminal = false }: { runtime: OrdersRuntime; includeTerminal?: boolean }) => (
   <Card className='mb-2.5 p-3'>
     <div className='flex flex-col gap-2 md:flex-row md:items-center md:justify-between'>
@@ -123,6 +214,7 @@ const SourcePanel = ({ runtime, includeTerminal = false }: { runtime: OrdersRunt
       </div>
     </div>
     {!runtime.adminToken ? <div className='mt-3 rounded-lg border border-cyan-400/20 bg-cyan-400/10 p-2'><p className='text-xs text-cyan-100'>Activa modo admin para cargar órdenes live.</p><div className='mt-2 flex flex-col gap-2 md:flex-row'><input className='input md:mt-0' type='password' placeholder='Token admin preview' value={runtime.tokenInput} onChange={(e) => runtime.setTokenInput(e.target.value)} /><Button className='bg-cyan-400 text-black' onClick={runtime.activateToken}>Activar modo admin</Button></div></div> : <div className='mt-3 flex items-center gap-2'><span className='chip'>Token admin activo</span><Button className='border border-zinc-700 bg-zinc-900 px-2 py-1 text-[11px]' onClick={runtime.clearToken}>Cerrar modo admin</Button></div>}
+    <OrdersExportControls adminToken={runtime.adminToken} defaultIncludeTerminal={includeTerminal} />
     {runtime.error ? <p className='mt-2 rounded bg-rose-500/10 px-2 py-1 text-xs text-rose-200'>{runtime.error}</p> : null}
     {runtime.notice ? <p className='mt-2 rounded bg-emerald-500/10 px-2 py-1 text-xs text-emerald-200'>{runtime.notice}</p> : null}
   </Card>

@@ -196,3 +196,14 @@ Decisions:
 - Sheets is treated only as a manual/export destination, not a source of truth.
 - No automatic Sheets sync is introduced in this phase.
 - No Apps Script, legacy `/api/order`, legacy `/api/rpc`, Public V2 UI, Internal V2 UI, migrations, payments, WhatsApp, or `BOG_ACTIVE_ENV` are changed.
+
+## V2-10A.2 Internal orders CSV export button
+
+V2-10A.2 adds a minimal Internal Chekeo V2 control to download the protected orders CSV from `GET /api/orders-v2-admin/export.csv`. The UI reuses the shared sessionStorage admin token flow and sends that token only through the `Authorization: Bearer <token>` header.
+
+Decisions:
+- Internal Chekeo V2 now exposes an “Exportar CSV” button near the live orders source controls for Pedidos, Cocina, and Historial.
+- Export filters are UI-only query params for the existing endpoint: `includeTerminal`, `status`, `from`, `to`, and `limit`.
+- D1 remains the source of truth for V2 orders and reporting exports.
+- Sheets remains a manual/export destination only; this phase does not add automatic sync, Sheets API calls, or Apps Script.
+- No backend endpoints, D1 migrations, legacy `/api/order`, legacy `/api/rpc`, Public V2, payments, WhatsApp, Cloudflare legacy apps, legacy code, or `BOG_ACTIVE_ENV` are changed.

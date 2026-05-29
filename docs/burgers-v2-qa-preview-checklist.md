@@ -311,3 +311,30 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] Confirm no changes to Sheets contracts or automatic Sheets sync.
 - [ ] Confirm no changes to Public V2 UI or Internal V2 UI.
 - [ ] Confirm no changes to `cloudflare/public-order`, `cloudflare/internal-chekeo`, `legacy`, migrations, payments, WhatsApp, or `BOG_ACTIVE_ENV`.
+
+## V2-10A.2 Internal CSV export UI QA
+
+### Internal UI behavior
+- [ ] Botón “Exportar CSV” visible en Internal Chekeo V2 junto a los controles de órdenes/source.
+- [ ] Sin token admin, el botón queda deshabilitado y se muestra “Activa modo admin para exportar CSV”.
+- [ ] Activar token admin desde el flujo compartido habilita exportación.
+- [ ] Export default descarga un archivo `.csv` desde `GET /api/orders-v2-admin/export.csv`.
+- [ ] La descarga usa `download="orders-v2-export.csv"` cuando el navegador lo permite.
+- [ ] Errores JSON del backend se muestran en la UI sin imprimir el token.
+
+### Export options/query params
+- [ ] En Pedidos/Cocina, `includeTerminal` default es `false`.
+- [ ] En Historial, `includeTerminal` default es `true`.
+- [ ] Marcar “Incluir entregados/cancelados” envía `includeTerminal=true` y descarga terminales.
+- [ ] Seleccionar `Entregado` envía `status=delivered` y descarga entregadas.
+- [ ] `from` y `to` se envían correctamente como fechas `YYYY-MM-DD`.
+- [ ] `limit` default es `500`.
+- [ ] `limit` inválido o mayor a `1000` se bloquea o muestra error antes de exportar.
+- [ ] El CSV descargado es importable en Sheets como export manual.
+
+### No-touch checks
+- [ ] Confirmar que este PR no toca backend (`functions/api/**`).
+- [ ] Confirmar que este PR no toca Public V2 (`apps/public-order-v2/**`).
+- [ ] Confirmar que este PR no toca `/api/order` legacy ni `/api/rpc` legacy.
+- [ ] Confirmar que este PR no toca Apps Script, `.gs`, Sheets API ni sync automático a Sheets.
+- [ ] Confirmar que este PR no toca `cloudflare/public-order`, `cloudflare/internal-chekeo`, `legacy`, migrations, pagos, WhatsApp ni `BOG_ACTIVE_ENV`.
