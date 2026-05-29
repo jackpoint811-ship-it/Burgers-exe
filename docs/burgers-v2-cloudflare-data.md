@@ -239,3 +239,27 @@ Public Order V2 ahora usa `POST /api/orders-v2` para registrar pedidos reales en
 - No hay WhatsApp real: el texto de confirmación solo indica que el equipo puede contactar por WhatsApp/teléfono si necesita confirmar algo.
 - No hay integración con Sheets ni Apps Script para órdenes V2.
 - Internal Chekeo V2 todavía no consume estas órdenes reales desde la UI en esta fase.
+
+## V2-9C Internal Chekeo V2 live orders
+
+Internal Chekeo V2 usa los endpoints admin de órdenes V2 para leer y operar pedidos reales en D1 desde preview.
+
+### Token admin
+- La consola interna requiere un token admin guardado solo en `sessionStorage` durante la sesión del navegador.
+- El backend valida `BOG_ORDERS_ADMIN_TOKEN` y puede usar `BOG_MENU_ADMIN_TOKEN` como fallback operativo según la configuración existente de Functions.
+- El token se reutiliza con el flujo admin del Catálogo para evitar guardar credenciales duplicadas o exponerlas en Public V2.
+
+### Endpoints usados
+- `GET /api/orders-v2-admin?includeTerminal=<bool>&limit=<n>` lista órdenes D1 con items/eventos para Pedidos, Cocina e Historial.
+- `PATCH /api/orders-v2-admin/:id/status` actualiza estados válidos y registra el evento de cambio.
+
+### Comportamiento de datos
+- Pedidos y Cocina cargan órdenes activas (`new`, `preparing`, `ready`) para operación diaria.
+- Historial carga con `includeTerminal=true&limit=50` para incluir `delivered` y `cancelled`.
+- Si falta token o Backend V2 falla, Internal V2 mantiene `mockOrders` como fallback visual/QA y muestra error explícito.
+
+### Límites explícitos
+- No hay llamadas a `/api/order` ni `/api/rpc` desde Internal V2.
+- No hay pagos reales ni cambios a estado de pago automático.
+- No hay WhatsApp real.
+- No hay integración con Apps Script ni Sheets para órdenes V2.

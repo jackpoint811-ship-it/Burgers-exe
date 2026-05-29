@@ -151,3 +151,22 @@ No cambia en V2-9B:
 - No se envía WhatsApp real.
 - No se exporta a Apps Script ni Sheets.
 - No se modifica `BOG_ACTIVE_ENV`.
+
+## V2-9C Internal Chekeo V2 conectado a órdenes D1
+
+V2-9C conecta `apps/internal-chekeo-v2` a órdenes reales V2 en D1 para que la consola interna pueda observar y operar pedidos creados desde Public V2.
+
+Alcance de la fase:
+- Internal Chekeo V2 consume `GET /api/orders-v2-admin` con token admin y muestra “Pedidos live D1” cuando la carga responde desde Backend V2.
+- Pedidos, Cocina e Historial comparten el mismo dataset live y pueden avanzar estados con `PATCH /api/orders-v2-admin/:id/status`.
+- Historial solicita terminales con `includeTerminal=true` para listar `delivered` y `cancelled`.
+- Si no hay token o falla Backend V2, la consola conserva `mockOrders` como fallback visual/QA y muestra el estado de fallback explícitamente.
+
+No cambia en V2-9C:
+- No se reutiliza ni se toca `/api/order` legacy.
+- No se reutiliza ni se toca `/api/rpc` legacy.
+- No se modifica Public Order V2 ni su submit flow validado.
+- No se conectan pagos reales.
+- No se envía WhatsApp real.
+- No se exporta a Apps Script ni Sheets.
+- No se modifica `BOG_ACTIVE_ENV`.

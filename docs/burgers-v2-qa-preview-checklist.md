@@ -211,3 +211,35 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] Confirmar que Public V2 no toca R2 upload y solo lee assets vía `/api/assets-v2/<key>` cuando aplica.
 - [ ] Confirmar que Internal Chekeo V2 todavía no consume live orders en esta fase.
 - [ ] Confirmar que Apps Script, Sheets, legacy, `cloudflare/public-order`, `cloudflare/internal-chekeo` y `BOG_ACTIVE_ENV` no fueron modificados.
+
+## V2-9C Internal V2 → órdenes live D1
+
+### Flujo Internal live
+- [ ] Abrir Internal V2 preview.
+- [ ] Activar token admin con `BOG_ORDERS_ADMIN_TOKEN` o fallback `BOG_MENU_ADMIN_TOKEN`.
+- [ ] Confirmar que el token se guarda solo en `sessionStorage` y no en `localStorage`.
+- [ ] Confirmar copy “Pedidos live D1”, “Source: Órdenes live” y “Backend V2”.
+- [ ] Confirmar que aparece la orden `BX-20260529-4F1BEC` cuando está activa.
+- [ ] Presionar “Recargar órdenes” y confirmar que vuelve a consultar `GET /api/orders-v2-admin`.
+
+### Pedidos / Cocina / Historial
+- [ ] En Pedidos, confirmar folio, cliente, teléfono, modo entrega, método de pago, `paymentStatus`, `status`, total, notas, items, fecha y `source: public-v2`.
+- [ ] Cambiar `new -> preparing` desde Pedidos con “Marcar en preparación”.
+- [ ] Confirmar que el botón queda deshabilitado mientras corre `PATCH /api/orders-v2-admin/:id/status`.
+- [ ] Cambiar `preparing -> ready` desde Cocina.
+- [ ] Cambiar `ready -> delivered` desde Cocina o Pedidos.
+- [ ] Confirmar que una orden `delivered` desaparece de Pedidos/Cocina activas.
+- [ ] Abrir Historial y confirmar que carga `includeTerminal=true&limit=50` y muestra la orden `delivered`.
+- [ ] Confirmar que no aparecen acciones para `delivered` ni `cancelled`.
+
+### Errores y fallback
+- [ ] Confirmar error visible sin token: “Activa modo admin para cargar órdenes live”.
+- [ ] Simular backend caído/token inválido y confirmar error claro más “Fallback mock”.
+- [ ] Confirmar que `mockOrders` sigue disponible para QA visual cuando no hay live.
+- [ ] Confirmar success message breve al cambiar estado.
+
+### Seguridad / no-touch
+- [ ] Confirmar que Internal V2 llama solo `GET /api/orders-v2-admin`, `PATCH /api/orders-v2-admin/:id/status`, `GET /api/menu-v2` y endpoints admin existentes de catálogo.
+- [ ] Confirmar no llamadas nuevas a `/api/order` ni `/api/rpc`.
+- [ ] Confirmar que Public V2 no usa tokens ni endpoints admin.
+- [ ] Confirmar que Apps Script, Sheets, legacy, `cloudflare/public-order`, `cloudflare/internal-chekeo`, pagos reales, WhatsApp real y `BOG_ACTIVE_ENV` no fueron modificados.
