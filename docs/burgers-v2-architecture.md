@@ -207,3 +207,29 @@ Decisions:
 - D1 remains the source of truth for V2 orders and reporting exports.
 - Sheets remains a manual/export destination only; this phase does not add automatic sync, Sheets API calls, or Apps Script.
 - No backend endpoints, D1 migrations, legacy `/api/order`, legacy `/api/rpc`, Public V2, payments, WhatsApp, Cloudflare legacy apps, legacy code, or `BOG_ACTIVE_ENV` are changed.
+
+## V2-10B Operational close dashboard
+
+V2-10B adds a read-only operational close/reporting surface for real V2 orders stored in D1.
+
+Architecture additions:
+- New protected endpoint `GET /api/orders-v2-admin/summary` in Cloudflare Pages Functions.
+- New Internal Chekeo V2 tab `Cierre` for shift close metrics.
+- The endpoint reads `orders_v2`, `order_items_v2`, and `order_events_v2` from the existing `BOG_MENU_DB` binding.
+- D1 remains the source of truth for operational reporting.
+- The CSV export remains a manual output for Sheets/import workflows, not a reporting source of truth.
+
+Reporting rules:
+- `grossSales` sums non-cancelled orders.
+- `deliveredSales` sums only `delivered` orders.
+- `averageTicket` is `grossSales / non-cancelled orders`.
+- `paymentMethod` is a declared payment method only; V2-10B does not add real payment capture or reconciliation.
+- `topItems` excludes cancelled orders.
+- `recentOrders` excludes `customerPhone` and is capped by the endpoint `limit` query param.
+- Date filters use the same UTC-boundary behavior as CSV export (`YYYY-MM-DDT00:00:00.000Z` through `YYYY-MM-DDT23:59:59.999Z`); there is no timezone conversion yet.
+
+No-touch confirmations:
+- No changes to Public V2 checkout behavior.
+- No changes to `/api/order` legacy or `/api/rpc` legacy.
+- No Apps Script or Sheets sync is introduced.
+- No changes to `cloudflare/public-order`, `cloudflare/internal-chekeo`, legacy code, migrations, payments, WhatsApp, or `BOG_ACTIVE_ENV`.

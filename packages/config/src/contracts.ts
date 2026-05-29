@@ -182,6 +182,43 @@ export type OrdersV2AdminResponse = {
   error?: OrderV2Error;
 };
 
+
+
+export type OrdersV2SummaryResponse = {
+  ok: boolean;
+  data?: {
+    source: 'd1';
+    range: { from: string; to: string; fromUtc: string; toUtc: string };
+    totals: {
+      orders: number;
+      activeOrders: number;
+      deliveredOrders: number;
+      cancelledOrders: number;
+      grossSales: number;
+      deliveredSales: number;
+      averageTicket: number;
+    };
+    byStatus: Record<OrderV2Status, number>;
+    byPaymentMethod: Array<{ paymentMethod: string; orders: number; total: number }>;
+    byOrderMode: Array<{ orderMode: string; orders: number; total: number }>;
+    topItems: Array<{ sku: string; name: string; qty: number; total: number; orders: number }>;
+    recentOrders: Array<{
+      id: string;
+      folio: string;
+      createdAt: string;
+      status: string;
+      customerName: string;
+      orderMode: string;
+      paymentMethod: string;
+      paymentStatus: string;
+      total: number;
+    }>;
+    durations: { newToReadyAvgSeconds: number | null; newToDeliveredAvgSeconds: number | null };
+    generatedAt: string;
+  };
+  error?: OrderV2Error;
+};
+
 export type UpdateOrderV2StatusPayload = {
   status: OrderV2Status;
   reason?: string;
