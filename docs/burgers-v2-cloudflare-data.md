@@ -263,3 +263,12 @@ Internal Chekeo V2 usa los endpoints admin de órdenes V2 para leer y operar ped
 - No hay pagos reales ni cambios a estado de pago automático.
 - No hay WhatsApp real.
 - No hay integración con Apps Script ni Sheets para órdenes V2.
+
+## V2-9D Live orders polish data note
+
+V2-9D no agrega endpoints, tablas, migrations ni bindings de Cloudflare. El flujo se mantiene sobre los endpoints existentes de órdenes D1 V2:
+- `POST /api/orders-v2`
+- `GET /api/orders-v2-admin`
+- `PATCH /api/orders-v2-admin/:id/status`
+
+La consola interna sigue usando D1 orders mediante Backend V2 y token admin compartido en `sessionStorage`; Public V2 sigue creando órdenes con `Idempotency-Key`. No se modifica `/api/order`, `/api/rpc`, Apps Script, Sheets, legacy, `cloudflare/public-order`, `cloudflare/internal-chekeo`, pagos, WhatsApp ni `BOG_ACTIVE_ENV`.

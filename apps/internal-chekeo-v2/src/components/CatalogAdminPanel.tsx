@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { MenuItem, MenuV2Response, PromoCard as PromoCardType } from '@config/index';
 import { Button, Card } from '@ui/index';
-import { clearAdminToken, getAdminToken, setAdminToken as persistAdminToken } from '../lib/admin-token';
+import { ADMIN_TOKEN_CHANGED_EVENT, clearAdminToken, getAdminToken, setAdminToken as persistAdminToken } from '../lib/admin-token';
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
 const ACCEPTED_IMAGE_TYPES_LABEL = 'JPG, PNG, WebP o AVIF hasta 5 MB';
@@ -82,9 +82,11 @@ export function CatalogAdminPanel() {
   };
 
   useEffect(() => {
-    const stored = getAdminToken();
-    if (stored) setAdminToken(stored);
+    const syncToken = () => setAdminToken(getAdminToken());
+    syncToken();
+    window.addEventListener(ADMIN_TOKEN_CHANGED_EVENT, syncToken);
     void loadMenu();
+    return () => window.removeEventListener(ADMIN_TOKEN_CHANGED_EVENT, syncToken);
   }, []);
 
   const filtered = useMemo(() => {

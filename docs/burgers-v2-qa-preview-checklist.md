@@ -243,3 +243,37 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] Confirmar no llamadas nuevas a `/api/order` ni `/api/rpc`.
 - [ ] Confirmar que Public V2 no usa tokens ni endpoints admin.
 - [ ] Confirmar que Apps Script, Sheets, legacy, `cloudflare/public-order`, `cloudflare/internal-chekeo`, pagos reales, WhatsApp real y `BOG_ACTIVE_ENV` no fueron modificados.
+
+## V2-9D Live orders polish smoke QA
+
+### Public V2 success polish
+- [ ] Public V2 crea orden real y muestra folio `BX-...` en “Pedido recibido”.
+- [ ] El success state muestra “Pedido registrado en backend V2”.
+- [ ] El success state muestra “Sin pago en línea todavía”, “Pago pendiente de confirmación” y “No se realizó ningún cobro en línea”.
+- [ ] El botón “Crear otro pedido” funciona, limpia confirmación, deja carrito vacío y deja formulario limpio.
+- [ ] Nueva orden posterior a “Crear otro pedido” usa una nueva idempotency key.
+- [ ] El botón “Volver al menú” desplaza al menú y mantiene la confirmación visible para que el cliente conserve folio/contexto.
+
+### Internal V2 empty states and actions
+- [ ] Internal Pedidos muestra “No hay pedidos activos.” cuando source es D1 y no hay órdenes activas.
+- [ ] Internal Pedidos muestra “Cuando Public V2 reciba un pedido nuevo, aparecerá aquí.” como ayuda secundaria.
+- [ ] Internal Cocina muestra “Cocina limpia.” cuando source es D1 y no hay órdenes `new`, `preparing` ni `ready`.
+- [ ] Internal Cocina muestra “No hay órdenes activas por preparar.” como ayuda secundaria.
+- [ ] Historial muestra “Aún no hay historial de órdenes terminales.” cuando source es D1 y no hay `delivered`/`cancelled`.
+- [ ] Historial muestra órdenes `delivered`/`cancelled` con `includeTerminal=true`.
+- [ ] Botones muestran “Iniciar preparación”, “Marcar listo”, “Entregar” y “Cancelar” según estado.
+- [ ] `delivered` y `cancelled` no muestran acciones.
+- [ ] Si falla una acción de estado, se muestra error visible y la UI no cambia optimistamente a estado falso.
+
+### Timeline and token sharing
+- [ ] Timeline muestra `ORDER_CREATED` como “Pedido creado”.
+- [ ] Timeline muestra `STATUS_CHANGED` como “Estado: <label>”.
+- [ ] Timeline muestra `ORDER_CANCELLED` como “Pedido cancelado”.
+- [ ] Timeline conserva actor, fecha, previousStatus/nextStatus y `detail.reason` si existe.
+- [ ] Token activado en Pedidos sirve en Catálogo.
+- [ ] Cerrar token en Catálogo afecta Pedidos.
+- [ ] Cerrar token en Pedidos afecta Catálogo.
+
+### No-touch checks
+- [ ] No llamadas a `/api/order` ni `/api/rpc` desde Public V2 o Internal V2.
+- [ ] No se modifican `/api/order`, `/api/rpc`, `functions/api`, migrations, Apps Script, Sheets, legacy, `cloudflare/public-order`, `cloudflare/internal-chekeo`, pagos, WhatsApp ni `BOG_ACTIVE_ENV`.
