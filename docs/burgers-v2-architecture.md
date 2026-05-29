@@ -170,3 +170,19 @@ No cambia en V2-9C:
 - No se envía WhatsApp real.
 - No se exporta a Apps Script ni Sheets.
 - No se modifica `BOG_ACTIVE_ENV`.
+
+## V2-9D Live orders UX polish/QA
+
+V2-9D pule el flujo live de órdenes V2 sin cambiar arquitectura ni endpoints. La consola interna mantiene D1 como fuente live cuando responde Backend V2 y conserva fallback mock explícito solo para QA visual ante falta de token o error de backend.
+
+Alcance de la fase:
+- Internal Chekeo V2 muestra timeline legible para eventos `ORDER_CREATED`, `STATUS_CHANGED` y `ORDER_CANCELLED`, incluyendo actor, cambios de estado y razón cuando existe.
+- Pedidos, Cocina e Historial agregan empty states reales para source D1 cuando no hay órdenes activas o terminales.
+- Acciones de estado usan copy operativo: “Iniciar preparación”, “Marcar listo”, “Entregar” y “Cancelar”, con error visible si falla el PATCH.
+- El modal de detalle mejora teléfono, notas, total, items con precio unitario/subtotal y timeline legible.
+- Public Order V2 agrega acciones post-success: “Crear otro pedido” limpia confirmación/form/idempotencia y “Volver al menú” desplaza al menú manteniendo la confirmación visible.
+
+No cambia en V2-9D:
+- No se agregan endpoints ni bindings.
+- No se modifica `/api/order`, `/api/rpc`, `functions/api`, migrations, Apps Script, Sheets, legacy, `cloudflare/public-order`, `cloudflare/internal-chekeo` ni `BOG_ACTIVE_ENV`.
+- No se conectan pagos reales ni WhatsApp real.

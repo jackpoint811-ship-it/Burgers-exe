@@ -40,6 +40,8 @@ type CartPanelProps = {
   submitting: boolean;
   error: string | null;
   orderConfirmation: OrderConfirmation | null;
+  onCreateAnother: () => void;
+  onBackToMenu: () => void;
 };
 type MenuSectionProps = Omit<CartPanelProps, 'onCheckout'> & {
   onAdd: (item: MenuItem) => void;
@@ -64,6 +66,7 @@ const paymentMethodLabels: Record<OrderV2PaymentMethod, string> = {
   unknown: 'Por confirmar'
 };
 const statusLabels: Record<string, string> = { new: 'Nuevo', preparing: 'En preparación', ready: 'Listo', delivered: 'Entregado', cancelled: 'Cancelado' };
+const createEmptyCustomer = (): CustomerDraft => ({ name: '', phone: '', notes: '', orderMode: 'pickup', paymentMethod: 'unknown' });
 
 const getVisualKind = (seed: string): VisualKind => {
   const key = seed.toLowerCase();
@@ -263,11 +266,11 @@ const CheckoutForm = ({ customer, setCustomer, onCheckout, submitting, count }: 
   </div>
 );
 
-const OrderSuccess = ({ order }: { order: OrderConfirmation }) => (
+const OrderSuccess = ({ order, onCreateAnother, onBackToMenu }: { order: OrderConfirmation; onCreateAnother: () => void; onBackToMenu: () => void }) => (
   <section className='space-y-2 rounded-xl border border-emerald-400/40 bg-emerald-500/15 p-3 text-sm text-emerald-100' aria-live='polite'>
     <div>
       <p className='text-base font-bold text-white'>Pedido recibido</p>
-      <p>Tu pedido quedó registrado.</p>
+      <p>Pedido registrado en backend V2.</p>
     </div>
     <dl className='grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-emerald-50'>
       <dt className='text-emerald-200'>Folio:</dt>
@@ -283,13 +286,18 @@ const OrderSuccess = ({ order }: { order: OrderConfirmation }) => (
       <dt className='text-emerald-200'>Creado:</dt>
       <dd>{new Date(order.createdAt).toLocaleString('es-MX')}</dd>
     </dl>
+    <p>Sin pago en línea todavía.</p>
     <p>Pago pendiente de confirmación.</p>
     <p>No se realizó ningún cobro en línea.</p>
-    <p>Te contactaremos por WhatsApp/teléfono si necesitamos confirmar algo.</p>
+    <p>Te contactaremos por teléfono si necesitamos confirmar algo.</p>
+    <div className='mt-3 grid gap-2 sm:grid-cols-2'>
+      <Button className='bg-white text-black' onClick={onCreateAnother}>Crear otro pedido</Button>
+      <Button className='border border-emerald-200/50 bg-transparent text-emerald-50' onClick={onBackToMenu}>Volver al menú</Button>
+    </div>
   </section>
 );
 
-const CartPanel = ({ cart, total, count, onMinus, onPlus, customer, setCustomer, onCheckout, submitting, error, orderConfirmation, items }: CartPanelProps & { items: MenuItem[] }) => (
+const CartPanel = ({ cart, total, count, onMinus, onPlus, customer, setCustomer, onCheckout, submitting, error, orderConfirmation, onCreateAnother, onBackToMenu, items }: CartPanelProps & { items: MenuItem[] }) => (
   <aside className='sticky top-2 h-fit space-y-3 rounded-2xl border border-white/15 bg-zinc-950 p-4'>
     <p className='text-xs uppercase tracking-[0.2em] text-zinc-400'>Vista V2 preview · Pedido registrado en backend V2</p>
     <h3 className='text-xl font-bold'>Ticket ({count})</h3>
@@ -315,7 +323,7 @@ const CartPanel = ({ cart, total, count, onMinus, onPlus, customer, setCustomer,
     <CheckoutForm customer={customer} setCustomer={setCustomer} onCheckout={onCheckout} submitting={submitting} count={count} />
     {submitting ? <p className='rounded-lg border border-cyan-400/40 bg-cyan-500/15 p-2 text-sm text-cyan-100' aria-live='polite'>Enviando pedido...</p> : null}
     {error ? <p className='rounded-lg border border-red-400/50 bg-red-500/15 p-2 text-sm text-red-100' role='alert'>{error}</p> : null}
-    {orderConfirmation ? <OrderSuccess order={orderConfirmation} /> : null}
+    {orderConfirmation ? <OrderSuccess order={orderConfirmation} onCreateAnother={onCreateAnother} onBackToMenu={onBackToMenu} /> : null}
   </aside>
 );
 
@@ -352,7 +360,7 @@ export function PublicOrderApp() {
   const [cart, setCart] = useState<CartEntry[]>([]);
   const [menuData, setMenuData] = useState<MenuV2Response>(toMockResponse('mock'));
   const [loadingMenu, setLoadingMenu] = useState(true);
-  const [customer, setCustomer] = useState<CustomerDraft>({ name: '', phone: '', notes: '', orderMode: 'pickup', paymentMethod: 'unknown' });
+  const [customer, setCustomer] = useState<CustomerDraft>(() => createEmptyCustomer());
   const [submitting, setSubmitting] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [orderConfirmation, setOrderConfirmation] = useState<OrderConfirmation | null>(null);
@@ -438,7 +446,7 @@ export function PublicOrderApp() {
       if (!order) throw new Error('El backend no devolvió folio de confirmación.');
       setOrderConfirmation({ ...order, orderMode: customer.orderMode, paymentMethod: customer.paymentMethod });
       setCart([]);
-      setCustomer({ name: '', phone: '', notes: '', orderMode: 'pickup', paymentMethod: 'unknown' });
+      setCustomer(createEmptyCustomer());
       clearDraftIdempotencyKey();
     } catch (error) {
       setCheckoutError(error instanceof Error ? error.message : 'No se pudo enviar el pedido. Intenta de nuevo.');
@@ -446,6 +454,27 @@ export function PublicOrderApp() {
       submittingRef.current = false;
       setSubmitting(false);
     }
+  };
+
+
+  const scrollToMenu = () => {
+    const menu = document.getElementById('menu');
+    menu?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    const firstInteractive = menu?.querySelector<HTMLElement>('button, [href], input, select, textarea');
+    firstInteractive?.focus();
+  };
+
+  const handleCreateAnother = () => {
+    setOrderConfirmation(null);
+    setCheckoutError(null);
+    setCart([]);
+    setCustomer(createEmptyCustomer());
+    clearDraftIdempotencyKey();
+    scrollToMenu();
+  };
+
+  const handleBackToMenu = () => {
+    scrollToMenu();
   };
 
   const sourceLabel = menuData.source === 'd1' ? 'Catálogo live' : 'Vista V2 preview';
@@ -474,6 +503,8 @@ export function PublicOrderApp() {
         submitting={submitting}
         error={checkoutError}
         orderConfirmation={orderConfirmation}
+        onCreateAnother={handleCreateAnother}
+        onBackToMenu={handleBackToMenu}
       />
       <TrustSection />
       <p className='text-center text-xs text-zinc-500'>{footerNotice}</p>
