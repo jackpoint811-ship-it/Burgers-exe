@@ -230,6 +230,18 @@ export type UpdateOrderV2StatusResponse = {
   error?: OrderV2Error;
 };
 
+export type UpdateOrderV2PaymentPayload = {
+  paymentStatus: OrderV2PaymentStatus;
+  notes?: string;
+  reason?: string;
+};
+
+export type UpdateOrderV2PaymentResponse = {
+  ok: boolean;
+  data?: { order: OrderV2; event?: OrderV2Event };
+  error?: OrderV2Error;
+};
+
 export type KitchenEvent = { id: string; orderId: string; label: string; at: string };
 export type OperatorStats = {
   activeOrders: number;

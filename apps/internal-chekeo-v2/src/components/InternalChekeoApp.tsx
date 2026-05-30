@@ -1,10 +1,10 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { mockOrders, operatorStats, type MockOrder, type OrdersV2SummaryResponse, type OrderStatus, type OrderV2, type OrderV2Event, type OrderV2Status } from '@config/index';
+import { mockOrders, operatorStats, type MockOrder, type OrdersV2SummaryResponse, type OrderStatus, type OrderV2, type OrderV2Event, type OrderV2PaymentStatus, type OrderV2Status } from '@config/index';
 import { Button, Card, StatusPill } from '@ui/index';
 import { ADMIN_TOKEN_CHANGED_EVENT, clearAdminToken, getAdminToken, setAdminToken as persistAdminToken } from '../lib/admin-token';
-import { exportOrdersV2Csv, fetchOrdersV2Admin, fetchOrdersV2Summary, updateOrderV2Status } from '../lib/orders-v2-admin';
+import { exportOrdersV2Csv, fetchOrdersV2Admin, fetchOrdersV2Summary, updateOrderV2Payment, updateOrderV2Status } from '../lib/orders-v2-admin';
 import { buildWhatsappOrderMessage, buildWhatsappUrl, normalizeWhatsappPhone, type WhatsappOrderMessageType } from '../lib/whatsapp';
 import { CatalogAdminPanel } from './CatalogAdminPanel';
 
@@ -16,7 +16,7 @@ type InternalTimelineEvent = MockOrder['timeline'][number] & { actor?: string; p
 type InternalOrder = Omit<MockOrder, 'paymentMethod' | 'paymentState' | 'channel' | 'items' | 'timeline'> & {
   channel: 'walk-in' | 'pickup' | 'delivery';
   paymentMethod: string;
-  paymentState: string;
+  paymentState: OrderV2PaymentStatus | string;
   customerPhone?: string;
   source?: string;
   updatedAt?: string;
@@ -42,6 +42,9 @@ type OrdersRuntime = {
 
 const statusLabel: Record<OrderStatus, string> = { new: 'Nuevo', preparing: 'En preparación', ready: 'Listo', delivered: 'Entregado', cancelled: 'Cancelado' };
 const statusTone: Record<OrderStatus, string> = { new: 'border-sky-400/40 text-sky-200', preparing: 'border-amber-400/40 text-amber-200', ready: 'border-emerald-400/40 text-emerald-200', delivered: 'border-zinc-500/40 text-zinc-200', cancelled: 'border-rose-500/40 text-rose-300' };
+const paymentStatusLabel: Record<OrderV2PaymentStatus, string> = { pending: 'Pendiente', paid: 'Pagado', cancelled: 'Cancelado' };
+const paymentStatusTone: Record<OrderV2PaymentStatus, string> = { pending: 'border-amber-400/40 text-amber-200', paid: 'border-emerald-400/40 text-emerald-200', cancelled: 'border-rose-500/40 text-rose-300' };
+const isOrderV2PaymentStatus = (value: string): value is OrderV2PaymentStatus => value === 'pending' || value === 'paid' || value === 'cancelled';
 const terminalStatuses = new Set<OrderStatus>(['delivered', 'cancelled']);
 const whatsappTemplateLabels: Array<{ value: Exclude<WhatsappOrderMessageType, 'custom'>; label: string }> = [
   { value: 'received', label: 'Recibido' },
@@ -426,7 +429,114 @@ const OperationalClosePanel = ({ adminToken }: { adminToken: string }) => {
   </section>;
 };
 
-const PaymentNotesPanel = ({ orders }: { orders: InternalOrder[] }) => <section className='card'><h3 className='mb-2'>Pagos pendientes y notas</h3>{orders.filter((o) => o.paymentState === 'pending' || o.note).map((o) => <div key={o.id} className='row'><span>{o.folio} · {o.paymentMethod} · {o.createdAt}</span><span className='muted'>{o.note ?? 'Sin nota'}</span></div>)}</section>;
+
+type PaymentFilter = 'all' | OrderV2PaymentStatus;
+type PaymentPanelNotice = { tone: 'success' | 'error'; message: string };
+
+const paymentFilters: Array<{ value: PaymentFilter; label: string }> = [
+  { value: 'all', label: 'Todos' },
+  { value: 'pending', label: 'Pendientes' },
+  { value: 'paid', label: 'Pagados' },
+  { value: 'cancelled', label: 'Cancelados' }
+];
+
+const PaymentStatusBadge = ({ status }: { status: string }) => {
+  const label = isOrderV2PaymentStatus(status) ? paymentStatusLabel[status] : status;
+  const tone = isOrderV2PaymentStatus(status) ? paymentStatusTone[status] : 'border-zinc-500/40 text-zinc-200';
+  return <StatusPill className={tone}>{label}</StatusPill>;
+};
+
+const PaymentNotesPanel = ({ orders, runtime, onUpdatePayment }: { orders: InternalOrder[]; runtime: OrdersRuntime; onUpdatePayment: (orderId: string, paymentStatus: OrderV2PaymentStatus, notes?: string, reason?: string) => Promise<void> }) => {
+  const [filter, setFilter] = useState<PaymentFilter>('all');
+  const [draftNotes, setDraftNotes] = useState<Record<string, string>>({});
+  const [inlineNotice, setInlineNotice] = useState<Record<string, PaymentPanelNotice>>({});
+
+  useEffect(() => {
+    setDraftNotes((current) => {
+      const next: Record<string, string> = {};
+      orders.forEach((order) => { next[order.id] = current[order.id] ?? order.note ?? ''; });
+      return next;
+    });
+  }, [orders]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setInlineNotice((current) => Object.fromEntries(Object.entries(current).filter(([, notice]) => notice.tone !== 'success')));
+    }, 2500);
+    return () => window.clearTimeout(timeout);
+  }, [inlineNotice]);
+
+  const filteredOrders = orders.filter((order) => filter === 'all' || order.paymentState === filter);
+  const paymentOrders = runtime.source === 'd1' ? filteredOrders : filteredOrders.filter((order) => order.paymentState === 'pending' || order.note);
+
+  const runPaymentAction = async (order: InternalOrder, paymentStatus: OrderV2PaymentStatus, notes?: string) => {
+    setInlineNotice((current) => ({ ...current, [order.id]: { tone: 'success', message: 'Actualizando pago operativo…' } }));
+    try {
+      await onUpdatePayment(order.id, paymentStatus, notes, `Pago operativo manual: ${paymentStatus}`);
+      setInlineNotice((current) => ({ ...current, [order.id]: { tone: 'success', message: `${order.folio}: payment status declarado por operador.` } }));
+    } catch (paymentError) {
+      setInlineNotice((current) => ({ ...current, [order.id]: { tone: 'error', message: paymentError instanceof Error ? paymentError.message : 'No se pudo actualizar el pago operativo' } }));
+    }
+  };
+
+  return (
+    <section className='space-y-2.5'>
+      <SourcePanel runtime={runtime} includeTerminal />
+      <Card className='p-3'>
+        <div className='flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between'>
+          <div>
+            <p className='text-xs font-bold uppercase tracking-[0.2em] text-emerald-200'>Pago operativo manual</p>
+            <h3 className='text-lg font-black'>Pagos y notas V2</h3>
+            <p className='text-sm text-zinc-400'>No se realiza ningún cobro en línea. Payment status declarado por operador.</p>
+          </div>
+          <Button className='border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs disabled:opacity-40' onClick={() => runtime.reload(true)} disabled={runtime.loading || !runtime.adminToken}>{runtime.loading ? 'Cargando…' : 'Recargar órdenes'}</Button>
+        </div>
+        <div className='mt-3 grid grid-cols-2 gap-2 min-[360px]:grid-cols-4'>
+          {paymentFilters.map((option) => <button key={option.value} className={`rounded-full border px-3 py-2 text-xs font-semibold ${filter === option.value ? 'border-cyan-300 bg-cyan-300 text-black' : 'border-zinc-700 bg-zinc-900 text-zinc-200'}`} onClick={() => setFilter(option.value)}>{option.label}</button>)}
+        </div>
+        {!runtime.adminToken ? <p className='mt-3 rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-100'>Activa el token admin para operar pagos reales D1.</p> : null}
+      </Card>
+      {runtime.source === 'd1' && paymentOrders.length === 0 ? <EmptyOrdersState title='Sin órdenes para este filtro.' description='Usa Recargar órdenes o cambia el filtro de payment status.' /> : null}
+      <div className='grid gap-2'>
+        {paymentOrders.map((order) => {
+          const busy = runtime.actionOrderId === order.id;
+          const draft = draftNotes[order.id] ?? order.note ?? '';
+          const notice = inlineNotice[order.id];
+          return (
+            <Card key={order.id} className='p-3'>
+              <div className='flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between'>
+                <div className='min-w-0'>
+                  <p className='break-words text-sm font-bold'>{order.folio} · {order.customer}</p>
+                  <p className='text-[11px] text-zinc-400'>{order.createdAt} · {order.channel} · {order.source ?? 'mock'}</p>
+                  {order.customerPhone ? <p className='text-[11px] text-zinc-500'>Tel: {order.customerPhone}</p> : null}
+                </div>
+                <div className='flex flex-wrap gap-1 sm:justify-end'><PaymentStatusBadge status={order.paymentState} /><StatusBadge status={order.status} /></div>
+              </div>
+              <div className='mt-2 grid gap-1 text-xs text-zinc-300 sm:grid-cols-2'>
+                <span>Total: <strong>{formatCurrency(order.total)}</strong></span>
+                <span>paymentMethod: {order.paymentMethod}</span>
+                <span>paymentStatus: {order.paymentState}</span>
+                <span>order status: {statusLabel[order.status]}</span>
+              </div>
+              <OrderItems order={order} />
+              <label className='mt-2 block text-[11px] text-zinc-400'>Notas operativas
+                <textarea className='input mt-1 min-h-20 text-xs' maxLength={500} value={draft} onChange={(event) => setDraftNotes((current) => ({ ...current, [order.id]: event.target.value }))} placeholder='Sin nota operativa' />
+              </label>
+              <p className='mt-1 text-[11px] text-amber-200'>Editar notas puede reemplazar la nota operativa actual.</p>
+              <div className='mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4'>
+                <Button className='border border-emerald-700 bg-emerald-950/50 px-3 py-1.5 text-xs text-emerald-100 disabled:opacity-40' onClick={() => void runPaymentAction(order, 'paid')} disabled={busy || !runtime.adminToken}>{busy ? 'Actualizando…' : 'Marcar pagado'}</Button>
+                <Button className='border border-amber-700 bg-amber-950/50 px-3 py-1.5 text-xs text-amber-100 disabled:opacity-40' onClick={() => void runPaymentAction(order, 'pending')} disabled={busy || !runtime.adminToken}>{busy ? 'Actualizando…' : 'Marcar pendiente'}</Button>
+                <Button className='border border-rose-700 bg-rose-950/50 px-3 py-1.5 text-xs text-rose-100 disabled:opacity-40' onClick={() => void runPaymentAction(order, 'cancelled')} disabled={busy || !runtime.adminToken}>{busy ? 'Actualizando…' : 'Marcar pago cancelado'}</Button>
+                <Button className='border border-cyan-700 bg-cyan-950/50 px-3 py-1.5 text-xs text-cyan-100 disabled:opacity-40' onClick={() => void runPaymentAction(order, isOrderV2PaymentStatus(order.paymentState) ? order.paymentState : 'pending', draft)} disabled={busy || !runtime.adminToken}>{busy ? 'Guardando…' : 'Guardar nota'}</Button>
+              </div>
+              {notice ? <p className={`mt-2 rounded px-2 py-1 text-xs ${notice.tone === 'error' ? 'bg-rose-500/10 text-rose-200' : 'bg-emerald-500/10 text-emerald-200'}`}>{notice.message}</p> : null}
+            </Card>
+          );
+        })}
+      </div>
+    </section>
+  );
+};
 const HistoryPanel = ({ orders, runtime }: { orders: InternalOrder[]; runtime: OrdersRuntime }) => { const terminalOrders = orders.filter((o) => terminalStatuses.has(o.status)); return <section><SourcePanel runtime={runtime} includeTerminal /><Card className='p-3'><h3 className='mb-2'>Historial {runtime.source === 'd1' ? 'Backend V2' : 'local'}</h3>{runtime.source === 'd1' && terminalOrders.length === 0 ? <p className='text-sm text-zinc-400'>Aún no hay historial de órdenes terminales.</p> : null}{terminalOrders.map((o) => <div key={o.id} className='row'><span>{o.folio} · {o.customer} · {o.createdAt}</span><StatusBadge status={o.status} /></div>)}</Card></section>; };
 const getNextStatus = (status: OrderStatus): OrderStatus => (status === 'new' ? 'preparing' : status === 'preparing' ? 'ready' : status === 'ready' ? 'delivered' : status);
 
@@ -502,7 +612,7 @@ export function InternalChekeoApp() {
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const reduce = useReducedMotion();
 
-  const loadLiveOrders = useCallback(async (includeTerminal = tab === 'historial') => {
+  const loadLiveOrders = useCallback(async (includeTerminal = tab === 'historial' || tab === 'pagos') => {
     const token = getAdminToken();
     setAdminTokenState(token);
     if (!token) {
@@ -536,7 +646,7 @@ export function InternalChekeoApp() {
   }, []);
 
   useEffect(() => {
-    if (logged && tab !== 'catalogo' && tab !== 'cierre') void loadLiveOrders(tab === 'historial');
+    if (logged && tab !== 'catalogo' && tab !== 'cierre') void loadLiveOrders(tab === 'historial' || tab === 'pagos');
   }, [logged, tab, adminToken, loadLiveOrders]);
 
   const move = async (id: string, s: OrderStatus) => {
@@ -565,6 +675,31 @@ export function InternalChekeoApp() {
     }
   };
 
+  const updatePayment = async (id: string, paymentStatus: OrderV2PaymentStatus, notes?: string, reason?: string) => {
+    if (ordersSource !== 'd1') {
+      setOrders((p) => p.map((o) => (o.id === id ? { ...o, paymentState: paymentStatus, note: typeof notes === 'string' ? notes : o.note } : o)));
+      setOrdersNotice('Pago operativo actualizado en fallback mock');
+      return;
+    }
+    const token = getAdminToken();
+    if (!token) { const message = 'Activa modo admin para operar pagos live'; setOrdersError(message); throw new Error(message); }
+    setActionOrderId(id);
+    setOrdersError(null);
+    try {
+      const updated = await updateOrderV2Payment(token, id, { paymentStatus, notes, reason });
+      const mapped = mapOrderV2ToInternalOrder(updated);
+      setOrders((p) => p.map((o) => (o.id === id ? mapped : o)));
+      setSelected((current) => (current?.id === id ? mapped : current));
+      setOrdersNotice(`${mapped.folio}: payment status ${mapped.paymentState}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se pudo actualizar el pago operativo';
+      setOrdersError(message);
+      throw error instanceof Error ? error : new Error(message);
+    } finally {
+      setActionOrderId(null);
+    }
+  };
+
   const runtime: OrdersRuntime = {
     source: ordersSource,
     loading: loadingOrders,
@@ -574,14 +709,14 @@ export function InternalChekeoApp() {
     adminToken,
     tokenInput,
     setTokenInput,
-    activateToken: () => { if (!tokenInput.trim()) return; persistAdminToken(tokenInput); setAdminTokenState(tokenInput.trim()); setTokenInput(''); void loadLiveOrders(tab === 'historial'); },
+    activateToken: () => { if (!tokenInput.trim()) return; persistAdminToken(tokenInput); setAdminTokenState(tokenInput.trim()); setTokenInput(''); void loadLiveOrders(tab === 'historial' || tab === 'pagos'); },
     clearToken: () => { clearAdminToken(); setAdminTokenState(''); setOrdersSource('mock'); setOrders(asInternalOrders(mockOrders)); setOrdersError('Activa modo admin para cargar órdenes live'); },
     reload: (includeTerminal?: boolean) => { void loadLiveOrders(Boolean(includeTerminal)); },
     lastUpdated
   };
 
   const active = orders.filter((o) => !terminalStatuses.has(o.status));
-  const content = useMemo(() => ({ inicio: <DashboardHome orders={orders} source={ordersSource} />, pedidos: <OrdersBoard orders={orders.filter((o) => !terminalStatuses.has(o.status))} setSelected={setSelected} runtime={runtime} move={move} />, cocina: <KitchenQueue orders={orders} move={move} runtime={runtime} />, pagos: <PaymentNotesPanel orders={orders} />, historial: <HistoryPanel orders={orders} runtime={runtime} />, cierre: <OperationalClosePanel adminToken={adminToken} />, catalogo: <CatalogAdminPanel /> })[tab], [orders, ordersSource, tab, runtime]);
+  const content = useMemo(() => ({ inicio: <DashboardHome orders={orders} source={ordersSource} />, pedidos: <OrdersBoard orders={orders.filter((o) => !terminalStatuses.has(o.status))} setSelected={setSelected} runtime={runtime} move={move} />, cocina: <KitchenQueue orders={orders} move={move} runtime={runtime} />, pagos: <PaymentNotesPanel orders={orders} runtime={runtime} onUpdatePayment={updatePayment} />, historial: <HistoryPanel orders={orders} runtime={runtime} />, cierre: <OperationalClosePanel adminToken={adminToken} />, catalogo: <CatalogAdminPanel /> })[tab], [orders, ordersSource, tab, runtime]);
   if (!logged) return <PinLoginMock onLogin={() => setLogged(true)} />;
   return <main className='shell'><OperatorHeader active={active.length} source={ordersSource} onLogout={() => setLogged(false)} /><OperatorTabs tab={tab} setTab={setTab} content={<AnimatePresence mode='wait'><motion.div key={tab} initial={reduce ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={reduce ? {} : { opacity: 0, y: -8 }} transition={{ duration: 0.18 }} className='mt-2'>{content}</motion.div></AnimatePresence>} /><OrderDetailModal selected={selected} onClose={() => setSelected(null)} onMove={move} actionOrderId={actionOrderId} /></main>;
 }

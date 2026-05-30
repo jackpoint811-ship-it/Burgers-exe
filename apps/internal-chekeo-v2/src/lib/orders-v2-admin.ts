@@ -1,4 +1,4 @@
-import type { OrdersV2AdminResponse, OrdersV2SummaryResponse, OrderV2Status, UpdateOrderV2StatusResponse } from '@config/index';
+import type { OrdersV2AdminResponse, OrdersV2SummaryResponse, OrderV2PaymentStatus, OrderV2Status, UpdateOrderV2PaymentPayload, UpdateOrderV2PaymentResponse, UpdateOrderV2StatusResponse } from '@config/index';
 
 type FetchOrdersV2AdminOptions = {
   includeTerminal?: boolean;
@@ -85,6 +85,25 @@ export const updateOrderV2Status = async (token: string, orderId: string, status
     body: JSON.stringify({ status, reason })
   });
   const envelope = await parseJsonEnvelope<UpdateOrderV2StatusResponse>(res);
+  if (!envelope.data?.order) throw new Error('Backend V2 no devolvió la orden actualizada');
+  return envelope.data.order;
+};
+
+
+export const updateOrderV2Payment = async (token: string, orderId: string, payload: UpdateOrderV2PaymentPayload) => {
+  const trimmed = token.trim();
+  if (!trimmed) throw new Error('Activa modo admin para operar pagos live');
+
+  const body: { paymentStatus: OrderV2PaymentStatus; notes?: string; reason?: string } = { paymentStatus: payload.paymentStatus };
+  if (typeof payload.notes === 'string') body.notes = payload.notes;
+  if (typeof payload.reason === 'string') body.reason = payload.reason;
+
+  const res = await fetch(`/api/orders-v2-admin/${encodeURIComponent(orderId)}/payment`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${trimmed}` },
+    body: JSON.stringify(body)
+  });
+  const envelope = await parseJsonEnvelope<UpdateOrderV2PaymentResponse>(res);
   if (!envelope.data?.order) throw new Error('Backend V2 no devolvió la orden actualizada');
   return envelope.data.order;
 };
