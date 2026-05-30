@@ -3,6 +3,7 @@
 > Advertencia: esta fase es **solo preview/mock-safe**. No usar para operación real todavía.
 
 ## D1 recomendado
+
 - Nombre: `burgers-exe-menu-v2-preview`
 - Binding: `BOG_MENU_DB`
 - Crear DB:
@@ -14,6 +15,7 @@ npx wrangler d1 create burgers-exe-menu-v2-preview
 Usa `wrangler.example.toml` como plantilla local. Si necesitas Wrangler local, copia a `wrangler.toml` y reemplaza `database_id` con el ID real. En Pages preview, configura `BOG_MENU_DB` desde el dashboard.
 
 ## Migraciones
+
 - Schema: `migrations/0001_v2_menu_schema.sql`
 - Seed: `migrations/0002_v2_menu_seed.sql`
 
@@ -32,30 +34,39 @@ npm run db:v2:seed:remote
 ```
 
 ## Configurar binding en Cloudflare Pages
+
 En cada proyecto Pages preview:
+
 - `burgers-exe-public-v2-preview`
 - `burgers-exe-internal-v2-preview`
 
 Agrega binding D1:
+
 - Variable/binding name: `BOG_MENU_DB`
 - Database: `burgers-exe-menu-v2-preview`
 
 ## Validar API
+
 Endpoint nuevo:
+
 - `GET /api/menu-v2`
 
 Esperado:
+
 - JSON válido con `categories`, `items`, `promos`, `siteConfig`, `updatedAt`, `source`.
 - `source: "d1"` cuando el binding funciona.
 - `source: "fallback"` cuando falta binding o hay error de D1.
 
 ## Confirmar fallback
+
 Quita temporalmente binding `BOG_MENU_DB` en local/preview y valida que:
+
 - El endpoint responde 200.
 - `source` cambia a `fallback`.
 - UI pública V2 sigue operativa con catálogo local.
 
 ## R2 assets para catálogo V2
+
 - Bucket preview recomendado: `burgers-exe-assets-v2-preview`.
 - Binding requerido en Pages Functions: `BOG_ASSETS_BUCKET`.
 - Crear bucket:
@@ -86,6 +97,7 @@ bucket_name = "burgers-exe-assets-v2-preview"
   - `promos/spicy-night.webp`
 
 ### Endpoint público same-origin
+
 - Endpoint: `GET /api/assets-v2/<key>`.
 - Ejemplo: `/api/assets-v2/menu/burger-og.webp`.
 - Sirve objetos desde `BOG_ASSETS_BUCKET` con `Cache-Control: public, max-age=3600`.
@@ -95,12 +107,14 @@ bucket_name = "burgers-exe-assets-v2-preview"
 - Si falta binding u objeto, responde 404.
 
 ### Estrategia de URLs
+
 - `imageUrl` permite rutas same-origin que empiecen con `/` o URLs externas `https://`.
 - `imageKey` apunta a R2 y la UI pública lo resuelve a `/api/assets-v2/<key>`.
 - Si la imagen falla, la UI mantiene el placeholder visual existente.
 - No usar `r2.dev` como estrategia final de producción. Para producción, usar custom domain o continuar sirviendo por Pages Function según la estrategia de cache/seguridad.
 
 ## Preview admin de catálogo (V2)
+
 - Endpoint de edición existente: `PATCH /api/menu-v2-admin/items/:sku` (solo preview/internal).
 - Nuevos endpoints V2-8.2 para imágenes de catálogo:
   - `POST /api/menu-v2-admin/items/:sku/image` sube una imagen desde Internal Chekeo Catálogo, la guarda en R2 y actualiza D1 (`image_key = <key>`, `image_url = NULL`).
@@ -120,6 +134,7 @@ bucket_name = "burgers-exe-assets-v2-preview"
 - Este flujo es solo admin preview; no reemplaza producción final ni conecta órdenes reales.
 
 ## V2-8.3 admin de promos con imágenes (preview)
+
 - Internal Chekeo V2 ahora administra promociones desde Catálogo > Promos usando el mismo token admin de productos.
 - Endpoints admin nuevos, same-origin y sin CORS:
   - `PATCH /api/menu-v2-admin/promos/:id` edita texto y referencias seguras de asset para una promo existente.
@@ -148,6 +163,7 @@ bucket_name = "burgers-exe-assets-v2-preview"
 Esta fase agrega la base backend para órdenes reales V2 sin conectar todavía Public V2 UI ni Internal V2 UI.
 
 ### Persistencia
+
 - Fuente principal: D1 usando el binding existente `BOG_MENU_DB`.
 - Tablas nuevas:
   - `orders_v2`
@@ -175,6 +191,7 @@ npm run db:v2:orders:migrate:remote
 Ambos scripts ejecutan `migrations/0003_v2_orders_schema.sql` sobre `burgers-exe-menu-v2-preview`, el D1 usado por `BOG_MENU_DB`.
 
 ### Variables y flags
+
 - `BOG_MENU_DB`: requerido para todos los endpoints de órdenes V2.
 - `ORDERS_V2_WRITE_ENABLED`: opcional para `POST /api/orders-v2`.
   - Si no existe, la escritura se permite para preview.
@@ -185,6 +202,7 @@ Ambos scripts ejecutan `migrations/0003_v2_orders_schema.sql` sobre `burgers-exe
 ### Endpoints
 
 #### `POST /api/orders-v2`
+
 - Crea una orden V2 en D1.
 - Acepta `Idempotency-Key` por header o `idempotencyKey` en body.
 - Si no recibe idempotency key, genera una server-side y la devuelve en la respuesta para facilitar pruebas con curl.
@@ -193,12 +211,14 @@ Ambos scripts ejecutan `migrations/0003_v2_orders_schema.sql` sobre `burgers-exe
 - Inserta evento `ORDER_CREATED`.
 
 #### `GET /api/orders-v2-admin`
+
 - Lista órdenes V2 desde D1.
 - Requiere `Authorization: Bearer <token>`.
 - Soporta filtros `status`, `includeTerminal`, `limit`, `from`, `to`.
 - Por defecto excluye órdenes terminales (`delivered`, `cancelled`).
 
 #### `PATCH /api/orders-v2-admin/:id/status`
+
 - Cambia estado de una orden V2.
 - Requiere `Authorization: Bearer <token>`.
 - Transiciones permitidas:
@@ -209,6 +229,7 @@ Ambos scripts ejecutan `migrations/0003_v2_orders_schema.sql` sobre `burgers-exe
 - Inserta `STATUS_CHANGED` u `ORDER_CANCELLED` en `order_events_v2`.
 
 ### No cambia en V2-9A
+
 - No se toca `/api/order` legacy.
 - No se toca `/api/rpc` legacy.
 - No se toca Apps Script.
@@ -221,6 +242,7 @@ Ambos scripts ejecutan `migrations/0003_v2_orders_schema.sql` sobre `burgers-exe
 Public Order V2 ahora usa `POST /api/orders-v2` para registrar pedidos reales en D1 durante preview. La UI pública continúa leyendo catálogo desde `GET /api/menu-v2` y assets desde `GET /api/assets-v2/<key>` cuando el catálogo entrega `imageKey`.
 
 ### Requisitos de datos
+
 - `BOG_MENU_DB` debe estar configurado en el proyecto de Cloudflare Pages que sirve Public V2.
 - Las tablas V2 deben estar migradas en ese D1:
   - `orders_v2`
@@ -229,12 +251,14 @@ Public Order V2 ahora usa `POST /api/orders-v2` para registrar pedidos reales en
 - `menu_items` debe contener los SKUs disponibles para que el backend pueda validar disponibilidad y recalcular precios.
 
 ### Escritura pública
+
 - Public V2 manda `customer.name`, `customer.phone`, `orderMode`, `paymentMethod`, `notes` e `items` con pares `{ sku, qty }`.
 - Public V2 manda `Idempotency-Key` por header para evitar duplicados por doble click, reintentos o fallos recuperables de red.
 - Public V2 no manda precios ni total; `POST /api/orders-v2` recalcula subtotal/total desde `menu_items.price_cents`.
 - `ORDERS_V2_WRITE_ENABLED=false` apaga la escritura y hace que `POST /api/orders-v2` responda `ORDERING_DISABLED`.
 
 ### Límites explícitos
+
 - No hay pagos reales: `paymentMethod` es intención y `payment_status` permanece `pending` hasta una fase posterior.
 - No hay WhatsApp real: el texto de confirmación solo indica que el equipo puede contactar por WhatsApp/teléfono si necesita confirmar algo.
 - No hay integración con Sheets ni Apps Script para órdenes V2.
@@ -245,20 +269,24 @@ Public Order V2 ahora usa `POST /api/orders-v2` para registrar pedidos reales en
 Internal Chekeo V2 usa los endpoints admin de órdenes V2 para leer y operar pedidos reales en D1 desde preview.
 
 ### Token admin
+
 - La consola interna requiere un token admin guardado solo en `sessionStorage` durante la sesión del navegador.
 - El backend valida `BOG_ORDERS_ADMIN_TOKEN` y puede usar `BOG_MENU_ADMIN_TOKEN` como fallback operativo según la configuración existente de Functions.
 - El token se reutiliza con el flujo admin del Catálogo para evitar guardar credenciales duplicadas o exponerlas en Public V2.
 
 ### Endpoints usados
+
 - `GET /api/orders-v2-admin?includeTerminal=<bool>&limit=<n>` lista órdenes D1 con items/eventos para Pedidos, Cocina e Historial.
 - `PATCH /api/orders-v2-admin/:id/status` actualiza estados válidos y registra el evento de cambio.
 
 ### Comportamiento de datos
+
 - Pedidos y Cocina cargan órdenes activas (`new`, `preparing`, `ready`) para operación diaria.
 - Historial carga con `includeTerminal=true&limit=50` para incluir `delivered` y `cancelled`.
 - Si falta token o Backend V2 falla, Internal V2 mantiene `mockOrders` como fallback visual/QA y muestra error explícito.
 
 ### Límites explícitos
+
 - No hay llamadas a `/api/order` ni `/api/rpc` desde Internal V2.
 - No hay pagos reales ni cambios a estado de pago automático.
 - No hay WhatsApp real.
@@ -267,6 +295,7 @@ Internal Chekeo V2 usa los endpoints admin de órdenes V2 para leer y operar ped
 ## V2-9D Live orders polish data note
 
 V2-9D no agrega endpoints, tablas, migrations ni bindings de Cloudflare. El flujo se mantiene sobre los endpoints existentes de órdenes D1 V2:
+
 - `POST /api/orders-v2`
 - `GET /api/orders-v2-admin`
 - `PATCH /api/orders-v2-admin/:id/status`
@@ -280,6 +309,7 @@ V2-10A.1 adds a read-only CSV export endpoint for operational reporting from D1 
 ### Endpoint
 
 #### `GET /api/orders-v2-admin/export.csv`
+
 - Returns `text/csv; charset=utf-8` with `Content-Disposition: attachment; filename="orders-v2-export.csv"`.
 - Requires `Authorization: Bearer <token>`.
 - Uses the same admin token behavior as the V2 admin order endpoints: `BOG_ORDERS_ADMIN_TOKEN`, with fallback to `BOG_MENU_ADMIN_TOKEN`.
@@ -290,13 +320,13 @@ V2-10A.1 adds a read-only CSV export endpoint for operational reporting from D1 
 
 ### Query params
 
-| Param | Default | Behavior |
-| --- | --- | --- |
-| `includeTerminal` | `false` | When false, excludes `delivered` and `cancelled`; when true, includes terminal orders. |
-| `status` | omitted | Optional filter: `new`, `preparing`, `ready`, `delivered`, or `cancelled`. Invalid values return `400 INVALID_STATUS`. |
-| `from` | omitted | Optional `YYYY-MM-DD`; filters `created_at >= fromT00:00:00.000Z`. Invalid values return `400 INVALID_DATE`. |
-| `to` | omitted | Optional `YYYY-MM-DD`; filters `created_at <= toT23:59:59.999Z`. Invalid values return `400 INVALID_DATE`. |
-| `limit` | `500` | Integer from 1 to 1000. Invalid values return `400 INVALID_LIMIT`. |
+| Param             | Default | Behavior                                                                                                               |
+| ----------------- | ------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `includeTerminal` | `false` | When false, excludes `delivered` and `cancelled`; when true, includes terminal orders.                                 |
+| `status`          | omitted | Optional filter: `new`, `preparing`, `ready`, `delivered`, or `cancelled`. Invalid values return `400 INVALID_STATUS`. |
+| `from`            | omitted | Optional `YYYY-MM-DD`; filters `created_at >= fromT00:00:00.000Z`. Invalid values return `400 INVALID_DATE`.           |
+| `to`              | omitted | Optional `YYYY-MM-DD`; filters `created_at <= toT23:59:59.999Z`. Invalid values return `400 INVALID_DATE`.             |
+| `limit`           | `500`   | Integer from 1 to 1000. Invalid values return `400 INVALID_LIMIT`.                                                     |
 
 Timestamps are exported exactly as stored in D1; no timezone conversion is performed in this phase.
 
@@ -309,6 +339,7 @@ folio,order_id,created_at,updated_at,status,customer_name,customer_phone,order_m
 ```
 
 Column notes:
+
 - `subtotal` and `total` are exported in pesos with two decimals.
 - `items_summary` is formatted like `2x Burger OG; 1x Fries OG`.
 - `item_skus` joins SKUs with `|`.
@@ -319,6 +350,7 @@ Column notes:
 ### Security and CSV safety
 
 The endpoint:
+
 - Requires admin authorization and returns JSON error envelopes for failures.
 - Uses `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`.
 - Escapes CSV values with RFC-style double quote escaping.
@@ -333,12 +365,14 @@ V2-10A.1 does not change Public V2, Internal V2, `/api/order`, `/api/rpc`, Apps 
 Internal Chekeo V2 can trigger the existing protected CSV export from the operator UI. Operators must first activate admin mode; the browser then reads the shared sessionStorage admin token and sends it only as `Authorization: Bearer <token>` when calling `GET /api/orders-v2-admin/export.csv`.
 
 The Internal UI can send these query params to the existing endpoint:
+
 - `includeTerminal`: defaults to `false` in Pedidos/Cocina and `true` in Historial.
 - `status`: optional status filter (`new`, `preparing`, `ready`, `delivered`, `cancelled`) or omitted for all statuses.
 - `from` and `to`: optional `YYYY-MM-DD` date filters.
 - `limit`: defaults to `500` and is blocked in the UI outside the backend-supported `1..1000` range.
 
 Cloudflare/data impact:
+
 - No new bindings are required.
 - D1 remains the source of truth for orders.
 - Sheets remains a manual destination for downloaded/imported CSV files.
@@ -351,6 +385,7 @@ V2-10B adds a read-only admin summary endpoint for shift close/reporting from re
 ### Endpoint
 
 #### `GET /api/orders-v2-admin/summary`
+
 - Requires `BOG_MENU_DB`.
 - Requires `Authorization: Bearer <token>` using the same admin-token behavior as other V2 order admin endpoints (`BOG_ORDERS_ADMIN_TOKEN`, with fallback to `BOG_MENU_ADMIN_TOKEN`).
 - Reads from `orders_v2`, `order_items_v2`, and `order_events_v2`.
@@ -359,19 +394,20 @@ V2-10B adds a read-only admin summary endpoint for shift close/reporting from re
 
 ### Query params
 
-| Param | Default | Max | Behavior |
-| --- | --- | --- | --- |
-| `from` | omitted | — | Optional `YYYY-MM-DD`; filters `created_at >= fromT00:00:00.000Z`. |
-| `to` | omitted | — | Optional `YYYY-MM-DD`; filters `created_at <= toT23:59:59.999Z`. |
-| `includeTerminal` | `true` | — | When false, excludes `delivered` and `cancelled` from the summary dataset. |
-| `limit` | `1000` | `5000` | Caps `recentOrders`. |
-| `topLimit` | `10` | `50` | Caps `topItems`. |
+| Param             | Default | Max    | Behavior                                                                   |
+| ----------------- | ------- | ------ | -------------------------------------------------------------------------- |
+| `from`            | omitted | —      | Optional `YYYY-MM-DD`; filters `created_at >= fromT00:00:00.000Z`.         |
+| `to`              | omitted | —      | Optional `YYYY-MM-DD`; filters `created_at <= toT23:59:59.999Z`.           |
+| `includeTerminal` | `true`  | —      | When false, excludes `delivered` and `cancelled` from the summary dataset. |
+| `limit`           | `1000`  | `5000` | Caps `recentOrders`.                                                       |
+| `topLimit`        | `10`    | `50`   | Caps `topItems`.                                                           |
 
 Invalid dates return `400 INVALID_DATE`; `from > to` returns `400 INVALID_DATE_RANGE`. Invalid limits return `400 INVALID_LIMIT` or `400 INVALID_TOP_LIMIT`.
 
 ### Metrics
 
 The summary response includes:
+
 - Totals: orders, active orders, delivered orders, cancelled orders, gross sales, delivered sales, average ticket.
 - `byStatus`: counts for `new`, `preparing`, `ready`, `delivered`, `cancelled`.
 - `byPaymentMethod`: declared payment method counts/totals; these are not real payment confirmations.
@@ -385,6 +421,7 @@ All money values are returned in pesos, not cents. Date filters use UTC boundari
 ### Internal Cierre tab
 
 Internal Chekeo V2 adds a `Cierre` tab that calls `GET /api/orders-v2-admin/summary` with the selected range and shows:
+
 - “Cierre operativo preview”.
 - “D1 source of truth”.
 - “Pagos declarados, no pagos reales”.
@@ -464,3 +501,26 @@ Audit event shape:
 ### Manual-only payment policy
 
 This endpoint does not charge money, does not call external APIs, does not integrate a payment gateway, does not sync Sheets/App Script, and does not change Public V2. `payment_status` is a manual/operator-declared field for food-ordering operations. Existing close and CSV flows reflect the latest value because both read from `orders_v2`.
+
+## V2-11C cancellation reason data contract
+
+V2-11C does not add a new Cloudflare endpoint or D1 migration. Internal Chekeo V2 reuses the existing protected status endpoint:
+
+- `PATCH /api/orders-v2-admin/:id/status`
+- Payload: `{ "status": "cancelled", "reason": "<operator reason>" }`
+- Auth: existing admin bearer token.
+
+Data behavior:
+
+- D1 remains the source of truth for V2 orders.
+- The cancellation reason is stored in the status-change event detail (`detail.reason`) returned with the order timeline.
+- `STATUS_CHANGED` events continue to carry `previousStatus` and `nextStatus` for auditability.
+- `orders_v2.status = cancelled` is enough for Cierre totals and CSV export; no endpoint changes are required.
+- Historial reads the timeline and displays the latest cancellation reason when present.
+
+Explicit non-goals:
+
+- No new D1 tables or migrations.
+- No Public V2 changes.
+- No legacy `/api/order` or `/api/rpc` changes.
+- No Apps Script, Sheets sync, payment provider, real payments, WhatsApp API, Cloudflare legacy app, legacy code, or `BOG_ACTIVE_ENV` changes.
