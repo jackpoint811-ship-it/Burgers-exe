@@ -262,7 +262,7 @@ const CheckoutForm = ({ customer, setCustomer, onCheckout, submitting, count }: 
     <Button onClick={onCheckout} disabled={submitting || count === 0} className='w-full bg-white py-3 font-bold text-black'>
       {submitting ? 'Enviando pedido...' : 'Confirmar pedido'}
     </Button>
-    <p className='text-xs leading-relaxed text-zinc-500'>Sin pago en línea todavía. El backend V2 confirma productos y total antes de registrar el pedido.</p>
+    <p className='text-xs leading-relaxed text-zinc-500'>No se realiza ningún cobro en línea. El backend V2 confirma productos y total antes de registrar el pedido.</p>
   </div>
 );
 
@@ -286,9 +286,8 @@ const OrderSuccess = ({ order, onCreateAnother, onBackToMenu }: { order: OrderCo
       <dt className='text-emerald-200'>Creado:</dt>
       <dd>{new Date(order.createdAt).toLocaleString('es-MX')}</dd>
     </dl>
-    <p>Sin pago en línea todavía.</p>
+    <p>No se realiza ningún cobro en línea.</p>
     <p>Pago pendiente de confirmación.</p>
-    <p>No se realizó ningún cobro en línea.</p>
     <p>Te contactaremos por teléfono si necesitamos confirmar algo.</p>
     <div className='mt-3 grid gap-2 sm:grid-cols-2'>
       <Button className='bg-white text-black' onClick={onCreateAnother}>Crear otro pedido</Button>

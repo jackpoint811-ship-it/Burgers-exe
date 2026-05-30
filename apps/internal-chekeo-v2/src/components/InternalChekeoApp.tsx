@@ -1644,7 +1644,7 @@ const PaymentNotesPanel = ({
         </div>
         {!runtime.adminToken ? (
           <p className="mt-3 rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-100">
-            Activa el token admin para operar pagos reales D1.
+            Activa el token admin para declarar pagos en D1.
           </p>
         ) : null}
       </Card>

@@ -524,3 +524,22 @@ Explicit non-goals:
 - No Public V2 changes.
 - No legacy `/api/order` or `/api/rpc` changes.
 - No Apps Script, Sheets sync, payment provider, real payments, WhatsApp API, Cloudflare legacy app, legacy code, or `BOG_ACTIVE_ENV` changes.
+
+## V2-12 hardening pre-producción de datos y seguridad
+
+V2-12 no introduce cambios de API, schema, bindings ni migraciones. La estabilización se limita a frontend preview y documentación operativa.
+
+Confirmaciones de data flow:
+
+- D1 (`BOG_MENU_DB`) sigue siendo source of truth para menú, órdenes, cierre y CSV.
+- Public V2 crea órdenes mediante `POST /api/orders-v2` sin enviar precios ni total desde el frontend; solo envía `sku` y `qty` por item.
+- Internal V2 opera órdenes/cierre/export con endpoints admin existentes y token por header `Authorization: Bearer ...`.
+- El token admin permanece en `sessionStorage`, se limpia con la acción existente de cerrar modo admin y no se imprime en consola ni se manda por query string.
+- CSV y Sheets siguen siendo procesos manuales/export; no hay sync automático con Sheets ni Apps Script.
+- Pagos siguen siendo estados declarados (`pending`, `paid`, `cancelled`) sobre D1. No hay cobro real, Stripe, MercadoPago ni provider de pagos.
+- WhatsApp sigue siendo deep link/manual en navegador. No hay WhatsApp Business/API ni envío automático.
+
+No-touch V2-12:
+
+- No se modifican `functions/api/**`, migraciones, legacy, Cloudflare legacy apps, Apps Script, Sheets ni `BOG_ACTIVE_ENV`.
+- No se modifica `/api/order` legacy ni `/api/rpc` legacy.
