@@ -531,3 +531,31 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] Confirmar que no se tocó `/api/order` legacy ni `/api/rpc` legacy.
 - [ ] Confirmar que no se tocó Apps Script, `.gs`, Sheets, sync automático, legacy, migrations, Cloudflare legacy apps ni `BOG_ACTIVE_ENV`.
 - [ ] Confirmar que no se agregaron pagos reales ni WhatsApp API/envío automático.
+
+## V2-12 Hardening pre-producción QA
+
+### Smoke operativo V2
+
+- [ ] Public V2 crea una orden real en D1 con folio visible.
+- [ ] Internal V2 ve la orden creada desde Public V2 al activar token admin y recargar.
+- [ ] Pedido avanza `new → preparing → ready → delivered` sin errores visuales.
+- [ ] Cancelar exige razón obligatoria antes de enviar.
+- [ ] Pagos permite marcar `paid`/`pending` como estado declarado por operador.
+- [ ] WhatsApp abre link manual con mensaje prellenado y no envía automático.
+- [ ] Cierre carga datos desde D1 y muestra pagos declarados.
+- [ ] CSV exporta desde D1 con los filtros existentes.
+- [ ] Sin token admin muestra errores claros y recuperables.
+- [ ] Un error de UI en Internal V2 no deja pantalla blanca; muestra “Algo falló en Internal V2” y botón “Recargar”.
+
+### Hardening y no-touch
+
+- [ ] Confirmar que no hay `alert()` en Internal/Public V2.
+- [ ] Confirmar que botones críticos quedan deshabilitados mientras hay loading/submitting/updating.
+- [ ] Confirmar que el token admin no se imprime en consola y no viaja en query params.
+- [ ] Confirmar que clear token sigue limpiando `sessionStorage` y vuelve a estado mock/sin admin.
+- [ ] Confirmar que Public V2 mantiene error inline recuperable después de error de red/backend.
+- [ ] Confirmar que Public V2 limpia idempotency key después de success y no deja pegado el draft anterior.
+- [ ] Confirmar que Public V2 no envía precios ni total; el backend confirma total desde D1.
+- [ ] Confirmar copy visible: “No se realiza ningún cobro en línea”, WhatsApp como acción manual y Cierre con pagos declarados.
+- [ ] Confirmar que no cambió API/schema.
+- [ ] Confirmar que no se tocó `/api/order`, `/api/rpc`, Apps Script, Sheets sync, legacy, migrations, Cloudflare legacy apps, pagos reales, WhatsApp API ni `BOG_ACTIVE_ENV`.

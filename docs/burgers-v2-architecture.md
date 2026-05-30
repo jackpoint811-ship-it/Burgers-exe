@@ -338,3 +338,24 @@ No cambia en V2-11C:
 - No se agrega WhatsApp API ni envío automático.
 - No se agrega Sheets/App Script ni sync automático.
 - No cambia legacy, Cloudflare legacy apps, migrations ni `BOG_ACTIVE_ENV`.
+
+## V2-12 hardening pre-producción Internal/Public V2
+
+V2-12 estabiliza las apps preview antes de continuar hacia producción sin agregar features de negocio.
+
+Alcance aplicado:
+
+- Internal Chekeo V2 queda envuelto por un `ErrorBoundary` de app para evitar pantalla blanca ante errores visuales inesperados.
+- El fallback muestra “Algo falló en Internal V2” y un botón “Recargar”, sin exponer stack traces, headers, tokens ni detalles técnicos al usuario.
+- Se revisó el copy operativo para reforzar que pagos son declarados/manuales y que no se realiza ningún cobro en línea.
+- WhatsApp permanece como acción manual del navegador; no hay envío automático ni WhatsApp API.
+- Public Order V2 conserva el flujo actual: submit deshabilitado mientras envía, errores inline recuperables, idempotency key por draft y limpieza de idempotencia después de success.
+- El payload público sigue enviando solo `sku`/`qty` por item; precios y total se calculan/confirmán en Backend V2 desde D1.
+
+No cambia en V2-12:
+
+- No cambia API ni contratos de endpoints.
+- No cambia schema ni migraciones.
+- No cambia V1/legacy, `/api/order`, `/api/rpc`, Apps Script, Sheets sync, Cloudflare legacy apps ni `BOG_ACTIVE_ENV`.
+- No se agregan pagos reales, providers de pago, WhatsApp API ni sync automático.
+- D1 sigue siendo source of truth; Sheets sigue siendo export manual cuando aplica.
