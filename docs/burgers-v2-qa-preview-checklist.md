@@ -559,3 +559,9 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] Confirmar copy visible: “No se realiza ningún cobro en línea”, WhatsApp como acción manual y Cierre con pagos declarados.
 - [ ] Confirmar que no cambió API/schema.
 - [ ] Confirmar que no se tocó `/api/order`, `/api/rpc`, Apps Script, Sheets sync, legacy, migrations, Cloudflare legacy apps, pagos reales, WhatsApp API ni `BOG_ACTIVE_ENV`.
+
+## V2-13 cutover readiness
+
+- [ ] Review the [Burgers.exe V2 cutover readiness runbook](./burgers-v2-cutover-runbook.md) before any pilot/pre-production traffic movement.
+- [ ] Confirm smoke API, manual UI QA, cutover option, rollback owner, data reconciliation owner, and go/no-go checklist are complete.
+- [ ] Confirm this readiness step does not change runtime, API, schema, apps, functions, migrations, legacy, Apps Script, Sheets, payments, WhatsApp API, Cloudflare legacy apps, or `BOG_ACTIVE_ENV`.
