@@ -64,7 +64,7 @@ Set local shell placeholders for the smoke window:
 
 ```bash
 export PUBLIC_V2_URL="<PUBLIC_V2_URL>"
-export INTERNAL_V2_URL="<PUBLIC_V2_URL>"
+export INTERNAL_V2_URL="<INTERNAL_V2_URL>"
 # BOG_ORDERS_ADMIN_TOKEN must already exist in the operator shell/session.
 ```
 
