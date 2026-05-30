@@ -258,3 +258,18 @@ No cambia en V2-11A:
 - No cambia Public Order V2.
 - No cambia `/api/order` legacy ni `/api/rpc` legacy.
 - No cambia Apps Script, Sheets, legacy, migrations, Cloudflare legacy apps, pagos reales, WhatsApp real API ni `BOG_ACTIVE_ENV`.
+
+## V2-11B Pagos/Notas operativo manual
+
+V2-11B convierte la tab `Pagos` de Internal Chekeo V2 en una vista operativa sobre órdenes reales V2 en D1. La consola usa el mismo token admin y consume `GET /api/orders-v2-admin` para listar órdenes y `PATCH /api/orders-v2-admin/:id/payment` para actualizar manualmente `payment_status` y, opcionalmente, `notes`.
+
+El comportamiento es estrictamente operativo/manual:
+
+- `payment_status` es declarado por operador: `pending`, `paid` o `cancelled`.
+- No se realiza ningún cobro real ni cobro en línea.
+- No se integra Stripe, MercadoPago, terminal bancaria ni payment provider.
+- No se modifica `status`, total, items, customer data ni folio de la orden.
+- D1 sigue siendo source of truth para órdenes, cierre y CSV.
+- No hay sync automático con Sheets/App Script.
+
+Cada actualización exitosa inserta un evento `PAYMENT_UPDATED` en `order_events_v2` con `actor: internal-v2`, `previousPaymentStatus`, `nextPaymentStatus`, `notesUpdated`, `reason` y `source: internal-v2` en `detail_json`. Si falla el update operativo no debe quedar evento de auditoría exitoso.

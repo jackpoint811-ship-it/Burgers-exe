@@ -410,3 +410,57 @@ V2-11A no agrega superficie de datos en Cloudflare. Las acciones de WhatsApp man
 - No se introducen tokens, secrets ni bindings nuevos.
 - D1 permanece como source of truth para órdenes; Sheets continúa siendo solo destino manual/export cuando aplica.
 - Los pagos siguen siendo declarados/operativos; no hay pagos reales ni captura de pago.
+
+## V2-11B Manual payment/notes operations
+
+V2-11B adds one protected write endpoint for manual payment operations on real V2 orders in D1. D1 remains the source of truth for Internal V2, operational close, and CSV export.
+
+#### `PATCH /api/orders-v2-admin/:id/payment`
+
+- Requires `BOG_MENU_DB`.
+- Requires `Authorization: Bearer <admin token>` using the existing admin token check.
+- Accepts only `PATCH`.
+- Updates `orders_v2.payment_status` to `pending`, `paid`, or `cancelled`.
+- Optionally replaces the existing `orders_v2.notes` value, capped at 500 characters.
+- Accepts optional `reason`, capped at 200 characters.
+- Inserts `PAYMENT_UPDATED` into `order_events_v2` after the update path succeeds.
+- Returns the updated order bundle with items/events like the other admin order endpoints.
+
+Request body:
+
+```json
+{
+  "paymentStatus": "pending",
+  "notes": "Nota operativa opcional",
+  "reason": "Motivo operativo opcional"
+}
+```
+
+Error behavior:
+
+- Missing D1 binding returns `503 D1_NOT_CONFIGURED`.
+- Invalid admin token returns `401 UNAUTHORIZED`.
+- Invalid payment status returns `400 INVALID_PAYMENT_STATUS`.
+- Missing order returns `404 ORDER_NOT_FOUND`.
+- Non-`PATCH` methods return `405 METHOD_NOT_ALLOWED`.
+- Unexpected write/read failures return `500 PAYMENT_UPDATE_FAILED`.
+
+Audit event shape:
+
+```json
+{
+  "type": "PAYMENT_UPDATED",
+  "actor": "internal-v2",
+  "detail_json": {
+    "previousPaymentStatus": "pending",
+    "nextPaymentStatus": "paid",
+    "notesUpdated": true,
+    "reason": "Pago operativo manual: paid",
+    "source": "internal-v2"
+  }
+}
+```
+
+### Manual-only payment policy
+
+This endpoint does not charge money, does not call external APIs, does not integrate a payment gateway, does not sync Sheets/App Script, and does not change Public V2. `payment_status` is a manual/operator-declared field for food-ordering operations. Existing close and CSV flows reflect the latest value because both read from `orders_v2`.

@@ -417,3 +417,35 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] Confirmar que no se tocó Public V2 (`apps/public-order-v2/**`).
 - [ ] Confirmar que no se tocó `/api/order` legacy ni `/api/rpc` legacy.
 - [ ] Confirmar que no se tocó Apps Script, `.gs`, Sheets, legacy, migrations, Cloudflare legacy apps ni `BOG_ACTIVE_ENV`.
+
+## V2-11B Pagos/Notas operativo manual QA
+
+### Endpoint admin payment/notes
+
+- [ ] `PATCH /api/orders-v2-admin/:id/payment` without token returns `401 UNAUTHORIZED`.
+- [ ] `PATCH /api/orders-v2-admin/:id/payment` with missing/invalid `paymentStatus` returns `400 INVALID_PAYMENT_STATUS`.
+- [ ] `PATCH /api/orders-v2-admin/:id/payment` with `notes` longer than 500 chars is rejected.
+- [ ] `PATCH /api/orders-v2-admin/:id/payment` with `reason` longer than 200 chars is rejected.
+- [ ] `PATCH /api/orders-v2-admin/:id/payment` for an unknown order id returns `404 ORDER_NOT_FOUND`.
+- [ ] Non-`PATCH` methods return `405 METHOD_NOT_ALLOWED`.
+- [ ] Valid request updates only `orders_v2.payment_status` and optionally existing `orders_v2.notes`.
+- [ ] Valid request inserts one `PAYMENT_UPDATED` event with `actor: internal-v2` and detail fields for previous/next payment status, notes update, reason, and source.
+- [ ] Confirm order `status`, totals, and items do not change.
+
+### Internal Pagos UX
+
+- [ ] Activate admin token and open `Pagos`.
+- [ ] Confirm copy is visible: “Pago operativo manual”, “No se realiza ningún cobro en línea”, and “Payment status declarado por operador”.
+- [ ] Press “Recargar órdenes” and confirm orders load from D1.
+- [ ] Confirm each order shows folio, customer, total, paymentMethod, paymentStatus, order status, notes, and items summary.
+- [ ] Confirm filters work for Todos, Pendientes, Pagados, and Cancelados.
+- [ ] Confirm “Marcar pagado”, “Marcar pendiente”, and “Marcar pago cancelado” call `PATCH /api/orders-v2-admin/:id/payment` and disable buttons while updating.
+- [ ] Confirm “Guardar nota” updates the existing `notes` field and shows the note replacement warning.
+- [ ] Confirm errors render inline and no `alert()` is used.
+- [ ] Confirm mobile layout remains usable at 320px width.
+
+### Compatibility and non-goals
+
+- [ ] Cierre reflects the updated `payment_status` because it reads `orders_v2`.
+- [ ] CSV export reflects the updated `payment_status` because it reads `orders_v2`.
+- [ ] Confirm no real payments, payment gateway, payment provider, terminal integration, WhatsApp API, automatic Sheets sync, Apps Script, migrations, legacy app changes, Public V2 changes, `/api/order`, `/api/rpc`, cloudflare legacy app changes, or `BOG_ACTIVE_ENV` changes were introduced.
