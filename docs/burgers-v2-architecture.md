@@ -359,3 +359,9 @@ No cambia en V2-12:
 - No cambia V1/legacy, `/api/order`, `/api/rpc`, Apps Script, Sheets sync, Cloudflare legacy apps ni `BOG_ACTIVE_ENV`.
 - No se agregan pagos reales, providers de pago, WhatsApp API ni sync automático.
 - D1 sigue siendo source of truth; Sheets sigue siendo export manual cuando aplica.
+
+## V2-13 cutover readiness runbook
+
+V2-13 adds documentation-only cutover readiness guidance for moving from preview V2 toward pilot/pre-production/production usage without executing the cutover in this PR. The runbook covers Cloudflare bindings/secrets, smoke tests, manual UI QA, cutover options, phased rollout, rollback, data reconciliation, known limitations, and go/no-go checks.
+
+See [Burgers.exe V2 cutover readiness runbook](./burgers-v2-cutover-runbook.md).
