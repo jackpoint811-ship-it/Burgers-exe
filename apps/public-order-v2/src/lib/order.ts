@@ -1,6 +1,23 @@
 import type { MenuItem } from '@config/index';
 
-export type CartEntry = { sku: string; qty: number };
+export type TicketItemKind = 'burger' | 'combo' | 'garnish' | 'drink' | 'other';
+
+export type TicketExtra = { sku?: string; name: string; price?: number };
+
+export type TicketGarnish = { sku?: string; name: string } | null;
+
+export type CartEntry = {
+  sku: string;
+  name: string;
+  qty: 1;
+  lineKey: string;
+  itemDisplayIndex: number;
+  itemKind: TicketItemKind;
+  removedIngredients: string[];
+  extras: TicketExtra[];
+  burgerNote?: string;
+  garnish?: TicketGarnish;
+};
 
 export const formatCurrency = (amount: number) =>
   new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(amount);
@@ -8,7 +25,7 @@ export const formatCurrency = (amount: number) =>
 export const getCartTotal = (cart: CartEntry[], menuItems: MenuItem[]) =>
   cart.reduce((acc, entry) => {
     const item = menuItems.find((menuItem) => menuItem.sku === entry.sku);
-    return acc + (item ? item.price * entry.qty : 0);
+    return acc + (item ? item.price : 0);
   }, 0);
 
-export const getCartCount = (cart: CartEntry[]) => cart.reduce((acc, entry) => acc + entry.qty, 0);
+export const getCartCount = (cart: CartEntry[]) => cart.length;

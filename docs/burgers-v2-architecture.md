@@ -365,3 +365,17 @@ No cambia en V2-12:
 V2-13 adds documentation-only cutover readiness guidance for moving from preview V2 toward pilot/pre-production/production usage without executing the cutover in this PR. The runbook covers Cloudflare bindings/secrets, smoke tests, manual UI QA, cutover options, phased rollout, rollback, data reconciliation, known limitations, and go/no-go checks.
 
 See [Burgers.exe V2 cutover readiness runbook](./burgers-v2-cutover-runbook.md).
+
+## Fase 1 Public official order flow (2026-05-31)
+
+- Public Order V2 deja de ser un formulario largo y opera en tres ventanas separadas: **Menú → Builder/Ordenar → Checkout**.
+- La app abre en Menú con identidad gamer-terminal Burgers.exe: negro profundo, verde neón, etiquetas `C:\BURGERS.EXE`, botones bracketed y estados RUN/READY/LOADING/ERROR.
+- La carga inicial muestra una capa brandeada con wordmark Burgers.exe; transiciones internas usan estados de terminal y respetan `prefers-reduced-motion`.
+- Menú muestra únicamente secciones operativas visibles al cliente: Combos, Hamburguesas, Guarniciones y Bebidas. Los extras no aparecen como productos principales; solo se ofrecen dentro del builder por burger.
+- Builder permite x1 RUN, x2 DOUBLE LOAD y x3 TRIPLE STACK. x2/x3 generan unidades separadas (`lineKey` distinto) para que cada burger sea editable de forma independiente.
+- Personalización por unidad: ingredientes derivados del producto real editables excepto pan, extras reales del catálogo por burger, nota opcional por burger y guarnición obligatoria para combos.
+- Checkout queda separado con pasos desbloqueables: ticket, datos cliente, ubicación/pago y confirmar. La ubicación visible al cliente está limitada a Torre GGA y Torre Valcob.
+- Para compatibilidad interna el payload conserva `orderMode` hacia `/api/orders-v2`, pero la UI no muestra pickup/delivery ni tipo de envío.
+- D1 sigue siendo source of truth para catálogo, precios base y creación de orden; el frontend no envía precios finales confiables.
+- No se agregan productos, extras, guarniciones ni ubicaciones fuera de lo disponible en catálogo/config existente.
+- No se toca Internal V2, legacy, `/api/order`, `/api/rpc`, Apps Script, Sheets sync, pagos reales, WhatsApp API ni `BOG_ACTIVE_ENV`.

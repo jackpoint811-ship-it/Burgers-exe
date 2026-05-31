@@ -1,115 +1,56 @@
 import {
   type CreateOrderV2Response,
+  type MenuCategory,
   type MenuItem,
   type MenuV2Response,
   type OrderV2Mode,
   type OrderV2PaymentMethod
 } from '@config/index';
-import { Badge, Button, Card, EmptyState, IconButton, SectionHeader } from '@ui/index';
+import { Button, EmptyState } from '@ui/index';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { loadMenuV2, toMockResponse } from '../lib/menu-v2';
-import { CartEntry, formatCurrency, getCartCount, getCartTotal } from '../lib/order';
+import { CartEntry, TicketItemKind, formatCurrency, getCartCount, getCartTotal } from '../lib/order';
 import { createOrderV2 } from '../lib/orders-v2';
 
-type CustomerDraft = {
-  name: string;
-  phone: string;
-  notes: string;
-  orderMode: OrderV2Mode;
-  paymentMethod: OrderV2PaymentMethod;
-};
-type VisualKind = 'burger' | 'spicy-burger' | 'fries' | 'drink' | 'combo' | 'dip';
-type CatalogImageProps = { src?: string; alt: string; fallbackLabel: string; kind: VisualKind };
-type PromoEntry = MenuV2Response['promos'][number];
-type PromoCardProps = { promo: PromoEntry; reduce: boolean; onPromoAction: (promo: PromoEntry) => void; canAddDirectly: boolean };
-type MenuItemCardProps = { item: MenuItem; onAdd: (item: MenuItem) => void; reduce: boolean };
-type OrderConfirmation = NonNullable<CreateOrderV2Response['data']>['order'] & {
-  orderMode: OrderV2Mode;
-  paymentMethod: OrderV2PaymentMethod;
-};
-type CartPanelProps = {
-  cart: CartEntry[];
-  total: number;
-  count: number;
-  onMinus: (sku: string) => void;
-  onPlus: (sku: string) => void;
-  customer: CustomerDraft;
-  setCustomer: (v: CustomerDraft) => void;
-  onCheckout: () => void;
-  submitting: boolean;
-  error: string | null;
-  orderConfirmation: OrderConfirmation | null;
-  onCreateAnother: () => void;
-  onBackToMenu: () => void;
-};
-type MenuSectionProps = Omit<CartPanelProps, 'onCheckout'> & {
-  onAdd: (item: MenuItem) => void;
-  onCheckout: () => void;
-  reduce: boolean;
-};
-
-type DraftSnapshot = {
-  customer: CustomerDraft;
-  items: Array<{ sku: string; qty: number }>;
-};
+type WindowMode = 'MENU' | 'BUILD' | 'CHECKOUT';
+type CustomerDraft = { name: string; phone: string; notes: string; location: '' | 'Torre GGA' | 'Torre Valcob'; paymentMethod: OrderV2PaymentMethod };
+type BuilderDraft = { item: MenuItem; itemKind: TicketItemKind; quantity: 1 | 2 | 3; units: CartEntry[]; error: string | null; editLineKey?: string };
+type OrderConfirmation = NonNullable<CreateOrderV2Response['data']>['order'] & { paymentMethod: OrderV2PaymentMethod; location: CustomerDraft['location'] };
+type DraftSnapshot = { customer: CustomerDraft; items: CartEntry[] };
 
 const IDEMPOTENCY_KEY_STORAGE = 'burgers-v2-order-draft-idempotency-key';
 const IDEMPOTENCY_DRAFT_STORAGE = 'burgers-v2-order-draft-idempotency-fingerprint';
-const ORDER_MODES = new Set<OrderV2Mode>(['pickup', 'delivery']);
 const PAYMENT_METHODS = new Set<OrderV2PaymentMethod>(['cash', 'transfer', 'card', 'unknown']);
-const orderModeLabels: Record<OrderV2Mode, string> = { pickup: 'Pickup', delivery: 'Delivery' };
-const paymentMethodLabels: Record<OrderV2PaymentMethod, string> = {
-  cash: 'Efectivo',
-  transfer: 'Transferencia',
-  card: 'Tarjeta',
-  unknown: 'Por confirmar'
-};
+const LOCATIONS = ['Torre GGA', 'Torre Valcob'] as const;
+const REQUIRED_MENU: Array<{ key: MenuCategory['key']; label: string }> = [
+  { key: 'burgers', label: 'Hamburguesas' },
+  { key: 'extras', label: 'Combos' },
+  { key: 'guarniciones', label: 'Guarniciones' },
+  { key: 'drinks', label: 'Bebidas' }
+];
+const paymentMethodLabels: Record<OrderV2PaymentMethod, string> = { cash: 'Efectivo', transfer: 'Transferencia', card: 'Tarjeta', unknown: 'Por confirmar' };
 const statusLabels: Record<string, string> = { new: 'Nuevo', preparing: 'En preparación', ready: 'Listo', delivered: 'Entregado', cancelled: 'Cancelado' };
-const createEmptyCustomer = (): CustomerDraft => ({ name: '', phone: '', notes: '', orderMode: 'pickup', paymentMethod: 'unknown' });
-
-const getVisualKind = (seed: string): VisualKind => {
-  const key = seed.toLowerCase();
-  if (key.includes('spicy')) return 'spicy-burger';
-  if (key.includes('burger') || key.includes('signature')) return 'burger';
-  if (key.includes('fries') || key.includes('side')) return 'fries';
-  if (key.includes('drink')) return 'drink';
-  if (key.includes('combo')) return 'combo';
-  return 'dip';
-};
-
-const resolveAssetUrl = (imageUrl?: string, imageKey?: string): string | undefined => {
-  const trimmedUrl = imageUrl?.trim();
-  if (trimmedUrl && ((trimmedUrl.startsWith('/') && !trimmedUrl.startsWith('//')) || trimmedUrl.startsWith('https://'))) return trimmedUrl;
-  const trimmedKey = imageKey?.trim();
-  if (!trimmedKey) return undefined;
-  return `/api/assets-v2/${trimmedKey.split('/').map((segment) => encodeURIComponent(segment)).join('/')}`;
-};
-
+const createEmptyCustomer = (): CustomerDraft => ({ name: '', phone: '', notes: '', location: '', paymentMethod: 'unknown' });
 const normalizePhoneDigits = (phone: string) => phone.replace(/\D/g, '');
+const orderModeForBackend: OrderV2Mode = 'pickup';
+
+const createId = (prefix: string) => {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return `${prefix}-${crypto.randomUUID()}`;
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
 
 const createDraftFingerprint = (snapshot: DraftSnapshot) => JSON.stringify({
-  customer: {
-    name: snapshot.customer.name.trim(),
-    phone: normalizePhoneDigits(snapshot.customer.phone),
-    notes: snapshot.customer.notes.trim(),
-    orderMode: snapshot.customer.orderMode,
-    paymentMethod: snapshot.customer.paymentMethod
-  },
-  items: snapshot.items.map((item) => ({ sku: item.sku, qty: item.qty })).sort((a, b) => a.sku.localeCompare(b.sku))
+  customer: { name: snapshot.customer.name.trim(), phone: normalizePhoneDigits(snapshot.customer.phone), notes: snapshot.customer.notes.trim(), location: snapshot.customer.location, paymentMethod: snapshot.customer.paymentMethod },
+  items: snapshot.items.map(({ lineKey, sku, itemDisplayIndex, itemKind, removedIngredients, extras, burgerNote, garnish }) => ({ lineKey, sku, itemDisplayIndex, itemKind, removedIngredients, extras, burgerNote, garnish }))
 });
-
-const createIdempotencyKey = () => {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
-  return `public-v2-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-};
 
 const getDraftIdempotencyKey = (snapshot: DraftSnapshot) => {
   const fingerprint = createDraftFingerprint(snapshot);
   const storedFingerprint = sessionStorage.getItem(IDEMPOTENCY_DRAFT_STORAGE);
   const storedKey = sessionStorage.getItem(IDEMPOTENCY_KEY_STORAGE);
   if (storedFingerprint === fingerprint && storedKey) return storedKey;
-  const nextKey = createIdempotencyKey();
+  const nextKey = createId('public-v2');
   sessionStorage.setItem(IDEMPOTENCY_DRAFT_STORAGE, fingerprint);
   sessionStorage.setItem(IDEMPOTENCY_KEY_STORAGE, nextKey);
   return nextKey;
@@ -120,330 +61,361 @@ const clearDraftIdempotencyKey = () => {
   sessionStorage.removeItem(IDEMPOTENCY_KEY_STORAGE);
 };
 
+const resolveAssetUrl = (imageUrl?: string, imageKey?: string): string | undefined => {
+  const trimmedUrl = imageUrl?.trim();
+  if (trimmedUrl && ((trimmedUrl.startsWith('/') && !trimmedUrl.startsWith('//')) || trimmedUrl.startsWith('https://'))) return trimmedUrl;
+  const trimmedKey = imageKey?.trim();
+  if (!trimmedKey) return undefined;
+  return `/api/assets-v2/${trimmedKey.split('/').map((segment) => encodeURIComponent(segment)).join('/')}`;
+};
+
+const inferItemKind = (item: MenuItem): TicketItemKind => {
+  const seed = `${item.category} ${item.name} ${item.tags.join(' ')}`.toLowerCase();
+  if (seed.includes('combo')) return 'combo';
+  if (item.category === 'burgers') return 'burger';
+  if (item.category === 'guarniciones') return 'garnish';
+  if (item.category === 'drinks') return 'drink';
+  return 'other';
+};
+
+const inferIngredients = (item: MenuItem) => {
+  const stop = new Set(['burger', 'burgers', 'smash', 'signature', 'spicy', 'combo', 'hot', 'best seller']);
+  return item.description
+    .replace(/[.]/g, '')
+    .split(/,|\+| y | con /i)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 2 && !/\bpan\b/i.test(part) && !stop.has(part.toLowerCase()));
+};
+
+const makeUnit = (item: MenuItem, itemKind: TicketItemKind, index: number, source?: Partial<CartEntry>): CartEntry => ({
+  sku: item.sku,
+  name: item.name,
+  qty: 1,
+  lineKey: source?.lineKey ?? createId('line'),
+  itemDisplayIndex: index,
+  itemKind,
+  removedIngredients: [...(source?.removedIngredients ?? [])],
+  extras: [...(source?.extras ?? [])],
+  burgerNote: source?.burgerNote ?? '',
+  garnish: source?.garnish ?? null
+});
+
+const isPrimaryBuilderItem = (item: MenuItem) => {
+  const kind = inferItemKind(item);
+  return kind === 'burger' || kind === 'combo';
+};
+
 const validateCheckout = (customer: CustomerDraft, cart: CartEntry[], items: MenuItem[]) => {
+  if (cart.length === 0) return 'Agrega al menos un producto al ticket.';
   if (customer.name.trim().length < 2) return 'Escribe tu nombre con al menos 2 caracteres.';
   if (normalizePhoneDigits(customer.phone).length < 10) return 'Escribe un teléfono válido con al menos 10 dígitos.';
-  if (cart.length === 0) return 'Agrega al menos un producto al ticket.';
-  if (!ORDER_MODES.has(customer.orderMode)) return 'Elige pickup o delivery para la entrega.';
-  if (!PAYMENT_METHODS.has(customer.paymentMethod)) return 'Elige un método de pago válido.';
-  if (customer.notes.trim().length > 500) return 'Las notas no pueden superar 500 caracteres.';
+  if (!customer.location) return 'Elige Torre GGA o Torre Valcob.';
+  if (!PAYMENT_METHODS.has(customer.paymentMethod) || customer.paymentMethod === 'unknown') return 'Elige un método de pago.';
+  if (customer.notes.trim().length > 500) return 'La nota general no puede superar 500 caracteres.';
   const unavailable = cart.find((entry) => !items.find((item) => item.sku === entry.sku && item.isAvailable));
   if (unavailable) return 'Uno de los productos ya no está disponible. Actualiza el ticket antes de enviar.';
   return null;
 };
 
-const PlaceholderVisual = ({ label, kind }: { label: string; kind: VisualKind }) => (
-  <div className={`placeholder placeholder-${kind}`} aria-hidden='true'>
-    <span>{label}</span>
+const TerminalButton = ({ children, className = '', ...props }: React.ComponentProps<typeof Button>) => <Button {...props} className={`terminal-button ${className}`}>{children}</Button>;
+
+const LoadingOverlay = ({ loading }: { loading: boolean }) => loading ? (
+  <div className='boot-overlay' role='status' aria-live='polite'>
+    <div className='boot-window'>
+      <p className='terminal-path'>C:\\BURGERS.EXE</p>
+      <h1>Burgers.exe</h1>
+      <p className='boot-status'>LOADING MENU_KERNEL...</p>
+      <div className='boot-bar'><span /></div>
+    </div>
   </div>
+) : null;
+
+const AppChrome = ({ current, count, total, onNavigate }: { current: WindowMode; count: number; total: number; onNavigate: (mode: WindowMode) => void }) => (
+  <header className='terminal-window terminal-hero'>
+    <p className='terminal-path'>C:\\BURGERS.EXE</p>
+    <div className='hero-grid'>
+      <div>
+        <p className='status-line'>RUN / PUBLIC_ORDER_V2</p>
+        <h1>Burgers.exe</h1>
+        <p className='hero-copy'>Menú oficial por ventanas: elige, construye cada burger y confirma tu ticket.</p>
+      </div>
+      <div className='ticket-chip'>
+        <span>READY / TICKET</span>
+        <strong>{count} item{count === 1 ? '' : 's'}</strong>
+        <em>{formatCurrency(total)}</em>
+      </div>
+    </div>
+    <nav className='window-tabs' aria-label='Ventanas del pedido'>
+      {(['MENU', 'BUILD', 'CHECKOUT'] as WindowMode[]).map((mode) => <button key={mode} type='button' className={current === mode ? 'active' : ''} onClick={() => onNavigate(mode)}>[ {mode === 'BUILD' ? 'BUILD' : mode} ]</button>)}
+    </nav>
+  </header>
 );
 
-const CatalogImage = ({ src, alt, fallbackLabel, kind }: CatalogImageProps) => {
-  const [failedSrc, setFailedSrc] = useState<string | null>(null);
-  const showImage = Boolean(src) && src !== failedSrc;
+const MenuCard = ({ item, onSelect, reduce }: { item: MenuItem; onSelect: (item: MenuItem) => void; reduce: boolean }) => {
+  const src = resolveAssetUrl(item.imageUrl, item.imageKey);
+  const kind = inferItemKind(item);
   return (
-    <div className='catalog-visual'>
-      {showImage ? (
-        <img className='catalog-image' src={src} alt={alt} loading='lazy' decoding='async' onError={() => setFailedSrc(src ?? null)} />
-      ) : (
-        <PlaceholderVisual label={fallbackLabel} kind={kind} />
-      )}
-    </div>
+    <motion.article whileTap={reduce ? undefined : { scale: 0.98 }} className='menu-card'>
+      <div className='menu-visual'>{src ? <img src={src} alt={item.name} loading='lazy' onError={(event) => { event.currentTarget.style.display = 'none'; }} /> : <span>{item.name}</span>}</div>
+      <div className='menu-card-body'>
+        <p className='status-line'>{kind.toUpperCase()} / READY</p>
+        <h3>{item.name}</h3>
+        <p>{item.description}</p>
+        <div className='card-footer'><strong>{formatCurrency(item.price)}</strong><TerminalButton disabled={!item.isAvailable} onClick={() => onSelect(item)}>{item.isAvailable ? (isPrimaryBuilderItem(item) ? '[ ORDENAR ]' : '[ AGREGAR ]') : '[ AGOTADO ]'}</TerminalButton></div>
+      </div>
+    </motion.article>
   );
 };
 
-const QuantityControl = ({ qty, onMinus, onPlus }: { qty: number; onMinus: () => void; onPlus: () => void }) => (
-  <div className='mt-2 flex items-center gap-2'>
-    <IconButton aria-label='Disminuir cantidad' onClick={onMinus}>−</IconButton>
-    <span aria-live='polite' className='min-w-5 text-center text-sm font-semibold'>{qty}</span>
-    <IconButton aria-label='Aumentar cantidad' onClick={onPlus}>+</IconButton>
-  </div>
-);
-
-const HeroSection = ({ sourceLabel }: { sourceLabel: string }) => (
-  <Card className='hero-card rounded-3xl p-5 sm:p-8'>
-    <Badge className='w-fit border-white/20 bg-white/5 text-zinc-200'>{sourceLabel}</Badge>
-    <div className='mt-4 grid items-center gap-5 md:grid-cols-[1.2fr_1fr]'>
-      <article>
-        <p className='text-xs uppercase tracking-[0.28em] text-neon'>Burgers.exe live batch</p>
-        <h1 className='mt-2 text-3xl font-black leading-tight sm:text-5xl'>Smash burgers que aterrizan en minutos.</h1>
-        <p className='mt-3 max-w-xl text-sm text-zinc-200 sm:text-base'>Sube el antojo en 3 pasos: elige un combo viral, agrega extras y registra tu pedido V2 en backend.</p>
-        <div className='mt-5 flex flex-wrap gap-3'>
-          <a href='#menu' className='rounded-xl bg-neon px-5 py-3 text-sm font-bold text-black sm:text-base'>Quiero mi burger</a>
-          <a href='#promos' className='rounded-xl border border-white/30 bg-black/20 px-5 py-3 text-sm font-semibold sm:text-base'>Explorar promos</a>
-        </div>
-      </article>
-      <PlaceholderVisual label='Signature combo' kind='combo' />
-    </div>
-  </Card>
-);
-
-const PromoCard = ({ promo, reduce, onPromoAction, canAddDirectly }: PromoCardProps) => (
-  <motion.article whileHover={reduce ? undefined : { y: -4 }} className='rounded-3xl border border-white/15 bg-zinc-900/80 p-5'>
-    <div className='mb-3 flex items-center justify-between gap-2 text-xs uppercase tracking-widest text-zinc-300'>
-      <Badge className='border-neon/40 text-neon'>{promo.badge ?? 'Top pick'}</Badge>
-      <span>{promo.promoLabel ?? 'Limited'}</span>
-    </div>
-    <h3 className='text-2xl font-extrabold leading-tight sm:text-3xl'>{promo.title}</h3>
-    <p className='mt-2 text-sm text-zinc-300 sm:text-base'>{promo.description}</p>
-    <div className='mt-4'>
-      <CatalogImage src={resolveAssetUrl(promo.asset.imageUrl, promo.asset.imageKey)} alt={promo.asset.alt} fallbackLabel={promo.asset.alt} kind={getVisualKind(promo.asset.placeholder)} />
-    </div>
-    <Button onClick={() => onPromoAction(promo)} className='mt-4 w-full bg-white text-black'>{canAddDirectly ? 'Agregar promo al ticket' : 'Ver en menú'}</Button>
-  </motion.article>
-);
-
-const PromoSection = ({ promos, reduce, onPromoAction, canAddPromo }: { promos: PromoEntry[]; reduce: boolean; onPromoAction: (promo: PromoEntry) => void; canAddPromo: (promo: PromoEntry) => boolean }) => (
-  <section id='promos' className='space-y-3'>
-    <SectionHeader title='Promos grandes, hambre resuelta' subtitle='Descuentos, combos y favoritos del turno.' />
-    <div className='grid gap-4 md:grid-cols-2'>
-      {promos.map((promo) => <PromoCard key={promo.id} promo={promo} reduce={reduce} onPromoAction={onPromoAction} canAddDirectly={canAddPromo(promo)} />)}
-    </div>
-  </section>
-);
-
-const MenuItemCard = ({ item, onAdd, reduce }: MenuItemCardProps) => (
-  <motion.article whileTap={reduce ? undefined : { scale: 0.98 }} className='rounded-2xl border border-white/15 bg-zinc-900/80 p-3'>
-    <CatalogImage src={resolveAssetUrl(item.imageUrl, item.imageKey)} alt={item.name} fallbackLabel={item.name} kind={getVisualKind(item.tags.join('-'))} />
-    <div className='mt-3 flex items-start justify-between gap-2'>
-      <div>
-        <h4 className='font-semibold'>{item.name}</h4>
-        <p className='text-xs uppercase tracking-widest text-zinc-400'>{item.badge ?? item.promoLabel ?? 'Hecho al momento'}</p>
-      </div>
-      <span className='text-lg font-black text-neon'>{formatCurrency(item.price)}</span>
-    </div>
-    <p className='mt-1 text-sm text-zinc-300'>{item.description}</p>
-    <Button disabled={!item.isAvailable} onClick={() => onAdd(item)} className='mt-3 w-full bg-neon text-black disabled:bg-zinc-800 disabled:text-zinc-500'>
-      {item.isAvailable ? 'Agregar al ticket' : 'Agotado por ahora'}
-    </Button>
-  </motion.article>
-);
-
-const MenuCategoryBlock = ({ name, items, onAdd, reduce }: { name: string; items: MenuItem[]; onAdd: (item: MenuItem) => void; reduce: boolean }) => (
-  <div className='space-y-3'>
-    <h3 className='text-xl font-semibold'>{name}</h3>
-    <div className='grid gap-3 sm:grid-cols-2'>
-      {items.map((item) => <MenuItemCard key={item.sku} item={item} onAdd={onAdd} reduce={reduce} />)}
-    </div>
-  </div>
-);
-
-const CheckoutForm = ({ customer, setCustomer, onCheckout, submitting, count }: { customer: CustomerDraft; setCustomer: (v: CustomerDraft) => void; onCheckout: () => void; submitting: boolean; count: number }) => (
-  <div className='space-y-3 pt-2'>
-    <label className='text-xs uppercase tracking-widest text-zinc-300'>
-      Nombre
-      <input className='mt-1.5 w-full rounded-lg border border-white/20 bg-zinc-900 px-3 py-2.5 text-sm' placeholder='Tu nombre' value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} />
-    </label>
-    <label className='text-xs uppercase tracking-widest text-zinc-300'>
-      Teléfono
-      <input className='mt-1.5 w-full rounded-lg border border-white/20 bg-zinc-900 px-3 py-2.5 text-sm' inputMode='tel' placeholder='55 0000 0000' value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} />
-    </label>
-    <label className='text-xs uppercase tracking-widest text-zinc-300'>
-      Entrega
-      <select className='mt-1.5 w-full rounded-lg border border-white/20 bg-zinc-900 px-3 py-2.5 text-sm' value={customer.orderMode} onChange={(e) => setCustomer({ ...customer, orderMode: e.target.value as OrderV2Mode })}>
-        <option value='pickup'>Pickup</option>
-        <option value='delivery'>Delivery</option>
-      </select>
-    </label>
-    <label className='text-xs uppercase tracking-widest text-zinc-300'>
-      Pago
-      <select className='mt-1.5 w-full rounded-lg border border-white/20 bg-zinc-900 px-3 py-2.5 text-sm' value={customer.paymentMethod} onChange={(e) => setCustomer({ ...customer, paymentMethod: e.target.value as OrderV2PaymentMethod })}>
-        <option value='cash'>Efectivo</option>
-        <option value='transfer'>Transferencia</option>
-        <option value='card'>Tarjeta</option>
-        <option value='unknown'>Por confirmar</option>
-      </select>
-    </label>
-    <label className='text-xs uppercase tracking-widest text-zinc-300'>
-      Notas
-      <textarea className='mt-1.5 w-full rounded-lg border border-white/20 bg-zinc-900 px-3 py-2.5 text-sm' rows={2} maxLength={500} placeholder='Alergias, sin cebolla, etc.' value={customer.notes} onChange={(e) => setCustomer({ ...customer, notes: e.target.value })} />
-      <span className='mt-1 block text-[11px] normal-case tracking-normal text-zinc-500'>{customer.notes.length}/500</span>
-    </label>
-    <Button onClick={onCheckout} disabled={submitting || count === 0} className='w-full bg-white py-3 font-bold text-black'>
-      {submitting ? 'Enviando pedido...' : 'Confirmar pedido'}
-    </Button>
-    <p className='text-xs leading-relaxed text-zinc-500'>No se realiza ningún cobro en línea. El backend V2 confirma productos y total antes de registrar el pedido.</p>
-  </div>
-);
-
-const OrderSuccess = ({ order, onCreateAnother, onBackToMenu }: { order: OrderConfirmation; onCreateAnother: () => void; onBackToMenu: () => void }) => (
-  <section className='space-y-2 rounded-xl border border-emerald-400/40 bg-emerald-500/15 p-3 text-sm text-emerald-100' aria-live='polite'>
-    <div>
-      <p className='text-base font-bold text-white'>Pedido recibido</p>
-      <p>Pedido registrado en backend V2.</p>
-    </div>
-    <dl className='grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-emerald-50'>
-      <dt className='text-emerald-200'>Folio:</dt>
-      <dd className='font-bold'>{order.folio}</dd>
-      <dt className='text-emerald-200'>Estado:</dt>
-      <dd>{statusLabels[order.status] ?? order.status}</dd>
-      <dt className='text-emerald-200'>Total confirmado:</dt>
-      <dd>{formatCurrency(order.total)} {order.currency}</dd>
-      <dt className='text-emerald-200'>Método de pago:</dt>
-      <dd>{paymentMethodLabels[order.paymentMethod]}</dd>
-      <dt className='text-emerald-200'>Entrega:</dt>
-      <dd>{orderModeLabels[order.orderMode]}</dd>
-      <dt className='text-emerald-200'>Creado:</dt>
-      <dd>{new Date(order.createdAt).toLocaleString('es-MX')}</dd>
-    </dl>
-    <p>No se realiza ningún cobro en línea.</p>
-    <p>Pago pendiente de confirmación.</p>
-    <p>Te contactaremos por teléfono si necesitamos confirmar algo.</p>
-    <div className='mt-3 grid gap-2 sm:grid-cols-2'>
-      <Button className='bg-white text-black' onClick={onCreateAnother}>Crear otro pedido</Button>
-      <Button className='border border-emerald-200/50 bg-transparent text-emerald-50' onClick={onBackToMenu}>Volver al menú</Button>
-    </div>
-  </section>
-);
-
-const CartPanel = ({ cart, total, count, onMinus, onPlus, customer, setCustomer, onCheckout, submitting, error, orderConfirmation, onCreateAnother, onBackToMenu, items }: CartPanelProps & { items: MenuItem[] }) => (
-  <aside className='sticky top-2 h-fit space-y-3 rounded-2xl border border-white/15 bg-zinc-950 p-4'>
-    <p className='text-xs uppercase tracking-[0.2em] text-zinc-400'>Vista V2 preview · Pedido registrado en backend V2</p>
-    <h3 className='text-xl font-bold'>Ticket ({count})</h3>
-    <div className='max-h-56 space-y-2 overflow-auto'>
-      {cart.length === 0 ? (
-        <EmptyState title='Tu ticket está vacío' description='Agrega un combo o burger para comenzar.' />
-      ) : cart.map((entry) => {
-        const item = items.find((m) => m.sku === entry.sku);
-        if (!item) return null;
+const MenuWindow = ({ categories, items, cartCount, onSelect, onCheckout, reduce }: { categories: MenuV2Response['categories']; items: MenuItem[]; cartCount: number; onSelect: (item: MenuItem) => void; onCheckout: () => void; reduce: boolean }) => {
+  const comboItems = items.filter((item) => inferItemKind(item) === 'combo');
+  const byKey = (key: MenuCategory['key']) => items.filter((item) => item.category === key && key !== 'extras');
+  const hasCategory = (key: MenuCategory['key']) => categories.some((category) => category.key === key);
+  return (
+    <section className='terminal-window flow-window' id='menu'>
+      <div className='section-title'><span>WINDOW 01</span><h2>Menú</h2><p>Extras e ingredientes se configuran dentro del builder de cada burger.</p></div>
+      {cartCount > 0 ? <TerminalButton className='secondary ticket-access' onClick={onCheckout}>[ VER TICKET / {cartCount} ]</TerminalButton> : null}
+      {REQUIRED_MENU.map(({ key, label }) => {
+        const list = key === 'extras' ? comboItems : byKey(key);
+        if (!hasCategory(key) && key !== 'extras') return null;
         return (
-          <div key={entry.sku} className='rounded-lg border border-dashed border-white/20 bg-zinc-900/80 p-2 text-sm'>
-            <div className='flex justify-between gap-3'>
-              <span>{item.name}</span>
-              <span>{formatCurrency(item.price * entry.qty)}</span>
-            </div>
-            <QuantityControl qty={entry.qty} onMinus={() => onMinus(entry.sku)} onPlus={() => onPlus(entry.sku)} />
+          <div className='menu-category' key={key}>
+            <h3>{label}</h3>
+            {list.length > 0 ? <div className='menu-grid'>{list.map((item) => <MenuCard key={item.sku} item={item} onSelect={onSelect} reduce={reduce} />)}</div> : <EmptyState title={`${label}: sin productos configurados`} description='El catálogo real no expone productos disponibles para esta sección.' />}
           </div>
         );
       })}
-    </div>
-    <p className='border-t border-white/10 pt-3 text-3xl font-black'>Total {formatCurrency(total)}</p>
-    <p className='text-xs text-zinc-500'>Total estimado en UI; el backend recalcula el total final desde D1.</p>
-    <CheckoutForm customer={customer} setCustomer={setCustomer} onCheckout={onCheckout} submitting={submitting} count={count} />
-    {submitting ? <p className='rounded-lg border border-cyan-400/40 bg-cyan-500/15 p-2 text-sm text-cyan-100' aria-live='polite'>Enviando pedido...</p> : null}
-    {error ? <p className='rounded-lg border border-red-400/50 bg-red-500/15 p-2 text-sm text-red-100' role='alert'>{error}</p> : null}
-    {orderConfirmation ? <OrderSuccess order={orderConfirmation} onCreateAnother={onCreateAnother} onBackToMenu={onBackToMenu} /> : null}
-  </aside>
+    </section>
+  );
+};
+
+const QuantitySelector = ({ value, onChange }: { value: 1 | 2 | 3; onChange: (qty: 1 | 2 | 3) => void }) => (
+  <div className='quantity-modes' role='group' aria-label='Cantidad por tipo de burger'>
+    {([{ qty: 1, label: 'x1 RUN' }, { qty: 2, label: 'x2 DOUBLE LOAD' }, { qty: 3, label: 'x3 TRIPLE STACK' }] as const).map((option) => <button key={option.qty} type='button' className={`q${option.qty} ${value === option.qty ? 'active' : ''}`} onClick={() => onChange(option.qty)}>{option.label}</button>)}
+  </div>
 );
 
-const MenuSection = ({ categories, items, onAdd, reduce, ...cartProps }: MenuSectionProps & { categories: MenuV2Response['categories']; items: MenuItem[] }) => (
-  <section id='menu' className='grid gap-5 lg:grid-cols-[1fr_340px]'>
-    <div className='space-y-4'>
-      <SectionHeader title='Menú smash-ready' subtitle='Sabor primero: badges claros, precios visibles y CTA directo.' />
-      {categories.map((category) => <MenuCategoryBlock key={category.id} name={category.name} items={items.filter((item) => item.category === category.key)} onAdd={onAdd} reduce={reduce} />)}
-    </div>
-    <CartPanel {...cartProps} items={items} />
+const UnitEditor = ({ unit, index, item, extras, garnishes, onChange }: { unit: CartEntry; index: number; item: MenuItem; extras: MenuItem[]; garnishes: MenuItem[]; onChange: (unit: CartEntry) => void }) => {
+  const ingredients = inferIngredients(item);
+  const isBurgerLike = unit.itemKind === 'burger' || unit.itemKind === 'combo';
+  return (
+    <article className='unit-editor'>
+      <div className='unit-header'><h3>{unit.name} #{index + 1}</h3><span>{unit.itemKind.toUpperCase()}</span></div>
+      {isBurgerLike ? <p className='locked-pan'>PAN: LOCKED / no editable</p> : null}
+      {isBurgerLike ? (
+        <div className='builder-block'>
+          <h4>Quitar ingredientes</h4>
+          {ingredients.length > 0 ? <div className='chip-grid'>{ingredients.map((ingredient) => {
+            const active = unit.removedIngredients.includes(ingredient);
+            return <button type='button' key={ingredient} className={active ? 'chip active' : 'chip'} onClick={() => onChange({ ...unit, removedIngredients: active ? unit.removedIngredients.filter((entry) => entry !== ingredient) : [...unit.removedIngredients, ingredient] })}>{active ? 'SIN ' : ''}{ingredient}</button>;
+          })}</div> : <p className='empty-line'>Sin ingredientes editables configurados para esta burger.</p>}
+        </div>
+      ) : null}
+      {isBurgerLike ? (
+        <div className='builder-block'>
+          <h4>Extras por burger</h4>
+          {extras.length > 0 ? <div className='chip-grid'>{extras.map((extra) => {
+            const active = unit.extras.some((entry) => entry.sku === extra.sku);
+            return <button type='button' key={extra.sku} className={active ? 'chip active' : 'chip'} onClick={() => onChange({ ...unit, extras: active ? unit.extras.filter((entry) => entry.sku !== extra.sku) : [...unit.extras, { sku: extra.sku, name: extra.name, price: extra.price }] })}>{extra.name}</button>;
+          })}</div> : <p className='empty-line'>Sin extras configurados.</p>}
+        </div>
+      ) : null}
+      {unit.itemKind === 'combo' ? (
+        <div className='builder-block'>
+          <h4>Guarnición obligatoria</h4>
+          {garnishes.length > 0 ? <div className='chip-grid'>{garnishes.map((garnish) => <button type='button' key={garnish.sku} className={unit.garnish?.sku === garnish.sku ? 'chip active' : 'chip'} onClick={() => onChange({ ...unit, garnish: { sku: garnish.sku, name: garnish.name } })}>{garnish.name}</button>)}</div> : <p className='empty-line error'>No hay guarniciones configuradas en el catálogo real.</p>}
+        </div>
+      ) : null}
+      {isBurgerLike ? <label className='terminal-label'>Nota por burger opcional<textarea maxLength={220} value={unit.burgerNote ?? ''} onChange={(event) => onChange({ ...unit, burgerNote: event.target.value })} placeholder='Ej. bien cocida' /></label> : null}
+    </article>
+  );
+};
+
+const BuilderWindow = ({ draft, extras, garnishes, onQuantity, onUnitChange, onConfirm, onCancel }: { draft: BuilderDraft | null; extras: MenuItem[]; garnishes: MenuItem[]; onQuantity: (qty: 1 | 2 | 3) => void; onUnitChange: (index: number, unit: CartEntry) => void; onConfirm: () => void; onCancel: () => void }) => (
+  <section className='terminal-window flow-window'>
+    <div className='section-title'><span>WINDOW 02</span><h2>Builder / Ordenar</h2><p>Cada unidad queda separada para cocina y ticket.</p></div>
+    {!draft ? <EmptyState title='Selecciona una burger o combo' description='Inicia desde Menú para abrir el builder.' /> : (
+      <div className='builder-layout'>
+        <div>
+          <p className='status-line'>BUILD / {draft.itemKind.toUpperCase()}</p>
+          <h3 className='builder-title'>{draft.item.name}</h3>
+          <p className='muted'>{draft.item.description}</p>
+          {!draft.editLineKey ? <QuantitySelector value={draft.quantity} onChange={onQuantity} /> : null}
+        </div>
+        <div className='unit-stack'>{draft.units.map((unit, index) => <UnitEditor key={unit.lineKey} unit={unit} index={index} item={draft.item} extras={extras} garnishes={garnishes} onChange={(next) => onUnitChange(index, next)} />)}</div>
+        {draft.error ? <p className='inline-error' role='alert'>{draft.error}</p> : null}
+        <div className='action-row'><TerminalButton className='secondary' onClick={onCancel}>[ CANCELAR ]</TerminalButton><TerminalButton onClick={onConfirm}>[ CONFIRMAR BUILDER ]</TerminalButton></div>
+      </div>
+    )}
+  </section>
+);
+
+const TicketList = ({ cart, items, onEdit, onDuplicate, onRemove }: { cart: CartEntry[]; items: MenuItem[]; onEdit: (lineKey: string) => void; onDuplicate: (lineKey: string) => void; onRemove: (lineKey: string) => void }) => (
+  <div className='ticket-list'>
+    {cart.length === 0 ? <EmptyState title='Ticket vacío' description='Agrega productos desde Menú.' /> : cart.map((entry) => {
+      const price = items.find((item) => item.sku === entry.sku)?.price ?? 0;
+      return (
+        <article className='ticket-item' key={entry.lineKey}>
+          <div className='ticket-main'><h3>{entry.name} #{entry.itemDisplayIndex}</h3><strong>{formatCurrency(price)}</strong></div>
+          <ul>
+            {entry.removedIngredients.map((ingredient) => <li key={ingredient}>Sin {ingredient}</li>)}
+            {entry.extras.map((extra) => <li key={extra.sku ?? extra.name}>Extra {extra.name}</li>)}
+            {entry.garnish ? <li>Guarnición: {entry.garnish.name}</li> : null}
+            {entry.burgerNote ? <li>Nota: {entry.burgerNote}</li> : null}
+            {!entry.removedIngredients.length && !entry.extras.length && !entry.garnish && !entry.burgerNote ? <li>Normal</li> : null}
+          </ul>
+          <div className='ticket-actions'><button type='button' onClick={() => onEdit(entry.lineKey)}>[ EDITAR ]</button><button type='button' onClick={() => onDuplicate(entry.lineKey)}>[ DUPLICAR ]</button><button type='button' onClick={() => onRemove(entry.lineKey)}>[ ELIMINAR ]</button></div>
+        </article>
+      );
+    })}
+  </div>
+);
+
+const CheckoutWindow = ({ cart, items, total, customer, setCustomer, onSubmit, submitting, error, confirmation, onEdit, onDuplicate, onRemove, onMenu, onCreateAnother }: { cart: CartEntry[]; items: MenuItem[]; total: number; customer: CustomerDraft; setCustomer: (v: CustomerDraft) => void; onSubmit: () => void; submitting: boolean; error: string | null; confirmation: OrderConfirmation | null; onEdit: (lineKey: string) => void; onDuplicate: (lineKey: string) => void; onRemove: (lineKey: string) => void; onMenu: () => void; onCreateAnother: () => void }) => {
+  const customerReady = customer.name.trim().length >= 2 && normalizePhoneDigits(customer.phone).length >= 10;
+  const locationReady = Boolean(customer.location) && customer.paymentMethod !== 'unknown';
+  return (
+    <section className='terminal-window flow-window'>
+      <div className='section-title'><span>WINDOW 03</span><h2>Checkout</h2><p>Ticket, datos, ubicación y pago antes de confirmar.</p></div>
+      <div className='checkout-grid'>
+        <div className='checkout-step'><span>STEP 1 / TICKET</span><TicketList cart={cart} items={items} onEdit={onEdit} onDuplicate={onDuplicate} onRemove={onRemove} /><TerminalButton className='secondary' onClick={onMenu}>[ VOLVER AL MENÚ ]</TerminalButton></div>
+        <div className={cart.length ? 'checkout-step' : 'checkout-step locked'}><span>STEP 2 / DATOS</span><label className='terminal-label'>Nombre<input value={customer.name} onChange={(event) => setCustomer({ ...customer, name: event.target.value })} placeholder='Tu nombre' /></label><label className='terminal-label'>Teléfono<input inputMode='tel' value={customer.phone} onChange={(event) => setCustomer({ ...customer, phone: event.target.value })} placeholder='55 0000 0000' /></label><label className='terminal-label'>Nota general opcional<textarea maxLength={500} value={customer.notes} onChange={(event) => setCustomer({ ...customer, notes: event.target.value })} placeholder='Nota general del pedido' /></label></div>
+        <div className={customerReady ? 'checkout-step' : 'checkout-step locked'}><span>STEP 3 / UBICACIÓN Y PAGO</span><div className='chip-grid'>{LOCATIONS.map((location) => <button type='button' key={location} className={customer.location === location ? 'chip active' : 'chip'} onClick={() => setCustomer({ ...customer, location })}>{location}</button>)}</div><label className='terminal-label'>Pago<select value={customer.paymentMethod} onChange={(event) => setCustomer({ ...customer, paymentMethod: event.target.value as OrderV2PaymentMethod })}><option value='unknown'>Seleccionar</option><option value='cash'>Efectivo</option><option value='transfer'>Transferencia</option><option value='card'>Tarjeta</option></select></label></div>
+        <div className={locationReady ? 'checkout-step confirm' : 'checkout-step locked confirm'}><span>STEP 4 / CONFIRMAR</span><p className='total-line'>TOTAL {formatCurrency(total)}</p><p className='muted'>El backend recalcula productos y total desde D1. No hay cobro en línea.</p><TerminalButton onClick={onSubmit} disabled={submitting || !cart.length}> {submitting ? '[ LOADING ]' : '[ CONFIRMAR ]'}</TerminalButton>{error ? <p className='inline-error' role='alert'>{error}</p> : null}{confirmation ? <OrderSuccess order={confirmation} onCreateAnother={onCreateAnother} /> : null}</div>
+      </div>
+    </section>
+  );
+};
+
+const OrderSuccess = ({ order, onCreateAnother }: { order: OrderConfirmation; onCreateAnother: () => void }) => (
+  <section className='success-box' aria-live='polite'>
+    <h3>READY / Pedido recibido</h3>
+    <p>Folio: <strong>{order.folio}</strong></p>
+    <p>Estado: {statusLabels[order.status] ?? order.status}</p>
+    <p>Total confirmado: {formatCurrency(order.total)} {order.currency}</p>
+    <p>Pago: {paymentMethodLabels[order.paymentMethod]}</p>
+    <p>Ubicación: {order.location}</p>
+    <TerminalButton onClick={onCreateAnother}>[ NUEVO PEDIDO ]</TerminalButton>
   </section>
 );
 
 const TrustSection = () => (
-  <section className='grid gap-3 rounded-2xl border border-white/15 bg-zinc-900/70 p-4 sm:grid-cols-3'>
-    <article>
-      <h3 className='font-semibold'>Operación preview</h3>
-      <p className='text-sm text-zinc-300'>Vista V2 preview conectada a órdenes D1.</p>
-    </article>
-    <article>
-      <h3 className='font-semibold'>Estado pickup/delivery</h3>
-      <p className='text-sm text-zinc-300'>Pickup 12 min · Delivery 28 min estimado.</p>
-    </article>
-    <article>
-      <h3 className='font-semibold'>Fresh batch</h3>
-      <p className='text-sm text-zinc-300'>Carne al sello, papas recién fritas y salsas de la casa.</p>
-    </article>
+  <section className='terminal-window trust-grid'>
+    <article><h3>RUN / D1</h3><p>D1 es source of truth para catálogo, precios base y órdenes.</p></article>
+    <article><h3>READY / TORRES</h3><p>Ubicación operativa limitada a Torre GGA y Torre Valcob.</p></article>
+    <article><h3>CHECKOUT / MANUAL</h3><p>Confirmación sin cobro en línea ni automatización de mensajes.</p></article>
   </section>
 );
 
 export function PublicOrderApp() {
   const reduce = useReducedMotion() ?? false;
   const submittingRef = useRef(false);
+  const [windowMode, setWindowMode] = useState<WindowMode>('MENU');
   const [cart, setCart] = useState<CartEntry[]>([]);
-  const [menuData, setMenuData] = useState<MenuV2Response>(toMockResponse('mock'));
+  const [builder, setBuilder] = useState<BuilderDraft | null>(null);
+  const [menuData, setMenuData] = useState<MenuV2Response>(toMockResponse('fallback'));
   const [loadingMenu, setLoadingMenu] = useState(true);
+  const [showBoot, setShowBoot] = useState(true);
   const [customer, setCustomer] = useState<CustomerDraft>(() => createEmptyCustomer());
   const [submitting, setSubmitting] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [orderConfirmation, setOrderConfirmation] = useState<OrderConfirmation | null>(null);
   const total = useMemo(() => getCartTotal(cart, menuData.items), [cart, menuData.items]);
+  const count = getCartCount(cart);
+  const extras = menuData.items.filter((item) => item.category === 'extras' && inferItemKind(item) !== 'combo' && item.isAvailable);
+  const garnishes = menuData.items.filter((item) => item.category === 'guarniciones' && item.isAvailable);
 
   useEffect(() => {
     let mounted = true;
+    const bootTimer = window.setTimeout(() => mounted && setShowBoot(false), reduce ? 250 : 1100);
     loadMenuV2().then((payload) => {
       if (!mounted) return;
       setMenuData(payload);
       setLoadingMenu(false);
+      window.setTimeout(() => mounted && setShowBoot(false), reduce ? 0 : 250);
     });
-    return () => {
-      mounted = false;
-    };
-  }, []);
+    return () => { mounted = false; window.clearTimeout(bootTimer); };
+  }, [reduce]);
 
-  const count = getCartCount(cart);
+  const reindex = (entries: CartEntry[]) => {
+    const seen = new Map<string, number>();
+    return entries.map((entry) => {
+      const next = (seen.get(entry.sku) ?? 0) + 1;
+      seen.set(entry.sku, next);
+      return { ...entry, itemDisplayIndex: next };
+    });
+  };
 
-  const addToCart = (item: MenuItem) => {
+  const startBuilder = (item: MenuItem, source?: CartEntry) => {
     if (!item.isAvailable) return;
-    setOrderConfirmation(null);
-    setCheckoutError(null);
-    setCart((prev) => {
-      const found = prev.find((entry) => entry.sku === item.sku);
-      return found ? prev.map((entry) => (entry.sku === item.sku ? { ...entry, qty: entry.qty + 1 } : entry)) : [...prev, { sku: item.sku, qty: 1 }];
-    });
-  };
-
-  const updateQty = (sku: string, delta: number) => {
-    setOrderConfirmation(null);
-    setCheckoutError(null);
-    setCart((prev) => prev.map((entry) => (entry.sku === sku ? { ...entry, qty: Math.max(0, entry.qty + delta) } : entry)).filter((entry) => entry.qty > 0));
-  };
-
-  const getPromoItem = (promo: PromoEntry) => {
-    const candidates = promo.comboLinks
-      .map((ref) => menuData.items.find((item) => item.sku === ref && item.isAvailable))
-      .filter((item): item is MenuItem => Boolean(item));
-    return candidates[0] ?? null;
-  };
-
-  const canAddPromo = (promo: PromoEntry) => Boolean(getPromoItem(promo));
-
-  const handlePromoAction = (promo: PromoEntry) => {
-    const item = getPromoItem(promo);
-    if (item) {
-      addToCart(item);
+    const itemKind = inferItemKind(item);
+    if (itemKind !== 'burger' && itemKind !== 'combo') {
+      setCart((prev) => reindex([...prev, makeUnit(item, itemKind, prev.filter((entry) => entry.sku === item.sku).length + 1)]));
+      setWindowMode('CHECKOUT');
       return;
     }
-    const menu = document.getElementById('menu');
-    menu?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
-    const firstInteractive = menu?.querySelector<HTMLElement>('button, [href], input, select, textarea');
-    firstInteractive?.focus();
+    setBuilder({ item, itemKind, quantity: 1, units: [makeUnit(item, itemKind, 1, source)], error: null, editLineKey: source?.lineKey });
+    setWindowMode('BUILD');
   };
+
+  const updateBuilderQuantity = (quantity: 1 | 2 | 3) => {
+    setBuilder((draft) => {
+      if (!draft) return draft;
+      const units = Array.from({ length: quantity }, (_, index) => makeUnit(draft.item, draft.itemKind, index + 1, draft.units[index]));
+      return { ...draft, quantity, units, error: null };
+    });
+  };
+
+  const updateBuilderUnit = (index: number, unit: CartEntry) => setBuilder((draft) => draft ? { ...draft, units: draft.units.map((entry, entryIndex) => entryIndex === index ? unit : entry), error: null } : draft);
+
+  const confirmBuilder = () => {
+    if (!builder) return;
+    if (builder.itemKind === 'combo' && builder.units.some((unit) => !unit.garnish)) {
+      setBuilder({ ...builder, error: garnishes.length ? 'El combo requiere elegir guarnición.' : 'No hay guarniciones configuradas para confirmar este combo.' });
+      return;
+    }
+    setCart((prev) => {
+      const withoutEdited = builder.editLineKey ? prev.filter((entry) => entry.lineKey !== builder.editLineKey) : prev;
+      return reindex([...withoutEdited, ...builder.units]);
+    });
+    setBuilder(null);
+    setCheckoutError(null);
+    setOrderConfirmation(null);
+    setWindowMode('CHECKOUT');
+  };
+
+  const duplicateLine = (lineKey: string) => {
+    setCart((prev) => {
+      const found = prev.find((entry) => entry.lineKey === lineKey);
+      if (!found) return prev;
+      return reindex([...prev, { ...found, lineKey: createId('line') }]);
+    });
+  };
+
+  const editLine = (lineKey: string) => {
+    const found = cart.find((entry) => entry.lineKey === lineKey);
+    const item = found ? menuData.items.find((menuItem) => menuItem.sku === found.sku) : null;
+    if (found && item) startBuilder(item, found);
+  };
+
+  const removeLine = (lineKey: string) => setCart((prev) => reindex(prev.filter((entry) => entry.lineKey !== lineKey)));
 
   const handleCheckout = async () => {
     if (submittingRef.current) return;
     setCheckoutError(null);
     setOrderConfirmation(null);
-
     const validationError = validateCheckout(customer, cart, menuData.items);
-    if (validationError) {
-      setCheckoutError(validationError);
-      return;
-    }
-
-    const payloadItems = cart.map((entry) => ({ sku: entry.sku, qty: entry.qty }));
-    const idempotencyKey = getDraftIdempotencyKey({ customer, items: payloadItems });
-    const payload = {
-      customer: { name: customer.name.trim(), phone: normalizePhoneDigits(customer.phone) },
-      orderMode: customer.orderMode,
-      paymentMethod: customer.paymentMethod,
-      notes: customer.notes.trim() || undefined,
-      items: payloadItems
-    };
-
+    if (validationError) { setCheckoutError(validationError); return; }
+    const payloadItems = cart.map((entry) => ({ sku: entry.sku, name: entry.name, qty: 1, lineKey: entry.lineKey, itemDisplayIndex: entry.itemDisplayIndex, itemKind: entry.itemKind, removedIngredients: entry.removedIngredients, extras: entry.extras, burgerNote: entry.burgerNote?.trim() || undefined, garnish: entry.garnish ?? null }));
+    const notes = [`Ubicación: ${customer.location}`, customer.notes.trim()].filter(Boolean).join('\n');
+    const idempotencyKey = getDraftIdempotencyKey({ customer, items: cart });
     submittingRef.current = true;
     setSubmitting(true);
     try {
-      const response = await createOrderV2(payload, idempotencyKey);
+      const response = await createOrderV2({ customer: { name: customer.name.trim(), phone: normalizePhoneDigits(customer.phone) }, orderMode: orderModeForBackend, paymentMethod: customer.paymentMethod, notes, items: payloadItems }, idempotencyKey);
       const order = response.data?.order;
       if (!order) throw new Error('El backend no devolvió folio de confirmación.');
-      setOrderConfirmation({ ...order, orderMode: customer.orderMode, paymentMethod: customer.paymentMethod });
+      setOrderConfirmation({ ...order, paymentMethod: customer.paymentMethod, location: customer.location });
       setCart([]);
       setCustomer(createEmptyCustomer());
       clearDraftIdempotencyKey();
@@ -455,58 +427,23 @@ export function PublicOrderApp() {
     }
   };
 
-
-  const scrollToMenu = () => {
-    const menu = document.getElementById('menu');
-    menu?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
-    const firstInteractive = menu?.querySelector<HTMLElement>('button, [href], input, select, textarea');
-    firstInteractive?.focus();
-  };
-
   const handleCreateAnother = () => {
     setOrderConfirmation(null);
     setCheckoutError(null);
     setCart([]);
     setCustomer(createEmptyCustomer());
     clearDraftIdempotencyKey();
-    scrollToMenu();
+    setWindowMode('MENU');
   };
-
-  const handleBackToMenu = () => {
-    scrollToMenu();
-  };
-
-  const sourceLabel = menuData.source === 'd1' ? 'Catálogo live' : 'Vista V2 preview';
-  const footerNotice = menuData.source === 'd1'
-    ? menuData.siteConfig.notice
-    : 'Vista V2 preview: si el catálogo live no está disponible, se muestra catálogo de respaldo; el envío usa backend V2 cuando el endpoint responde.';
 
   return (
-    <main className='mx-auto max-w-7xl space-y-8 px-3 py-4 sm:px-6 lg:px-8'>
-      <HeroSection sourceLabel={sourceLabel} />
-      {loadingMenu ? <p className='text-sm text-zinc-400'>Cargando catálogo…</p> : null}
-      <PromoSection promos={menuData.promos} reduce={reduce} onPromoAction={handlePromoAction} canAddPromo={canAddPromo} />
-      <MenuSection
-        categories={menuData.categories}
-        items={menuData.items}
-        cart={cart}
-        total={total}
-        count={count}
-        onAdd={addToCart}
-        reduce={reduce}
-        onMinus={(sku: string) => updateQty(sku, -1)}
-        onPlus={(sku: string) => updateQty(sku, 1)}
-        customer={customer}
-        setCustomer={setCustomer}
-        onCheckout={handleCheckout}
-        submitting={submitting}
-        error={checkoutError}
-        orderConfirmation={orderConfirmation}
-        onCreateAnother={handleCreateAnother}
-        onBackToMenu={handleBackToMenu}
-      />
+    <main className='app-shell'>
+      <LoadingOverlay loading={showBoot || loadingMenu} />
+      <AppChrome current={windowMode} count={count} total={total} onNavigate={setWindowMode} />
+      {windowMode === 'MENU' ? <MenuWindow categories={menuData.categories} items={menuData.items} cartCount={count} onSelect={startBuilder} onCheckout={() => setWindowMode('CHECKOUT')} reduce={reduce} /> : null}
+      {windowMode === 'BUILD' ? <BuilderWindow draft={builder} extras={extras} garnishes={garnishes} onQuantity={updateBuilderQuantity} onUnitChange={updateBuilderUnit} onConfirm={confirmBuilder} onCancel={() => { setBuilder(null); setWindowMode('MENU'); }} /> : null}
+      {windowMode === 'CHECKOUT' ? <CheckoutWindow cart={cart} items={menuData.items} total={total} customer={customer} setCustomer={setCustomer} onSubmit={handleCheckout} submitting={submitting} error={checkoutError} confirmation={orderConfirmation} onEdit={editLine} onDuplicate={duplicateLine} onRemove={removeLine} onMenu={() => setWindowMode('MENU')} onCreateAnother={handleCreateAnother} /> : null}
       <TrustSection />
-      <p className='text-center text-xs text-zinc-500'>{footerNotice}</p>
     </main>
   );
 }

@@ -14,13 +14,24 @@ type CatalogRow = {
   promo_label: string | null;
 };
 
+type ItemCustomization = {
+  name?: string;
+  lineKey?: string;
+  itemDisplayIndex?: number;
+  itemKind?: 'burger' | 'combo' | 'garnish' | 'drink' | 'other';
+  removedIngredients: string[];
+  extras: Array<{ sku?: string; name: string; price?: number }>;
+  burgerNote?: string;
+  garnish?: { sku?: string; name: string } | null;
+};
+
 type NormalizedPayload = {
   customerName: string;
   customerPhone: string;
   orderMode: OrderV2Mode;
   paymentMethod: OrderV2PaymentMethod;
   notes: string | null;
-  items: Array<{ sku: string; qty: number }>;
+  items: Array<{ sku: string; qty: number } & ItemCustomization>;
   idempotencyKey: string;
 };
 
@@ -28,6 +39,32 @@ const ORDER_MODES = new Set<OrderV2Mode>(['pickup', 'delivery']);
 const PAYMENT_METHODS = new Set<OrderV2PaymentMethod>(['cash', 'transfer', 'card', 'unknown']);
 
 const normalizeString = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
+const ITEM_KINDS = new Set(['burger', 'combo', 'garnish', 'drink', 'other']);
+
+const normalizeStringArray = (value: unknown, limit = 20) => Array.isArray(value)
+  ? value.map(normalizeString).filter(Boolean).slice(0, limit)
+  : [];
+
+const normalizeExtras = (value: unknown): ItemCustomization['extras'] => Array.isArray(value)
+  ? value.map((entry) => {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null;
+    const raw = entry as Record<string, unknown>;
+    const name = normalizeString(raw.name);
+    if (!name) return null;
+    const sku = normalizeString(raw.sku);
+    const price = Number(raw.price);
+    return { ...(sku ? { sku } : {}), name, ...(Number.isFinite(price) && price >= 0 ? { price } : {}) };
+  }).filter((entry): entry is NonNullable<typeof entry> => Boolean(entry)).slice(0, 20)
+  : [];
+
+const normalizeGarnish = (value: unknown): ItemCustomization['garnish'] => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const raw = value as Record<string, unknown>;
+  const name = normalizeString(raw.name);
+  if (!name) return null;
+  const sku = normalizeString(raw.sku);
+  return { ...(sku ? { sku } : {}), name };
+};
 
 const normalizeIdempotencyKey = (request: Request, body: Record<string, unknown>) => {
   const headerKey = normalizeString(request.headers.get('Idempotency-Key'));
@@ -57,7 +94,8 @@ const validatePayload = (body: Record<string, unknown>, request: Request): Norma
     return errorResponse(400, 'INVALID_ITEMS', 'Agrega entre 1 y 50 líneas de productos.');
   }
 
-  const consolidated = new Map<string, number>();
+  const normalizedItems: NormalizedPayload['items'] = [];
+  const legacyQtyBySku = new Map<string, number>();
   for (const rawItem of body.items) {
     if (!rawItem || typeof rawItem !== 'object' || Array.isArray(rawItem)) {
       return errorResponse(400, 'INVALID_ITEMS', 'Item inválido.');
@@ -68,10 +106,29 @@ const validatePayload = (body: Record<string, unknown>, request: Request): Norma
     if (!sku || !Number.isInteger(qty) || qty < 1 || qty > 20) {
       return errorResponse(400, 'INVALID_ITEMS', 'SKU y cantidad son requeridos.');
     }
-    const nextQty = (consolidated.get(sku) ?? 0) + qty;
-    if (nextQty > 20) return errorResponse(400, 'INVALID_ITEMS', 'Cantidad máxima por SKU excedida.');
-    consolidated.set(sku, nextQty);
+    const hasCustomizations = Boolean(item.lineKey || item.itemDisplayIndex || item.itemKind || item.removedIngredients || item.extras || item.burgerNote || item.garnish || item.name);
+    if (!hasCustomizations) {
+      const nextQty = (legacyQtyBySku.get(sku) ?? 0) + qty;
+      if (nextQty > 20) return errorResponse(400, 'INVALID_ITEMS', 'Cantidad máxima por SKU excedida.');
+      legacyQtyBySku.set(sku, nextQty);
+      continue;
+    }
+    const itemKind = normalizeString(item.itemKind);
+    const burgerNote = normalizeString(item.burgerNote);
+    normalizedItems.push({
+      sku,
+      qty,
+      name: normalizeString(item.name) || undefined,
+      lineKey: normalizeString(item.lineKey) || undefined,
+      itemDisplayIndex: Number.isInteger(Number(item.itemDisplayIndex)) ? Number(item.itemDisplayIndex) : undefined,
+      itemKind: ITEM_KINDS.has(itemKind) ? itemKind as ItemCustomization['itemKind'] : 'other',
+      removedIngredients: normalizeStringArray(item.removedIngredients),
+      extras: normalizeExtras(item.extras),
+      burgerNote: burgerNote.slice(0, 220) || undefined,
+      garnish: normalizeGarnish(item.garnish)
+    });
   }
+  normalizedItems.unshift(...[...legacyQtyBySku.entries()].map(([sku, qty]) => ({ sku, qty, removedIngredients: [], extras: [], garnish: null })));
 
   return {
     customerName,
@@ -79,7 +136,7 @@ const validatePayload = (body: Record<string, unknown>, request: Request): Norma
     orderMode,
     paymentMethod,
     notes: notesRaw || null,
-    items: [...consolidated.entries()].map(([sku, qty]) => ({ sku, qty })),
+    items: normalizedItems,
     idempotencyKey: normalizeIdempotencyKey(request, body)
   };
 };
@@ -123,7 +180,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
       return json(200, { ok: true, data: { order: buildOrderSummary(existingOrder, parsed.idempotencyKey), idempotent: true } });
     }
 
-    const skus = parsed.items.map((item) => item.sku);
+    const skus = [...new Set(parsed.items.map((item) => item.sku))];
     const catalogRows = await loadCatalogRows(env.BOG_MENU_DB, skus);
     const catalogBySku = new Map(catalogRows.map((row) => [row.sku, row]));
     for (const item of parsed.items) {
@@ -155,7 +212,14 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
           category: catalogItem.category_key,
           tags: catalogItem.tags_json,
           badge: catalogItem.badge,
-          promoLabel: catalogItem.promo_label
+          promoLabel: catalogItem.promo_label,
+          lineKey: item.lineKey,
+          itemDisplayIndex: item.itemDisplayIndex,
+          itemKind: item.itemKind,
+          removedIngredients: item.removedIngredients,
+          extras: item.extras,
+          burgerNote: item.burgerNote,
+          garnish: item.garnish
         })
       };
     });
