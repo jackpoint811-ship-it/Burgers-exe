@@ -201,7 +201,7 @@ const makeUnit = (
   removedIngredients: [...(source?.removedIngredients ?? [])],
   extras: [...(source?.extras ?? [])],
   burgerNote: source?.burgerNote ?? "",
-  garnish: source?.garnish ?? null,
+  garnish: itemKind === "burger" ? null : (source?.garnish ?? null),
 });
 
 const isPrimaryBuilderItem = (item: MenuItem) => {
@@ -598,19 +598,26 @@ const UnitEditor = ({
           <h4>
             {unit.itemKind === "combo"
               ? "Guarnición obligatoria"
-              : "Guarnición opcional"}
+              : "Sin guarnición"}
           </h4>
-          {garnishes.length > 0 ? (
-            <div className="chip-grid">
-              {unit.itemKind === "burger" ? (
+          {unit.itemKind === "burger" ? (
+            <>
+              <div className="chip-grid">
                 <button
                   type="button"
-                  className={!unit.garnish ? "chip active" : "chip"}
+                  className="chip active"
                   onClick={() => onChange({ ...unit, garnish: null })}
                 >
                   Sin guarnición
                 </button>
-              ) : null}
+              </div>
+              <p className="empty-line">
+                Agrega guarniciones desde el menú si quieres una aparte con
+                precio propio.
+              </p>
+            </>
+          ) : garnishes.length > 0 ? (
+            <div className="chip-grid">
               {garnishes.map((garnish) => (
                 <button
                   type="button"
@@ -1124,11 +1131,14 @@ export function PublicOrderApp() {
       });
       return;
     }
+    const units = builder.units.map((unit) =>
+      unit.itemKind === "burger" ? { ...unit, garnish: null } : unit,
+    );
     setCart((prev) => {
       const withoutEdited = builder.editLineKey
         ? prev.filter((entry) => entry.lineKey !== builder.editLineKey)
         : prev;
-      return reindex([...withoutEdited, ...builder.units]);
+      return reindex([...withoutEdited, ...units]);
     });
     setBuilder(null);
     setCheckoutError(null);

@@ -584,7 +584,7 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] No se puede confirmar sin ticket, nombre/teléfono, ubicación y método de pago.
 - [ ] Ubicación visible solo ofrece Torre GGA y Torre Valcob; no se muestra pickup/delivery al cliente.
 - [ ] Nota general del pedido permanece separada de la nota por burger.
-- [ ] Payload nuevo guarda `lineKey`, `itemDisplayIndex`, `itemKind`, `removedIngredients`, `extras`, `burgerNote` y `garnish` en snapshot JSON.
+- [ ] Payload nuevo guarda `lineKey`, `itemDisplayIndex`, `itemKind`, `removedIngredients`, `extras`, `burgerNote` y `garnish` en snapshot JSON; `garnish` aplica para combos y las guarniciones sueltas viajan como línea propia.
 - [ ] Payload legado `{ sku, qty }` sigue creando orden.
 - [ ] Backend recalcula precios base desde D1 y no confía en precios finales del frontend.
 - [ ] Confirmar no productos/extras/guarniciones/ubicaciones inventadas.
@@ -610,9 +610,9 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] Cada unidad permite quitar ingredientes, agregar extras por burger y nota por burger opcional.
 - [ ] Extra/ingrediente/nota en una unidad no modifica las demás unidades.
 - [ ] Combo obliga elegir guarnición antes de confirmar al ticket.
-- [ ] Burger normal muestra guarnición opcional y opción clara “Sin guarnición”.
-- [ ] Las guarniciones listadas provienen solo del catálogo real; no se inventan productos.
-- [ ] Confirmar al ticket preserva `removedIngredients`, `extras`, `burgerNote` y `garnish` por item.
+- [ ] Burger normal mantiene activa “Sin guarnición” dentro del panel y dirige a agregar guarniciones desde Menú como producto aparte.
+- [ ] Las guarniciones para combos provienen solo del catálogo real; no se inventan productos.
+- [ ] Confirmar al ticket preserva `removedIngredients`, `extras` y `burgerNote` por burger; `garnish` solo se guarda dentro de combos.
 - [ ] Ticket permite editar, duplicar y eliminar cada unidad.
 
 ### Checkout / no-touch

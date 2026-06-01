@@ -373,7 +373,7 @@ See [Burgers.exe V2 cutover readiness runbook](./burgers-v2-cutover-runbook.md).
 - La carga inicial muestra una capa brandeada con wordmark Burgers.exe; transiciones internas usan estados de terminal y respetan `prefers-reduced-motion`.
 - Menú muestra únicamente secciones operativas visibles al cliente: Combos, Hamburguesas, Guarniciones y Bebidas. Los extras no aparecen como productos principales; solo se ofrecen dentro del panel de ordenar por burger.
 - Ordenar permite x1 Clásica, x2 Doble y x3 Triple. x2/x3 generan unidades separadas (`lineKey` distinto) para que cada burger sea editable de forma independiente.
-- Personalización por unidad: ingredientes derivados del producto real editables excepto pan, extras reales del catálogo por burger, nota opcional por burger y guarnición obligatoria para combos y guarnición opcional para burgers normales.
+- Personalización por unidad: ingredientes derivados del producto real editables excepto pan, extras reales del catálogo por burger, nota opcional por burger y guarnición obligatoria para combos; las burgers normales permanecen sin guarnición dentro del panel y cualquier guarnición se agrega aparte desde Menú con su propio SKU/precio.
 - Checkout queda separado con pasos desbloqueables: ticket, datos cliente, ubicación/pago y confirmar. La ubicación visible al cliente está limitada a Torre GGA y Torre Valcob.
 - Para compatibilidad interna el payload conserva `orderMode` hacia `/api/orders-v2`, pero la UI no muestra pickup/delivery ni tipo de envío.
 - D1 sigue siendo source of truth para catálogo, precios base y creación de orden; el frontend no envía precios finales confiables.
@@ -391,10 +391,10 @@ Alcance UX:
 - `Ordenar` ya no es una ventana/página aparte: se integra como panel dentro de la experiencia de Menú al seleccionar una burger o combo.
 - Checkout sigue siendo sección separada para ticket, datos del cliente, ubicación, pago y confirmación.
 - Extras no se muestran como sección principal del menú; se mantienen como customización por burger dentro del panel de ordenar.
-- Guarniciones usan únicamente productos reales de la categoría `guarniciones`: son obligatorias para combos y opcionales para burgers normales con opción explícita `Sin guarnición`.
+- Guarniciones usan únicamente productos reales de la categoría `guarniciones`: son obligatorias dentro de combos; las burgers normales muestran `Sin guarnición` y dirigen a agregar una guarnición aparte desde Menú para conservar precio propio.
 
 No cambia en V2-14:
 
 - No cambia backend, schema, endpoints, `/api/order`, `/api/rpc`, Apps Script, Sheets sync, pagos reales, WhatsApp API ni `BOG_ACTIVE_ENV`.
 - No cambia Internal V2, legacy ni Cloudflare legacy apps.
-- Las customizaciones por item siguen enviando `lineKey`, `itemDisplayIndex`, `itemKind`, `removedIngredients`, `extras`, `burgerNote` y `garnish` en el snapshot público V2.
+- Las customizaciones por item siguen enviando `lineKey`, `itemDisplayIndex`, `itemKind`, `removedIngredients`, `extras`, `burgerNote` y `garnish` en el snapshot público V2; `garnish` solo aplica dentro de combos, mientras una guarnición suelta viaja como línea `itemKind=garnish`.
