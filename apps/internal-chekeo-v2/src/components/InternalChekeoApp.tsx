@@ -15,6 +15,7 @@ import {
   type OrderStatus,
   type OrderV2,
   type OrderV2Event,
+  type OrderV2ItemKind,
   type OrderV2PaymentStatus,
   type OrderV2Status,
 } from "@config/index";
@@ -29,6 +30,7 @@ import {
   exportOrdersV2Csv,
   fetchOrdersV2Admin,
   fetchOrdersV2Summary,
+  updateKitchenItemV2,
   updateOrderV2Payment,
   updateOrderV2Status,
 } from "../lib/orders-v2-admin";
@@ -50,7 +52,19 @@ type TabKey =
   | "catalogo";
 type OrdersSource = "d1" | "mock" | "fallback";
 type OrdersV2Summary = NonNullable<OrdersV2SummaryResponse["data"]>;
-type InternalOrderItem = MockOrder["items"][number] & { lineTotal?: number };
+type KitchenItemKind = Extract<OrderV2ItemKind, "burger" | "combo" | "garnish">;
+type InternalOrderItem = MockOrder["items"][number] & {
+  lineTotal?: number;
+  lineKey?: string;
+  itemDisplayIndex?: number;
+  itemKind?: OrderV2ItemKind;
+  removedIngredients: string[];
+  extras: Array<{ sku?: string; name: string; price?: number }>;
+  burgerNote?: string;
+  garnish?: { sku?: string; name: string } | null;
+  extrasTotalCents?: number;
+  kitchenDone?: boolean;
+};
 type InternalTimelineEvent = MockOrder["timeline"][number] & {
   actor?: string;
   previousStatus?: OrderStatus;
@@ -142,8 +156,31 @@ type MoveOrderStatus = (
   next: OrderStatus,
   reason?: string,
 ) => Promise<void>;
+type ToggleKitchenItemDone = (
+  orderId: string,
+  lineKey: string,
+  itemKind: KitchenItemKind,
+  done: boolean,
+) => Promise<void>;
 
-const asInternalOrders = (orders: MockOrder[]): InternalOrder[] => orders;
+const normalizeMockOrderItem = (
+  item: MockOrder["items"][number],
+  index: number,
+): InternalOrderItem => ({
+  ...item,
+  lineKey: `mock-${index + 1}-${item.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+  itemDisplayIndex: index + 1,
+  itemKind: item.name.toLowerCase().includes("fries") ? "garnish" : "burger",
+  removedIngredients: item.note ? [item.note] : [],
+  extras: [],
+  garnish: null,
+  kitchenDone: false,
+});
+const asInternalOrders = (orders: MockOrder[]): InternalOrder[] =>
+  orders.map((order) => ({
+    ...order,
+    items: order.items.map(normalizeMockOrderItem),
+  }));
 const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
 const todayDateInput = () => new Date().toISOString().slice(0, 10);
 const formatDuration = (seconds: number | null) => {
@@ -173,6 +210,136 @@ const getWhatsappTemplateForStatus = (
   if (status === "delivered" || status === "cancelled") return "delivered";
   return "received";
 };
+
+const isOrderV2ItemKind = (value: unknown): value is OrderV2ItemKind =>
+  value === "burger" ||
+  value === "combo" ||
+  value === "garnish" ||
+  value === "drink" ||
+  value === "other";
+
+const getOptionalString = (value: unknown) =>
+  typeof value === "string" && value.trim() ? value.trim() : undefined;
+
+const getOptionalNumber = (value: unknown) =>
+  typeof value === "number" && Number.isFinite(value) ? value : undefined;
+
+const parseSnapshotExtras = (
+  value: unknown,
+): Array<{ sku?: string; name: string; price?: number }> => {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return [];
+    const record = entry as Record<string, unknown>;
+    const name = getOptionalString(record.name);
+    if (!name) return [];
+    const sku = getOptionalString(record.sku);
+    const price = getOptionalNumber(record.price);
+    return [
+      {
+        ...(sku ? { sku } : {}),
+        name,
+        ...(price !== undefined ? { price } : {}),
+      },
+    ];
+  });
+};
+
+const parseSnapshotGarnish = (value: unknown) => {
+  if (value === null) return null;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  const name = getOptionalString(record.name);
+  if (!name) return null;
+  const sku = getOptionalString(record.sku);
+  return { ...(sku ? { sku } : {}), name };
+};
+
+const getKitchenDoneByLineKey = (events: OrderV2Event[]) => {
+  const doneByLineKey = new Map<string, boolean>();
+  events.forEach((event) => {
+    if (
+      event.type !== "KITCHEN_ITEM_DONE" &&
+      event.type !== "KITCHEN_ITEM_REOPENED"
+    ) {
+      return;
+    }
+    const lineKey = getOptionalString(event.detail?.lineKey);
+    if (!lineKey) return;
+    doneByLineKey.set(lineKey, event.type === "KITCHEN_ITEM_DONE");
+  });
+  return doneByLineKey;
+};
+
+const mapOrderV2ItemToInternalItem = (
+  item: OrderV2["items"][number],
+  doneByLineKey: Map<string, boolean>,
+): InternalOrderItem => {
+  const snapshot =
+    item.snapshot &&
+    typeof item.snapshot === "object" &&
+    !Array.isArray(item.snapshot)
+      ? item.snapshot
+      : {};
+  const lineKey = getOptionalString(snapshot.lineKey);
+  const itemKind = isOrderV2ItemKind(snapshot.itemKind)
+    ? snapshot.itemKind
+    : undefined;
+  const removedIngredients = Array.isArray(snapshot.removedIngredients)
+    ? snapshot.removedIngredients.filter(
+        (entry): entry is string =>
+          typeof entry === "string" && Boolean(entry.trim()),
+      )
+    : [];
+
+  return {
+    name: item.name,
+    qty: item.qty,
+    price: item.unitPrice,
+    lineTotal: item.lineTotal,
+    lineKey,
+    itemDisplayIndex: getOptionalNumber(snapshot.itemDisplayIndex),
+    itemKind,
+    removedIngredients,
+    extras: parseSnapshotExtras(snapshot.extras),
+    burgerNote: getOptionalString(snapshot.burgerNote),
+    garnish: parseSnapshotGarnish(snapshot.garnish),
+    extrasTotalCents: getOptionalNumber(snapshot.extrasTotalCents),
+    kitchenDone: lineKey ? (doneByLineKey.get(lineKey) ?? false) : false,
+  };
+};
+
+const extractKitchenLocation = (notes?: string) => {
+  const match = notes?.match(/Ubicación:\s*([^\n|]+)/i);
+  return match?.[1]?.trim() || "Sin ubicación";
+};
+
+const stripLocationFromNotes = (notes?: string) => {
+  if (!notes) return "";
+  return notes
+    .replace(/Ubicación:\s*[^\n|]+\|?/i, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+};
+
+const getKitchenItemKind = (item: InternalOrderItem): OrderV2ItemKind => {
+  if (item.itemKind) return item.itemKind;
+  return item.name.toLowerCase().includes("fries") ? "garnish" : "burger";
+};
+
+const isBurgerOrCombo = (item: InternalOrderItem) => {
+  const kind = getKitchenItemKind(item);
+  return kind === "burger" || kind === "combo";
+};
+
+const isStandaloneGarnish = (item: InternalOrderItem) =>
+  getKitchenItemKind(item) === "garnish";
+
+const getKitchenLineKey = (
+  order: InternalOrder,
+  item: InternalOrderItem,
+  index: number,
+) => item.lineKey ?? `${order.id}-${index}-${item.name}`;
 
 const getEventReason = (event: OrderV2Event): string | undefined => {
   const reason = event.detail?.reason;
@@ -214,6 +381,7 @@ const mapOrderV2ToInternalOrder = (order: OrderV2): InternalOrder => {
           createdAt: order.createdAt,
         },
       ];
+  const doneByLineKey = getKitchenDoneByLineKey(events);
   return {
     id: order.id,
     folio: order.folio,
@@ -227,12 +395,9 @@ const mapOrderV2ToInternalOrder = (order: OrderV2): InternalOrder => {
     paymentMethod: order.paymentMethod,
     paymentState: order.paymentStatus,
     note: order.notes,
-    items: order.items.map((item) => ({
-      name: item.name,
-      qty: item.qty,
-      price: item.unitPrice,
-      lineTotal: item.lineTotal,
-    })),
+    items: order.items.map((item) =>
+      mapOrderV2ItemToInternalItem(item, doneByLineKey),
+    ),
     total: order.total,
     kitchenStation: mapKitchenStation(order.status),
     source: order.source,
@@ -1063,73 +1228,454 @@ const OrdersBoard = ({
   </section>
 );
 
+const KitchenItemModifiers = ({ item }: { item: InternalOrderItem }) => (
+  <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+    <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-3">
+      <p className="text-[11px] font-black uppercase tracking-[0.25em] text-amber-200">
+        MOD
+      </p>
+      {item.removedIngredients.length ? (
+        <ul className="mt-2 space-y-1 text-base font-bold text-zinc-100">
+          {item.removedIngredients.map((ingredient) => (
+            <li key={ingredient}>- {ingredient}</li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 text-xs font-semibold text-zinc-500">Sin MOD</p>
+      )}
+    </div>
+    <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3">
+      <p className="text-[11px] font-black uppercase tracking-[0.25em] text-cyan-200">
+        UPGRADE
+      </p>
+      {item.extras.length ? (
+        <ul className="mt-2 space-y-1 text-base font-bold text-zinc-100">
+          {item.extras.map((extra) => (
+            <li key={`${extra.sku ?? extra.name}-${extra.name}`}>
+              - {extra.name}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 text-xs font-semibold text-zinc-500">Sin UPGRADE</p>
+      )}
+    </div>
+  </div>
+);
+
+const KitchenBurgerCard = ({
+  order,
+  item,
+  itemIndex,
+  open,
+  busy,
+  onToggleOpen,
+  onDoneChange,
+}: {
+  order: InternalOrder;
+  item: InternalOrderItem;
+  itemIndex: number;
+  open: boolean;
+  busy: boolean;
+  onToggleOpen: () => void;
+  onDoneChange: (done: boolean) => void;
+}) => {
+  const done = Boolean(item.kitchenDone);
+  const kind = getKitchenItemKind(item) as KitchenItemKind;
+  const titleNumber = item.itemDisplayIndex ?? itemIndex + 1;
+  return (
+    <article
+      className={`rounded-2xl border p-3 transition ${
+        done
+          ? "border-emerald-400/40 bg-emerald-500/10"
+          : "border-zinc-700 bg-zinc-950/80"
+      }`}
+    >
+      <button
+        type="button"
+        className="flex w-full items-center justify-between gap-3 text-left"
+        onClick={onToggleOpen}
+      >
+        <div>
+          <p className="text-xl font-black text-zinc-50">
+            {item.name} #{titleNumber}
+          </p>
+          <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-zinc-500">
+            {kind === "combo" ? "Combo" : "Burger"} ·{" "}
+            {done ? "Hecha" : "Pendiente"}
+          </p>
+        </div>
+        <span
+          className={`rounded-full px-3 py-1 text-xs font-black ${done ? "bg-emerald-300 text-emerald-950" : "bg-amber-300 text-amber-950"}`}
+        >
+          {done ? "LISTA" : open ? "ABIERTO" : "TOCAR"}
+        </span>
+      </button>
+      {open ? (
+        <div className="mt-3">
+          {kind === "combo" && item.garnish ? (
+            <p className="mb-3 rounded-lg bg-zinc-900 px-3 py-2 text-xs font-semibold text-zinc-300">
+              Guarnición incluida: {item.garnish.name}
+            </p>
+          ) : null}
+          <KitchenItemModifiers item={item} />
+          {item.burgerNote ? (
+            <div className="mt-3 rounded-xl border border-rose-400/20 bg-rose-400/10 p-3">
+              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-rose-200">
+                Nota
+              </p>
+              <p className="mt-1 text-base font-bold text-rose-50">
+                - {item.burgerNote}
+              </p>
+            </div>
+          ) : null}
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+            {done ? (
+              <Button
+                className="w-full border border-zinc-700 bg-zinc-900 py-3 text-base font-black text-zinc-100 disabled:opacity-50"
+                disabled={busy}
+                onClick={() => onDoneChange(false)}
+              >
+                Reabrir
+              </Button>
+            ) : (
+              <Button
+                className="w-full bg-emerald-400 py-4 text-lg font-black text-emerald-950 disabled:opacity-50"
+                disabled={busy || !item.lineKey}
+                onClick={() => onDoneChange(true)}
+              >
+                Burger hecha
+              </Button>
+            )}
+          </div>
+          {!item.lineKey ? (
+            <p className="mt-2 text-xs text-amber-200">
+              Sin lineKey en snapshot; no se puede persistir en D1.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+    </article>
+  );
+};
+
+const KitchenOrderShell = ({
+  order,
+  children,
+}: {
+  order: InternalOrder;
+  children: ReactNode;
+}) => {
+  const generalNote = stripLocationFromNotes(order.note);
+  return (
+    <Card className="overflow-hidden border-zinc-700 bg-zinc-950/70 p-0">
+      <div className="border-b border-zinc-800 bg-zinc-900/80 p-4">
+        <p className="text-3xl font-black text-zinc-50">{order.folio}</p>
+        <p className="mt-1 text-xl font-extrabold text-zinc-100">
+          {order.customer}
+        </p>
+        <p className="mt-2 inline-flex rounded-full bg-cyan-300 px-3 py-1 text-sm font-black text-cyan-950">
+          {extractKitchenLocation(order.note)}
+        </p>
+        {generalNote ? (
+          <p className="mt-3 rounded-xl bg-amber-400/10 px-3 py-2 text-sm font-bold text-amber-100">
+            Nota general: {generalNote}
+          </p>
+        ) : null}
+      </div>
+      <div className="space-y-3 p-3">{children}</div>
+    </Card>
+  );
+};
+
+const KitchenBurgerOrder = ({
+  order,
+  items,
+  busyLineKey,
+  onToggleKitchenItem,
+}: {
+  order: InternalOrder;
+  items: InternalOrderItem[];
+  busyLineKey: string | null;
+  onToggleKitchenItem: ToggleKitchenItemDone;
+}) => {
+  const pendingIndex = items.findIndex((item) => !item.kitchenDone);
+  const defaultOpenKey =
+    pendingIndex >= 0
+      ? getKitchenLineKey(order, items[pendingIndex], pendingIndex)
+      : "";
+  const [openLineKey, setOpenLineKey] = useState(defaultOpenKey);
+
+  useEffect(() => {
+    setOpenLineKey(defaultOpenKey);
+  }, [defaultOpenKey]);
+
+  const allDone = items.every((item) => item.kitchenDone);
+  return (
+    <KitchenOrderShell order={order}>
+      {allDone ? (
+        <p className="rounded-xl bg-emerald-400/10 px-3 py-2 text-center text-sm font-black text-emerald-200">
+          Burgers listas
+        </p>
+      ) : null}
+      {items.map((item, index) => {
+        const lineKey = getKitchenLineKey(order, item, index);
+        const kind = getKitchenItemKind(item) as KitchenItemKind;
+        return (
+          <KitchenBurgerCard
+            key={lineKey}
+            order={order}
+            item={item}
+            itemIndex={index}
+            open={openLineKey === lineKey}
+            busy={busyLineKey === lineKey}
+            onToggleOpen={() =>
+              setOpenLineKey((current) => (current === lineKey ? "" : lineKey))
+            }
+            onDoneChange={(done) => {
+              if (!item.lineKey) return;
+              void onToggleKitchenItem(order.id, item.lineKey, kind, done);
+            }}
+          />
+        );
+      })}
+    </KitchenOrderShell>
+  );
+};
+
+const SideQuestItemCard = ({
+  order,
+  item,
+  itemIndex,
+  busy,
+  onToggleKitchenItem,
+}: {
+  order: InternalOrder;
+  item: InternalOrderItem;
+  itemIndex: number;
+  busy: boolean;
+  onToggleKitchenItem: ToggleKitchenItemDone;
+}) => {
+  const done = Boolean(item.kitchenDone);
+  return (
+    <div
+      className={`rounded-2xl border p-3 ${done ? "border-emerald-400/40 bg-emerald-500/10" : "border-zinc-700 bg-zinc-950/80"}`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-xl font-black text-zinc-50">
+            {item.name} #{item.itemDisplayIndex ?? itemIndex + 1}
+          </p>
+          <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-zinc-500">
+            Side Quest · {done ? "Hecha" : "Pendiente"}
+          </p>
+        </div>
+        <span
+          className={`rounded-full px-3 py-1 text-xs font-black ${done ? "bg-emerald-300 text-emerald-950" : "bg-amber-300 text-amber-950"}`}
+        >
+          {done ? "LISTA" : "PENDIENTE"}
+        </span>
+      </div>
+      <Button
+        className={`mt-4 w-full py-3 text-base font-black disabled:opacity-50 ${done ? "border border-zinc-700 bg-zinc-900 text-zinc-100" : "bg-emerald-400 text-emerald-950"}`}
+        disabled={busy || !item.lineKey}
+        onClick={() => {
+          if (!item.lineKey) return;
+          void onToggleKitchenItem(order.id, item.lineKey, "garnish", !done);
+        }}
+      >
+        {done ? "Reabrir" : "Guarnición hecha"}
+      </Button>
+    </div>
+  );
+};
+
 const KitchenQueue = ({
   orders,
-  move,
   runtime,
+  onToggleKitchenItem,
 }: {
   orders: InternalOrder[];
-  move: MoveOrderStatus;
   runtime: OrdersRuntime;
+  onToggleKitchenItem: ToggleKitchenItemDone;
 }) => {
+  const [mode, setMode] = useState<"burgers" | "sidequest">("burgers");
+  const [busyLineKey, setBusyLineKey] = useState<string | null>(null);
   const activeOrders = orders.filter((o) => !terminalStatuses.has(o.status));
+  const fallback = runtime.source !== "d1";
+
+  const withBurgerItems = activeOrders
+    .map((order) => ({ order, items: order.items.filter(isBurgerOrCombo) }))
+    .filter(({ items }) => items.length > 0);
+  const pendingBurgerOrders = withBurgerItems.filter(
+    ({ order, items }) =>
+      order.status !== "ready" && items.some((item) => !item.kitchenDone),
+  );
+  const doneBurgerOrders = withBurgerItems.filter(({ items }) =>
+    items.every((item) => item.kitchenDone),
+  );
+
+  const withGarnishItems = activeOrders
+    .map((order) => ({ order, items: order.items.filter(isStandaloneGarnish) }))
+    .filter(({ items }) => items.length > 0);
+  const pendingGarnishOrders = withGarnishItems
+    .map(({ order, items }) => ({
+      order,
+      items: items.filter((item) => !item.kitchenDone),
+    }))
+    .filter(({ order, items }) => order.status !== "ready" && items.length > 0);
+  const doneGarnishOrders = withGarnishItems
+    .map(({ order, items }) => ({
+      order,
+      items: items.filter((item) => item.kitchenDone),
+    }))
+    .filter(({ items }) => items.length > 0);
+
+  const toggleKitchenItem: ToggleKitchenItemDone = async (
+    orderId,
+    lineKey,
+    itemKind,
+    done,
+  ) => {
+    setBusyLineKey(lineKey);
+    try {
+      await onToggleKitchenItem(orderId, lineKey, itemKind, done);
+    } finally {
+      setBusyLineKey(null);
+    }
+  };
+
   return (
-    <section>
-      <SourcePanel runtime={runtime} />
-      {runtime.source === "d1" && activeOrders.length === 0 ? (
-        <EmptyOrdersState
-          title="Cocina limpia."
-          description="No hay órdenes activas por preparar."
-        />
+    <section className="space-y-3">
+      {fallback ? (
+        <p className="rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs font-semibold text-amber-100">
+          Fallback visual: estados de cocina no se guardan en D1.
+        </p>
       ) : null}
-      <div className="grid gap-3 md:grid-cols-3">
-        {(["new", "preparing", "ready"] as OrderStatus[]).map((s) => {
-          const list = activeOrders.filter((o) => o.status === s);
-          return (
-            <Card key={s} className="p-3">
-              <div className="mb-2 flex items-center justify-between">
-                <h3 className="font-bold">{statusLabel[s]}</h3>
-                <span className="chip">{list.length}</span>
-              </div>
-              <div className="space-y-2">
-                {list.map((o) => (
-                  <div
-                    key={o.id}
-                    className="rounded-lg border border-zinc-800 bg-zinc-950/50 p-2"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="text-xs font-semibold">
-                          {o.folio} · {o.createdAt}
-                        </p>
-                        <p className="text-[11px] text-zinc-400">
-                          {o.customer} · {o.kitchenStation}
-                        </p>
-                      </div>
-                      <StatusBadge status={o.status} />
-                    </div>
-                    {o.note ? (
-                      <p className="mt-1 rounded bg-amber-500/10 px-2 py-1 text-[11px] text-amber-200">
-                        {o.note}
-                      </p>
-                    ) : null}
-                    <OrderItems order={o} />
-                    <div className="mt-2">
-                      <ActionButtons
-                        order={o}
-                        actions={getKitchenActions(o.status)}
-                        onMove={move}
-                        onCancel={() => undefined}
-                        actionOrderId={runtime.actionOrderId}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          );
-        })}
+      {runtime.error ? (
+        <p className="rounded-lg border border-rose-400/20 bg-rose-400/10 px-3 py-2 text-xs font-semibold text-rose-100">
+          {runtime.error}
+        </p>
+      ) : null}
+      <div className="grid grid-cols-2 gap-2 rounded-2xl border border-zinc-800 bg-zinc-950 p-2">
+        <Button
+          className={`py-3 text-base font-black ${mode === "burgers" ? "bg-cyan-300 text-cyan-950" : "bg-zinc-900 text-zinc-300"}`}
+          onClick={() => setMode("burgers")}
+        >
+          Burgers
+        </Button>
+        <Button
+          className={`py-3 text-base font-black ${mode === "sidequest" ? "bg-cyan-300 text-cyan-950" : "bg-zinc-900 text-zinc-300"}`}
+          onClick={() => setMode("sidequest")}
+        >
+          Side Quest
+        </Button>
       </div>
+
+      {mode === "burgers" ? (
+        <div className="space-y-5">
+          <section>
+            <h3 className="mb-2 text-sm font-black uppercase tracking-[0.2em] text-amber-200">
+              Pendientes · {pendingBurgerOrders.length}
+            </h3>
+            <div className="space-y-3">
+              {pendingBurgerOrders.length ? (
+                pendingBurgerOrders.map(({ order, items }) => (
+                  <KitchenBurgerOrder
+                    key={order.id}
+                    order={order}
+                    items={items}
+                    busyLineKey={busyLineKey}
+                    onToggleKitchenItem={toggleKitchenItem}
+                  />
+                ))
+              ) : (
+                <EmptyOrdersState title="Sin burgers pendientes." />
+              )}
+            </div>
+          </section>
+          <section>
+            <h3 className="mb-2 text-sm font-black uppercase tracking-[0.2em] text-emerald-200">
+              Hechas · {doneBurgerOrders.length}
+            </h3>
+            <div className="space-y-3">
+              {doneBurgerOrders.map(({ order, items }) => (
+                <KitchenBurgerOrder
+                  key={`done-${order.id}`}
+                  order={order}
+                  items={items}
+                  busyLineKey={busyLineKey}
+                  onToggleKitchenItem={toggleKitchenItem}
+                />
+              ))}
+            </div>
+          </section>
+        </div>
+      ) : (
+        <div className="space-y-5">
+          <section>
+            <h3 className="mb-2 text-sm font-black uppercase tracking-[0.2em] text-amber-200">
+              Pendientes ·{" "}
+              {pendingGarnishOrders.reduce(
+                (acc, entry) => acc + entry.items.length,
+                0,
+              )}
+            </h3>
+            <div className="space-y-3">
+              {pendingGarnishOrders.length ? (
+                pendingGarnishOrders.map(({ order, items }) => (
+                  <KitchenOrderShell key={order.id} order={order}>
+                    {items.map((item, index) => (
+                      <SideQuestItemCard
+                        key={getKitchenLineKey(order, item, index)}
+                        order={order}
+                        item={item}
+                        itemIndex={index}
+                        busy={
+                          busyLineKey === getKitchenLineKey(order, item, index)
+                        }
+                        onToggleKitchenItem={toggleKitchenItem}
+                      />
+                    ))}
+                  </KitchenOrderShell>
+                ))
+              ) : (
+                <EmptyOrdersState title="Sin Side Quest pendiente." />
+              )}
+            </div>
+          </section>
+          <section>
+            <h3 className="mb-2 text-sm font-black uppercase tracking-[0.2em] text-emerald-200">
+              Hechas ·{" "}
+              {doneGarnishOrders.reduce(
+                (acc, entry) => acc + entry.items.length,
+                0,
+              )}
+            </h3>
+            <div className="space-y-3">
+              {doneGarnishOrders.map(({ order, items }) => (
+                <KitchenOrderShell
+                  key={`done-garnish-${order.id}`}
+                  order={order}
+                >
+                  {items.map((item, index) => (
+                    <SideQuestItemCard
+                      key={getKitchenLineKey(order, item, index)}
+                      order={order}
+                      item={item}
+                      itemIndex={index}
+                      busy={
+                        busyLineKey === getKitchenLineKey(order, item, index)
+                      }
+                      onToggleKitchenItem={toggleKitchenItem}
+                    />
+                  ))}
+                </KitchenOrderShell>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
     </section>
   );
 };
@@ -2256,6 +2802,63 @@ export function InternalChekeoApp() {
     await move(order.id, "cancelled", reason);
   };
 
+  const toggleKitchenItemDone: ToggleKitchenItemDone = async (
+    orderId,
+    lineKey,
+    itemKind,
+    done,
+  ) => {
+    if (ordersSource !== "d1") {
+      setOrders((current) =>
+        current.map((order) =>
+          order.id === orderId
+            ? {
+                ...order,
+                items: order.items.map((item, index) =>
+                  getKitchenLineKey(order, item, index) === lineKey
+                    ? { ...item, kitchenDone: done }
+                    : item,
+                ),
+              }
+            : order,
+        ),
+      );
+      setOrdersNotice("Checklist visual actualizado en fallback mock");
+      return;
+    }
+
+    const token = getAdminToken();
+    if (!token) {
+      const message = "Activa modo admin para operar cocina live";
+      setOrdersError(message);
+      throw new Error(message);
+    }
+
+    setOrdersError(null);
+    try {
+      const updated = await updateKitchenItemV2(token, orderId, {
+        lineKey,
+        itemKind,
+        done,
+      });
+      const mapped = mapOrderV2ToInternalOrder(updated);
+      setOrders((current) =>
+        current.map((order) => (order.id === orderId ? mapped : order)),
+      );
+      setSelected((current) => (current?.id === orderId ? mapped : current));
+      setOrdersNotice(
+        `${mapped.folio}: ${done ? "item de cocina hecho" : "item de cocina reabierto"}`,
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "No se pudo actualizar el checklist de cocina";
+      setOrdersError(message);
+      throw error instanceof Error ? error : new Error(message);
+    }
+  };
+
   const runtime: OrdersRuntime = {
     source: ordersSource,
     loading: loadingOrders,
@@ -2299,7 +2902,13 @@ export function InternalChekeoApp() {
             requestCancellation={requestCancellation}
           />
         ),
-        cocina: <KitchenQueue orders={orders} move={move} runtime={runtime} />,
+        cocina: (
+          <KitchenQueue
+            orders={orders}
+            runtime={runtime}
+            onToggleKitchenItem={toggleKitchenItemDone}
+          />
+        ),
         pagos: (
           <PaymentNotesPanel
             orders={orders}
@@ -2311,7 +2920,7 @@ export function InternalChekeoApp() {
         cierre: <OperationalClosePanel adminToken={adminToken} />,
         catalogo: <CatalogAdminPanel />,
       })[tab],
-    [orders, ordersSource, tab, runtime],
+    [orders, ordersSource, tab, runtime, toggleKitchenItemDone],
   );
   if (!logged) return <PinLoginMock onLogin={() => setLogged(true)} />;
   return (
