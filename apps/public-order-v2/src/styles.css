@@ -815,14 +815,25 @@ p {
   gap: 14px;
 }
 .guided-flow-heading {
+  position: sticky;
+  top: max(0px, env(safe-area-inset-top));
+  z-index: 18;
   display: grid;
   gap: 12px;
+  margin: -8px -8px 2px;
+  padding: 8px;
+  border: 1px solid rgba(234, 255, 240, 0.08);
+  border-radius: 20px;
+  background: rgba(5, 10, 8, 0.92);
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(16px);
 }
 .guided-back {
   justify-self: start;
   width: auto;
   min-height: 40px;
   padding-inline: 1rem;
+  box-shadow: none;
 }
 .choice-grid,
 .product-pick-grid {

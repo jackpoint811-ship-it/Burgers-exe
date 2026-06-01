@@ -610,7 +610,7 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] Cada unidad permite quitar ingredientes, agregar extras por burger y nota por burger opcional.
 - [ ] Extra/ingrediente/nota en una unidad no modifica las demás unidades.
 - [ ] Combo obliga elegir guarnición antes de confirmar al ticket.
-- [ ] Burger normal mantiene activa “Sin guarnición” dentro del panel y dirige a agregar guarniciones desde Menú como producto aparte.
+- [ ] Burger normal no muestra selector interno de guarnición dentro del panel y dirige a agregar guarniciones como producto aparte.
 - [ ] Las guarniciones para combos provienen solo del catálogo real; no se inventan productos.
 - [ ] Confirmar al ticket preserva `removedIngredients`, `extras` y `burgerNote` por burger; `garnish` solo se guarda dentro de combos.
 - [ ] Ticket permite editar, duplicar y eliminar cada unidad.
@@ -646,13 +646,13 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 
 ### Guarniciones
 
-- [ ] For a normal burger, confirm the drawer shows “Guarnición opcional”.
-- [ ] Confirm “Sin guarnición” is the safe/default option for a normal burger.
-- [ ] In the guided flow, confirm normal burgers do not show a dead guarniciones action and instead show “Las guarniciones extra se eligen en el siguiente paso.”
+- [ ] For a normal burger, confirm the editor does not show an internal garnish block or redundant garnish microcopy.
+- [ ] In the guided flow, confirm the guarniciones step remains separate after editing a normal burger.
 - [ ] Add a guarnición from the menu with “Agregar” and confirm it becomes a separate ticket line with its own SKU/price and `itemKind="garnish"`.
 - [ ] Confirm a normal burger never saves a free internal garnish.
 - [ ] For combos, confirm “Guarnición obligatoria” remains inside the combo builder.
 - [ ] Try confirming a combo without garnish and confirm inline validation blocks submission.
+- [ ] Confirm “Regresar” remains visible while scrolling in type, product, edit, and guarniciones steps, respects mobile safe-area spacing, and does not cover the bottom CTA.
 
 ### Persistent ticket and action hierarchy
 

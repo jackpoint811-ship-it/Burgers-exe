@@ -391,7 +391,7 @@ Alcance UX:
 - `Ordenar` ya no es una página aparte ni queda incrustado al fondo del menú: se abre como drawer/modal accesible sobre la experiencia de Menú al seleccionar una burger o combo.
 - Checkout sigue siendo sección separada para ticket, datos del cliente, ubicación, pago y confirmación.
 - Extras no se muestran como sección principal del menú; se mantienen como customización por burger dentro del panel de ordenar.
-- Guarniciones usan únicamente productos reales de la categoría `guarniciones`: son obligatorias dentro de combos; las burgers normales muestran `Sin guarnición` y dirigen a agregar una guarnición aparte desde Menú para conservar precio propio.
+- Guarniciones usan únicamente productos reales de la categoría `guarniciones`: son obligatorias dentro de combos; las burgers normales no muestran selector interno de guarnición y dirigen a agregar guarniciones aparte para conservar precio propio.
 
 No cambia en V2-14:
 
@@ -407,7 +407,8 @@ No cambia en V2-14:
 - `1 hamburguesa`, `2 hamburguesas` y `3 hamburguesas` remain separate unit builders. The UI states “Vas a pedir 2 hamburguesas. Cada una se puede editar por separado.” / “Vas a pedir 3 hamburguesas. Cada una se puede editar por separado.” and adds “No cambia el tamaño ni la carne; solo la cantidad.” near the quantity buttons. Each editor is labeled `Burger OG #1`, `Burger OG #2`, etc. Ticket lines stay separate and show unit pricing.
 - Burger extras, removed ingredients, and per-burger notes stay scoped to each unit. Extras are operational kitchen customizations in the current pricing contract; the drawer total mirrors ticket/checkout by using catalog SKU base prices only. Pan remains included and non-editable.
 - Combos keep mandatory garnish selection inside the combo and validate inline when garnish is missing.
-- Normal burgers do not persist `garnish` internally. The burger editor shows “Guarnición opcional” and keeps “Sin guarnición” selected; in the guided flow, copy clarifies “Las guarniciones extra se eligen en el siguiente paso” and the persistent “Continuar” CTA advances to the guarniciones step. Guarniciones must be added as separate menu products with their own SKU/price (`itemKind="garnish"`).
+- The guided flow header keeps the secondary “Regresar” control sticky at the top with safe-area spacing so step-by-step navigation remains visible on mobile without competing with the bottom primary CTA.
+- Normal burgers do not persist `garnish` internally and the burger editor no longer shows an internal garnish selector or redundant garnish microcopy. The persistent “Continuar” CTA advances to the guarniciones step, where guarniciones can be added as separate menu products with their own SKU/price (`itemKind="garnish"`).
 - Primary products (burgers/combos) use “Ordenar” with neon primary styling. Simple products (guarniciones, bebidas, otros) use “Agregar” with a distinct amber/outline treatment.
 - A persistent floating ticket/cart is available once the cart has items, showing item count, total, and a checkout CTA while respecting mobile safe-area insets. The drawer footer also exposes ticket access when ordering with an existing cart.
 - Checkout remains a separate section with the same four steps: Ticket, Datos, Ubicación y pago, Confirmar. It is visually more compact, keeps persistent labels, inline errors, optional general note, and limits location choices to Torre GGA / Torre Valcob; pickup/delivery is not exposed to the user.
@@ -423,7 +424,7 @@ No cambia en V2-14:
 - Cada unidad de burger/combo mantiene edición individual de ingredientes removibles, extras operativos para cocina y nota opcional; el pan sigue no editable.
 - Después de editar se agrega un paso de guarniciones opcionales. “No quiero guarnición · Saltar guarniciones” permite ir a checkout sin agregar extras.
 - Si el usuario pidió burger normal, cualquier guarnición extra elegida se agrega como línea separada `itemKind="garnish"` con precio propio; no se guarda como `garnish` dentro de la burger.
-- Si el usuario pidió combo, cada combo exige una guarnición incluida antes de continuar; esa guarnición se guarda dentro del combo. Las guarniciones extra del paso posterior se agregan como líneas separadas con precio propio.
+- Si el usuario pidió combo, cada combo exige una guarnición incluida antes de continuar; esa guarnición se guarda dentro del combo. Las guarniciones elegidas en el paso posterior se agregan como líneas separadas con precio propio.
 - Checkout conserva ticket, datos, ubicación Torre GGA/Torre Valcob, pago y confirmación. No se muestra pickup/delivery al usuario aunque el payload backend conserva el modo operativo interno existente.
 - No hubo cambios de backend: no se tocaron `functions/api/**`, `/api/order`, `/api/rpc`, Apps Script, Sheets sync, pagos reales, WhatsApp API, `BOG_ACTIVE_ENV`, Internal V2, legacy ni paquetes de configuración.
 
