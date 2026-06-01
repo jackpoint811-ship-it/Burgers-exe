@@ -82,6 +82,10 @@ const createEmptyCustomer = (): CustomerDraft => ({
 const normalizePhoneDigits = (phone: string) => phone.replace(/\D/g, "");
 const orderModeForBackend: OrderV2Mode = "pickup";
 
+const scrollToTop = () => {
+  window.scrollTo({ top: 0, behavior: "auto" });
+};
+
 const createId = (prefix: string) => {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto)
     return `${prefix}-${crypto.randomUUID()}`;
@@ -1358,6 +1362,11 @@ export function PublicOrderApp() {
   const garnishes = menuData.items.filter(
     (item) => item.category === "guarniciones" && item.isAvailable,
   );
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(scrollToTop);
+    return () => window.cancelAnimationFrame(frame);
+  }, [windowMode, guidedStep]);
 
   useEffect(() => {
     let mounted = true;
