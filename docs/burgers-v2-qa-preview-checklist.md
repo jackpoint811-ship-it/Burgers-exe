@@ -690,7 +690,7 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 
 - [ ] Confirmar que el CTA grande “Ordenar” está siempre visible en menú y respeta safe-area móvil.
 - [ ] Presionar “Ordenar”.
-- [ ] Confirmar pregunta inicial “¿Qué quieres ordenar?” con opciones Hamburguesa y Combo.
+- [ ] Confirmar pregunta inicial “¿Qué quieres ordenar?” con Hamburguesa si hay burgers reales disponibles y Combo solo si hay combos reales disponibles en `menuData.items`.
 - [ ] Elegir Hamburguesa y continuar a productos disponibles.
 - [ ] Elegir Burger OG.
 - [ ] Elegir `2 hamburguesas` y confirmar copy “Vas a pedir 2 hamburguesas. Cada una se puede editar por separado.”
@@ -704,7 +704,7 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] En guarniciones, confirmar botón claro “No quiero guarnición · Saltar guarniciones”.
 - [ ] Saltar guarniciones e ir a checkout.
 - [ ] Volver al menú/flujo y agregar una guarnición extra; confirmar que aparece como línea separada `itemKind="garnish"` con precio propio.
-- [ ] Probar Combo.
+- [ ] Probar Combo solo si existe como `menu_item` real disponible; una promo/concurso visible no habilita esta ruta.
 - [ ] Confirmar que cada combo exige guarnición incluida antes de continuar y muestra error inline si falta.
 - [ ] Confirmar que la guarnición incluida del combo se guarda como `garnish` dentro del combo.
 - [ ] Confirmar que cualquier guarnición extra adicional se agrega como línea separada con precio propio.
@@ -740,3 +740,5 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] Confirmar pedido y validar `Success` separado con `Pedido recibido`, folio `BX-...`, estado `Nuevo`, total confirmado, ubicación y pago.
 - [ ] Presionar `NUEVA QUEST`; debe limpiar confirmación, cart, customer, idempotency y volver a `Menu` con scroll arriba.
 - [ ] Confirmar no llamadas ni cambios a `/api/order`, `/api/rpc`, Apps Script, Sheets sync, `BOG_ACTIVE_ENV`, WhatsApp ni pasarelas externas.
+- [ ] Confirmar que `Combo` en `Main Quest` solo aparece si existe al menos un combo real disponible en `menuData.items`; si solo hay promo/concurso en `promoCards`, no debe mostrarse como opción ordenable.
+- [ ] Confirmar que una promo/concurso visible en `Menu` permanece como banner informativo y no inventa SKUs ni combos ordenables.

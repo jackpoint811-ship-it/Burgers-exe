@@ -291,23 +291,19 @@ const MenuInfoDialog = ({ item, onClose }: { item: MenuItem | null; onClose: () 
   );
 };
 
-const MainQuest = ({ choice, items, builder, onBack, onChoice, onProduct, reduce }: { choice: OrderChoice | null; items: MenuItem[]; builder: BuilderDraft | null; onBack: () => void; onChoice: (choice: OrderChoice) => void; onProduct: (item: MenuItem) => void; reduce: boolean }) => {
-  const filteredItems = items.filter((item) => {
-    const kind = inferItemKind(item);
-    if (choice === "burger") return kind === "burger" && item.isAvailable;
-    if (choice === "combo") return kind === "combo" && item.isAvailable;
-    return false;
-  });
+const MainQuest = ({ choice, availableBurgerItems, availableComboItems, builder, onBack, onChoice, onProduct, reduce }: { choice: OrderChoice | null; availableBurgerItems: MenuItem[]; availableComboItems: MenuItem[]; builder: BuilderDraft | null; onBack: () => void; onChoice: (choice: OrderChoice) => void; onProduct: (item: MenuItem) => void; reduce: boolean }) => {
+  const filteredItems = choice === "burger" ? availableBurgerItems : choice === "combo" ? availableComboItems : [];
+  const hasChoices = availableBurgerItems.length > 0 || availableComboItems.length > 0;
   return (
     <section className="quest-panel">
       <QuestButton className="ghost" onClick={onBack}>Regresar</QuestButton>
       <span className="eyebrow">Main Quest</span>
       <h2>¿Qué vas a ordenar?</h2>
-      <div className="choice-grid" role="group" aria-label="Tipo de orden">
-        <button type="button" className={choice === "burger" ? "choice-card active" : "choice-card"} onClick={() => onChoice("burger")}><strong>Hamburguesa</strong><span>Personaliza MOD y UPGRADE por unidad.</span></button>
-        <button type="button" className={choice === "combo" ? "choice-card active" : "choice-card"} onClick={() => onChoice("combo")}><strong>Combo</strong><span>Incluye guarnición obligatoria y también se modifica.</span></button>
-      </div>
-      {choice ? <div className="kiosk-grid">{filteredItems.length ? filteredItems.map((item) => <ProductCard key={item.sku} item={item} mode="select" onClick={onProduct} reduce={reduce} />) : <EmptyState title="Sin productos disponibles" description="El catálogo real no tiene productos disponibles para esta opción." />}</div> : null}
+      {hasChoices ? <div className="choice-grid" role="group" aria-label="Tipo de orden">
+        {availableBurgerItems.length ? <button type="button" className={choice === "burger" ? "choice-card active" : "choice-card"} onClick={() => onChoice("burger")}><strong>Hamburguesa</strong><span>Personaliza MOD y UPGRADE por unidad.</span></button> : null}
+        {availableComboItems.length ? <button type="button" className={choice === "combo" ? "choice-card active" : "choice-card"} onClick={() => onChoice("combo")}><strong>Combo</strong><span>Solo combos reales disponibles como productos del catálogo.</span></button> : null}
+      </div> : <EmptyState title="Sin productos principales disponibles" description="No hay hamburguesas ni combos reales disponibles en menuData.items." />}
+      {choice ? <div className="kiosk-grid">{filteredItems.length ? filteredItems.map((item) => <ProductCard key={item.sku} item={item} mode="select" onClick={onProduct} reduce={reduce} />) : <EmptyState title="Sin productos disponibles" description="Esta opción ya no tiene menu_items reales disponibles; vuelve a elegir una ruta activa." />}</div> : null}
       {builder ? <p className="selection-pulse">Seleccionado: {builder.item.name}</p> : null}
     </section>
   );
@@ -438,10 +434,22 @@ export function PublicOrderApp() {
   const [orderConfirmation, setOrderConfirmation] = useState<OrderConfirmation | null>(null);
   const total = useMemo(() => getCartTotal(cart, menuData.items), [cart, menuData.items]);
   const count = getCartCount(cart);
+  const availableBurgerItems = useMemo(() => menuData.items.filter((item) => inferItemKind(item) === "burger" && item.isAvailable), [menuData.items]);
+  const availableComboItems = useMemo(() => menuData.items.filter((item) => inferItemKind(item) === "combo" && item.isAvailable), [menuData.items]);
   const extras = menuData.items.filter((item) => item.category === "extras" && inferItemKind(item) !== "combo" && item.isAvailable);
   const garnishes = menuData.items.filter((item) => item.category === "guarniciones" && item.isAvailable);
 
   useEffect(() => { const frame = window.requestAnimationFrame(scrollToTop); return () => window.cancelAnimationFrame(frame); }, [section]);
+  useEffect(() => {
+    if (orderChoice === "combo" && availableComboItems.length === 0) {
+      setOrderChoice(null);
+      setBuilder((draft) => draft?.itemKind === "combo" ? null : draft);
+    }
+    if (orderChoice === "burger" && availableBurgerItems.length === 0) {
+      setOrderChoice(null);
+      setBuilder((draft) => draft?.itemKind === "burger" ? null : draft);
+    }
+  }, [availableBurgerItems.length, availableComboItems.length, orderChoice]);
   useEffect(() => {
     let mounted = true;
     const bootTimer = window.setTimeout(() => mounted && setShowBoot(false), reduce ? 250 : 1300);
@@ -548,7 +556,7 @@ export function PublicOrderApp() {
       <LoadingOverlay loading={showBoot || loadingMenu} />
       <AppHeader count={count} total={total} />
       {section === "menu" ? <MenuSection menuData={menuData} onExplore={setInfoItem} onStart={beginQuest} reduce={reduce} /> : null}
-      {section === "main" ? <MainQuest choice={orderChoice} items={menuData.items} builder={builder} onBack={() => navigate("menu")} onChoice={(choice) => { setOrderChoice(choice); setBuilder(null); }} onProduct={startBuilder} reduce={reduce} /> : null}
+      {section === "main" ? <MainQuest choice={orderChoice} availableBurgerItems={availableBurgerItems} availableComboItems={availableComboItems} builder={builder} onBack={() => navigate("menu")} onChoice={(choice) => { setOrderChoice(choice); setBuilder(null); }} onProduct={startBuilder} reduce={reduce} /> : null}
       {section === "workbench" ? <Workbench builder={builder} extras={extras} garnishes={garnishes} onBack={() => navigate("main")} onQuantity={updateBuilderQuantity} onUnitChange={updateBuilderUnit} /> : null}
       {section === "side" ? <SideQuest garnishes={garnishes} selected={extraGarnishSkus} onToggle={(sku) => setExtraGarnishSkus((prev) => prev.includes(sku) ? prev.filter((entry) => entry !== sku) : [...prev, sku])} onBack={() => navigate("workbench")} onSkip={() => { setExtraGarnishSkus([]); navigate("checkout"); }} reduce={reduce} /> : null}
       {section === "checkout" && cart.length ? <Checkout cart={cart} items={menuData.items} total={total} customer={customer} setCustomer={setCustomer} onBack={() => navigate(cart.length ? "side" : "menu")} onSubmit={handleCheckout} submitting={submitting} error={checkoutError} onEdit={editLine} onDuplicate={duplicateLine} onRemove={removeLine} /> : null}

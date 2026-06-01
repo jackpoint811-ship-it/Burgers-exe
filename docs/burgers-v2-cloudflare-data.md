@@ -579,3 +579,4 @@ No-touch V2-12:
 - `POST /api/orders-v2` valida cada extra por SKU contra D1, exige categoría `extras` y disponibilidad, normaliza nombre/precio desde D1 y guarda el arreglo normalizado en `snapshot_json`.
 - El backend suma el precio real de extras al `line_total_cents` y al total de la orden desde D1; no confía en precios enviados por el frontend.
 - Las guarniciones incluidas de combo se validan contra D1 como categoría `guarniciones` y se guardan dentro del snapshot del combo. Las guarniciones de `Side Quest` viajan como líneas separadas con su propio SKU/precio.
+- Los combos ordenables deben existir como registros reales disponibles en `menuData.items`/D1 `menu_items`; `promoCards` no se transforman en líneas de pedido.
