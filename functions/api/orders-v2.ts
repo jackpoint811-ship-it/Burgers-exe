@@ -222,7 +222,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
     const orderItems = parsed.items.map((item) => {
       const catalogItem = catalogBySku.get(item.sku)!;
       const unitPriceCents = Number(catalogItem.price_cents);
-      const lineTotalCents = unitPriceCents * item.qty;
+      const extrasTotalCents = item.extras.reduce((acc, extra) => acc + Math.round((extra.price ?? 0) * 100), 0);
+      const lineTotalCents = (unitPriceCents + extrasTotalCents) * item.qty;
       return {
         id: generateId('oi'),
         orderId,
@@ -235,6 +236,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
           sku: catalogItem.sku,
           name: catalogItem.name,
           priceCents: unitPriceCents,
+          extrasTotalCents,
           category: catalogItem.category_key,
           tags: catalogItem.tags_json,
           badge: catalogItem.badge,

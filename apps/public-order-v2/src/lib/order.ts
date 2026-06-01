@@ -25,7 +25,8 @@ export const formatCurrency = (amount: number) =>
 export const getCartTotal = (cart: CartEntry[], menuItems: MenuItem[]) =>
   cart.reduce((acc, entry) => {
     const item = menuItems.find((menuItem) => menuItem.sku === entry.sku);
-    return acc + (item ? item.price : 0);
+    const extrasTotal = entry.extras.reduce((sum, extra) => sum + (extra.price ?? 0), 0);
+    return acc + (item ? item.price : 0) + extrasTotal;
   }, 0);
 
 export const getCartCount = (cart: CartEntry[]) => cart.length;

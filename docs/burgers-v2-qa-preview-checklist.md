@@ -690,7 +690,7 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 
 - [ ] Confirmar que el CTA grande “Ordenar” está siempre visible en menú y respeta safe-area móvil.
 - [ ] Presionar “Ordenar”.
-- [ ] Confirmar pregunta inicial “¿Qué quieres ordenar?” con opciones Hamburguesa y Combo.
+- [ ] Confirmar pregunta inicial “¿Qué quieres ordenar?” con Hamburguesa si hay burgers reales disponibles y Combo solo si hay combos reales disponibles en `menuData.items`.
 - [ ] Elegir Hamburguesa y continuar a productos disponibles.
 - [ ] Elegir Burger OG.
 - [ ] Elegir `2 hamburguesas` y confirmar copy “Vas a pedir 2 hamburguesas. Cada una se puede editar por separado.”
@@ -704,7 +704,7 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] En guarniciones, confirmar botón claro “No quiero guarnición · Saltar guarniciones”.
 - [ ] Saltar guarniciones e ir a checkout.
 - [ ] Volver al menú/flujo y agregar una guarnición extra; confirmar que aparece como línea separada `itemKind="garnish"` con precio propio.
-- [ ] Probar Combo.
+- [ ] Probar Combo solo si existe como `menu_item` real disponible; una promo/concurso visible no habilita esta ruta.
 - [ ] Confirmar que cada combo exige guarnición incluida antes de continuar y muestra error inline si falta.
 - [ ] Confirmar que la guarnición incluida del combo se guarda como `garnish` dentro del combo.
 - [ ] Confirmar que cualquier guarnición extra adicional se agrega como línea separada con precio propio.
@@ -721,3 +721,24 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 ## Pendiente futuro de copy
 
 - [ ] Fase futura: reducir microcopy/texto innecesario una vez validado el flujo operativo.
+
+## V2 Public quest kiosk QA (2026-06-01)
+
+- [ ] Abrir Public V2 y confirmar boot: `INITIALIZING BURGERS.EXE...`, `LOADING MENU_ASSETS...`, `MOUNTING WORKBENCH...`, `SYNCING QUEST_FLOW...`, `SYSTEM READY.`
+- [ ] Confirmar que inicia en `Menu`, sin tabs Menú/Checkout, sin estilo visual Cloudflare y sin checkout vacío.
+- [ ] Confirmar que el header solo muestra `Burgers.exe` y `Ticket: X items · $total`.
+- [ ] Confirmar que banners de promos/concursos aparecen en primera pantalla solo si `/api/menu-v2.promos` tiene registros reales disponibles.
+- [ ] Confirmar categorías visibles: Hamburguesas, Combos, Guarniciones y Bebidas; el menú no muestra extras.
+- [ ] Tocar una card del menú y validar modal informativo accesible; no debe agregar producto ni iniciar builder.
+- [ ] Presionar `INICIAR QUEST`, elegir `Hamburguesa`, seleccionar producto real y avanzar a `Workbench`.
+- [ ] Validar cantidad `[-] x1 [+]`, mínimo x1, máximo x3, y que x2/x3 crea unidades separadas editables.
+- [ ] Probar `MOD · Sin cebolla` u otro ingrediente inferido; confirmar que pan no es editable.
+- [ ] Probar `UPGRADE` con extra real; confirmar que aparece solo en Workbench y el total coincide con el backend confirmado.
+- [ ] Probar combo: debe permitir MOD/UPGRADE y bloquear continuar hasta elegir guarnición incluida.
+- [ ] Pasar a `Side Quest`; saltar o agregar guarnición extra y confirmar que entra como línea separada `itemKind="garnish"`.
+- [ ] Confirmar que `Checkout` solo aparece con ticket, muestra loadout, MOD, UPGRADE, nota por burger, combo con guarnición incluida, ubicación Torre GGA/Torre Valcob, pago, total y CTA `EJECUTAR PEDIDO`.
+- [ ] Confirmar pedido y validar `Success` separado con `Pedido recibido`, folio `BX-...`, estado `Nuevo`, total confirmado, ubicación y pago; no debe aparecer CTA persistente con `0 items · $0`.
+- [ ] Presionar `NUEVA QUEST`; debe limpiar confirmación, cart, customer, idempotency y volver a `Menu` con scroll arriba.
+- [ ] Confirmar no llamadas ni cambios a `/api/order`, `/api/rpc`, Apps Script, Sheets sync, `BOG_ACTIVE_ENV`, WhatsApp ni pasarelas externas.
+- [ ] Confirmar que `Combo` en `Main Quest` solo aparece si existe al menos un combo real disponible en `menuData.items`; si solo hay promo/concurso en `promoCards`, no debe mostrarse como opción ordenable.
+- [ ] Confirmar que una promo/concurso visible en `Menu` permanece como banner informativo y no inventa SKUs ni combos ordenables.

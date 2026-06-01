@@ -419,7 +419,7 @@ No cambia en V2-14:
 - Public Order V2 ahora inicia en un menú visual tipo kiosko: categorías Hamburguesas, Combos, Guarniciones y Bebidas, con cards de exploración solamente.
 - Las cards del menú no abren builder ni agregan productos; abren un modal informativo con nombre, imagen si existe, descripción, precio, disponibilidad y cierre accesible.
 - Se agrega un CTA persistente y mobile-first que respeta safe-area y cambia de copy según el paso: Ordenar, Continuar, Ir a checkout y Confirmar pedido.
-- El flujo guiado pregunta primero “¿Qué quieres ordenar?” con opciones Hamburguesa y Combo; después muestra productos disponibles de la elección.
+- El flujo guiado pregunta primero “¿Qué quieres ordenar?” y solo muestra opciones con productos reales disponibles en `menuData.items`; Combo aparece únicamente si hay combos reales como `menu_items`.
 - La cantidad se mantiene como selección de `1 hamburguesa`, `2 hamburguesas` o `3 hamburguesas`, crea unidades separadas editables y usa copy explícito: “Vas a pedir 1 hamburguesa editable.” / “Vas a pedir 2 hamburguesas. Cada una se puede editar por separado.” / “Vas a pedir 3 hamburguesas. Cada una se puede editar por separado.”
 - Cada unidad de burger/combo mantiene edición individual de ingredientes removibles, extras operativos para cocina y nota opcional; el pan sigue no editable.
 - Después de editar se agrega un paso de guarniciones opcionales. “No quiero guarnición · Saltar guarniciones” permite ir a checkout sin agregar extras.
@@ -431,3 +431,18 @@ No cambia en V2-14:
 ### Pendiente futuro
 
 - Fase futura: reducir microcopy/texto innecesario una vez validado el flujo operativo.
+
+## V2 Public quest kiosk shell (2026-06-01)
+
+- Public Order V2 usa una shell pública tipo quest/kiosko con secciones `Menu`, `Main Quest`, `Workbench`, `Side Quest`, `Checkout` y `Success` separadas.
+- La primera pantalla siempre es `Menu`: hero visual Burgers.exe, cards grandes del catálogo real y banners de `promos`/concursos si `/api/menu-v2` los expone como disponibles.
+- No hay tabs Menú/Checkout ni checkout vacío; el header superior solo muestra `Burgers.exe` y el indicador `Ticket: X items · $total`.
+- `Menu` no muestra extras ni agrega productos. Las cards abren un modal informativo accesible con datos reales de D1 y assets existentes vía `imageUrl`, `imageKey` y `/api/assets-v2`.
+- `Main Quest` pregunta qué se ordenará y filtra productos reales disponibles por tipo inferido del catálogo; `Combo` solo aparece si existe en `menuData.items`.
+- `Workbench` personaliza cada unidad con cantidad `[-] x1 [+]` hasta x3; x2/x3 son unidades separadas, no tamaño. `MOD` significa quitar ingredientes; `UPGRADE` significa extras reales del catálogo. Los combos también permiten MOD/UPGRADE y exigen guarnición incluida por unidad.
+- `Side Quest` solo maneja guarniciones extra opcionales desde D1; si se agregan, viajan como líneas separadas `itemKind="garnish"` con precio propio.
+- `Checkout` solo renderiza con `cart.length > 0`, muestra loadout/ticket, datos cliente, ubicación limitada a Torre GGA/Torre Valcob, pago, total y CTA `EJECUTAR PEDIDO`.
+- `Success` está separado del checkout y `NUEVA QUEST` limpia confirmación, ticket, cliente e idempotencia antes de regresar a `Menu`.
+- La shell conserva enfoque mobile-first, controles táctiles mínimos de 44px, foco visible, modal con `role="dialog"`/`aria-modal` y soporte `prefers-reduced-motion`.
+- `Main Quest` solo renderiza opciones seleccionables para productos reales disponibles en `menuData.items`: `availableBurgerItems` para hamburguesas y `availableComboItems` para combos. Si no existen combos reales como `menu_items`, la opción `Combo` se oculta y cualquier selección stale se limpia.
+- Las `promoCards`/promos/concursos del `Menu` siguen siendo banners informativos; no se convierten en productos ordenables ni generan SKUs de combo inventados.
