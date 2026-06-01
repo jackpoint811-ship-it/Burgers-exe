@@ -571,7 +571,7 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] Public V2 abre con loading inicial brandeado Burgers.exe y no reutiliza el logo como loader repetitivo.
 - [ ] La primera ventana visible después de carga es Menú.
 - [ ] Menú muestra Combos, Hamburguesas, Guarniciones y Bebidas; extras no aparecen como sección de productos principales.
-- [ ] Seleccionar burger abre el panel integrado de Ordenar dentro del Menú.
+- [ ] Seleccionar burger abre el drawer/modal accesible de Ordenar sobre el Menú.
 - [ ] Seleccionar x2 Doble o x3 Triple genera unidades separadas con `lineKey` distinto.
 - [ ] Cada unidad permite quitar ingredientes reales derivados del producto, mantiene pan no editable, extras por burger, guarnición según regla y nota opcional.
 - [ ] Extra en Burger #1 no modifica Burger #2; nota o ingrediente removido en Burger #3 no modifica las demás.
@@ -598,7 +598,7 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] La primera experiencia después del loading es Menú.
 - [ ] El flujo visible es Menú → Ordenar → Checkout.
 - [ ] No aparecen tres ventanas visibles tipo Menú / Ordenar / Checkout.
-- [ ] Ordenar aparece como panel integrado del Menú al seleccionar burger o combo.
+- [ ] Ordenar aparece como drawer/modal accesible sobre el Menú al seleccionar burger o combo.
 - [ ] Checkout permanece como sección separada.
 - [ ] Menú muestra cards limpias por categorías y CTA “Ordenar”/“Agregar”.
 - [ ] Extras no aparecen como sección principal del menú.
@@ -622,3 +622,54 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] No se muestra pickup/delivery al usuario.
 - [ ] Nota general opcional permanece separada de la nota por burger.
 - [ ] No se tocó Internal V2, legacy, `/api/order`, `/api/rpc`, Apps Script, Sheets sync, pagos reales, WhatsApp API ni `BOG_ACTIVE_ENV`.
+
+## Public Order V2 navigation UX QA after PR #180
+
+### Menu → order drawer
+
+- [ ] Open Public Order V2 preview/local and confirm the builder is not embedded inline in the menu.
+- [ ] Press “Ordenar” on Burger OG and confirm a modal/drawer/bottom sheet opens with `role="dialog"` semantics, visible product name, and a visible “Cerrar” control.
+- [ ] Confirm the drawer/bottom sheet respects reduced motion settings and does not create horizontal overflow at 390px width.
+- [ ] Confirm Escape closes the drawer on desktop/keyboard testing and returns to the menu without losing the current ticket.
+- [ ] Confirm the sticky footer remains accessible while scrolling long customization content and includes “Confirmar al ticket”.
+
+### x1 / x2 / x3 unit clarity
+
+- [ ] Select x1 and confirm the green state is used.
+- [ ] Select x2 and confirm the yellow state is used plus copy like “Se crearán 2 unidades editables de Burger OG”.
+- [ ] Select x3 and confirm the orange/red state is used plus copy like “Se crearán 3 unidades editables de Burger OG”.
+- [ ] Confirm each unit editor is labeled `Burger OG #1`, `Burger OG #2`, `Burger OG #3` as applicable.
+- [ ] Edit Burger OG #1 differently from Burger OG #2 and confirm extras/removals/notes do not bleed between units.
+- [ ] Confirm the ticket shows the units as separate lines with unit price copy.
+- [ ] Select extras and confirm the drawer total still matches ticket/checkout catalog pricing, with copy explaining extras are saved for cocina and total confirmado comes from catálogo.
+
+### Guarniciones
+
+- [ ] For a normal burger, confirm the drawer shows “Guarnición opcional”.
+- [ ] Confirm “Sin guarnición” is the safe/default option for a normal burger.
+- [ ] Confirm “Ver guarniciones del menú” closes the drawer and takes the user to the Guarniciones menu section.
+- [ ] Add a guarnición from the menu with “Agregar” and confirm it becomes a separate ticket line with its own SKU/price and `itemKind="garnish"`.
+- [ ] Confirm a normal burger never saves a free internal garnish.
+- [ ] For combos, confirm “Guarnición obligatoria” remains inside the combo builder.
+- [ ] Try confirming a combo without garnish and confirm inline validation blocks submission.
+
+### Persistent ticket and action hierarchy
+
+- [ ] Confirm burger/combo cards use “Ordenar” with the primary neon style.
+- [ ] Confirm guarniciones/bebidas/otros use “Agregar” with the distinct amber/outline style.
+- [ ] Add at least one product and confirm the floating ticket/cart shows item count, total, and a Checkout CTA.
+- [ ] Confirm the floating ticket respects mobile safe-area spacing and does not hide focusable fields or create horizontal overflow.
+- [ ] Confirm checkout can be reached from the floating cart.
+
+### Compact checkout
+
+- [ ] Confirm checkout still has four steps: 1 Ticket, 2 Datos, 3 Ubicación y pago, 4 Confirmar.
+- [ ] Confirm fields keep persistent labels and inline validation appears near the confirm action.
+- [ ] Fill name and phone, choose Torre GGA, choose payment, and confirm the total remains near “Confirmar pedido”.
+- [ ] Confirm only Torre GGA and Torre Valcob are visible as location options.
+- [ ] Confirm pickup/delivery options are not shown to the user.
+- [ ] Confirm optional general note remains available.
+
+### No-touch verification
+
+- [ ] Confirm no backend, Functions API, `/api/order`, `/api/rpc`, Apps Script, Sheets sync, real payments, WhatsApp API, Internal V2, legacy, `packages/config`, or `BOG_ACTIVE_ENV` changes were made for this UX update.

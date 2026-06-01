@@ -349,6 +349,9 @@ const MenuCard = ({
         <div className="card-footer">
           <strong>{formatCurrency(item.price)}</strong>
           <TerminalButton
+            className={
+              isPrimaryBuilderItem(item) ? "order-button" : "add-button"
+            }
             disabled={!item.isAvailable}
             onClick={() => onSelect(item)}
           >
@@ -367,30 +370,12 @@ const MenuCard = ({
 const MenuWindow = ({
   categories,
   items,
-  cartCount,
-  builder,
-  extras,
-  garnishes,
   onSelect,
-  onCheckout,
-  onQuantity,
-  onUnitChange,
-  onConfirm,
-  onCancel,
   reduce,
 }: {
   categories: MenuV2Response["categories"];
   items: MenuItem[];
-  cartCount: number;
-  builder: BuilderDraft | null;
-  extras: MenuItem[];
-  garnishes: MenuItem[];
   onSelect: (item: MenuItem) => void;
-  onCheckout: () => void;
-  onQuantity: (qty: 1 | 2 | 3) => void;
-  onUnitChange: (index: number, unit: CartEntry) => void;
-  onConfirm: () => void;
-  onCancel: () => void;
   reduce: boolean;
 }) => {
   const comboItems = items.filter((item) => inferItemKind(item) === "combo");
@@ -407,30 +392,11 @@ const MenuWindow = ({
           Personaliza ingredientes, extras y guarnición al ordenar cada burger.
         </p>
       </div>
-      {cartCount > 0 ? (
-        <TerminalButton
-          className="secondary ticket-access"
-          onClick={onCheckout}
-        >
-          Ver ticket · {cartCount}
-        </TerminalButton>
-      ) : null}
-      {builder ? (
-        <BuilderWindow
-          draft={builder}
-          extras={extras}
-          garnishes={garnishes}
-          onQuantity={onQuantity}
-          onUnitChange={onUnitChange}
-          onConfirm={onConfirm}
-          onCancel={onCancel}
-        />
-      ) : null}
       {REQUIRED_MENU.map(({ key, label }) => {
         const list = key === "extras" ? comboItems : byKey(key);
         if (!hasCategory(key) && key !== "extras") return null;
         return (
-          <div className="menu-category" key={key}>
+          <div className="menu-category" id={`menu-${key}`} key={key}>
             <h3>{label}</h3>
             {list.length > 0 ? (
               <div className="menu-grid">
@@ -494,6 +460,7 @@ const UnitEditor = ({
   extras,
   garnishes,
   onChange,
+  onShowGarnishes,
 }: {
   unit: CartEntry;
   index: number;
@@ -501,6 +468,7 @@ const UnitEditor = ({
   extras: MenuItem[];
   garnishes: MenuItem[];
   onChange: (unit: CartEntry) => void;
+  onShowGarnishes: () => void;
 }) => {
   const ingredients = inferIngredients(item);
   const isBurgerLike = unit.itemKind === "burger" || unit.itemKind === "combo";
@@ -555,39 +523,45 @@ const UnitEditor = ({
         <div className="builder-block">
           <h4>Extras por burger</h4>
           {extras.length > 0 ? (
-            <div className="chip-grid">
-              {extras.map((extra) => {
-                const active = unit.extras.some(
-                  (entry) => entry.sku === extra.sku,
-                );
-                return (
-                  <button
-                    type="button"
-                    key={extra.sku}
-                    className={active ? "chip active" : "chip"}
-                    onClick={() =>
-                      onChange({
-                        ...unit,
-                        extras: active
-                          ? unit.extras.filter(
-                              (entry) => entry.sku !== extra.sku,
-                            )
-                          : [
-                              ...unit.extras,
-                              {
-                                sku: extra.sku,
-                                name: extra.name,
-                                price: extra.price,
-                              },
-                            ],
-                      })
-                    }
-                  >
-                    {extra.name}
-                  </button>
-                );
-              })}
-            </div>
+            <>
+              <div className="chip-grid">
+                {extras.map((extra) => {
+                  const active = unit.extras.some(
+                    (entry) => entry.sku === extra.sku,
+                  );
+                  return (
+                    <button
+                      type="button"
+                      key={extra.sku}
+                      className={active ? "chip active" : "chip"}
+                      onClick={() =>
+                        onChange({
+                          ...unit,
+                          extras: active
+                            ? unit.extras.filter(
+                                (entry) => entry.sku !== extra.sku,
+                              )
+                            : [
+                                ...unit.extras,
+                                {
+                                  sku: extra.sku,
+                                  name: extra.name,
+                                  price: extra.price,
+                                },
+                              ],
+                        })
+                      }
+                    >
+                      {extra.name}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="empty-line">
+                Los extras se guardan para cocina; el total confirmado se
+                calcula desde catálogo.
+              </p>
+            </>
           ) : (
             <p className="empty-line">Sin extras configurados.</p>
           )}
@@ -598,7 +572,7 @@ const UnitEditor = ({
           <h4>
             {unit.itemKind === "combo"
               ? "Guarnición obligatoria"
-              : "Sin guarnición"}
+              : "Guarnición opcional"}
           </h4>
           {unit.itemKind === "burger" ? (
             <>
@@ -610,10 +584,18 @@ const UnitEditor = ({
                 >
                   Sin guarnición
                 </button>
+                <button
+                  type="button"
+                  className="chip chip-amber"
+                  onClick={onShowGarnishes}
+                >
+                  Ver guarniciones del menú
+                </button>
               </div>
               <p className="empty-line">
-                Agrega guarniciones desde el menú si quieres una aparte con
-                precio propio.
+                Si quieres papas/guarnición, se agregará como producto aparte
+                con precio propio. Esta burger normal no guarda guarnición
+                interna.
               </p>
             </>
           ) : garnishes.length > 0 ? (
@@ -660,78 +642,142 @@ const UnitEditor = ({
   );
 };
 
-const BuilderWindow = ({
+const BuilderDialog = ({
   draft,
   extras,
   garnishes,
+  total,
+  count,
   onQuantity,
   onUnitChange,
   onConfirm,
   onCancel,
+  onCheckout,
+  onShowGarnishes,
 }: {
   draft: BuilderDraft | null;
   extras: MenuItem[];
   garnishes: MenuItem[];
+  total: number;
+  count: number;
   onQuantity: (qty: 1 | 2 | 3) => void;
   onUnitChange: (index: number, unit: CartEntry) => void;
   onConfirm: () => void;
   onCancel: () => void;
-}) => (
-  <section className="order-panel">
-    <div className="section-title">
-      <span>Ordenar</span>
-      <h2>Personaliza tu burger</h2>
-      <p>Cada unidad queda separada para cocina y ticket.</p>
-    </div>
-    {!draft ? (
-      <EmptyState
-        title="Selecciona una burger o combo"
-        description="Inicia desde Menú para personalizar tu orden."
-      />
-    ) : (
-      <div className="builder-layout">
-        <div>
-          <p className="status-line">
-            {draft.itemKind === "combo"
-              ? "Combo con guarnición"
-              : "Burger personalizada"}
-          </p>
-          <h3 className="builder-title">{draft.item.name}</h3>
-          <p className="muted">{draft.item.description}</p>
-          {!draft.editLineKey ? (
-            <QuantitySelector value={draft.quantity} onChange={onQuantity} />
+  onCheckout: () => void;
+  onShowGarnishes: () => void;
+}) => {
+  const closeRef = useRef<HTMLButtonElement | null>(null);
+  const titleId = "order-builder-title";
+  const quantityCopy = draft
+    ? draft.quantity === 1
+      ? `Se creará 1 unidad editable de ${draft.item.name}`
+      : `Se crearán ${draft.quantity} unidades editables de ${draft.item.name}`
+    : "";
+  const builderTotal = draft ? draft.units.length * draft.item.price : 0;
+
+  useEffect(() => {
+    if (!draft) return;
+    const previous =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    closeRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onCancel();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      previous?.focus();
+    };
+  }, [draft?.item.sku, draft?.editLineKey]);
+
+  if (!draft) return null;
+
+  return (
+    <div className="order-dialog-backdrop" role="presentation">
+      <section
+        aria-labelledby={titleId}
+        aria-modal="true"
+        className="order-drawer"
+        role="dialog"
+      >
+        <header className="order-drawer-header">
+          <div>
+            <p className="status-line">
+              {draft.itemKind === "combo"
+                ? "Combo con guarnición obligatoria"
+                : "Burger personalizada"}
+            </p>
+            <h2 id={titleId}>{draft.item.name}</h2>
+            <p className="muted">{draft.item.description}</p>
+          </div>
+          <button
+            ref={closeRef}
+            type="button"
+            className="drawer-close"
+            aria-label="Cerrar panel de ordenar"
+            onClick={onCancel}
+          >
+            Cerrar
+          </button>
+        </header>
+        <div className="order-drawer-body">
+          <div className="builder-intro">
+            <span>Ordenar</span>
+            <p>{quantityCopy}</p>
+            {!draft.editLineKey ? (
+              <QuantitySelector value={draft.quantity} onChange={onQuantity} />
+            ) : (
+              <p className="empty-line">
+                Editando una unidad existente del ticket.
+              </p>
+            )}
+          </div>
+          <div className="unit-stack">
+            {draft.units.map((unit, index) => (
+              <UnitEditor
+                key={unit.lineKey}
+                unit={unit}
+                index={index}
+                item={draft.item}
+                extras={extras}
+                garnishes={garnishes}
+                onChange={(next) => onUnitChange(index, next)}
+                onShowGarnishes={onShowGarnishes}
+              />
+            ))}
+          </div>
+          {draft.error ? (
+            <p className="inline-error" role="alert">
+              {draft.error}
+            </p>
           ) : null}
         </div>
-        <div className="unit-stack">
-          {draft.units.map((unit, index) => (
-            <UnitEditor
-              key={unit.lineKey}
-              unit={unit}
-              index={index}
-              item={draft.item}
-              extras={extras}
-              garnishes={garnishes}
-              onChange={(next) => onUnitChange(index, next)}
-            />
-          ))}
-        </div>
-        {draft.error ? (
-          <p className="inline-error" role="alert">
-            {draft.error}
+        <footer className="order-drawer-footer">
+          <div>
+            <span>{quantityCopy}</span>
+            <strong>{formatCurrency(builderTotal)}</strong>
+          </div>
+          <p className="drawer-total-note">
+            Extras guardados para cocina; total confirmado desde catálogo.
           </p>
-        ) : null}
-        <div className="action-row">
-          <TerminalButton className="secondary" onClick={onCancel}>
-            Cancelar
-          </TerminalButton>
-          <TerminalButton onClick={onConfirm}>
-            Confirmar al ticket
-          </TerminalButton>
-        </div>
-      </div>
-    )}
-  </section>
-);
+          <div className="drawer-footer-actions">
+            {count > 0 ? (
+              <TerminalButton className="secondary" onClick={onCheckout}>
+                Ver ticket · {formatCurrency(total)}
+              </TerminalButton>
+            ) : null}
+            <TerminalButton onClick={onConfirm}>
+              Confirmar al ticket
+            </TerminalButton>
+          </div>
+        </footer>
+      </section>
+    </div>
+  );
+};
 
 const TicketList = ({
   cart,
@@ -761,7 +807,7 @@ const TicketList = ({
               <h3>
                 {entry.name} #{entry.itemDisplayIndex}
               </h3>
-              <strong>{formatCurrency(price)}</strong>
+              <strong>{formatCurrency(price)} c/u</strong>
             </div>
             <ul>
               {entry.removedIngredients.map((ingredient) => (
@@ -776,7 +822,7 @@ const TicketList = ({
               !entry.extras.length &&
               !entry.garnish &&
               !entry.burgerNote ? (
-                <li>Normal</li>
+                <li>Unidad separada · precio unitario</li>
               ) : null}
             </ul>
             <div className="ticket-actions">
@@ -985,6 +1031,27 @@ const OrderSuccess = ({
     <TerminalButton onClick={onCreateAnother}>Nuevo pedido</TerminalButton>
   </section>
 );
+
+const FloatingCart = ({
+  count,
+  total,
+  onCheckout,
+}: {
+  count: number;
+  total: number;
+  onCheckout: () => void;
+}) =>
+  count > 0 ? (
+    <aside className="floating-cart" aria-label="Ticket flotante">
+      <div>
+        <span>Ticket</span>
+        <strong>
+          {count} item{count === 1 ? "" : "s"} · {formatCurrency(total)}
+        </strong>
+      </div>
+      <TerminalButton onClick={onCheckout}>Checkout</TerminalButton>
+    </aside>
+  ) : null;
 
 const TrustSection = () => (
   <section className="terminal-window trust-grid">
@@ -1253,22 +1320,38 @@ export function PublicOrderApp() {
         <MenuWindow
           categories={menuData.categories}
           items={menuData.items}
-          cartCount={count}
-          builder={builder}
-          extras={extras}
-          garnishes={garnishes}
           onSelect={startBuilder}
-          onCheckout={() => setWindowMode("CHECKOUT")}
-          onQuantity={updateBuilderQuantity}
-          onUnitChange={updateBuilderUnit}
-          onConfirm={confirmBuilder}
-          onCancel={() => {
-            setBuilder(null);
-            setWindowMode("MENU");
-          }}
           reduce={reduce}
         />
       ) : null}
+      <BuilderDialog
+        draft={builder}
+        extras={extras}
+        garnishes={garnishes}
+        total={total}
+        count={count}
+        onQuantity={updateBuilderQuantity}
+        onUnitChange={updateBuilderUnit}
+        onConfirm={confirmBuilder}
+        onCancel={() => {
+          setBuilder(null);
+          setWindowMode("MENU");
+        }}
+        onCheckout={() => {
+          setBuilder(null);
+          setWindowMode("CHECKOUT");
+        }}
+        onShowGarnishes={() => {
+          setBuilder(null);
+          setWindowMode("MENU");
+          window.setTimeout(() =>
+            document.getElementById("menu-guarniciones")?.scrollIntoView({
+              block: "start",
+              behavior: reduce ? "auto" : "smooth",
+            }),
+          );
+        }}
+      />
       {windowMode === "CHECKOUT" ? (
         <CheckoutWindow
           cart={cart}
@@ -1288,6 +1371,14 @@ export function PublicOrderApp() {
         />
       ) : null}
       <TrustSection />
+      <FloatingCart
+        count={count}
+        total={total}
+        onCheckout={() => {
+          setBuilder(null);
+          setWindowMode("CHECKOUT");
+        }}
+      />
     </main>
   );
 }

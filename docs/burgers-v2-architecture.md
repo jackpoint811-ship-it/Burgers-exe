@@ -388,7 +388,7 @@ Alcance UX:
 
 - Public V2 conserva identidad Burgers.exe con dark premium, acentos neón y microinteracciones sutiles, pero reduce el lenguaje visual de terminal/consola.
 - El flujo público visible queda como `Menú → Ordenar → Checkout`.
-- `Ordenar` ya no es una ventana/página aparte: se integra como panel dentro de la experiencia de Menú al seleccionar una burger o combo.
+- `Ordenar` ya no es una página aparte ni queda incrustado al fondo del menú: se abre como drawer/modal accesible sobre la experiencia de Menú al seleccionar una burger o combo.
 - Checkout sigue siendo sección separada para ticket, datos del cliente, ubicación, pago y confirmación.
 - Extras no se muestran como sección principal del menú; se mantienen como customización por burger dentro del panel de ordenar.
 - Guarniciones usan únicamente productos reales de la categoría `guarniciones`: son obligatorias dentro de combos; las burgers normales muestran `Sin guarnición` y dirigen a agregar una guarnición aparte desde Menú para conservar precio propio.
@@ -398,3 +398,17 @@ No cambia en V2-14:
 - No cambia backend, schema, endpoints, `/api/order`, `/api/rpc`, Apps Script, Sheets sync, pagos reales, WhatsApp API ni `BOG_ACTIVE_ENV`.
 - No cambia Internal V2, legacy ni Cloudflare legacy apps.
 - Las customizaciones por item siguen enviando `lineKey`, `itemDisplayIndex`, `itemKind`, `removedIngredients`, `extras`, `burgerNote` y `garnish` en el snapshot público V2; `garnish` solo aplica dentro de combos, mientras una guarnición suelta viaja como línea `itemKind=garnish`.
+
+## V2 Public Order navigation UX after PR #180
+
+- Public Order V2 keeps the menu as the primary browsing surface, but burger/combo customization now opens in an accessible order drawer/bottom sheet instead of rendering inline inside the menu.
+- The order drawer uses `role="dialog"`, `aria-modal`, an `aria-labelledby` product header, a visible close button, Escape-to-close behavior, and focus return to the opener where possible.
+- The drawer has a sticky header with the selected product name and a sticky footer with the builder state/total plus the primary CTA “Confirmar al ticket”, so users do not need to scroll to the bottom of a long builder.
+- `x1`, `x2`, and `x3` remain separate unit builders. The UI states “Se crearán 2 unidades editables de Burger OG” / “Se crearán 3 unidades editables de Burger OG”, and each editor is labeled `Burger OG #1`, `Burger OG #2`, etc. Ticket lines stay separate and show unit pricing.
+- Burger extras, removed ingredients, and per-burger notes stay scoped to each unit. Extras are operational kitchen customizations in the current pricing contract; the drawer total mirrors ticket/checkout by using catalog SKU base prices only. Pan remains included and non-editable.
+- Combos keep mandatory garnish selection inside the combo and validate inline when garnish is missing.
+- Normal burgers do not persist `garnish` internally. The burger drawer shows “Guarnición opcional”, keeps “Sin guarnición” selected, and offers “Ver guarniciones del menú”; guarniciones must be added as separate menu products with their own SKU/price (`itemKind="garnish"`).
+- Primary products (burgers/combos) use “Ordenar” with neon primary styling. Simple products (guarniciones, bebidas, otros) use “Agregar” with a distinct amber/outline treatment.
+- A persistent floating ticket/cart is available once the cart has items, showing item count, total, and a checkout CTA while respecting mobile safe-area insets. The drawer footer also exposes ticket access when ordering with an existing cart.
+- Checkout remains a separate section with the same four steps: Ticket, Datos, Ubicación y pago, Confirmar. It is visually more compact, keeps persistent labels, inline errors, optional general note, and limits location choices to Torre GGA / Torre Valcob; pickup/delivery is not exposed to the user.
+- No backend, `/api/order`, `/api/rpc`, Apps Script, Sheets sync, real payments, WhatsApp API, Internal V2, legacy, `packages/config`, or `BOG_ACTIVE_ENV` changes are part of this UX update.
