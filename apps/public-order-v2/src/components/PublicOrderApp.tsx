@@ -470,7 +470,7 @@ const UnitEditor = ({
   extras: MenuItem[];
   garnishes: MenuItem[];
   onChange: (unit: CartEntry) => void;
-  onShowGarnishes: () => void;
+  onShowGarnishes?: () => void;
 }) => {
   const ingredients = inferIngredients(item);
   const isBurgerLike = unit.itemKind === "burger" || unit.itemKind === "combo";
@@ -586,18 +586,20 @@ const UnitEditor = ({
                 >
                   Sin guarnición
                 </button>
-                <button
-                  type="button"
-                  className="chip chip-amber"
-                  onClick={onShowGarnishes}
-                >
-                  Ver guarniciones del menú
-                </button>
+                {onShowGarnishes ? (
+                  <button
+                    type="button"
+                    className="chip chip-amber"
+                    onClick={onShowGarnishes}
+                  >
+                    Explorar guarniciones
+                  </button>
+                ) : null}
               </div>
               <p className="empty-line">
-                Si quieres papas/guarnición, se agregará como producto aparte
-                con precio propio. Esta burger normal no guarda guarnición
-                interna.
+                {onShowGarnishes
+                  ? "Si quieres papas/guarnición, se agregará como producto aparte con precio propio. Esta burger normal no guarda guarnición interna."
+                  : "Las guarniciones extra se eligen en el siguiente paso."}
               </p>
             </>
           ) : garnishes.length > 0 ? (
@@ -978,7 +980,6 @@ const GuidedOrderWindow = ({
                 extras={extras}
                 garnishes={garnishes}
                 onChange={(next) => onUnitChange(index, next)}
-                onShowGarnishes={() => undefined}
               />
             ))}
           </div>

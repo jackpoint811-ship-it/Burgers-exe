@@ -647,7 +647,7 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 
 - [ ] For a normal burger, confirm the drawer shows “Guarnición opcional”.
 - [ ] Confirm “Sin guarnición” is the safe/default option for a normal burger.
-- [ ] Confirm “Ver guarniciones del menú” closes the drawer and takes the user to the Guarniciones menu section.
+- [ ] In the guided flow, confirm normal burgers do not show a dead guarniciones action and instead show “Las guarniciones extra se eligen en el siguiente paso.”
 - [ ] Add a guarnición from the menu with “Agregar” and confirm it becomes a separate ticket line with its own SKU/price and `itemKind="garnish"`.
 - [ ] Confirm a normal burger never saves a free internal garnish.
 - [ ] For combos, confirm “Guarnición obligatoria” remains inside the combo builder.
