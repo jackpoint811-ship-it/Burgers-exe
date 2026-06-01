@@ -2665,11 +2665,17 @@ export function InternalChekeoApp() {
     let cancelled = false;
     const checkSession = async () => {
       setCheckingSession(true);
-      const authenticated = await fetchInternalAuthStatus();
-      if (cancelled) return;
-      setLogged(authenticated);
-      setCheckingSession(false);
-      if (authenticated) void loadLiveOrders(tab === "historial" || tab === "pagos");
+      try {
+        const authenticated = await fetchInternalAuthStatus();
+        if (cancelled) return;
+        setLogged(authenticated);
+        if (authenticated)
+          void loadLiveOrders(tab === "historial" || tab === "pagos");
+      } catch {
+        if (!cancelled) setLogged(false);
+      } finally {
+        if (!cancelled) setCheckingSession(false);
+      }
     };
     void checkSession();
     return () => {

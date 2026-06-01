@@ -16,12 +16,16 @@ const parseAuthEnvelope = async (res: Response): Promise<InternalAuthEnvelope> =
 };
 
 export const fetchInternalAuthStatus = async (): Promise<boolean> => {
-  const res = await fetch('/api/internal-v2-auth/status', {
-    credentials: 'include',
-    headers: { Accept: 'application/json' },
-  });
-  const envelope = await parseAuthEnvelope(res);
-  return Boolean(res.ok && envelope.ok && envelope.data?.authenticated);
+  try {
+    const res = await fetch('/api/internal-v2-auth/status', {
+      credentials: 'include',
+      headers: { Accept: 'application/json' },
+    });
+    const envelope = await parseAuthEnvelope(res);
+    return Boolean(res.ok && envelope.ok && envelope.data?.authenticated);
+  } catch {
+    return false;
+  }
 };
 
 export const loginInternal = async (pin: string): Promise<void> => {
