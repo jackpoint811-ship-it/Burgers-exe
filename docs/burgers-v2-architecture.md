@@ -407,8 +407,22 @@ No cambia en V2-14:
 - `x1`, `x2`, and `x3` remain separate unit builders. The UI states “Se crearán 2 unidades editables de Burger OG” / “Se crearán 3 unidades editables de Burger OG”, and each editor is labeled `Burger OG #1`, `Burger OG #2`, etc. Ticket lines stay separate and show unit pricing.
 - Burger extras, removed ingredients, and per-burger notes stay scoped to each unit. Extras are operational kitchen customizations in the current pricing contract; the drawer total mirrors ticket/checkout by using catalog SKU base prices only. Pan remains included and non-editable.
 - Combos keep mandatory garnish selection inside the combo and validate inline when garnish is missing.
-- Normal burgers do not persist `garnish` internally. The burger drawer shows “Guarnición opcional”, keeps “Sin guarnición” selected, and offers “Ver guarniciones del menú”; guarniciones must be added as separate menu products with their own SKU/price (`itemKind="garnish"`).
+- Normal burgers do not persist `garnish` internally. The burger editor shows “Guarnición opcional” and keeps “Sin guarnición” selected; in the guided flow, copy clarifies “Las guarniciones extra se eligen en el siguiente paso” and the persistent “Continuar” CTA advances to the guarniciones step. Guarniciones must be added as separate menu products with their own SKU/price (`itemKind="garnish"`).
 - Primary products (burgers/combos) use “Ordenar” with neon primary styling. Simple products (guarniciones, bebidas, otros) use “Agregar” with a distinct amber/outline treatment.
 - A persistent floating ticket/cart is available once the cart has items, showing item count, total, and a checkout CTA while respecting mobile safe-area insets. The drawer footer also exposes ticket access when ordering with an existing cart.
 - Checkout remains a separate section with the same four steps: Ticket, Datos, Ubicación y pago, Confirmar. It is visually more compact, keeps persistent labels, inline errors, optional general note, and limits location choices to Torre GGA / Torre Valcob; pickup/delivery is not exposed to the user.
 - No backend, `/api/order`, `/api/rpc`, Apps Script, Sheets sync, real payments, WhatsApp API, Internal V2, legacy, `packages/config`, or `BOG_ACTIVE_ENV` changes are part of this UX update.
+
+## V2-10 Public Order kiosko McDonald's-style flow (2026-06-01)
+
+- Public Order V2 ahora inicia en un menú visual tipo kiosko: categorías Hamburguesas, Combos, Guarniciones y Bebidas, con cards de exploración solamente.
+- Las cards del menú no abren builder ni agregan productos; abren un modal informativo con nombre, imagen si existe, descripción, precio, disponibilidad y cierre accesible.
+- Se agrega un CTA persistente y mobile-first que respeta safe-area y cambia de copy según el paso: Ordenar, Continuar, Ir a checkout y Confirmar pedido.
+- El flujo guiado pregunta primero “¿Qué quieres ordenar?” con opciones Hamburguesa y Combo; después muestra productos disponibles de la elección.
+- x1/x2/x3 se mantiene como selección de cantidad y crea unidades separadas editables con copy explícito (“Se crearán 2 unidades editables”, “Se crearán 3 unidades editables”).
+- Cada unidad de burger/combo mantiene edición individual de ingredientes removibles, extras operativos para cocina y nota opcional; el pan sigue no editable.
+- Después de editar se agrega un paso de guarniciones opcionales. “No quiero guarnición · Saltar guarniciones” permite ir a checkout sin agregar extras.
+- Si el usuario pidió burger normal, cualquier guarnición extra elegida se agrega como línea separada `itemKind="garnish"` con precio propio; no se guarda como `garnish` dentro de la burger.
+- Si el usuario pidió combo, cada combo exige una guarnición incluida antes de continuar; esa guarnición se guarda dentro del combo. Las guarniciones extra del paso posterior se agregan como líneas separadas con precio propio.
+- Checkout conserva ticket, datos, ubicación Torre GGA/Torre Valcob, pago y confirmación. No se muestra pickup/delivery al usuario aunque el payload backend conserva el modo operativo interno existente.
+- No hubo cambios de backend: no se tocaron `functions/api/**`, `/api/order`, `/api/rpc`, Apps Script, Sheets sync, pagos reales, WhatsApp API, `BOG_ACTIVE_ENV`, Internal V2, legacy ni paquetes de configuración.
