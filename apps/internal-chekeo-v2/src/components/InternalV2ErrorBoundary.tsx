@@ -19,7 +19,7 @@ export class InternalV2ErrorBoundary extends Component<
   }
 
   componentDidCatch(_error: Error, _errorInfo: ErrorInfo) {
-    // Intentionally avoid logging runtime details here: admin tokens must never
+    // Intentionally avoid logging runtime details here: session details must never
     // be exposed through user-visible errors or console output in preview.
   }
 

@@ -78,8 +78,8 @@ Si aparece conexión real a backend productivo o dependencia operativa (auth/she
 - Guardar y confirmar feedback "Producto actualizado".
 - Confirmar que `GET /api/menu-v2` refleja cambios.
 - Confirmar que public preview refleja cambios de catálogo.
-- Confirmar que sin token no permite editar.
-- Confirmar que con token incorrecto muestra error Unauthorized.
+- Confirmar que sin sesión interna no permite editar.
+- Confirmar que sin cookie válida muestra error Unauthorized.
 
 ## QA R2 assets catálogo V2 (preview)
 
@@ -101,7 +101,7 @@ Si aparece conexión real a backend productivo o dependencia operativa (auth/she
 
 - [ ] Entrar a Internal Chekeo V2 preview.
 - [ ] Abrir tab Catálogo.
-- [ ] Iniciar sesión con PIN interno; confirmar que no se guarda token admin en storage.
+- [ ] Iniciar sesión con PIN interno; confirmar que no se guardan credenciales internas en storage.
 - [ ] Editar un producto con `source: d1`.
 - [ ] En “Imagen del producto”, subir una imagen válida `.jpg`, `.png`, `.webp` o `.avif` menor o igual a 5 MB.
 - [ ] Confirmar estado “Subiendo…” y mensaje “Imagen actualizada”.
@@ -113,7 +113,7 @@ Si aparece conexión real a backend productivo o dependencia operativa (auth/she
 - [ ] Confirmar que Public Order V2 vuelve al placeholder visual.
 - [ ] Probar archivo mayor a 5 MB y confirmar rechazo frontend/backend.
 - [ ] Probar tipo no permitido (SVG, GIF, HTML o content-type vacío) y confirmar rechazo.
-- [ ] Confirmar que sin token admin no sube ni quita imágenes.
+- [ ] Confirmar que sin sesión interna no sube ni quita imágenes.
 - [ ] Confirmar que no existe upload en `public-order-v2` y que no se llama `/api/order` ni `/api/rpc`.
 
 ## V2-8.3 QA — Promos admin + imágenes R2
@@ -134,7 +134,7 @@ Si aparece conexión real a backend productivo o dependencia operativa (auth/she
 - Confirmar que Public V2 vuelve al placeholder visual de promo.
 - Probar archivo mayor a 5 MB y confirmar rechazo claro.
 - Probar tipo no permitido (SVG/GIF u otro) y confirmar rechazo claro.
-- Confirmar que sin token admin no edita, no sube y no quita imágenes.
+- Confirmar que sin sesión interna no edita, no sube y no quita imágenes.
 - Confirmar que Public V2 no contiene upload ni llama endpoints admin de promos.
 - Confirmar que no se agregaron llamadas a `/api/order` ni `/api/rpc`.
 
@@ -163,15 +163,14 @@ curl -i -X POST "$PUBLIC_V2_URL/api/orders-v2" \
 
 ### GET /api/orders-v2-admin
 
-- [ ] Probar listado con token:
+- [ ] Probar listado después de login PIN desde la UI:
 
 ```bash
 curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
-  -H "Authorization: Bearer $BOG_ORDERS_ADMIN_TOKEN"
 ```
 
 - [ ] Confirmar que responde órdenes con items y eventos.
-- [ ] Confirmar que sin token responde 401 o 503 si no hay token configurado.
+- [ ] Confirmar que sin sesión interna responde 401 o 503 si no hay credencial configurado.
 
 ### PATCH /api/orders-v2-admin/:id/status
 
@@ -209,7 +208,7 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 
 ### Backend y administración
 
-- [ ] Confirmar la orden creada en `GET /api/orders-v2-admin?includeTerminal=true&limit=10` con token admin.
+- [ ] Confirmar la orden creada en `GET /api/orders-v2-admin?includeTerminal=true&limit=10` desde Internal V2 con sesión activa.
 - [ ] Confirmar que el total guardado viene del backend y no de valores del cliente.
 - [ ] Confirmar que el payload público solo envía `{ sku, qty }` por item, sin precios ni total.
 
@@ -226,7 +225,6 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] Confirmar que Public V2 no llama `/api/order`.
 - [ ] Confirmar que Public V2 no llama `/api/rpc`.
 - [ ] Confirmar que Public V2 no llama `orders-v2-admin` ni endpoints admin.
-- [ ] Confirmar que Public V2 no usa ni expone `BOG_ORDERS_ADMIN_TOKEN` o `BOG_MENU_ADMIN_TOKEN`.
 - [ ] Confirmar que Public V2 no toca R2 upload y solo lee assets vía `/api/assets-v2/<key>` cuando aplica.
 - [ ] Confirmar que Internal Chekeo V2 todavía no consume live orders en esta fase.
 - [ ] Confirmar que Apps Script, Sheets, legacy, `cloudflare/public-order`, `cloudflare/internal-chekeo` y `BOG_ACTIVE_ENV` no fueron modificados.
@@ -237,7 +235,7 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 
 - [ ] Abrir Internal V2 preview.
 - [ ] Iniciar sesión con `BOG_INTERNAL_PIN`.
-- [ ] Confirmar que no se guarda token admin en storage del navegador.
+- [ ] Confirmar que no se guardan credenciales internas en storage del navegador.
 - [ ] Confirmar copy “Pedidos live D1”, “Source: Órdenes live” y “Backend V2”.
 - [ ] Confirmar que aparece la orden `BX-20260529-4F1BEC` cuando está activa.
 - [ ] Presionar “Recargar órdenes” y confirmar que vuelve a consultar `GET /api/orders-v2-admin`.
@@ -255,8 +253,8 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 
 ### Errores y fallback
 
-- [ ] Confirmar error visible sin token: “Activa modo admin para cargar órdenes live”.
-- [ ] Simular backend caído/token inválido y confirmar error claro más “Fallback mock”.
+- [ ] Confirmar error visible sin sesión interna: “Inicia sesión para cargar órdenes live”.
+- [ ] Simular backend caído/sesión inválida y confirmar error claro más “Fallback mock”.
 - [ ] Confirmar que `mockOrders` sigue disponible para QA visual cuando no hay live.
 - [ ] Confirmar success message breve al cambiar estado.
 
@@ -264,7 +262,7 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 
 - [ ] Confirmar que Internal V2 llama solo `GET /api/orders-v2-admin`, `PATCH /api/orders-v2-admin/:id/status`, `GET /api/menu-v2` y endpoints admin existentes de catálogo.
 - [ ] Confirmar no llamadas nuevas a `/api/order` ni `/api/rpc`.
-- [ ] Confirmar que Public V2 no usa tokens ni endpoints admin.
+- [ ] Confirmar que Public V2 no usa credenciales internas ni endpoints admin.
 - [ ] Confirmar que Apps Script, Sheets, legacy, `cloudflare/public-order`, `cloudflare/internal-chekeo`, pagos reales, WhatsApp real y `BOG_ACTIVE_ENV` no fueron modificados.
 
 ## V2-9D Live orders polish smoke QA
@@ -290,15 +288,15 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] `delivered` y `cancelled` no muestran acciones.
 - [ ] Si falla una acción de estado, se muestra error visible y la UI no cambia optimistamente a estado falso.
 
-### Timeline and token sharing
+### Timeline and shared internal session
 
 - [ ] Timeline muestra `ORDER_CREATED` como “Pedido creado”.
 - [ ] Timeline muestra `STATUS_CHANGED` como “Estado: <label>”.
 - [ ] Timeline muestra `ORDER_CANCELLED` como “Pedido cancelado”.
 - [ ] Timeline conserva actor, fecha, previousStatus/nextStatus y `detail.reason` si existe.
 - [ ] Token activado en Pedidos sirve en Catálogo.
-- [ ] Cerrar token en Catálogo afecta Pedidos.
-- [ ] Cerrar token en Pedidos afecta Catálogo.
+- [ ] Cerrar sesión en Catálogo afecta Pedidos.
+- [ ] Cerrar sesión en Pedidos afecta Catálogo.
 
 ### No-touch checks
 
@@ -309,8 +307,8 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 
 ### Endpoint/auth
 
-- [ ] `GET /api/orders-v2-admin/export.csv` without token responds `401 UNAUTHORIZED` JSON envelope.
-- [ ] `GET /api/orders-v2-admin/export.csv` with valid admin token responds `text/csv; charset=utf-8`.
+- [ ] `GET /api/orders-v2-admin/export.csv` without session cookie responds `401 UNAUTHORIZED` JSON envelope.
+- [ ] `GET /api/orders-v2-admin/export.csv` with valid internal session cookie responds `text/csv; charset=utf-8`.
 - [ ] Response includes `Content-Disposition: attachment; filename="orders-v2-export.csv"`.
 - [ ] Response includes `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`.
 
@@ -348,11 +346,11 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 ### Internal UI behavior
 
 - [ ] Botón “Exportar CSV” visible en Internal Chekeo V2 junto a los controles de órdenes/source.
-- [ ] Sin token admin, el botón queda deshabilitado y se muestra “Activa modo admin para exportar CSV”.
+- [ ] Sin sesión interna, el botón queda deshabilitado y se muestra “Activa modo admin para exportar CSV”.
 - [ ] La sesión interna habilita exportación.
 - [ ] Export default descarga un archivo `.csv` desde `GET /api/orders-v2-admin/export.csv`.
 - [ ] La descarga usa `download="orders-v2-export.csv"` cuando el navegador lo permite.
-- [ ] Errores JSON del backend se muestran en la UI sin imprimir el token.
+- [ ] Errores JSON del backend se muestran en la UI sin imprimir secretos.
 
 ### Export options/query params
 
@@ -377,8 +375,8 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 
 ### Summary endpoint
 
-- [ ] `GET /api/orders-v2-admin/summary` without token returns `401 UNAUTHORIZED` or `503 ADMIN_DISABLED` when admin is not configured.
-- [ ] `GET /api/orders-v2-admin/summary` with valid admin token returns `ok: true` and `source: "d1"`.
+- [ ] `GET /api/orders-v2-admin/summary` without session cookie returns `401 UNAUTHORIZED` or `503 ADMIN_DISABLED` when admin is not configured.
+- [ ] `GET /api/orders-v2-admin/summary` with valid internal session cookie returns `ok: true` and `source: "d1"`.
 - [ ] Missing D1 binding returns `503 D1_NOT_CONFIGURED`.
 - [ ] Non-GET methods return `405 METHOD_NOT_ALLOWED`.
 - [ ] Invalid `from` or `to` returns `400 INVALID_DATE`.
@@ -403,7 +401,7 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 
 - [ ] Internal Chekeo V2 shows a new `Cierre` tab.
 - [ ] The tab shows “Cierre operativo preview”, “D1 source of truth”, and “Pagos declarados, no pagos reales”.
-- [ ] Without admin token, it shows “Activa modo admin para cargar cierre”.
+- [ ] Without internal session, it shows “Activa modo admin para cargar cierre”.
 - [ ] Backend errors are visible and Cierre does not fall back to mock data.
 - [ ] Filters `Desde`, `Hasta`, and `Incluir terminales` call the summary endpoint with matching query params.
 - [ ] Cards show Venta bruta, Venta entregada, Órdenes totales, Entregadas, Canceladas, and Ticket promedio.
@@ -464,7 +462,7 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 
 ### Endpoint admin payment/notes
 
-- [ ] `PATCH /api/orders-v2-admin/:id/payment` without token returns `401 UNAUTHORIZED`.
+- [ ] `PATCH /api/orders-v2-admin/:id/payment` without session cookie returns `401 UNAUTHORIZED`.
 - [ ] `PATCH /api/orders-v2-admin/:id/payment` with missing/invalid `paymentStatus` returns `400 INVALID_PAYMENT_STATUS`.
 - [ ] `PATCH /api/orders-v2-admin/:id/payment` with `notes` longer than 500 chars is rejected.
 - [ ] `PATCH /api/orders-v2-admin/:id/payment` with `reason` longer than 200 chars is rejected.
@@ -476,7 +474,7 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 
 ### Internal Pagos UX
 
-- [ ] Activate admin token and open `Pagos`.
+- [ ] Sign in with the internal PIN and open `Pagos`.
 - [ ] Confirm copy is visible: “Pago operativo manual”, “No se realiza ningún cobro en línea”, and “Payment status declarado por operador”.
 - [ ] Press “Recargar órdenes” and confirm orders load from D1.
 - [ ] Confirm each order shows folio, customer, total, paymentMethod, paymentStatus, order status, notes, and items summary.
@@ -505,11 +503,11 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] Elegir “Otro” y confirmar que exige texto manual útil.
 - [ ] Confirmar que la UI no usa `alert()` y muestra errores inline.
 - [ ] Confirmar que al enviar muestra “Cancelando…” y deshabilita botones.
-- [ ] Sin token admin, confirmar error claro: “Activa modo admin para cancelar órdenes live”.
+- [ ] Sin sesión interna, confirmar error claro: “Activa modo admin para cancelar órdenes live”.
 
 ### Audit behavior
 
-- [ ] Confirmar que el submit llama `updateOrderV2Status(token, order.id, "cancelled", reason)` y por tanto `PATCH /api/orders-v2-admin/:id/status` con `reason`.
+- [ ] Confirmar que el submit llama `updateOrderV2Status(order.id, "cancelled", reason)` y por tanto `PATCH /api/orders-v2-admin/:id/status` con `reason`.
 - [ ] Confirmar que una cancelación live exitosa cierra el modal y actualiza la orden desde D1.
 - [ ] Confirmar que el timeline/detalle muestra `Razón: <razón>`.
 - [ ] Confirmar que el evento `STATUS_CHANGED` conserva `previousStatus` y `nextStatus`.
@@ -537,21 +535,21 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 ### Smoke operativo V2
 
 - [ ] Public V2 crea una orden real en D1 con folio visible.
-- [ ] Internal V2 ve la orden creada desde Public V2 al activar token admin y recargar.
+- [ ] Internal V2 ve la orden creada desde Public V2 al iniciar sesión interna y recargar.
 - [ ] Pedido avanza `new → preparing → ready → delivered` sin errores visuales.
 - [ ] Cancelar exige razón obligatoria antes de enviar.
 - [ ] Pagos permite marcar `paid`/`pending` como estado declarado por operador.
 - [ ] WhatsApp abre link manual con mensaje prellenado y no envía automático.
 - [ ] Cierre carga datos desde D1 y muestra pagos declarados.
 - [ ] CSV exporta desde D1 con los filtros existentes.
-- [ ] Sin token admin muestra errores claros y recuperables.
+- [ ] Sin sesión interna muestra errores claros y recuperables.
 - [ ] Un error de UI en Internal V2 no deja pantalla blanca; muestra “Algo falló en Internal V2” y botón “Recargar”.
 
 ### Hardening y no-touch
 
 - [ ] Confirmar que no hay `alert()` en Internal/Public V2.
 - [ ] Confirmar que botones críticos quedan deshabilitados mientras hay loading/submitting/updating.
-- [ ] Confirmar que el token admin no se imprime en consola y no viaja en query params.
+- [ ] Confirmar que no se imprimen secretos en consola y no viajan en query params.
 - [ ] Confirmar que logout limpia la cookie de sesión y vuelve al login.
 - [ ] Confirmar que Public V2 mantiene error inline recuperable después de error de red/backend.
 - [ ] Confirmar que Public V2 limpia idempotency key después de success y no deja pegado el draft anterior.
@@ -752,7 +750,7 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 
 ### Vista Cocina Internal V2
 
-- [ ] Abrir Internal V2 / Cocina con token admin real.
+- [ ] Abrir Internal V2 / Cocina con sesión interna real.
 - [ ] Confirmar que la vista no muestra teléfono, payment status, WhatsApp, source, export CSV ni acciones de pago.
 - [ ] Confirmar que cada orden muestra folio grande, cliente grande y ubicación extraída de `notes` (`Ubicación: Torre GGA` o `Ubicación: Torre Valcob`).
 - [ ] Confirmar que cada burger/combo aparece como unidad separada y muestra MOD desde `removedIngredients`, UPGRADE desde `extras`, nota por burger desde `burgerNote` y nota general si existe.
@@ -772,22 +770,22 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 
 ### Fallback y no-touch
 
-- [ ] Sin token o con error D1, confirmar que Cocina muestra fallback visual y el aviso `Fallback visual: estados de cocina no se guardan en D1.` sin usar `alert()`.
+- [ ] Sin sesión interna o con error D1, confirmar que Cocina muestra fallback visual y el aviso `Fallback visual: estados de cocina no se guardan en D1.` sin usar `alert()`.
 - [ ] Confirmar que no se crearon migraciones ni tablas nuevas.
 - [ ] Confirmar que no se tocaron legacy, `/api/order`, `/api/rpc`, Apps Script, Sheets sync, `BOG_ACTIVE_ENV`, pagos reales, WhatsApp API ni Public V2.
 
-## QA Fase 3 — Internal PIN session sin token visible
+## QA Fase 3 — Internal PIN session sin credenciales visibles
 
 - [ ] Abrir Internal V2 sin cookie de sesión y confirmar login con wordmark Burgers.exe, título Chekeo, campo PIN / contraseña y botón Entrar.
 - [ ] Escribir PIN incorrecto y confirmar error inline sin `alert()`.
 - [ ] Escribir PIN correcto y presionar Enter; confirmar entrada a la consola.
-- [ ] Confirmar que no aparece copy visible de token admin ni acciones de modo admin por token.
+- [ ] Confirmar que no aparece copy visible de credenciales ni acciones de modo admin por credencial.
 - [ ] Confirmar que SourcePanel muestra “Sesión admin activa”, “Órdenes live desde D1” y botón Recargar órdenes.
 - [ ] Confirmar que Pedidos carga órdenes live D1 con sesión cookie.
 - [ ] Confirmar que Cocina permite marcar burger/Side Quest con sesión cookie.
 - [ ] Confirmar que Pagos y Cierre cargan con sesión cookie.
 - [ ] Recargar la página y confirmar que mantiene sesión mientras `bog_internal_session` siga vigente.
 - [ ] Logout y confirmar regreso al login.
-- [ ] Confirmar que el frontend no guarda token admin en storage del navegador.
-- [ ] Confirmar que endpoints admin siguen aceptando `Authorization: Bearer $BOG_ORDERS_ADMIN_TOKEN` para herramientas.
+- [ ] Confirmar que el frontend no guarda credenciales internas en storage del navegador.
+- [ ] Confirmar que endpoints admin sin cookie válida responden `401 UNAUTHORIZED` y no aceptan credenciales por header.
 - [ ] Confirmar que no se tocaron legacy, `/api/order`, `/api/rpc`, Apps Script, Sheets sync ni `BOG_ACTIVE_ENV`.

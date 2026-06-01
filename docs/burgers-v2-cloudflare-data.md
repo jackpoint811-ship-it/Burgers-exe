@@ -121,28 +121,28 @@ bucket_name = "burgers-exe-assets-v2-preview"
   - `DELETE /api/menu-v2-admin/items/:sku/image` quita la imagen del producto, limpia `image_key`/`image_url` en D1 y activa el placeholder público.
 - Requiere binding D1 en `burgers-exe-internal-v2-preview`: `BOG_MENU_DB`.
 - Requiere binding R2 en `burgers-exe-internal-v2-preview`: `BOG_ASSETS_BUCKET` para upload; en DELETE es opcional para limpiar D1, pero si existe intenta borrar el objeto R2 actual.
-- Requiere secret/env en `burgers-exe-internal-v2-preview`: `BOG_MENU_ADMIN_TOKEN`.
-- Si `BOG_MENU_ADMIN_TOKEN`, `BOG_MENU_DB` o el R2 requerido para upload no existe, el endpoint responde `503 { ok:false, error:"Admin disabled" }`.
+- Requiere login interno con `BOG_INTERNAL_PIN`; los endpoints admin aceptan únicamente la cookie HttpOnly `bog_internal_session` creada por `/api/internal-v2-auth/login`.
+- Si `BOG_INTERNAL_PIN`, `BOG_MENU_DB` o el R2 requerido para upload no existe, el endpoint responde `503 { ok:false, error:{ code:"AUTH_NOT_CONFIGURED", message:"Internal auth is not configured." } }` o el error de binding correspondiente.
 - Upload usa `multipart/form-data` con un solo campo `file`. Límite máximo: 5 MB. Tipos aceptados: `image/jpeg`, `image/png`, `image/webp`, `image/avif`. No acepta SVG, GIF, data URLs, content-type vacío ni múltiples archivos.
 - El key se genera automáticamente bajo `menu/` con SKU normalizado y timestamp, por ejemplo `menu/brg-og-20260528T184000Z.webp`; no se confía en rutas del filename original.
 - Al subir una imagen nueva, si existía un `image_key` previo bajo `menu/`, se intenta borrar de R2 sin bloquear la actualización si falla el delete. No se borran URLs externas.
 - El flujo UI en Catálogo es: iniciar sesión, editar producto, seleccionar archivo, `Subir imagen`, confirmar nuevo `imageKey` en la card/lista y validar Public V2 sin redeploy.
 - El botón `Quitar imagen / usar placeholder` llama DELETE, limpia referencias en D1 y Public V2 vuelve al placeholder por fallback.
-- No hay upload público ni upload desde el cliente público; los endpoints admin son same-origin y requieren `Authorization: Bearer <token>`.
-- Después de configurar bindings + secret, hacer redeploy de internal preview.
-- Validar con curl/UI del tab Catálogo (Authorization Bearer token).
+- No hay upload público ni upload desde el cliente público; los endpoints admin son same-origin y requieren cookie HttpOnly de sesión interna.
+- Después de configurar bindings + `BOG_INTERNAL_PIN`, hacer redeploy de internal preview.
+- Validar desde la UI del tab Catálogo después de iniciar sesión con PIN interno.
 - Este flujo es solo admin preview; no reemplaza producción final ni conecta órdenes reales.
 
 ## V2-8.3 admin de promos con imágenes (preview)
 
-- Internal Chekeo V2 ahora administra promociones desde Catálogo > Promos usando el mismo token admin de productos.
+- Internal Chekeo V2 ahora administra promociones desde Catálogo > Promos usando la misma sesión interna HttpOnly de productos.
 - Endpoints admin nuevos, same-origin y sin CORS:
   - `PATCH /api/menu-v2-admin/promos/:id` edita texto y referencias seguras de asset para una promo existente.
   - `POST /api/menu-v2-admin/promos/:id/image` sube una imagen de promo a R2 y actualiza D1.
   - `DELETE /api/menu-v2-admin/promos/:id/image` quita `asset_image_key`/`asset_image_url` y fuerza placeholder público.
 - Requisitos:
   - `BOG_MENU_DB` para leer/actualizar `promo_cards`.
-  - `BOG_MENU_ADMIN_TOKEN` para todos los endpoints admin con `Authorization: Bearer <token>`.
+  - `BOG_INTERNAL_PIN` como único secreto de Internal V2; crea la cookie HttpOnly `bog_internal_session` después del login.
   - `BOG_ASSETS_BUCKET` para `POST`; en `DELETE` es opcional y solo se usa para intentar borrar el objeto anterior.
 - `PATCH` solo permite campos seguros: `title`, `description`, `badge`, `promoLabel`, `isAvailable`, `isFeatured`, `sortOrder`, `imageUrl`, `imageKey`. No inserta, no borra, no modifica `id`, no toca productos, no toca órdenes.
 - Validación de imagen manual:
@@ -155,7 +155,7 @@ bucket_name = "burgers-exe-assets-v2-preview"
 - Las keys se generan automáticamente bajo el prefijo R2 `promos/`, con ID normalizado + timestamp, por ejemplo `promos/promo-combo-og-20260528T190000Z.jpg`.
 - Al subir una nueva imagen, si existía un `asset_image_key` previo bajo `promos/`, se intenta borrar de R2 best-effort sin bloquear la actualización. No se borran URLs externas.
 - El botón “Quitar imagen / usar placeholder” limpia referencias en D1 y, si hay bucket, intenta borrar el objeto anterior bajo `promos/`; Public V2 vuelve al placeholder.
-- No existe upload público, no hay listado de bucket, no se expone el token y Public V2 solo lee assets desde `/api/assets-v2/<key>`.
+- No existe upload público, no hay listado de bucket, no se expone ninguna credencial y Public V2 solo lee assets desde `/api/assets-v2/<key>`.
 - Este flujo sigue siendo preview/admin-only y no conecta órdenes reales, pagos reales, `/api/order`, `/api/rpc`, Apps Script, Sheets, V1 ni producción.
 
 ## V2-9A órdenes reales: backend base D1
@@ -196,8 +196,8 @@ Ambos scripts ejecutan `migrations/0003_v2_orders_schema.sql` sobre `burgers-exe
 - `ORDERS_V2_WRITE_ENABLED`: opcional para `POST /api/orders-v2`.
   - Si no existe, la escritura se permite para preview.
   - Si existe y es exactamente `false`, el endpoint responde `ORDERING_DISABLED`.
-- `BOG_ORDERS_ADMIN_TOKEN`: token admin opcional para endpoints admin.
-- `BOG_MENU_ADMIN_TOKEN`: fallback para endpoints admin si `BOG_ORDERS_ADMIN_TOKEN` no existe.
+- `BOG_INTERNAL_PIN`: único secreto de Internal V2; firma la cookie HttpOnly de sesión y valida el login PIN.
+- No configurar credenciales adicionales para Internal V2; no hay fallback operativo a otros secretos.
 
 ### Endpoints
 
@@ -213,14 +213,14 @@ Ambos scripts ejecutan `migrations/0003_v2_orders_schema.sql` sobre `burgers-exe
 #### `GET /api/orders-v2-admin`
 
 - Lista órdenes V2 desde D1.
-- Requiere `Authorization: Bearer <token>`.
+- Requiere cookie HttpOnly `bog_internal_session` válida.
 - Soporta filtros `status`, `includeTerminal`, `limit`, `from`, `to`.
 - Por defecto excluye órdenes terminales (`delivered`, `cancelled`).
 
 #### `PATCH /api/orders-v2-admin/:id/status`
 
 - Cambia estado de una orden V2.
-- Requiere `Authorization: Bearer <token>`.
+- Requiere cookie HttpOnly `bog_internal_session` válida.
 - Transiciones permitidas:
   - `new -> preparing | cancelled`
   - `preparing -> ready | cancelled`
@@ -268,11 +268,11 @@ Public Order V2 ahora usa `POST /api/orders-v2` para registrar pedidos reales en
 
 Internal Chekeo V2 usa los endpoints admin de órdenes V2 para leer y operar pedidos reales en D1 desde preview.
 
-### Token admin
+### Sesión interna por PIN
 
 - La consola interna requiere login PIN y mantiene sesión en cookie HttpOnly durante la sesión operativa.
-- El backend valida `BOG_ORDERS_ADMIN_TOKEN` y puede usar `BOG_MENU_ADMIN_TOKEN` como fallback operativo según la configuración existente de Functions.
-- El token se reutiliza con el flujo admin del Catálogo para evitar guardar credenciales duplicadas o exponerlas en Public V2.
+- El backend valida únicamente la cookie `bog_internal_session`, firmada con `BOG_INTERNAL_PIN`.
+- La sesión se reutiliza con el flujo del Catálogo para evitar credenciales duplicadas o exponer acceso en Public V2.
 
 ### Endpoints usados
 
@@ -283,7 +283,7 @@ Internal Chekeo V2 usa los endpoints admin de órdenes V2 para leer y operar ped
 
 - Pedidos y Cocina cargan órdenes activas (`new`, `preparing`, `ready`) para operación diaria.
 - Historial carga con `includeTerminal=true&limit=50` para incluir `delivered` y `cancelled`.
-- Si falta token o Backend V2 falla, Internal V2 mantiene `mockOrders` como fallback visual/QA y muestra error explícito.
+- Si falta credencial o Backend V2 falla, Internal V2 mantiene `mockOrders` como fallback visual/QA y muestra error explícito.
 
 ### Límites explícitos
 
@@ -311,8 +311,8 @@ V2-10A.1 adds a read-only CSV export endpoint for operational reporting from D1 
 #### `GET /api/orders-v2-admin/export.csv`
 
 - Returns `text/csv; charset=utf-8` with `Content-Disposition: attachment; filename="orders-v2-export.csv"`.
-- Requires `Authorization: Bearer <token>`.
-- Uses the same admin token behavior as the V2 admin order endpoints: `BOG_ORDERS_ADMIN_TOKEN`, with fallback to `BOG_MENU_ADMIN_TOKEN`.
+- Requires a valid HttpOnly `bog_internal_session` cookie.
+- Uses the same Internal V2 session behavior as the V2 admin order endpoints: PIN login creates an HttpOnly cookie, and requests use `credentials: include`.
 - Requires the existing `BOG_MENU_DB` binding.
 - Does not require new bindings.
 - Reads from `orders_v2`, `order_items_v2`, and `order_events_v2`.
@@ -362,7 +362,7 @@ V2-10A.1 does not change Public V2, Internal V2, `/api/order`, `/api/rpc`, Apps 
 
 ## V2-10A.2 Internal CSV export usage
 
-Internal Chekeo V2 can trigger the existing protected CSV export from the operator UI. Operators must first sign in; the browser sends the HttpOnly session cookie with `credentials: include` when calling `GET /api/orders-v2-admin/export.csv`. `Authorization: Bearer` remains supported for tooling.
+Internal Chekeo V2 can trigger the existing protected CSV export from the operator UI. Operators must first sign in; the browser sends the HttpOnly session cookie with `credentials: include` when calling `GET /api/orders-v2-admin/export.csv`.
 
 The Internal UI can send these query params to the existing endpoint:
 
@@ -387,7 +387,7 @@ V2-10B adds a read-only admin summary endpoint for shift close/reporting from re
 #### `GET /api/orders-v2-admin/summary`
 
 - Requires `BOG_MENU_DB`.
-- Requires `Authorization: Bearer <token>` using the same admin-token behavior as other V2 order admin endpoints (`BOG_ORDERS_ADMIN_TOKEN`, with fallback to `BOG_MENU_ADMIN_TOKEN`).
+- Requires a valid HttpOnly `bog_internal_session` cookie using the same Internal V2 session behavior as other V2 order admin endpoints.
 - Reads from `orders_v2`, `order_items_v2`, and `order_events_v2`.
 - Does not update orders, insert events, write Apps Script, sync Sheets, or require migrations.
 - Non-GET methods return `405 METHOD_NOT_ALLOWED`.
@@ -428,7 +428,7 @@ Internal Chekeo V2 adds a `Cierre` tab that calls `GET /api/orders-v2-admin/summ
 - Range filters, include-terminal toggle, close metrics, status/payment/mode breakdowns, top items, recent orders, and average times.
 - “Exportar CSV del rango”, which reuses the existing protected CSV export with the same date/include-terminal filters.
 
-The Cierre tab does not use mock fallback; missing token or backend errors are shown explicitly.
+The Cierre tab does not use mock fallback; missing credencial or backend errors are shown explicitly.
 
 ### No changes in V2-10B
 
@@ -444,7 +444,7 @@ V2-11A no agrega superficie de datos en Cloudflare. Las acciones de WhatsApp man
 - “Copiar mensaje” usa `navigator.clipboard.writeText` y no persiste el contenido.
 - No hay nuevas tablas, columnas, migraciones, eventos D1 ni escrituras asociadas al mensaje.
 - No hay llamadas a WhatsApp API, Sheets API, Apps Script ni servicios externos.
-- No se introducen tokens, secrets ni bindings nuevos.
+- No se introducen credenciales, secrets ni bindings nuevos.
 - D1 permanece como source of truth para órdenes; Sheets continúa siendo solo destino manual/export cuando aplica.
 - Los pagos siguen siendo declarados/operativos; no hay pagos reales ni captura de pago.
 
@@ -455,7 +455,7 @@ V2-11B adds one protected write endpoint for manual payment operations on real V
 #### `PATCH /api/orders-v2-admin/:id/payment`
 
 - Requires `BOG_MENU_DB`.
-- Requires `Authorization: Bearer <admin token>` using the existing admin token check.
+- Requires a valid HttpOnly `bog_internal_session` cookie using the Internal V2 session check.
 - Accepts only `PATCH`.
 - Updates `orders_v2.payment_status` to `pending`, `paid`, or `cancelled`.
 - Optionally replaces the existing `orders_v2.notes` value, capped at 500 characters.
@@ -476,7 +476,7 @@ Request body:
 Error behavior:
 
 - Missing D1 binding returns `503 D1_NOT_CONFIGURED`.
-- Invalid admin token returns `401 UNAUTHORIZED`.
+- Missing or invalid internal session cookie returns `401 UNAUTHORIZED`.
 - Invalid payment status returns `400 INVALID_PAYMENT_STATUS`.
 - Missing order returns `404 ORDER_NOT_FOUND`.
 - Non-`PATCH` methods return `405 METHOD_NOT_ALLOWED`.
@@ -508,7 +508,7 @@ V2-11C does not add a new Cloudflare endpoint or D1 migration. Internal Chekeo V
 
 - `PATCH /api/orders-v2-admin/:id/status`
 - Payload: `{ "status": "cancelled", "reason": "<operator reason>" }`
-- Auth: existing admin bearer token.
+- Auth: existing admin bearer credencial.
 
 Data behavior:
 
@@ -533,8 +533,8 @@ Confirmaciones de data flow:
 
 - D1 (`BOG_MENU_DB`) sigue siendo source of truth para menú, órdenes, cierre y CSV.
 - Public V2 crea órdenes mediante `POST /api/orders-v2` sin enviar precios ni total desde el frontend; solo envía `sku` y `qty` por item.
-- Internal V2 opera órdenes/cierre/export con endpoints admin existentes y token por header `Authorization: Bearer ...`.
-- El token admin no se guarda en storage del navegador; logout limpia la cookie HttpOnly y no se imprimen secretos en consola ni se mandan por query string.
+- Internal V2 opera órdenes/cierre/export con endpoints admin existentes usando únicamente la cookie HttpOnly de sesión interna.
+- No se usa `localStorage`/`sessionStorage` para credenciales internas; logout limpia la cookie HttpOnly y no se imprimen secretos en consola ni se mandan por query string.
 - CSV y Sheets siguen siendo procesos manuales/export; no hay sync automático con Sheets ni Apps Script.
 - Pagos siguen siendo estados declarados (`pending`, `paid`, `cancelled`) sobre D1. No hay cobro real, Stripe, MercadoPago ni provider de pagos.
 - WhatsApp sigue siendo deep link/manual en navegador. No hay WhatsApp Business/API ni envío automático.
@@ -587,7 +587,7 @@ No-touch V2-12:
 - `order_items_v2.snapshot_json` es el contrato operativo para cocina: Internal V2 lee de ahí `lineKey`, `itemDisplayIndex`, `itemKind`, `removedIngredients`, `extras`, `burgerNote`, `garnish` y `extrasTotalCents`.
 - MOD corresponde a `removedIngredients`; UPGRADE corresponde a `extras`; la nota por burger corresponde a `burgerNote`.
 - Las guarniciones extra se identifican por `itemKind="garnish"`. La guarnición incluida de un combo viaja como `garnish` dentro del snapshot del combo y no debe duplicarse como Side Quest pendiente.
-- Endpoint admin protegido: `PATCH /api/orders-v2-admin/:id/kitchen-item` con `Authorization: Bearer <admin token>`.
+- Endpoint admin protegido: `PATCH /api/orders-v2-admin/:id/kitchen-item` con cookie HttpOnly `bog_internal_session`.
 - Payload válido: `{ "lineKey": string, "itemKind": "burger" | "combo" | "garnish", "done": boolean }`.
 - Validaciones del endpoint: orden existente, `lineKey` requerido, `itemKind` permitido, `done` boolean, `lineKey` presente dentro de `order_items_v2.snapshot_json` de esa orden y coincidencia contra `snapshot.itemKind` cuando exista.
 - Si `done=true`, se inserta `type="KITCHEN_ITEM_DONE"`; si `done=false`, se inserta `type="KITCHEN_ITEM_REOPENED"`. Ambos eventos usan `detail_json={ lineKey, itemKind, source: "internal-v2" }` y actor `internal-v2`.
@@ -597,10 +597,10 @@ No-touch V2-12:
 ## Internal V2 auth/session (Fase 3)
 
 - Configurar `BOG_INTERNAL_PIN` en Cloudflare Pages para el PIN humano de Internal Chekeo V2.
-- Mantener `BOG_ORDERS_ADMIN_TOKEN` configurado: sigue protegiendo `/api/orders-v2-admin*`, firma la cookie de sesión y conserva compatibilidad con `Authorization: Bearer`.
+- No existe credencial admin adicional: `/api/orders-v2-admin*` y `/api/menu-v2-admin*` se protegen únicamente con la cookie HttpOnly `bog_internal_session` firmada con `BOG_INTERNAL_PIN`.
 - Endpoints nuevos:
-  - `POST /api/internal-v2-auth/login` recibe `{ "pin": "..." }`, valida contra `BOG_INTERNAL_PIN` o fallback temporal `BOG_ORDERS_ADMIN_TOKEN`, y crea `bog_internal_session` sin devolver secretos.
+  - `POST /api/internal-v2-auth/login` recibe `{ "pin": "..." }`, valida únicamente contra `BOG_INTERNAL_PIN`, y crea `bog_internal_session` sin devolver secretos.
   - `GET /api/internal-v2-auth/status` devuelve solo `authenticated: true/false`.
   - `POST /api/internal-v2-auth/logout` limpia la cookie.
-- La cookie `bog_internal_session` es `HttpOnly`; por diseño el frontend no puede leerla ni copiar tokens a storage.
-- No guardar ni commitear valores reales de `BOG_INTERNAL_PIN`, `BOG_ORDERS_ADMIN_TOKEN` ni tokens admin en el repo.
+- La cookie `bog_internal_session` es `HttpOnly`, `SameSite=Lax`, `Path=/`, dura 12 horas y usa `Secure` en HTTPS; por diseño el frontend no puede leerla ni copiar credenciales a storage.
+- No guardar ni commitear valores reales de `BOG_INTERNAL_PIN` en el repo. Para rotar acceso, cambiar `BOG_INTERNAL_PIN` y redeploy.

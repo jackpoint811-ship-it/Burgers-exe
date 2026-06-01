@@ -43,7 +43,7 @@
 ## Riesgos
 
 - Divergencia entre mock y datos reales si no se valida contrato temprano.
-- Drift visual entre apps V2 si no se centraliza tokens/components.
+- Drift visual entre apps V2 si no se centralizan design tokens/components.
 
 ## Rollback
 
@@ -114,7 +114,7 @@
 
 ## V2-8.2 Internal catalog image upload (preview)
 
-- Internal Chekeo V2 Catálogo agrega upload protegido por `BOG_MENU_ADMIN_TOKEN` para imágenes de producto.
+- Internal Chekeo V2 Catálogo agrega upload protegido por sesión interna HttpOnly para imágenes de producto.
 - `POST /api/menu-v2-admin/items/:sku/image` valida `multipart/form-data`, limita a 5 MB, acepta solo JPG/PNG/WebP/AVIF, guarda en R2 (`BOG_ASSETS_BUCKET`) bajo `menu/` y actualiza D1 (`BOG_MENU_DB`).
 - `DELETE /api/menu-v2-admin/items/:sku/image` limpia `image_key`/`image_url` para volver al placeholder y, si hay R2 disponible, intenta borrar el asset previo bajo `menu/`.
 - Public Order V2 no sube imágenes: solo lee `imageKey` desde `/api/assets-v2/<key>` y mantiene fallback visual si no hay imagen o si falla la carga.
@@ -122,7 +122,7 @@
 
 ## V2-8.3 Internal promo admin + R2 images (preview)
 
-- Internal Chekeo V2 Catálogo agrega subtab Promos para editar `promo_cards` en D1 con `BOG_MENU_ADMIN_TOKEN`.
+- Internal Chekeo V2 Catálogo agrega subtab Promos para editar `promo_cards` en D1 con sesión interna HttpOnly.
 - Se agregan endpoints admin protegidos para actualizar promos y subir/quitar imágenes de promo en R2 bajo `promos/`.
 - Public Order V2 continúa solo leyendo `/api/menu-v2` y `/api/assets-v2/<key>`; no tiene upload público ni endpoints admin.
 - La fase mantiene órdenes reales, pagos reales, `/api/order`, `/api/rpc`, Apps Script, Sheets, V1, legacy y `BOG_ACTIVE_ENV` sin cambios.
@@ -181,10 +181,10 @@ V2-9C conecta `apps/internal-chekeo-v2` a órdenes reales V2 en D1 para que la c
 
 Alcance de la fase:
 
-- Internal Chekeo V2 consume `GET /api/orders-v2-admin` con token admin y muestra “Pedidos live D1” cuando la carga responde desde Backend V2.
+- Internal Chekeo V2 consume `GET /api/orders-v2-admin` con la cookie HttpOnly de sesión interna y muestra “Pedidos live D1” cuando la carga responde desde Backend V2.
 - Pedidos, Cocina e Historial comparten el mismo dataset live y pueden avanzar estados con `PATCH /api/orders-v2-admin/:id/status`.
 - Historial solicita terminales con `includeTerminal=true` para listar `delivered` y `cancelled`.
-- Si no hay token o falla Backend V2, la consola conserva `mockOrders` como fallback visual/QA y muestra el estado de fallback explícitamente.
+- Si no hay sesión interna o falla Backend V2, la consola conserva `mockOrders` como fallback visual/QA y muestra el estado de fallback explícitamente.
 
 No cambia en V2-9C:
 
@@ -198,7 +198,7 @@ No cambia en V2-9C:
 
 ## V2-9D Live orders UX polish/QA
 
-V2-9D pule el flujo live de órdenes V2 sin cambiar arquitectura ni endpoints. La consola interna mantiene D1 como fuente live cuando responde Backend V2 y conserva fallback mock explícito solo para QA visual ante falta de token o error de backend.
+V2-9D pule el flujo live de órdenes V2 sin cambiar arquitectura ni endpoints. La consola interna mantiene D1 como fuente live cuando responde Backend V2 y conserva fallback mock explícito solo para QA visual ante falta de sesión interna o error de backend.
 
 Alcance de la fase:
 
@@ -227,7 +227,7 @@ Decisions:
 
 ## V2-10A.2 Internal orders CSV export button
 
-V2-10A.2 adds a minimal Internal Chekeo V2 control to download the protected orders CSV from `GET /api/orders-v2-admin/export.csv`. The UI reuses the shared HttpOnly internal session flow and uses the HttpOnly session cookie from the browser; Authorization Bearer remains available for tools.
+V2-10A.2 adds a minimal Internal Chekeo V2 control to download the protected orders CSV from `GET /api/orders-v2-admin/export.csv`. The UI reuses the shared HttpOnly internal session flow and uses the HttpOnly session cookie from the browser.
 
 Decisions:
 
@@ -296,7 +296,7 @@ No cambia en V2-11A:
 
 ## V2-11B Pagos/Notas operativo manual
 
-V2-11B convierte la tab `Pagos` de Internal Chekeo V2 en una vista operativa sobre órdenes reales V2 en D1. La consola usa el mismo token admin y consume `GET /api/orders-v2-admin` para listar órdenes y `PATCH /api/orders-v2-admin/:id/payment` para actualizar manualmente `payment_status` y, opcionalmente, `notes`.
+V2-11B convierte la tab `Pagos` de Internal Chekeo V2 en una vista operativa sobre órdenes reales V2 en D1. La consola usa la sesión interna HttpOnly y consume `GET /api/orders-v2-admin` para listar órdenes y `PATCH /api/orders-v2-admin/:id/payment` para actualizar manualmente `payment_status` y, opcionalmente, `notes`.
 
 El comportamiento es estrictamente operativo/manual:
 
@@ -346,7 +346,7 @@ V2-12 estabiliza las apps preview antes de continuar hacia producción sin agreg
 Alcance aplicado:
 
 - Internal Chekeo V2 queda envuelto por un `ErrorBoundary` de app para evitar pantalla blanca ante errores visuales inesperados.
-- El fallback muestra “Algo falló en Internal V2” y un botón “Recargar”, sin exponer stack traces, headers, tokens ni detalles técnicos al usuario.
+- El fallback muestra “Algo falló en Internal V2” y un botón “Recargar”, sin exponer stack traces, headers, secretos ni detalles técnicos al usuario.
 - Se revisó el copy operativo para reforzar que pagos son declarados/manuales y que no se realiza ningún cobro en línea.
 - WhatsApp permanece como acción manual del navegador; no hay envío automático ni WhatsApp API.
 - Public Order V2 conserva el flujo actual: submit deshabilitado mientras envía, errores inline recuperables, idempotency key por draft y limpieza de idempotencia después de success.
@@ -449,7 +449,7 @@ No cambia en V2-14:
 
 ## Fase 2 Internal Cocina y Side Quest checklist (2026-06-01)
 
-- Internal V2 Cocina opera sobre órdenes reales D1 cuando existe token admin; el fallback mock queda solo como vista visual y muestra aviso de que los estados no se persisten en D1.
+- Internal V2 Cocina opera sobre órdenes reales D1 cuando existe sesión interna válida; el fallback mock queda solo como vista visual y muestra aviso de que los estados no se persisten en D1.
 - Cocina lee las customizaciones desde `order_items_v2.snapshot_json` expuestas como `OrderV2Item.snapshot`: `lineKey`, `itemDisplayIndex`, `itemKind`, `removedIngredients`, `extras`, `burgerNote`, `garnish` y `extrasTotalCents`.
 - La vista Cocina deja de usar la tarjeta administrativa pesada: no muestra teléfono, pago, WhatsApp, source, export CSV ni acciones de pago; muestra folio, cliente, ubicación extraída de `notes`, burgers/combos por unidad, MOD, UPGRADE, nota por burger, guarnición incluida de combo y nota general.
 - Las líneas `itemKind="burger"` y `itemKind="combo"` se muestran como acordeones de preparación. La primera burger pendiente abre por default; al marcarla hecha queda verde, se repliega y se abre la siguiente pendiente. Si todas están hechas, la orden muestra `Burgers listas`.
@@ -461,10 +461,10 @@ No cambia en V2-14:
 ## V2-10 Internal Chekeo PIN session (Fase 3)
 
 - Internal Chekeo V2 usa un login inicial real con PIN/contraseña antes de mostrar la consola operativa.
-- El token admin ya no se captura ni se muestra en SourcePanel, Pedidos, Cocina, Pagos, Cierre ni Catálogo.
+- No existe credencial operativa adicional para Internal V2: el acceso se inicia con `BOG_INTERNAL_PIN` y luego se mantiene solo con la cookie HttpOnly.
 - La sesión interna se maneja con cookie `bog_internal_session` `HttpOnly`, `SameSite=Lax`, `Path=/` y duración de 12 horas; el frontend solo consulta estado/login/logout con `credentials: "include"`.
-- `BOG_INTERNAL_PIN` es la variable recomendada para el PIN operativo del equipo.
-- `BOG_ORDERS_ADMIN_TOKEN` sigue siendo el secreto que protege endpoints admin y firma la sesión interna; si `BOG_INTERNAL_PIN` falta, login acepta temporalmente `BOG_ORDERS_ADMIN_TOKEN` para no romper previews existentes.
-- `Authorization: Bearer <BOG_ORDERS_ADMIN_TOKEN>` se mantiene compatible para herramientas internas, scripts y QA técnico.
-- No hay secrets en repo, no se expone el token al frontend y no se guarda token admin en storage del navegador.
+- `BOG_INTERNAL_PIN` es el único secreto/env requerido para Internal V2; usar un PIN/frase interna suficientemente fuerte, sin commitear valores reales.
+- La cookie `bog_internal_session` se firma únicamente con `BOG_INTERNAL_PIN`; si falta, login y endpoints admin responden `AUTH_NOT_CONFIGURED`.
+- Los endpoints admin no aceptan credenciales por header; requieren cookie `bog_internal_session` válida y same-origin cuando `Origin` existe.
+- No hay secrets en repo, no hay credenciales visibles en frontend y no se usa `localStorage`/`sessionStorage` para credenciales internas.
 - Para requests autenticados por cookie, los endpoints admin validan `Origin` same-origin cuando el header está presente para reducir riesgo CSRF.
