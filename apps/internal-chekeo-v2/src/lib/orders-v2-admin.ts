@@ -32,11 +32,10 @@ type ExportOrdersV2CsvOptions = {
 };
 
 
-const buildSessionFetchInit = (init: RequestInit = {}, token?: string): RequestInit => {
-  const headers = new Headers(init.headers);
-  if (token?.trim()) headers.set('Authorization', `Bearer ${token.trim()}`);
-  return { ...init, credentials: 'include', headers };
-};
+const buildSessionFetchInit = (init: RequestInit = {}): RequestInit => ({
+  ...init,
+  credentials: 'include',
+});
 
 const parseJsonEnvelope = async <
   T extends { ok: boolean; error?: { message?: string; code?: string } },
@@ -47,7 +46,7 @@ const parseJsonEnvelope = async <
   try {
     envelope = (await res.json()) as T;
   } catch {
-    // Keep the error generic. Never include request headers or tokens.
+    // Keep the error generic. Never include request headers or session details.
   }
 
   if (!res.ok) {
@@ -68,21 +67,19 @@ const parseJsonEnvelope = async <
 
 export const fetchOrdersV2Admin = async (
   options: FetchOrdersV2AdminOptions = {},
-  token?: string,
 ) => {
 
   const params = new URLSearchParams();
   params.set("includeTerminal", String(Boolean(options.includeTerminal)));
   if (options.limit) params.set("limit", String(options.limit));
 
-  const res = await fetch(`/api/orders-v2-admin?${params.toString()}`, buildSessionFetchInit({}, token));
+  const res = await fetch(`/api/orders-v2-admin?${params.toString()}`, buildSessionFetchInit());
   const envelope = await parseJsonEnvelope<OrdersV2AdminResponse>(res);
   return envelope.data?.orders ?? [];
 };
 
 export const fetchOrdersV2Summary = async (
   options: FetchOrdersV2SummaryOptions = {},
-  token?: string,
 ) => {
 
   const params = new URLSearchParams();
@@ -98,7 +95,7 @@ export const fetchOrdersV2Summary = async (
   const query = params.toString();
   const res = await fetch(
     `/api/orders-v2-admin/summary${query ? `?${query}` : ""}`,
-    buildSessionFetchInit({}, token),
+    buildSessionFetchInit(),
   );
   const envelope = await parseJsonEnvelope<OrdersV2SummaryResponse>(res);
   if (!envelope.data)
@@ -110,7 +107,6 @@ export const updateOrderV2Status = async (
   orderId: string,
   status: OrderV2Status,
   reason?: string,
-  token?: string,
 ) => {
 
   const res = await fetch(
@@ -119,7 +115,7 @@ export const updateOrderV2Status = async (
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status, reason }),
-    }, token),
+    }),
   );
   const envelope = await parseJsonEnvelope<UpdateOrderV2StatusResponse>(res);
   if (!envelope.data?.order)
@@ -130,7 +126,6 @@ export const updateOrderV2Status = async (
 export const updateKitchenItemV2 = async (
   orderId: string,
   payload: UpdateKitchenItemPayload,
-  token?: string,
 ) => {
 
   const res = await fetch(
@@ -139,7 +134,7 @@ export const updateKitchenItemV2 = async (
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
-    }, token),
+    }),
   );
   const envelope = await parseJsonEnvelope<UpdateKitchenItemResponse>(res);
   if (!envelope.data?.order)
@@ -150,7 +145,6 @@ export const updateKitchenItemV2 = async (
 export const updateOrderV2Payment = async (
   orderId: string,
   payload: UpdateOrderV2PaymentPayload,
-  token?: string,
 ) => {
 
   const body: {
@@ -167,7 +161,7 @@ export const updateOrderV2Payment = async (
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    }, token),
+    }),
   );
   const envelope = await parseJsonEnvelope<UpdateOrderV2PaymentResponse>(res);
   if (!envelope.data?.order)
@@ -177,7 +171,6 @@ export const updateOrderV2Payment = async (
 
 export const exportOrdersV2Csv = async (
   options: ExportOrdersV2CsvOptions = {},
-  token?: string,
 ) => {
 
   const params = new URLSearchParams();
@@ -192,7 +185,7 @@ export const exportOrdersV2Csv = async (
   const query = params.toString();
   const res = await fetch(
     `/api/orders-v2-admin/export.csv${query ? `?${query}` : ""}`,
-    buildSessionFetchInit({}, token),
+    buildSessionFetchInit(),
   );
 
   if (!res.ok) {
@@ -208,7 +201,7 @@ export const exportOrdersV2Csv = async (
         envelope.message ||
         message;
     } catch {
-      // Keep the error generic. Never include request headers or tokens.
+      // Keep the error generic. Never include request headers or session details.
     }
     throw new Error(`No se pudo exportar CSV desde Backend V2: ${message}`);
   }

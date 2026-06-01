@@ -17,10 +17,8 @@ const safeEqual = (left: string, right: string): boolean => {
 };
 
 export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
-  const configuredPin = env.BOG_INTERNAL_PIN?.trim();
-  const fallbackToken = env.BOG_ORDERS_ADMIN_TOKEN?.trim();
-  const expectedPin = configuredPin || fallbackToken || '';
-  if (!expectedPin || !fallbackToken) return errorResponse(503, 'AUTH_NOT_CONFIGURED', 'Internal auth is not configured.');
+  const expectedPin = env.BOG_INTERNAL_PIN?.trim() || '';
+  if (!expectedPin) return errorResponse(503, 'AUTH_NOT_CONFIGURED', 'Internal auth is not configured.');
 
   const body = await parseJsonObject(request);
   const pin = typeof body?.pin === 'string' ? body.pin.trim() : '';

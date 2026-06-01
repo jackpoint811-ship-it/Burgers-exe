@@ -25,7 +25,7 @@ import {
   fetchInternalAuthStatus,
   loginInternal,
   logoutInternal,
-} from "../lib/admin-token";
+} from "../lib/internal-auth";
 import {
   exportOrdersV2Csv,
   fetchOrdersV2Admin,
@@ -2218,7 +2218,7 @@ const PaymentNotesPanel = ({
         </div>
         {!runtime.sessionActive ? (
           <p className="mt-3 rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-100">
-            Activa el token admin para declarar pagos en D1.
+            Inicia sesión para declarar pagos en D1.
           </p>
         ) : null}
       </Card>

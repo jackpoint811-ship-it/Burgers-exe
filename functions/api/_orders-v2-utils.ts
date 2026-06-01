@@ -1,7 +1,7 @@
 import type { OrderV2, OrderV2Event, OrderV2Item, OrderV2Status } from '../../packages/config/src';
 
 export type ErrorEnvelope = { ok: false; error: { code: string; message: string } };
-export type AdminEnv = { BOG_MENU_DB?: D1Database; BOG_MENU_ADMIN_TOKEN?: string; BOG_ORDERS_ADMIN_TOKEN?: string; BOG_INTERNAL_PIN?: string };
+export type AdminEnv = { BOG_MENU_DB?: D1Database; BOG_INTERNAL_PIN?: string };
 
 const TERMINAL_STATUSES = new Set<OrderV2Status>(['delivered', 'cancelled']);
 const STATUS_TRANSITIONS: Record<OrderV2Status, OrderV2Status[]> = {
@@ -146,7 +146,9 @@ const parseCookieHeader = (cookieHeader: string | null): Record<string, string> 
   }, {});
 };
 
-const getSessionSecret = (env: AdminEnv): string => (env.BOG_ORDERS_ADMIN_TOKEN || env.BOG_MENU_ADMIN_TOKEN || '').trim();
+const getSessionSecret = (env: AdminEnv): string => (env.BOG_INTERNAL_PIN || '').trim();
+
+export const hasInternalAuthSecret = (env: AdminEnv): boolean => Boolean(getSessionSecret(env));
 
 const getHmacKey = async (secret: string) =>
   crypto.subtle.importKey('raw', textEncoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
@@ -211,11 +213,8 @@ const isSameOriginRequest = (request: Request): boolean => {
 };
 
 export const requireAdminToken = async (request: Request, env: AdminEnv): Promise<Response | null> => {
-  const expectedToken = getSessionSecret(env);
-  if (!expectedToken) return errorResponse(503, 'ADMIN_DISABLED', 'Admin disabled.');
-  const authHeader = request.headers.get('Authorization') || '';
-  const providedToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
-  if (providedToken && safeEqual(providedToken, expectedToken)) return null;
+  const sessionSecret = getSessionSecret(env);
+  if (!sessionSecret) return errorResponse(503, 'AUTH_NOT_CONFIGURED', 'Internal auth is not configured.');
   if (!isSameOriginRequest(request)) return errorResponse(401, 'UNAUTHORIZED', 'Unauthorized.');
   if (await hasValidInternalSession(request, env)) return null;
   return errorResponse(401, 'UNAUTHORIZED', 'Unauthorized.');
