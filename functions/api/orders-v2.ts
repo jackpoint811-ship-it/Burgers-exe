@@ -92,6 +92,7 @@ const validatePayload = (body: Record<string, unknown>, request: Request): Norma
   }
 
   const normalizedItems: NormalizedPayload['items'] = [];
+  const qtyBySku = new Map<string, number>();
   const legacyQtyBySku = new Map<string, number>();
   for (const rawItem of body.items) {
     if (!rawItem || typeof rawItem !== 'object' || Array.isArray(rawItem)) {
@@ -103,10 +104,12 @@ const validatePayload = (body: Record<string, unknown>, request: Request): Norma
     if (!sku || !Number.isInteger(qty) || qty < 1 || qty > 20) {
       return errorResponse(400, 'INVALID_ITEMS', 'SKU y cantidad son requeridos.');
     }
+    const nextSkuQty = (qtyBySku.get(sku) ?? 0) + qty;
+    if (nextSkuQty > 20) return errorResponse(400, 'INVALID_ITEMS', 'Cantidad máxima por SKU excedida.');
+    qtyBySku.set(sku, nextSkuQty);
     const hasCustomizations = Boolean(item.lineKey || item.itemDisplayIndex || item.itemKind || item.removedIngredients || item.extras || item.burgerNote || item.garnish || item.name);
     if (!hasCustomizations) {
       const nextQty = (legacyQtyBySku.get(sku) ?? 0) + qty;
-      if (nextQty > 20) return errorResponse(400, 'INVALID_ITEMS', 'Cantidad máxima por SKU excedida.');
       legacyQtyBySku.set(sku, nextQty);
       continue;
     }
