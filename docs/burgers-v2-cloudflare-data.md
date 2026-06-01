@@ -543,3 +543,29 @@ No-touch V2-12:
 
 - No se modifican `functions/api/**`, migraciones, legacy, Cloudflare legacy apps, Apps Script, Sheets ni `BOG_ACTIVE_ENV`.
 - No se modifica `/api/order` legacy ni `/api/rpc` legacy.
+
+## Fase 1 Public customizations snapshot (2026-05-31)
+
+- `POST /api/orders-v2` acepta clientes existentes con items `{ sku, qty }` y clientes nuevos con customizaciones por item.
+- Las customizaciones se guardan en `order_items_v2.snapshot_json`; no requiere migración ni cambio de schema.
+- Campos operativos por item personalizado:
+  - `sku`, `name`, `qty`
+  - `lineKey` estable
+  - `itemDisplayIndex`
+  - `itemKind`: `burger | combo | garnish | drink | other`
+  - `removedIngredients: string[]`
+  - `extras: Array<{ sku?: string, name: string, price?: number }>`
+  - `burgerNote?: string`
+  - `garnish?: { sku?: string, name: string } | null`
+- El backend sigue validando SKU/disponibilidad y recalculando precio base desde D1 `menu_items.price_cents`.
+- Los extras se persisten como customización operativa. En esta fase no se suman al total porque no hay contrato D1 confiable para precio de extras por unidad en el endpoint público; no se inventan precios.
+- La ubicación Torre GGA/Torre Valcob viaja en `notes` para conservar compatibilidad sin migración; `orderMode` se mantiene solo como campo interno requerido por el contrato actual.
+- No hay integración nueva con pagos reales, WhatsApp API, Apps Script ni Sheets sync.
+
+### Fase 1 correction — customizations validation
+
+- `POST /api/orders-v2` now rejects custom extras or combo garnishes without `sku` as `400 INVALID_CUSTOMIZATIONS`.
+- Extra SKUs are loaded from D1 and must exist, be available, and belong to `category_key='extras'` before being persisted in `snapshot_json`.
+- Garnish SKUs are loaded from D1 and must exist, be available, and belong to `category_key='guarniciones'` before being persisted in `snapshot_json`.
+- Snapshot extras/garnish are rewritten from D1 name/category/price data; client-sent names and prices are not trusted.
+- Extras remain operational customizations in the snapshot and still do not increase totals until a dedicated real pricing contract for extras is configured.

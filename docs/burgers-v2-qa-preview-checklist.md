@@ -565,3 +565,27 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] Review the [Burgers.exe V2 cutover readiness runbook](./burgers-v2-cutover-runbook.md) before any pilot/pre-production traffic movement.
 - [ ] Confirm smoke API, manual UI QA, cutover option, rollback owner, data reconciliation owner, and go/no-go checklist are complete.
 - [ ] Confirm this readiness step does not change runtime, API, schema, apps, functions, migrations, legacy, Apps Script, Sheets, payments, WhatsApp API, Cloudflare legacy apps, or `BOG_ACTIVE_ENV`.
+
+## Fase 1 QA — Public official order flow
+
+- [ ] Public V2 abre con loading inicial brandeado Burgers.exe y no reutiliza el logo como loader repetitivo.
+- [ ] La primera ventana visible después de carga es Menú.
+- [ ] Menú muestra Combos, Hamburguesas, Guarniciones y Bebidas; extras no aparecen como sección de productos principales.
+- [ ] Seleccionar burger abre Builder / Ordenar.
+- [ ] Seleccionar x2 DOUBLE LOAD o x3 TRIPLE STACK genera unidades separadas con `lineKey` distinto.
+- [ ] Cada unidad permite quitar ingredientes reales derivados del producto, mantiene pan bloqueado, extras por burger y nota opcional.
+- [ ] Extra en Burger #1 no modifica Burger #2; nota o ingrediente removido en Burger #3 no modifica las demás.
+- [ ] Si no hay extras reales disponibles, se muestra “Sin extras configurados” sin inventar extras.
+- [ ] Combo obliga guarnición y muestra error inline si se intenta confirmar sin guarnición.
+- [ ] Guarniciones sueltas se agregan desde sección Guarniciones del Menú.
+- [ ] Ticket muestra cada unidad personalizada por separado y permite editar, duplicar y eliminar.
+- [ ] Duplicar crea una unidad independiente editable.
+- [ ] Checkout queda en ventana separada con pasos Ticket, Datos, Ubicación/Pago y Confirmar.
+- [ ] No se puede confirmar sin ticket, nombre/teléfono, ubicación y método de pago.
+- [ ] Ubicación visible solo ofrece Torre GGA y Torre Valcob; no se muestra pickup/delivery al cliente.
+- [ ] Nota general del pedido permanece separada de la nota por burger.
+- [ ] Payload nuevo guarda `lineKey`, `itemDisplayIndex`, `itemKind`, `removedIngredients`, `extras`, `burgerNote` y `garnish` en snapshot JSON.
+- [ ] Payload legado `{ sku, qty }` sigue creando orden.
+- [ ] Backend recalcula precios base desde D1 y no confía en precios finales del frontend.
+- [ ] Confirmar no productos/extras/guarniciones/ubicaciones inventadas.
+- [ ] Confirmar no cambios a Internal V2 salvo tipos compartidos, legacy, `/api/order`, `/api/rpc`, Apps Script, Sheets sync, pagos reales, WhatsApp API ni `BOG_ACTIVE_ENV`.

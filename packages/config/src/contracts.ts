@@ -109,6 +109,16 @@ export type OrderV2PaymentMethod = 'cash' | 'transfer' | 'card' | 'unknown';
 export type OrderV2PaymentStatus = 'pending' | 'paid' | 'cancelled';
 export type OrderV2Source = 'public-v2' | 'internal-v2' | 'seed' | 'import';
 
+export type OrderV2ItemCustomization = {
+  lineKey?: string;
+  itemDisplayIndex?: number;
+  itemKind?: 'burger' | 'combo' | 'garnish' | 'drink' | 'other';
+  removedIngredients?: string[];
+  extras?: Array<{ sku?: string; name: string; price?: number }>;
+  burgerNote?: string;
+  garnish?: { sku?: string; name: string } | null;
+};
+
 export type OrderV2Item = {
   id: string;
   orderId: string;
@@ -158,7 +168,7 @@ export type CreateOrderV2Payload = {
   orderMode: OrderV2Mode;
   paymentMethod?: OrderV2PaymentMethod;
   notes?: string;
-  items: Array<{ sku: string; qty: number }>;
+  items: Array<{ sku: string; qty: number } & OrderV2ItemCustomization>;
   idempotencyKey?: string;
 };
 
