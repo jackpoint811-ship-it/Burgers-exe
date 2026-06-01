@@ -31,6 +31,13 @@ type ExportOrdersV2CsvOptions = {
   limit?: number;
 };
 
+
+const buildSessionFetchInit = (init: RequestInit = {}, token?: string): RequestInit => {
+  const headers = new Headers(init.headers);
+  if (token?.trim()) headers.set('Authorization', `Bearer ${token.trim()}`);
+  return { ...init, credentials: 'include', headers };
+};
+
 const parseJsonEnvelope = async <
   T extends { ok: boolean; error?: { message?: string; code?: string } },
 >(
@@ -60,29 +67,23 @@ const parseJsonEnvelope = async <
 };
 
 export const fetchOrdersV2Admin = async (
-  token: string,
   options: FetchOrdersV2AdminOptions = {},
+  token?: string,
 ) => {
-  const trimmed = token.trim();
-  if (!trimmed) throw new Error("Activa modo admin para cargar órdenes live");
 
   const params = new URLSearchParams();
   params.set("includeTerminal", String(Boolean(options.includeTerminal)));
   if (options.limit) params.set("limit", String(options.limit));
 
-  const res = await fetch(`/api/orders-v2-admin?${params.toString()}`, {
-    headers: { Authorization: `Bearer ${trimmed}` },
-  });
+  const res = await fetch(`/api/orders-v2-admin?${params.toString()}`, buildSessionFetchInit({}, token));
   const envelope = await parseJsonEnvelope<OrdersV2AdminResponse>(res);
   return envelope.data?.orders ?? [];
 };
 
 export const fetchOrdersV2Summary = async (
-  token: string,
   options: FetchOrdersV2SummaryOptions = {},
+  token?: string,
 ) => {
-  const trimmed = token.trim();
-  if (!trimmed) throw new Error("Activa modo admin para cargar cierre");
 
   const params = new URLSearchParams();
   if (options.from?.trim()) params.set("from", options.from.trim());
@@ -97,9 +98,7 @@ export const fetchOrdersV2Summary = async (
   const query = params.toString();
   const res = await fetch(
     `/api/orders-v2-admin/summary${query ? `?${query}` : ""}`,
-    {
-      headers: { Authorization: `Bearer ${trimmed}` },
-    },
+    buildSessionFetchInit({}, token),
   );
   const envelope = await parseJsonEnvelope<OrdersV2SummaryResponse>(res);
   if (!envelope.data)
@@ -108,24 +107,19 @@ export const fetchOrdersV2Summary = async (
 };
 
 export const updateOrderV2Status = async (
-  token: string,
   orderId: string,
   status: OrderV2Status,
   reason?: string,
+  token?: string,
 ) => {
-  const trimmed = token.trim();
-  if (!trimmed) throw new Error("Activa modo admin para operar órdenes live");
 
   const res = await fetch(
     `/api/orders-v2-admin/${encodeURIComponent(orderId)}/status`,
-    {
+    buildSessionFetchInit({
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${trimmed}`,
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status, reason }),
-    },
+    }, token),
   );
   const envelope = await parseJsonEnvelope<UpdateOrderV2StatusResponse>(res);
   if (!envelope.data?.order)
@@ -134,23 +128,18 @@ export const updateOrderV2Status = async (
 };
 
 export const updateKitchenItemV2 = async (
-  token: string,
   orderId: string,
   payload: UpdateKitchenItemPayload,
+  token?: string,
 ) => {
-  const trimmed = token.trim();
-  if (!trimmed) throw new Error("Activa modo admin para operar cocina live");
 
   const res = await fetch(
     `/api/orders-v2-admin/${encodeURIComponent(orderId)}/kitchen-item`,
-    {
+    buildSessionFetchInit({
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${trimmed}`,
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
-    },
+    }, token),
   );
   const envelope = await parseJsonEnvelope<UpdateKitchenItemResponse>(res);
   if (!envelope.data?.order)
@@ -159,12 +148,10 @@ export const updateKitchenItemV2 = async (
 };
 
 export const updateOrderV2Payment = async (
-  token: string,
   orderId: string,
   payload: UpdateOrderV2PaymentPayload,
+  token?: string,
 ) => {
-  const trimmed = token.trim();
-  if (!trimmed) throw new Error("Activa modo admin para operar pagos live");
 
   const body: {
     paymentStatus: OrderV2PaymentStatus;
@@ -176,14 +163,11 @@ export const updateOrderV2Payment = async (
 
   const res = await fetch(
     `/api/orders-v2-admin/${encodeURIComponent(orderId)}/payment`,
-    {
+    buildSessionFetchInit({
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${trimmed}`,
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    },
+    }, token),
   );
   const envelope = await parseJsonEnvelope<UpdateOrderV2PaymentResponse>(res);
   if (!envelope.data?.order)
@@ -192,11 +176,9 @@ export const updateOrderV2Payment = async (
 };
 
 export const exportOrdersV2Csv = async (
-  token: string,
   options: ExportOrdersV2CsvOptions = {},
+  token?: string,
 ) => {
-  const trimmed = token.trim();
-  if (!trimmed) throw new Error("Activa modo admin para exportar CSV");
 
   const params = new URLSearchParams();
   if (typeof options.includeTerminal === "boolean")
@@ -210,9 +192,7 @@ export const exportOrdersV2Csv = async (
   const query = params.toString();
   const res = await fetch(
     `/api/orders-v2-admin/export.csv${query ? `?${query}` : ""}`,
-    {
-      headers: { Authorization: `Bearer ${trimmed}` },
-    },
+    buildSessionFetchInit({}, token),
   );
 
   if (!res.ok) {

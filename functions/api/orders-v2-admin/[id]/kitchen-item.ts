@@ -57,7 +57,7 @@ export const onRequestPatch: PagesFunction<Env> = async ({
 }) => {
   if (!env.BOG_MENU_DB)
     return errorResponse(503, "MISSING_DB", "BOG_MENU_DB no está configurado.");
-  const authError = requireAdminToken(request, env);
+  const authError = await requireAdminToken(request, env);
   if (authError) return authError;
 
   const id = String(params.id ?? "").trim();

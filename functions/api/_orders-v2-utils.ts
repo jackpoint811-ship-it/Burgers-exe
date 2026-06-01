@@ -1,7 +1,7 @@
 import type { OrderV2, OrderV2Event, OrderV2Item, OrderV2Status } from '../../packages/config/src';
 
 export type ErrorEnvelope = { ok: false; error: { code: string; message: string } };
-export type AdminEnv = { BOG_MENU_DB?: D1Database; BOG_MENU_ADMIN_TOKEN?: string; BOG_ORDERS_ADMIN_TOKEN?: string };
+export type AdminEnv = { BOG_MENU_DB?: D1Database; BOG_MENU_ADMIN_TOKEN?: string; BOG_ORDERS_ADMIN_TOKEN?: string; BOG_INTERNAL_PIN?: string };
 
 const TERMINAL_STATUSES = new Set<OrderV2Status>(['delivered', 'cancelled']);
 const STATUS_TRANSITIONS: Record<OrderV2Status, OrderV2Status[]> = {
@@ -117,13 +117,108 @@ const safeEqual = (left: string, right: string): boolean => {
   return result === 0;
 };
 
-export const requireAdminToken = (request: Request, env: AdminEnv): Response | null => {
-  const expectedToken = (env.BOG_ORDERS_ADMIN_TOKEN || env.BOG_MENU_ADMIN_TOKEN || '').trim();
+export const INTERNAL_SESSION_COOKIE = 'bog_internal_session';
+export const INTERNAL_SESSION_MAX_AGE_SECONDS = 60 * 60 * 12;
+
+const textEncoder = new TextEncoder();
+
+const base64UrlEncode = (input: ArrayBuffer | Uint8Array | string): string => {
+  const bytes =
+    typeof input === 'string'
+      ? textEncoder.encode(input)
+      : input instanceof Uint8Array
+        ? input
+        : new Uint8Array(input);
+  let binary = '';
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+};
+
+const parseCookieHeader = (cookieHeader: string | null): Record<string, string> => {
+  if (!cookieHeader) return {};
+  return cookieHeader.split(';').reduce<Record<string, string>>((cookies, part) => {
+    const [rawName, ...rawValue] = part.trim().split('=');
+    if (!rawName) return cookies;
+    cookies[rawName] = rawValue.join('=');
+    return cookies;
+  }, {});
+};
+
+const getSessionSecret = (env: AdminEnv): string => (env.BOG_ORDERS_ADMIN_TOKEN || env.BOG_MENU_ADMIN_TOKEN || '').trim();
+
+const getHmacKey = async (secret: string) =>
+  crypto.subtle.importKey('raw', textEncoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+
+const signSessionPayload = async (payload: string, secret: string): Promise<string> => {
+  const key = await getHmacKey(secret);
+  const signature = await crypto.subtle.sign('HMAC', key, textEncoder.encode(payload));
+  return base64UrlEncode(signature);
+};
+
+export const createInternalSessionValue = async (env: AdminEnv, now = Date.now()): Promise<string | null> => {
+  const secret = getSessionSecret(env);
+  if (!secret) return null;
+  const expiresAt = now + INTERNAL_SESSION_MAX_AGE_SECONDS * 1000;
+  const payload = base64UrlEncode(JSON.stringify({ exp: expiresAt, nonce: crypto.randomUUID() }));
+  const signature = await signSessionPayload(payload, secret);
+  return `${payload}.${signature}`;
+};
+
+export const verifyInternalSessionValue = async (value: string, env: AdminEnv, now = Date.now()): Promise<boolean> => {
+  const secret = getSessionSecret(env);
+  if (!secret) return false;
+  const [payload, signature] = value.split('.');
+  if (!payload || !signature) return false;
+  const expectedSignature = await signSessionPayload(payload, secret);
+  if (!safeEqual(signature, expectedSignature)) return false;
+  try {
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const decoded = atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '='));
+    const parsed = JSON.parse(decoded) as { exp?: unknown };
+    return typeof parsed.exp === 'number' && Number.isFinite(parsed.exp) && parsed.exp > now;
+  } catch {
+    return false;
+  }
+};
+
+export const buildInternalSessionCookie = (request: Request, value: string, maxAge = INTERNAL_SESSION_MAX_AGE_SECONDS): string => {
+  const url = new URL(request.url);
+  const secure = url.protocol === 'https:' ? '; Secure' : '';
+  return `${INTERNAL_SESSION_COOKIE}=${value}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${maxAge}${secure}`;
+};
+
+export const buildExpiredInternalSessionCookie = (request: Request): string => {
+  const url = new URL(request.url);
+  const secure = url.protocol === 'https:' ? '; Secure' : '';
+  return `${INTERNAL_SESSION_COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${secure}`;
+};
+
+export const hasValidInternalSession = async (request: Request, env: AdminEnv): Promise<boolean> => {
+  const session = parseCookieHeader(request.headers.get('Cookie'))[INTERNAL_SESSION_COOKIE];
+  return session ? verifyInternalSessionValue(session, env) : false;
+};
+
+const isSameOriginRequest = (request: Request): boolean => {
+  const origin = request.headers.get('Origin');
+  if (!origin) return true;
+  try {
+    return origin === new URL(request.url).origin;
+  } catch {
+    return false;
+  }
+};
+
+export const requireAdminToken = async (request: Request, env: AdminEnv): Promise<Response | null> => {
+  const expectedToken = getSessionSecret(env);
   if (!expectedToken) return errorResponse(503, 'ADMIN_DISABLED', 'Admin disabled.');
   const authHeader = request.headers.get('Authorization') || '';
   const providedToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
-  if (!providedToken || !safeEqual(providedToken, expectedToken)) return errorResponse(401, 'UNAUTHORIZED', 'Unauthorized.');
-  return null;
+  if (providedToken && safeEqual(providedToken, expectedToken)) return null;
+  if (!isSameOriginRequest(request)) return errorResponse(401, 'UNAUTHORIZED', 'Unauthorized.');
+  if (await hasValidInternalSession(request, env)) return null;
+  return errorResponse(401, 'UNAUTHORIZED', 'Unauthorized.');
 };
 
 export const fetchOrderBundle = async (db: D1Database, orderId: string): Promise<OrderV2 | null> => {

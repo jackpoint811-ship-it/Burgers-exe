@@ -1,7 +1,8 @@
 import { normalizeAssetKey } from '../../../_asset-utils';
 import { mapD1ItemToMenuItem } from '../../../_menu-v2-utils';
+import { requireAdminToken, type AdminEnv } from '../../../_orders-v2-utils';
 
-type Env = { BOG_MENU_DB?: D1Database; BOG_MENU_ADMIN_TOKEN?: string; BOG_ASSETS_BUCKET?: R2Bucket };
+type Env = AdminEnv & { BOG_ASSETS_BUCKET?: R2Bucket };
 
 type MenuItemRow = {
   sku: string;
@@ -29,19 +30,10 @@ const ITEM_SELECT =
 const json = (status: number, payload: unknown) =>
   new Response(JSON.stringify(payload), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
 
-const safeEqual = (left: string, right: string): boolean => {
-  if (left.length !== right.length) return false;
-  let result = 0;
-  for (let i = 0; i < left.length; i += 1) result |= left.charCodeAt(i) ^ right.charCodeAt(i);
-  return result === 0;
-};
-
-const getAuthorizedSku = (env: Env, params: EventContext<Env, string, unknown>['params'], request: Request): { sku: string } | Response => {
-  if (!env.BOG_MENU_ADMIN_TOKEN || !env.BOG_MENU_DB) return json(503, { ok: false, error: 'Admin disabled' });
-
-  const authHeader = request.headers.get('Authorization');
-  const providedToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
-  if (!providedToken || !safeEqual(providedToken, env.BOG_MENU_ADMIN_TOKEN)) return json(401, { ok: false, error: 'Unauthorized' });
+const getAuthorizedSku = async (env: Env, params: EventContext<Env, string, unknown>['params'], request: Request): Promise<{ sku: string } | Response> => {
+  if (!env.BOG_MENU_DB) return json(503, { ok: false, error: 'Admin disabled' });
+  const authError = await requireAdminToken(request, env);
+  if (authError) return authError;
 
   const sku = String(params.sku ?? '').trim();
   if (!sku) return json(400, { ok: false, error: 'Invalid SKU' });
@@ -87,7 +79,7 @@ const deletePreviousMenuAsset = async (bucket: R2Bucket | undefined, previousKey
 };
 
 export const onRequestPost: PagesFunction<Env> = async ({ env, params, request }) => {
-  const auth = getAuthorizedSku(env, params, request);
+  const auth = await getAuthorizedSku(env, params, request);
   if (auth instanceof Response) return auth;
   const db = env.BOG_MENU_DB;
   const bucket = env.BOG_ASSETS_BUCKET;
@@ -143,7 +135,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, params, request }
 };
 
 export const onRequestDelete: PagesFunction<Env> = async ({ env, params, request }) => {
-  const auth = getAuthorizedSku(env, params, request);
+  const auth = await getAuthorizedSku(env, params, request);
   if (auth instanceof Response) return auth;
   const db = env.BOG_MENU_DB;
   if (!db) return json(503, { ok: false, error: 'Admin disabled' });
