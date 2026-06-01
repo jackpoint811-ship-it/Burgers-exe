@@ -569,3 +569,13 @@ No-touch V2-12:
 - Garnish SKUs are loaded from D1 and must exist, be available, and belong to `category_key='guarniciones'` before being persisted in `snapshot_json`.
 - Snapshot extras/garnish are rewritten from D1 name/category/price data; client-sent names and prices are not trusted.
 - Extras remain operational customizations in the snapshot and still do not increase totals until a dedicated real pricing contract for extras is configured.
+
+## Public quest kiosk data contract (2026-06-01)
+
+- Public Order V2 sigue leyendo catálogo únicamente desde `GET /api/menu-v2`: `categories`, `items`, `promos`, `siteConfig`, `updatedAt` y `source`.
+- No se hardcodean productos, precios, extras, guarniciones, promos, concursos ni assets. Las imágenes se resuelven con `imageUrl` seguro o `imageKey` vía `/api/assets-v2` usando el R2 existente (`BOG_ASSETS_BUCKET`).
+- Las promos/concursos de la primera pantalla salen de `menuData.promos`; si no hay promos disponibles, la sección se oculta.
+- Los extras no aparecen en `Menu`; solo se ofrecen como `UPGRADE` dentro de `Workbench` y deben existir como `menu_items.category_key = 'extras'` disponibles en D1.
+- `POST /api/orders-v2` valida cada extra por SKU contra D1, exige categoría `extras` y disponibilidad, normaliza nombre/precio desde D1 y guarda el arreglo normalizado en `snapshot_json`.
+- El backend suma el precio real de extras al `line_total_cents` y al total de la orden desde D1; no confía en precios enviados por el frontend.
+- Las guarniciones incluidas de combo se validan contra D1 como categoría `guarniciones` y se guardan dentro del snapshot del combo. Las guarniciones de `Side Quest` viajan como líneas separadas con su propio SKU/precio.

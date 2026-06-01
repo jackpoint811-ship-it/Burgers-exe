@@ -431,3 +431,16 @@ No cambia en V2-14:
 ### Pendiente futuro
 
 - Fase futura: reducir microcopy/texto innecesario una vez validado el flujo operativo.
+
+## V2 Public quest kiosk shell (2026-06-01)
+
+- Public Order V2 usa una shell pública tipo quest/kiosko con secciones `Menu`, `Main Quest`, `Workbench`, `Side Quest`, `Checkout` y `Success` separadas.
+- La primera pantalla siempre es `Menu`: hero visual Burgers.exe, cards grandes del catálogo real y banners de `promos`/concursos si `/api/menu-v2` los expone como disponibles.
+- No hay tabs Menú/Checkout ni checkout vacío; el header superior solo muestra `Burgers.exe` y el indicador `Ticket: X items · $total`.
+- `Menu` no muestra extras ni agrega productos. Las cards abren un modal informativo accesible con datos reales de D1 y assets existentes vía `imageUrl`, `imageKey` y `/api/assets-v2`.
+- `Main Quest` pregunta si el usuario ordenará `Hamburguesa` o `Combo` y filtra productos reales disponibles por tipo inferido del catálogo.
+- `Workbench` personaliza cada unidad con cantidad `[-] x1 [+]` hasta x3; x2/x3 son unidades separadas, no tamaño. `MOD` significa quitar ingredientes; `UPGRADE` significa extras reales del catálogo. Los combos también permiten MOD/UPGRADE y exigen guarnición incluida por unidad.
+- `Side Quest` solo maneja guarniciones extra opcionales desde D1; si se agregan, viajan como líneas separadas `itemKind="garnish"` con precio propio.
+- `Checkout` solo renderiza con `cart.length > 0`, muestra loadout/ticket, datos cliente, ubicación limitada a Torre GGA/Torre Valcob, pago, total y CTA `EJECUTAR PEDIDO`.
+- `Success` está separado del checkout y `NUEVA QUEST` limpia confirmación, ticket, cliente e idempotencia antes de regresar a `Menu`.
+- La shell conserva enfoque mobile-first, controles táctiles mínimos de 44px, foco visible, modal con `role="dialog"`/`aria-modal` y soporte `prefers-reduced-motion`.

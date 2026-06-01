@@ -721,3 +721,22 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 ## Pendiente futuro de copy
 
 - [ ] Fase futura: reducir microcopy/texto innecesario una vez validado el flujo operativo.
+
+## V2 Public quest kiosk QA (2026-06-01)
+
+- [ ] Abrir Public V2 y confirmar boot: `INITIALIZING BURGERS.EXE...`, `LOADING MENU_ASSETS...`, `MOUNTING WORKBENCH...`, `SYNCING QUEST_FLOW...`, `SYSTEM READY.`
+- [ ] Confirmar que inicia en `Menu`, sin tabs Menú/Checkout, sin estilo visual Cloudflare y sin checkout vacío.
+- [ ] Confirmar que el header solo muestra `Burgers.exe` y `Ticket: X items · $total`.
+- [ ] Confirmar que banners de promos/concursos aparecen en primera pantalla solo si `/api/menu-v2.promos` tiene registros reales disponibles.
+- [ ] Confirmar categorías visibles: Hamburguesas, Combos, Guarniciones y Bebidas; el menú no muestra extras.
+- [ ] Tocar una card del menú y validar modal informativo accesible; no debe agregar producto ni iniciar builder.
+- [ ] Presionar `INICIAR QUEST`, elegir `Hamburguesa`, seleccionar producto real y avanzar a `Workbench`.
+- [ ] Validar cantidad `[-] x1 [+]`, mínimo x1, máximo x3, y que x2/x3 crea unidades separadas editables.
+- [ ] Probar `MOD · Sin cebolla` u otro ingrediente inferido; confirmar que pan no es editable.
+- [ ] Probar `UPGRADE` con extra real; confirmar que aparece solo en Workbench y el total coincide con el backend confirmado.
+- [ ] Probar combo: debe permitir MOD/UPGRADE y bloquear continuar hasta elegir guarnición incluida.
+- [ ] Pasar a `Side Quest`; saltar o agregar guarnición extra y confirmar que entra como línea separada `itemKind="garnish"`.
+- [ ] Confirmar que `Checkout` solo aparece con ticket, muestra loadout, MOD, UPGRADE, nota por burger, combo con guarnición incluida, ubicación Torre GGA/Torre Valcob, pago, total y CTA `EJECUTAR PEDIDO`.
+- [ ] Confirmar pedido y validar `Success` separado con `Pedido recibido`, folio `BX-...`, estado `Nuevo`, total confirmado, ubicación y pago.
+- [ ] Presionar `NUEVA QUEST`; debe limpiar confirmación, cart, customer, idempotency y volver a `Menu` con scroll arriba.
+- [ ] Confirmar no llamadas ni cambios a `/api/order`, `/api/rpc`, Apps Script, Sheets sync, `BOG_ACTIVE_ENV`, WhatsApp ni pasarelas externas.
