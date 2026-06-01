@@ -475,7 +475,6 @@ const UnitEditor = ({
   extras,
   garnishes,
   onChange,
-  onShowGarnishes,
 }: {
   unit: CartEntry;
   index: number;
@@ -483,7 +482,6 @@ const UnitEditor = ({
   extras: MenuItem[];
   garnishes: MenuItem[];
   onChange: (unit: CartEntry) => void;
-  onShowGarnishes?: () => void;
 }) => {
   const ingredients = inferIngredients(item);
   const isBurgerLike = unit.itemKind === "burger" || unit.itemKind === "combo";
@@ -582,40 +580,10 @@ const UnitEditor = ({
           )}
         </div>
       ) : null}
-      {isBurgerLike ? (
+      {unit.itemKind === "combo" ? (
         <div className="builder-block">
-          <h4>
-            {unit.itemKind === "combo"
-              ? "Guarnición obligatoria"
-              : "Guarnición opcional"}
-          </h4>
-          {unit.itemKind === "burger" ? (
-            <>
-              <div className="chip-grid">
-                <button
-                  type="button"
-                  className="chip active"
-                  onClick={() => onChange({ ...unit, garnish: null })}
-                >
-                  Sin guarnición
-                </button>
-                {onShowGarnishes ? (
-                  <button
-                    type="button"
-                    className="chip chip-amber"
-                    onClick={onShowGarnishes}
-                  >
-                    Explorar guarniciones
-                  </button>
-                ) : null}
-              </div>
-              <p className="empty-line">
-                {onShowGarnishes
-                  ? "Si quieres papas/guarnición, se agregará como producto aparte con precio propio. Esta burger normal no guarda guarnición interna."
-                  : "Las guarniciones extra se eligen en el siguiente paso."}
-              </p>
-            </>
-          ) : garnishes.length > 0 ? (
+          <h4>Guarnición obligatoria</h4>
+          {garnishes.length > 0 ? (
             <div className="chip-grid">
               {garnishes.map((garnish) => (
                 <button
@@ -670,7 +638,6 @@ const BuilderDialog = ({
   onConfirm,
   onCancel,
   onCheckout,
-  onShowGarnishes,
 }: {
   draft: BuilderDraft | null;
   extras: MenuItem[];
@@ -682,7 +649,6 @@ const BuilderDialog = ({
   onConfirm: () => void;
   onCancel: () => void;
   onCheckout: () => void;
-  onShowGarnishes: () => void;
 }) => {
   const closeRef = useRef<HTMLButtonElement | null>(null);
   const titleId = "order-builder-title";
@@ -758,7 +724,6 @@ const BuilderDialog = ({
                 extras={extras}
                 garnishes={garnishes}
                 onChange={(next) => onUnitChange(index, next)}
-                onShowGarnishes={onShowGarnishes}
               />
             ))}
           </div>
