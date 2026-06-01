@@ -49,9 +49,8 @@ const normalizeExtras = (value: unknown): ItemCustomization['extras'] => Array.i
   ? value.map((entry) => {
     if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null;
     const raw = entry as Record<string, unknown>;
-    const name = normalizeString(raw.name);
-    if (!name) return null;
     const sku = normalizeString(raw.sku);
+    const name = normalizeString(raw.name);
     const price = Number(raw.price);
     return { ...(sku ? { sku } : {}), name, ...(Number.isFinite(price) && price >= 0 ? { price } : {}) };
   }).filter((entry): entry is NonNullable<typeof entry> => Boolean(entry)).slice(0, 20)
@@ -60,10 +59,8 @@ const normalizeExtras = (value: unknown): ItemCustomization['extras'] => Array.i
 const normalizeGarnish = (value: unknown): ItemCustomization['garnish'] => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const raw = value as Record<string, unknown>;
-  const name = normalizeString(raw.name);
-  if (!name) return null;
   const sku = normalizeString(raw.sku);
-  return { ...(sku ? { sku } : {}), name };
+  return { ...(sku ? { sku } : {}), name: normalizeString(raw.name) };
 };
 
 const normalizeIdempotencyKey = (request: Request, body: Record<string, unknown>) => {
@@ -115,6 +112,11 @@ const validatePayload = (body: Record<string, unknown>, request: Request): Norma
     }
     const itemKind = normalizeString(item.itemKind);
     const burgerNote = normalizeString(item.burgerNote);
+    const extras = normalizeExtras(item.extras);
+    const garnish = normalizeGarnish(item.garnish);
+    if (extras.some((extra) => !extra.sku) || garnish && !garnish.sku) {
+      return errorResponse(400, 'INVALID_CUSTOMIZATIONS', 'Extras y guarniciones deben incluir SKU válido.');
+    }
     normalizedItems.push({
       sku,
       qty,
@@ -123,9 +125,9 @@ const validatePayload = (body: Record<string, unknown>, request: Request): Norma
       itemDisplayIndex: Number.isInteger(Number(item.itemDisplayIndex)) ? Number(item.itemDisplayIndex) : undefined,
       itemKind: ITEM_KINDS.has(itemKind) ? itemKind as ItemCustomization['itemKind'] : 'other',
       removedIngredients: normalizeStringArray(item.removedIngredients),
-      extras: normalizeExtras(item.extras),
+      extras,
       burgerNote: burgerNote.slice(0, 220) || undefined,
-      garnish: normalizeGarnish(item.garnish)
+      garnish
     });
   }
   normalizedItems.unshift(...[...legacyQtyBySku.entries()].map(([sku, qty]) => ({ sku, qty, removedIngredients: [], extras: [], garnish: null })));
@@ -180,13 +182,34 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
       return json(200, { ok: true, data: { order: buildOrderSummary(existingOrder, parsed.idempotencyKey), idempotent: true } });
     }
 
-    const skus = [...new Set(parsed.items.map((item) => item.sku))];
+    const primarySkus = parsed.items.map((item) => item.sku);
+    const customizationSkus = parsed.items.flatMap((item) => [
+      ...item.extras.map((extra) => extra.sku).filter((sku): sku is string => Boolean(sku)),
+      ...(item.garnish?.sku ? [item.garnish.sku] : [])
+    ]);
+    const skus = [...new Set([...primarySkus, ...customizationSkus])];
     const catalogRows = await loadCatalogRows(env.BOG_MENU_DB, skus);
     const catalogBySku = new Map(catalogRows.map((row) => [row.sku, row]));
     for (const item of parsed.items) {
       const catalogItem = catalogBySku.get(item.sku);
       if (!catalogItem || Number(catalogItem.is_available) !== 1) {
         return errorResponse(400, 'ITEM_UNAVAILABLE', 'Uno o más productos no existen o no están disponibles.');
+      }
+      const validExtras = [];
+      for (const extra of item.extras) {
+        const catalogExtra = extra.sku ? catalogBySku.get(extra.sku) : null;
+        if (!catalogExtra || Number(catalogExtra.is_available) !== 1 || catalogExtra.category_key !== 'extras') {
+          return errorResponse(400, 'INVALID_CUSTOMIZATIONS', 'Uno o más extras no existen, no están disponibles o no son extras.');
+        }
+        validExtras.push({ sku: catalogExtra.sku, name: catalogExtra.name, price: Number(catalogExtra.price_cents) / 100 });
+      }
+      item.extras = validExtras;
+      if (item.garnish) {
+        const catalogGarnish = item.garnish.sku ? catalogBySku.get(item.garnish.sku) : null;
+        if (!catalogGarnish || Number(catalogGarnish.is_available) !== 1 || catalogGarnish.category_key !== 'guarniciones') {
+          return errorResponse(400, 'INVALID_CUSTOMIZATIONS', 'La guarnición no existe, no está disponible o no es guarnición.');
+        }
+        item.garnish = { sku: catalogGarnish.sku, name: catalogGarnish.name };
       }
     }
 

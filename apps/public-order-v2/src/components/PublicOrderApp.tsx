@@ -264,7 +264,7 @@ const TicketList = ({ cart, items, onEdit, onDuplicate, onRemove }: { cart: Cart
             {entry.burgerNote ? <li>Nota: {entry.burgerNote}</li> : null}
             {!entry.removedIngredients.length && !entry.extras.length && !entry.garnish && !entry.burgerNote ? <li>Normal</li> : null}
           </ul>
-          <div className='ticket-actions'><button type='button' onClick={() => onEdit(entry.lineKey)}>[ EDITAR ]</button><button type='button' onClick={() => onDuplicate(entry.lineKey)}>[ DUPLICAR ]</button><button type='button' onClick={() => onRemove(entry.lineKey)}>[ ELIMINAR ]</button></div>
+          <div className='ticket-actions'>{entry.itemKind === 'burger' || entry.itemKind === 'combo' ? <button type='button' onClick={() => onEdit(entry.lineKey)}>[ EDITAR ]</button> : null}<button type='button' onClick={() => onDuplicate(entry.lineKey)}>[ DUPLICAR ]</button><button type='button' onClick={() => onRemove(entry.lineKey)}>[ ELIMINAR ]</button></div>
         </article>
       );
     })}

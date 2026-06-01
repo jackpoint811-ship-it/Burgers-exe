@@ -561,3 +561,11 @@ No-touch V2-12:
 - Los extras se persisten como customización operativa. En esta fase no se suman al total porque no hay contrato D1 confiable para precio de extras por unidad en el endpoint público; no se inventan precios.
 - La ubicación Torre GGA/Torre Valcob viaja en `notes` para conservar compatibilidad sin migración; `orderMode` se mantiene solo como campo interno requerido por el contrato actual.
 - No hay integración nueva con pagos reales, WhatsApp API, Apps Script ni Sheets sync.
+
+### Fase 1 correction — customizations validation
+
+- `POST /api/orders-v2` now rejects custom extras or combo garnishes without `sku` as `400 INVALID_CUSTOMIZATIONS`.
+- Extra SKUs are loaded from D1 and must exist, be available, and belong to `category_key='extras'` before being persisted in `snapshot_json`.
+- Garnish SKUs are loaded from D1 and must exist, be available, and belong to `category_key='guarniciones'` before being persisted in `snapshot_json`.
+- Snapshot extras/garnish are rewritten from D1 name/category/price data; client-sent names and prices are not trusted.
+- Extras remain operational customizations in the snapshot and still do not increase totals until a dedicated real pricing contract for extras is configured.
