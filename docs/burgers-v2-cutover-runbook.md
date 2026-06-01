@@ -19,7 +19,7 @@ The following V2 capabilities have been validated before this cutover-readiness 
 - D1 catalog served by `GET /api/menu-v2`.
 - R2 catalog assets served through same-origin asset endpoints backed by `BOG_ASSETS_BUCKET`.
 - Public V2 creates real orders in D1 through `POST /api/orders-v2`.
-- Internal V2 operates live orders from D1 through admin endpoints.
+- Internal V2 operates live orders from D1 through admin endpoints after PIN login.
 - Status flow supports `new -> preparing -> ready -> delivered` and terminal cancellation.
 - Cancellation requires and records an operator reason.
 - Manual payment operations update declared `payment_status` without real payment capture.
@@ -36,20 +36,17 @@ Current preview environment references:
 - Internal preview project: `burgers-exe-internal-v2-preview`.
 - D1 binding: `BOG_MENU_DB`.
 - R2 binding: `BOG_ASSETS_BUCKET`.
-- Admin secrets/tokens:
-  - `BOG_MENU_ADMIN_TOKEN`.
-  - `BOG_ORDERS_ADMIN_TOKEN`.
+- Internal PIN config: `BOG_INTERNAL_PIN`.
 
 Release rule: do not change `BOG_ACTIVE_ENV` without explicit approval from the designated release owner. This runbook prepares cutover; it does not execute cutover or mutate Cloudflare configuration.
 
-## D. Required Cloudflare bindings/secrets checklist
+## D. Required Cloudflare bindings/config checklist
 
 Before any pilot/pre-production cutover window, confirm all of the following:
 
 - [ ] `BOG_MENU_DB` is bound to the correct D1 database for the target preview/pre-production environment.
 - [ ] `BOG_ASSETS_BUCKET` is bound to the correct R2 bucket for catalog assets.
-- [ ] `BOG_MENU_ADMIN_TOKEN` is configured as a secret where menu/admin operations require it.
-- [ ] `BOG_ORDERS_ADMIN_TOKEN` is configured as a secret where order/admin operations require it.
+- [ ] `BOG_INTERNAL_PIN` is configured for Internal V2 PIN login.
 - [ ] Public and internal routes/projects remain separated.
 - [ ] Public V2 preview URL is validated before sharing.
 - [ ] Internal V2 preview URL is validated before staff use.
@@ -58,14 +55,15 @@ Before any pilot/pre-production cutover window, confirm all of the following:
 
 ## E. Pre-cutover smoke test
 
-Use placeholders only. Do not paste real tokens into documentation, tickets, screenshots, or chat logs.
+Use placeholders only. Do not paste real PIN values into documentation, tickets, screenshots, or chat logs.
 
 Set local shell placeholders for the smoke window:
 
 ```bash
 export PUBLIC_V2_URL="<PUBLIC_V2_URL>"
 export INTERNAL_V2_URL="<INTERNAL_V2_URL>"
-# BOG_ORDERS_ADMIN_TOKEN must already exist in the operator shell/session.
+export INTERNAL_PIN="<BOG_INTERNAL_PIN_VALUE_ONLY_IN_LOCAL_SHELL>"
+export BOG_COOKIE_JAR="/tmp/bog-internal-v2-cookies.txt"
 ```
 
 ### 1. GET /api/menu-v2
@@ -95,11 +93,36 @@ Expected result:
 - Response includes order id, folio, status, and backend-confirmed total.
 - Save the returned order id as `<ORDER_ID>` for the next checks.
 
-### 3. GET /api/orders-v2-admin
+### 3. POST /api/internal-v2-auth/login
 
 ```bash
-curl -i "$PUBLIC_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
-  -H "Authorization: Bearer $BOG_ORDERS_ADMIN_TOKEN"
+curl -i -c "$BOG_COOKIE_JAR" -X POST "$INTERNAL_V2_URL/api/internal-v2-auth/login" \
+  -H 'Content-Type: application/json' \
+  --data "{\"pin\":\"$INTERNAL_PIN\"}"
+```
+
+Expected result:
+
+- HTTP 200.
+- Response includes `authenticated: true`.
+- The response sets an HttpOnly `bog_internal_session` cookie.
+- No credential value is returned in JSON.
+
+### 4. GET /api/internal-v2-auth/status
+
+```bash
+curl -i -b "$BOG_COOKIE_JAR" "$INTERNAL_V2_URL/api/internal-v2-auth/status"
+```
+
+Expected result:
+
+- HTTP 200.
+- Response includes `authenticated: true`.
+
+### 5. GET /api/orders-v2-admin
+
+```bash
+curl -i -b "$BOG_COOKIE_JAR" "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10"
 ```
 
 Expected result:
@@ -108,26 +131,23 @@ Expected result:
 - The smoke order appears in the returned list.
 - Items and status/event context are present according to current admin response shape.
 
-### 4. PATCH /api/orders-v2-admin/:id/status
+### 6. PATCH /api/orders-v2-admin/:id/status
 
 ```bash
-curl -i -X PATCH "$PUBLIC_V2_URL/api/orders-v2-admin/<ORDER_ID>/status" \
+curl -i -b "$BOG_COOKIE_JAR" -X PATCH "$INTERNAL_V2_URL/api/orders-v2-admin/<ORDER_ID>/status" \
   -H 'Content-Type: application/json' \
-  -H "Authorization: Bearer $BOG_ORDERS_ADMIN_TOKEN" \
   --data '{"status":"preparing"}'
 ```
 
 Optional continuation if the smoke window allows changing the test order through the full flow:
 
 ```bash
-curl -i -X PATCH "$PUBLIC_V2_URL/api/orders-v2-admin/<ORDER_ID>/status" \
+curl -i -b "$BOG_COOKIE_JAR" -X PATCH "$INTERNAL_V2_URL/api/orders-v2-admin/<ORDER_ID>/status" \
   -H 'Content-Type: application/json' \
-  -H "Authorization: Bearer $BOG_ORDERS_ADMIN_TOKEN" \
   --data '{"status":"ready"}'
 
-curl -i -X PATCH "$PUBLIC_V2_URL/api/orders-v2-admin/<ORDER_ID>/status" \
+curl -i -b "$BOG_COOKIE_JAR" -X PATCH "$INTERNAL_V2_URL/api/orders-v2-admin/<ORDER_ID>/status" \
   -H 'Content-Type: application/json' \
-  -H "Authorization: Bearer $BOG_ORDERS_ADMIN_TOKEN" \
   --data '{"status":"delivered"}'
 ```
 
@@ -136,12 +156,11 @@ Expected result:
 - Each valid transition returns success.
 - Invalid transitions remain rejected by the API.
 
-### 5. PATCH /api/orders-v2-admin/:id/payment
+### 7. PATCH /api/orders-v2-admin/:id/payment
 
 ```bash
-curl -i -X PATCH "$PUBLIC_V2_URL/api/orders-v2-admin/<ORDER_ID>/payment" \
+curl -i -b "$BOG_COOKIE_JAR" -X PATCH "$INTERNAL_V2_URL/api/orders-v2-admin/<ORDER_ID>/payment" \
   -H 'Content-Type: application/json' \
-  -H "Authorization: Bearer $BOG_ORDERS_ADMIN_TOKEN" \
   --data '{"paymentStatus":"paid","notes":"Smoke payment marked manually; no real payment captured."}'
 ```
 
@@ -151,11 +170,10 @@ Expected result:
 - Order payment status changes to `paid` as an operator-declared value.
 - No real payment provider is contacted.
 
-### 6. GET /api/orders-v2-admin/summary
+### 8. GET /api/orders-v2-admin/summary
 
 ```bash
-curl -i "$PUBLIC_V2_URL/api/orders-v2-admin/summary" \
-  -H "Authorization: Bearer $BOG_ORDERS_ADMIN_TOKEN"
+curl -i -b "$BOG_COOKIE_JAR" "$INTERNAL_V2_URL/api/orders-v2-admin/summary"
 ```
 
 Expected result:
@@ -163,11 +181,10 @@ Expected result:
 - HTTP 200.
 - Summary loads from D1 and includes the smoke order according to date/status filters.
 
-### 7. GET /api/orders-v2-admin/export.csv
+### 9. GET /api/orders-v2-admin/export.csv
 
 ```bash
-curl -i "$PUBLIC_V2_URL/api/orders-v2-admin/export.csv" \
-  -H "Authorization: Bearer $BOG_ORDERS_ADMIN_TOKEN"
+curl -i -b "$BOG_COOKIE_JAR" "$INTERNAL_V2_URL/api/orders-v2-admin/export.csv"
 ```
 
 Expected result:
@@ -176,13 +193,25 @@ Expected result:
 - CSV includes V2 order fields needed for manual reconciliation.
 - This CSV is a manual export; it is not automatic Sheets sync.
 
+### 10. POST /api/internal-v2-auth/logout
+
+```bash
+curl -i -b "$BOG_COOKIE_JAR" -c "$BOG_COOKIE_JAR" -X POST "$INTERNAL_V2_URL/api/internal-v2-auth/logout"
+```
+
+Expected result:
+
+- HTTP 200.
+- The Internal session cookie is cleared.
+- A follow-up status check should return unauthenticated.
+
 ## F. Manual UI QA checklist
 
 Run these checks on the actual Public V2 and Internal V2 preview URLs for the target pilot/pre-production window:
 
 - [ ] Public V2 loads the menu.
 - [ ] Public V2 creates a real order.
-- [ ] Internal V2 sees the created order after admin token activation/refresh.
+- [ ] Internal V2 sees the created order after PIN login and refresh.
 - [ ] Status advances `new -> preparing -> ready -> delivered`.
 - [ ] Cancellation asks for a reason before submitting.
 - [ ] History shows the cancellation reason for cancelled orders.
@@ -278,7 +307,7 @@ Pros:
 Cons:
 
 - Highest operational dependency on Internal V2 readiness.
-- Requires staff training and clear token/session handling.
+- Requires staff training and clear PIN/session handling.
 - Any Internal V2 issue can affect kitchen/order operations.
 
 Risk:
@@ -356,7 +385,7 @@ Manual reconciliation workflow:
 - There is no automatic Sheets sync.
 - Export/summary timezone behavior is still UTC/simple and not a full local timezone reporting layer.
 - There is no multi-tenant or multi-branch/sucursal model yet.
-- Internal auth is preview-oriented admin token/sessionStorage handling.
+- Internal auth uses PIN-only login with an HttpOnly session cookie.
 - There is no automatic inventory decrement or stock management.
 
 ## L. Go/no-go checklist
@@ -370,7 +399,7 @@ Do not proceed beyond the selected cutover option unless all applicable items ar
 - [ ] Rollback owner, timing, and URLs are ready.
 - [ ] Operational responsible parties are defined for public orders, kitchen/internal ops, payments, WhatsApp, close, and reconciliation.
 - [ ] Public and internal links are confirmed.
-- [ ] Required tokens/secrets are confirmed without exposing real values.
+- [ ] Required Internal PIN config is confirmed without exposing real values.
 - [ ] D1 backup/export is taken before higher-risk traffic movement.
 - [ ] Legacy routes/apps remain untouched.
 - [ ] `BOG_ACTIVE_ENV` remains unchanged unless an explicit approval record exists.
