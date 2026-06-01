@@ -737,7 +737,7 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] Probar combo: debe permitir MOD/UPGRADE y bloquear continuar hasta elegir guarnición incluida.
 - [ ] Pasar a `Side Quest`; saltar o agregar guarnición extra y confirmar que entra como línea separada `itemKind="garnish"`.
 - [ ] Confirmar que `Checkout` solo aparece con ticket, muestra loadout, MOD, UPGRADE, nota por burger, combo con guarnición incluida, ubicación Torre GGA/Torre Valcob, pago, total y CTA `EJECUTAR PEDIDO`.
-- [ ] Confirmar pedido y validar `Success` separado con `Pedido recibido`, folio `BX-...`, estado `Nuevo`, total confirmado, ubicación y pago.
+- [ ] Confirmar pedido y validar `Success` separado con `Pedido recibido`, folio `BX-...`, estado `Nuevo`, total confirmado, ubicación y pago; no debe aparecer CTA persistente con `0 items · $0`.
 - [ ] Presionar `NUEVA QUEST`; debe limpiar confirmación, cart, customer, idempotency y volver a `Menu` con scroll arriba.
 - [ ] Confirmar no llamadas ni cambios a `/api/order`, `/api/rpc`, Apps Script, Sheets sync, `BOG_ACTIVE_ENV`, WhatsApp ni pasarelas externas.
 - [ ] Confirmar que `Combo` en `Main Quest` solo aparece si existe al menos un combo real disponible en `menuData.items`; si solo hay promo/concurso en `promoCards`, no debe mostrarse como opción ordenable.

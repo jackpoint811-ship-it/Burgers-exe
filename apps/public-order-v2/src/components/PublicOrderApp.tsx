@@ -411,9 +411,9 @@ const Success = ({ order, onCreateAnother }: { order: OrderConfirmation; onCreat
 );
 
 const PersistentCta = ({ section, count, total, disabled, submitting, onClick }: { section: QuestSection; count: number; total: number; disabled?: boolean; submitting?: boolean; onClick: () => void }) => {
-  const label = section === "menu" ? "INICIAR QUEST" : section === "main" || section === "workbench" ? "CONTINUAR" : section === "side" ? "IR A CHECKOUT" : section === "checkout" ? "EJECUTAR PEDIDO" : "NUEVA QUEST";
-  if (section === "checkout" && !count) return null;
-  return <aside className="persistent-cta"><div><span>{section === "success" ? "Quest completa" : "Ticket"}</span><strong>{count} item{count === 1 ? "" : "s"} · {formatCurrency(total)}</strong></div><QuestButton disabled={disabled || submitting} onClick={onClick}>{submitting && section === "checkout" ? "ENVIANDO..." : label}</QuestButton></aside>;
+  if (section === "success" || (section === "checkout" && !count)) return null;
+  const label = section === "menu" ? "INICIAR QUEST" : section === "main" || section === "workbench" ? "CONTINUAR" : section === "side" ? "IR A CHECKOUT" : "EJECUTAR PEDIDO";
+  return <aside className="persistent-cta"><div><span>Ticket</span><strong>{count} item{count === 1 ? "" : "s"} · {formatCurrency(total)}</strong></div><QuestButton disabled={disabled || submitting} onClick={onClick}>{submitting && section === "checkout" ? "ENVIANDO..." : label}</QuestButton></aside>;
 };
 
 export function PublicOrderApp() {
