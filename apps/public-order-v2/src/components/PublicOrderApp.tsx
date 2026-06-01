@@ -4,53 +4,126 @@ import {
   type MenuItem,
   type MenuV2Response,
   type OrderV2Mode,
-  type OrderV2PaymentMethod
-} from '@config/index';
-import { Button, EmptyState } from '@ui/index';
-import { motion, useReducedMotion } from 'framer-motion';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { loadMenuV2, toMockResponse } from '../lib/menu-v2';
-import { CartEntry, TicketItemKind, formatCurrency, getCartCount, getCartTotal } from '../lib/order';
-import { createOrderV2 } from '../lib/orders-v2';
+  type OrderV2PaymentMethod,
+} from "@config/index";
+import { Button, EmptyState } from "@ui/index";
+import { motion, useReducedMotion } from "framer-motion";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { loadMenuV2, toMockResponse } from "../lib/menu-v2";
+import {
+  CartEntry,
+  TicketItemKind,
+  formatCurrency,
+  getCartCount,
+  getCartTotal,
+} from "../lib/order";
+import { createOrderV2 } from "../lib/orders-v2";
 
-type WindowMode = 'MENU' | 'BUILD' | 'CHECKOUT';
-type CustomerDraft = { name: string; phone: string; notes: string; location: '' | 'Torre GGA' | 'Torre Valcob'; paymentMethod: OrderV2PaymentMethod };
-type BuilderDraft = { item: MenuItem; itemKind: TicketItemKind; quantity: 1 | 2 | 3; units: CartEntry[]; error: string | null; editLineKey?: string };
-type OrderConfirmation = NonNullable<CreateOrderV2Response['data']>['order'] & { paymentMethod: OrderV2PaymentMethod; location: CustomerDraft['location'] };
+type WindowMode = "MENU" | "CHECKOUT";
+type CustomerDraft = {
+  name: string;
+  phone: string;
+  notes: string;
+  location: "" | "Torre GGA" | "Torre Valcob";
+  paymentMethod: OrderV2PaymentMethod;
+};
+type BuilderDraft = {
+  item: MenuItem;
+  itemKind: TicketItemKind;
+  quantity: 1 | 2 | 3;
+  units: CartEntry[];
+  error: string | null;
+  editLineKey?: string;
+};
+type OrderConfirmation = NonNullable<CreateOrderV2Response["data"]>["order"] & {
+  paymentMethod: OrderV2PaymentMethod;
+  location: CustomerDraft["location"];
+};
 type DraftSnapshot = { customer: CustomerDraft; items: CartEntry[] };
 
-const IDEMPOTENCY_KEY_STORAGE = 'burgers-v2-order-draft-idempotency-key';
-const IDEMPOTENCY_DRAFT_STORAGE = 'burgers-v2-order-draft-idempotency-fingerprint';
-const PAYMENT_METHODS = new Set<OrderV2PaymentMethod>(['cash', 'transfer', 'card', 'unknown']);
-const LOCATIONS = ['Torre GGA', 'Torre Valcob'] as const;
-const REQUIRED_MENU: Array<{ key: MenuCategory['key']; label: string }> = [
-  { key: 'burgers', label: 'Hamburguesas' },
-  { key: 'extras', label: 'Combos' },
-  { key: 'guarniciones', label: 'Guarniciones' },
-  { key: 'drinks', label: 'Bebidas' }
+const IDEMPOTENCY_KEY_STORAGE = "burgers-v2-order-draft-idempotency-key";
+const IDEMPOTENCY_DRAFT_STORAGE =
+  "burgers-v2-order-draft-idempotency-fingerprint";
+const PAYMENT_METHODS = new Set<OrderV2PaymentMethod>([
+  "cash",
+  "transfer",
+  "card",
+  "unknown",
+]);
+const LOCATIONS = ["Torre GGA", "Torre Valcob"] as const;
+const REQUIRED_MENU: Array<{ key: MenuCategory["key"]; label: string }> = [
+  { key: "burgers", label: "Hamburguesas" },
+  { key: "extras", label: "Combos" },
+  { key: "guarniciones", label: "Guarniciones" },
+  { key: "drinks", label: "Bebidas" },
 ];
-const paymentMethodLabels: Record<OrderV2PaymentMethod, string> = { cash: 'Efectivo', transfer: 'Transferencia', card: 'Tarjeta', unknown: 'Por confirmar' };
-const statusLabels: Record<string, string> = { new: 'Nuevo', preparing: 'En preparación', ready: 'Listo', delivered: 'Entregado', cancelled: 'Cancelado' };
-const createEmptyCustomer = (): CustomerDraft => ({ name: '', phone: '', notes: '', location: '', paymentMethod: 'unknown' });
-const normalizePhoneDigits = (phone: string) => phone.replace(/\D/g, '');
-const orderModeForBackend: OrderV2Mode = 'pickup';
+const paymentMethodLabels: Record<OrderV2PaymentMethod, string> = {
+  cash: "Efectivo",
+  transfer: "Transferencia",
+  card: "Tarjeta",
+  unknown: "Por confirmar",
+};
+const statusLabels: Record<string, string> = {
+  new: "Nuevo",
+  preparing: "En preparación",
+  ready: "Listo",
+  delivered: "Entregado",
+  cancelled: "Cancelado",
+};
+const createEmptyCustomer = (): CustomerDraft => ({
+  name: "",
+  phone: "",
+  notes: "",
+  location: "",
+  paymentMethod: "unknown",
+});
+const normalizePhoneDigits = (phone: string) => phone.replace(/\D/g, "");
+const orderModeForBackend: OrderV2Mode = "pickup";
 
 const createId = (prefix: string) => {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return `${prefix}-${crypto.randomUUID()}`;
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto)
+    return `${prefix}-${crypto.randomUUID()}`;
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 };
 
-const createDraftFingerprint = (snapshot: DraftSnapshot) => JSON.stringify({
-  customer: { name: snapshot.customer.name.trim(), phone: normalizePhoneDigits(snapshot.customer.phone), notes: snapshot.customer.notes.trim(), location: snapshot.customer.location, paymentMethod: snapshot.customer.paymentMethod },
-  items: snapshot.items.map(({ lineKey, sku, itemDisplayIndex, itemKind, removedIngredients, extras, burgerNote, garnish }) => ({ lineKey, sku, itemDisplayIndex, itemKind, removedIngredients, extras, burgerNote, garnish }))
-});
+const createDraftFingerprint = (snapshot: DraftSnapshot) =>
+  JSON.stringify({
+    customer: {
+      name: snapshot.customer.name.trim(),
+      phone: normalizePhoneDigits(snapshot.customer.phone),
+      notes: snapshot.customer.notes.trim(),
+      location: snapshot.customer.location,
+      paymentMethod: snapshot.customer.paymentMethod,
+    },
+    items: snapshot.items.map(
+      ({
+        lineKey,
+        sku,
+        itemDisplayIndex,
+        itemKind,
+        removedIngredients,
+        extras,
+        burgerNote,
+        garnish,
+      }) => ({
+        lineKey,
+        sku,
+        itemDisplayIndex,
+        itemKind,
+        removedIngredients,
+        extras,
+        burgerNote,
+        garnish,
+      }),
+    ),
+  });
 
 const getDraftIdempotencyKey = (snapshot: DraftSnapshot) => {
   const fingerprint = createDraftFingerprint(snapshot);
   const storedFingerprint = sessionStorage.getItem(IDEMPOTENCY_DRAFT_STORAGE);
   const storedKey = sessionStorage.getItem(IDEMPOTENCY_KEY_STORAGE);
   if (storedFingerprint === fingerprint && storedKey) return storedKey;
-  const nextKey = createId('public-v2');
+  const nextKey = createId("public-v2");
   sessionStorage.setItem(IDEMPOTENCY_DRAFT_STORAGE, fingerprint);
   sessionStorage.setItem(IDEMPOTENCY_KEY_STORAGE, nextKey);
   return nextKey;
@@ -61,127 +134,321 @@ const clearDraftIdempotencyKey = () => {
   sessionStorage.removeItem(IDEMPOTENCY_KEY_STORAGE);
 };
 
-const resolveAssetUrl = (imageUrl?: string, imageKey?: string): string | undefined => {
+const resolveAssetUrl = (
+  imageUrl?: string,
+  imageKey?: string,
+): string | undefined => {
   const trimmedUrl = imageUrl?.trim();
-  if (trimmedUrl && ((trimmedUrl.startsWith('/') && !trimmedUrl.startsWith('//')) || trimmedUrl.startsWith('https://'))) return trimmedUrl;
+  if (
+    trimmedUrl &&
+    ((trimmedUrl.startsWith("/") && !trimmedUrl.startsWith("//")) ||
+      trimmedUrl.startsWith("https://"))
+  )
+    return trimmedUrl;
   const trimmedKey = imageKey?.trim();
   if (!trimmedKey) return undefined;
-  return `/api/assets-v2/${trimmedKey.split('/').map((segment) => encodeURIComponent(segment)).join('/')}`;
+  return `/api/assets-v2/${trimmedKey
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/")}`;
 };
 
 const inferItemKind = (item: MenuItem): TicketItemKind => {
-  const seed = `${item.category} ${item.name} ${item.tags.join(' ')}`.toLowerCase();
-  if (seed.includes('combo')) return 'combo';
-  if (item.category === 'burgers') return 'burger';
-  if (item.category === 'guarniciones') return 'garnish';
-  if (item.category === 'drinks') return 'drink';
-  return 'other';
+  const seed =
+    `${item.category} ${item.name} ${item.tags.join(" ")}`.toLowerCase();
+  if (seed.includes("combo")) return "combo";
+  if (item.category === "burgers") return "burger";
+  if (item.category === "guarniciones") return "garnish";
+  if (item.category === "drinks") return "drink";
+  return "other";
 };
 
 const inferIngredients = (item: MenuItem) => {
-  const stop = new Set(['burger', 'burgers', 'smash', 'signature', 'spicy', 'combo', 'hot', 'best seller']);
+  const stop = new Set([
+    "burger",
+    "burgers",
+    "smash",
+    "signature",
+    "spicy",
+    "combo",
+    "hot",
+    "best seller",
+  ]);
   return item.description
-    .replace(/[.]/g, '')
+    .replace(/[.]/g, "")
     .split(/,|\+| y | con /i)
     .map((part) => part.trim())
-    .filter((part) => part.length > 2 && !/\bpan\b/i.test(part) && !stop.has(part.toLowerCase()));
+    .filter(
+      (part) =>
+        part.length > 2 &&
+        !/\bpan\b/i.test(part) &&
+        !stop.has(part.toLowerCase()),
+    );
 };
 
-const makeUnit = (item: MenuItem, itemKind: TicketItemKind, index: number, source?: Partial<CartEntry>): CartEntry => ({
+const makeUnit = (
+  item: MenuItem,
+  itemKind: TicketItemKind,
+  index: number,
+  source?: Partial<CartEntry>,
+): CartEntry => ({
   sku: item.sku,
   name: item.name,
   qty: 1,
-  lineKey: source?.lineKey ?? createId('line'),
+  lineKey: source?.lineKey ?? createId("line"),
   itemDisplayIndex: index,
   itemKind,
   removedIngredients: [...(source?.removedIngredients ?? [])],
   extras: [...(source?.extras ?? [])],
-  burgerNote: source?.burgerNote ?? '',
-  garnish: source?.garnish ?? null
+  burgerNote: source?.burgerNote ?? "",
+  garnish: source?.garnish ?? null,
 });
 
 const isPrimaryBuilderItem = (item: MenuItem) => {
   const kind = inferItemKind(item);
-  return kind === 'burger' || kind === 'combo';
+  return kind === "burger" || kind === "combo";
 };
 
-const validateCheckout = (customer: CustomerDraft, cart: CartEntry[], items: MenuItem[]) => {
-  if (cart.length === 0) return 'Agrega al menos un producto al ticket.';
-  if (customer.name.trim().length < 2) return 'Escribe tu nombre con al menos 2 caracteres.';
-  if (normalizePhoneDigits(customer.phone).length < 10) return 'Escribe un teléfono válido con al menos 10 dígitos.';
-  if (!customer.location) return 'Elige Torre GGA o Torre Valcob.';
-  if (!PAYMENT_METHODS.has(customer.paymentMethod) || customer.paymentMethod === 'unknown') return 'Elige un método de pago.';
-  if (customer.notes.trim().length > 500) return 'La nota general no puede superar 500 caracteres.';
-  const unavailable = cart.find((entry) => !items.find((item) => item.sku === entry.sku && item.isAvailable));
-  if (unavailable) return 'Uno de los productos ya no está disponible. Actualiza el ticket antes de enviar.';
+const validateCheckout = (
+  customer: CustomerDraft,
+  cart: CartEntry[],
+  items: MenuItem[],
+) => {
+  if (cart.length === 0) return "Agrega al menos un producto al ticket.";
+  if (customer.name.trim().length < 2)
+    return "Escribe tu nombre con al menos 2 caracteres.";
+  if (normalizePhoneDigits(customer.phone).length < 10)
+    return "Escribe un teléfono válido con al menos 10 dígitos.";
+  if (!customer.location) return "Elige Torre GGA o Torre Valcob.";
+  if (
+    !PAYMENT_METHODS.has(customer.paymentMethod) ||
+    customer.paymentMethod === "unknown"
+  )
+    return "Elige un método de pago.";
+  if (customer.notes.trim().length > 500)
+    return "La nota general no puede superar 500 caracteres.";
+  const unavailable = cart.find(
+    (entry) =>
+      !items.find((item) => item.sku === entry.sku && item.isAvailable),
+  );
+  if (unavailable)
+    return "Uno de los productos ya no está disponible. Actualiza el ticket antes de enviar.";
   return null;
 };
 
-const TerminalButton = ({ children, className = '', ...props }: React.ComponentProps<typeof Button>) => <Button {...props} className={`terminal-button ${className}`}>{children}</Button>;
+const TerminalButton = ({
+  children,
+  className = "",
+  ...props
+}: React.ComponentProps<typeof Button>) => (
+  <Button {...props} className={`terminal-button ${className}`}>
+    {children}
+  </Button>
+);
 
-const LoadingOverlay = ({ loading }: { loading: boolean }) => loading ? (
-  <div className='boot-overlay' role='status' aria-live='polite'>
-    <div className='boot-window'>
-      <p className='terminal-path'>C:\\BURGERS.EXE</p>
-      <h1>Burgers.exe</h1>
-      <p className='boot-status'>LOADING MENU_KERNEL...</p>
-      <div className='boot-bar'><span /></div>
-    </div>
-  </div>
-) : null;
-
-const AppChrome = ({ current, count, total, onNavigate }: { current: WindowMode; count: number; total: number; onNavigate: (mode: WindowMode) => void }) => (
-  <header className='terminal-window terminal-hero'>
-    <p className='terminal-path'>C:\\BURGERS.EXE</p>
-    <div className='hero-grid'>
-      <div>
-        <p className='status-line'>RUN / PUBLIC_ORDER_V2</p>
+const LoadingOverlay = ({ loading }: { loading: boolean }) =>
+  loading ? (
+    <div className="boot-overlay" role="status" aria-live="polite">
+      <div className="boot-window">
+        <p className="terminal-path">Menú oficial</p>
         <h1>Burgers.exe</h1>
-        <p className='hero-copy'>Menú oficial por ventanas: elige, construye cada burger y confirma tu ticket.</p>
+        <p className="boot-status">Preparando tu experiencia...</p>
+        <div className="boot-bar">
+          <span />
+        </div>
       </div>
-      <div className='ticket-chip'>
-        <span>READY / TICKET</span>
-        <strong>{count} item{count === 1 ? '' : 's'}</strong>
+    </div>
+  ) : null;
+
+const AppChrome = ({
+  current,
+  count,
+  total,
+  onNavigate,
+}: {
+  current: WindowMode;
+  count: number;
+  total: number;
+  onNavigate: (mode: WindowMode) => void;
+}) => (
+  <header className="terminal-window terminal-hero">
+    <p className="terminal-path">Burgers.exe · Menú oficial</p>
+    <div className="hero-grid">
+      <div>
+        <p className="status-line">Dark kitchen · gamer premium</p>
+        <h1>Burgers.exe</h1>
+        <p className="hero-copy">
+          Elige tu burger, personaliza cada unidad y confirma tu ticket en
+          minutos.
+        </p>
+      </div>
+      <div className="ticket-chip">
+        <span>Ticket actual</span>
+        <strong>
+          {count} item{count === 1 ? "" : "s"}
+        </strong>
         <em>{formatCurrency(total)}</em>
       </div>
     </div>
-    <nav className='window-tabs' aria-label='Ventanas del pedido'>
-      {(['MENU', 'BUILD', 'CHECKOUT'] as WindowMode[]).map((mode) => <button key={mode} type='button' className={current === mode ? 'active' : ''} onClick={() => onNavigate(mode)}>[ {mode === 'BUILD' ? 'BUILD' : mode} ]</button>)}
+    <nav className="window-tabs" aria-label="Flujo del pedido">
+      <button
+        type="button"
+        className={current === "MENU" ? "active" : ""}
+        onClick={() => onNavigate("MENU")}
+      >
+        Menú
+      </button>
+      <button
+        type="button"
+        className={current === "CHECKOUT" ? "active" : ""}
+        onClick={() => onNavigate("CHECKOUT")}
+        disabled={!count}
+      >
+        Checkout
+      </button>
     </nav>
   </header>
 );
 
-const MenuCard = ({ item, onSelect, reduce }: { item: MenuItem; onSelect: (item: MenuItem) => void; reduce: boolean }) => {
+const MenuCard = ({
+  item,
+  onSelect,
+  reduce,
+}: {
+  item: MenuItem;
+  onSelect: (item: MenuItem) => void;
+  reduce: boolean;
+}) => {
   const src = resolveAssetUrl(item.imageUrl, item.imageKey);
   const kind = inferItemKind(item);
   return (
-    <motion.article whileTap={reduce ? undefined : { scale: 0.98 }} className='menu-card'>
-      <div className='menu-visual'>{src ? <img src={src} alt={item.name} loading='lazy' onError={(event) => { event.currentTarget.style.display = 'none'; }} /> : <span>{item.name}</span>}</div>
-      <div className='menu-card-body'>
-        <p className='status-line'>{kind.toUpperCase()} / READY</p>
+    <motion.article
+      whileTap={reduce ? undefined : { scale: 0.98 }}
+      className="menu-card"
+    >
+      <div className="menu-visual">
+        {src ? (
+          <img
+            src={src}
+            alt={item.name}
+            loading="lazy"
+            onError={(event) => {
+              event.currentTarget.style.display = "none";
+            }}
+          />
+        ) : (
+          <span>{item.name}</span>
+        )}
+      </div>
+      <div className="menu-card-body">
+        <p className="status-line">
+          {kind === "combo" ? "Combo" : item.category}
+        </p>
         <h3>{item.name}</h3>
         <p>{item.description}</p>
-        <div className='card-footer'><strong>{formatCurrency(item.price)}</strong><TerminalButton disabled={!item.isAvailable} onClick={() => onSelect(item)}>{item.isAvailable ? (isPrimaryBuilderItem(item) ? '[ ORDENAR ]' : '[ AGREGAR ]') : '[ AGOTADO ]'}</TerminalButton></div>
+        <div className="card-footer">
+          <strong>{formatCurrency(item.price)}</strong>
+          <TerminalButton
+            disabled={!item.isAvailable}
+            onClick={() => onSelect(item)}
+          >
+            {item.isAvailable
+              ? isPrimaryBuilderItem(item)
+                ? "Ordenar"
+                : "Agregar"
+              : "Agotado"}
+          </TerminalButton>
+        </div>
       </div>
     </motion.article>
   );
 };
 
-const MenuWindow = ({ categories, items, cartCount, onSelect, onCheckout, reduce }: { categories: MenuV2Response['categories']; items: MenuItem[]; cartCount: number; onSelect: (item: MenuItem) => void; onCheckout: () => void; reduce: boolean }) => {
-  const comboItems = items.filter((item) => inferItemKind(item) === 'combo');
-  const byKey = (key: MenuCategory['key']) => items.filter((item) => item.category === key && key !== 'extras');
-  const hasCategory = (key: MenuCategory['key']) => categories.some((category) => category.key === key);
+const MenuWindow = ({
+  categories,
+  items,
+  cartCount,
+  builder,
+  extras,
+  garnishes,
+  onSelect,
+  onCheckout,
+  onQuantity,
+  onUnitChange,
+  onConfirm,
+  onCancel,
+  reduce,
+}: {
+  categories: MenuV2Response["categories"];
+  items: MenuItem[];
+  cartCount: number;
+  builder: BuilderDraft | null;
+  extras: MenuItem[];
+  garnishes: MenuItem[];
+  onSelect: (item: MenuItem) => void;
+  onCheckout: () => void;
+  onQuantity: (qty: 1 | 2 | 3) => void;
+  onUnitChange: (index: number, unit: CartEntry) => void;
+  onConfirm: () => void;
+  onCancel: () => void;
+  reduce: boolean;
+}) => {
+  const comboItems = items.filter((item) => inferItemKind(item) === "combo");
+  const byKey = (key: MenuCategory["key"]) =>
+    items.filter((item) => item.category === key && key !== "extras");
+  const hasCategory = (key: MenuCategory["key"]) =>
+    categories.some((category) => category.key === key);
   return (
-    <section className='terminal-window flow-window' id='menu'>
-      <div className='section-title'><span>WINDOW 01</span><h2>Menú</h2><p>Extras e ingredientes se configuran dentro del builder de cada burger.</p></div>
-      {cartCount > 0 ? <TerminalButton className='secondary ticket-access' onClick={onCheckout}>[ VER TICKET / {cartCount} ]</TerminalButton> : null}
+    <section className="terminal-window flow-window" id="menu">
+      <div className="section-title">
+        <span>Menú → Ordenar → Checkout</span>
+        <h2>Menú</h2>
+        <p>
+          Personaliza ingredientes, extras y guarnición al ordenar cada burger.
+        </p>
+      </div>
+      {cartCount > 0 ? (
+        <TerminalButton
+          className="secondary ticket-access"
+          onClick={onCheckout}
+        >
+          Ver ticket · {cartCount}
+        </TerminalButton>
+      ) : null}
+      {builder ? (
+        <BuilderWindow
+          draft={builder}
+          extras={extras}
+          garnishes={garnishes}
+          onQuantity={onQuantity}
+          onUnitChange={onUnitChange}
+          onConfirm={onConfirm}
+          onCancel={onCancel}
+        />
+      ) : null}
       {REQUIRED_MENU.map(({ key, label }) => {
-        const list = key === 'extras' ? comboItems : byKey(key);
-        if (!hasCategory(key) && key !== 'extras') return null;
+        const list = key === "extras" ? comboItems : byKey(key);
+        if (!hasCategory(key) && key !== "extras") return null;
         return (
-          <div className='menu-category' key={key}>
+          <div className="menu-category" key={key}>
             <h3>{label}</h3>
-            {list.length > 0 ? <div className='menu-grid'>{list.map((item) => <MenuCard key={item.sku} item={item} onSelect={onSelect} reduce={reduce} />)}</div> : <EmptyState title={`${label}: sin productos configurados`} description='El catálogo real no expone productos disponibles para esta sección.' />}
+            {list.length > 0 ? (
+              <div className="menu-grid">
+                {list.map((item) => (
+                  <MenuCard
+                    key={item.sku}
+                    item={item}
+                    onSelect={onSelect}
+                    reduce={reduce}
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                title={`${label}: sin productos configurados`}
+                description="El catálogo real no expone productos disponibles para esta sección."
+              />
+            )}
           </div>
         );
       })}
@@ -189,152 +456,598 @@ const MenuWindow = ({ categories, items, cartCount, onSelect, onCheckout, reduce
   );
 };
 
-const QuantitySelector = ({ value, onChange }: { value: 1 | 2 | 3; onChange: (qty: 1 | 2 | 3) => void }) => (
-  <div className='quantity-modes' role='group' aria-label='Cantidad por tipo de burger'>
-    {([{ qty: 1, label: 'x1 RUN' }, { qty: 2, label: 'x2 DOUBLE LOAD' }, { qty: 3, label: 'x3 TRIPLE STACK' }] as const).map((option) => <button key={option.qty} type='button' className={`q${option.qty} ${value === option.qty ? 'active' : ''}`} onClick={() => onChange(option.qty)}>{option.label}</button>)}
+const QuantitySelector = ({
+  value,
+  onChange,
+}: {
+  value: 1 | 2 | 3;
+  onChange: (qty: 1 | 2 | 3) => void;
+}) => (
+  <div
+    className="quantity-modes"
+    role="group"
+    aria-label="Cantidad por tipo de burger"
+  >
+    {(
+      [
+        { qty: 1, label: "x1 Clásica" },
+        { qty: 2, label: "x2 Doble" },
+        { qty: 3, label: "x3 Triple" },
+      ] as const
+    ).map((option) => (
+      <button
+        key={option.qty}
+        type="button"
+        className={`q${option.qty} ${value === option.qty ? "active" : ""}`}
+        onClick={() => onChange(option.qty)}
+      >
+        {option.label}
+      </button>
+    ))}
   </div>
 );
 
-const UnitEditor = ({ unit, index, item, extras, garnishes, onChange }: { unit: CartEntry; index: number; item: MenuItem; extras: MenuItem[]; garnishes: MenuItem[]; onChange: (unit: CartEntry) => void }) => {
+const UnitEditor = ({
+  unit,
+  index,
+  item,
+  extras,
+  garnishes,
+  onChange,
+}: {
+  unit: CartEntry;
+  index: number;
+  item: MenuItem;
+  extras: MenuItem[];
+  garnishes: MenuItem[];
+  onChange: (unit: CartEntry) => void;
+}) => {
   const ingredients = inferIngredients(item);
-  const isBurgerLike = unit.itemKind === 'burger' || unit.itemKind === 'combo';
+  const isBurgerLike = unit.itemKind === "burger" || unit.itemKind === "combo";
   return (
-    <article className='unit-editor'>
-      <div className='unit-header'><h3>{unit.name} #{index + 1}</h3><span>{unit.itemKind.toUpperCase()}</span></div>
-      {isBurgerLike ? <p className='locked-pan'>PAN: LOCKED / no editable</p> : null}
+    <article className="unit-editor">
+      <div className="unit-header">
+        <h3>
+          {unit.name} #{index + 1}
+        </h3>
+        <span>{unit.itemKind === "combo" ? "Combo" : "Burger"}</span>
+      </div>
       {isBurgerLike ? (
-        <div className='builder-block'>
+        <p className="locked-pan">Pan incluido · no editable</p>
+      ) : null}
+      {isBurgerLike ? (
+        <div className="builder-block">
           <h4>Quitar ingredientes</h4>
-          {ingredients.length > 0 ? <div className='chip-grid'>{ingredients.map((ingredient) => {
-            const active = unit.removedIngredients.includes(ingredient);
-            return <button type='button' key={ingredient} className={active ? 'chip active' : 'chip'} onClick={() => onChange({ ...unit, removedIngredients: active ? unit.removedIngredients.filter((entry) => entry !== ingredient) : [...unit.removedIngredients, ingredient] })}>{active ? 'SIN ' : ''}{ingredient}</button>;
-          })}</div> : <p className='empty-line'>Sin ingredientes editables configurados para esta burger.</p>}
+          {ingredients.length > 0 ? (
+            <div className="chip-grid">
+              {ingredients.map((ingredient) => {
+                const active = unit.removedIngredients.includes(ingredient);
+                return (
+                  <button
+                    type="button"
+                    key={ingredient}
+                    className={active ? "chip active" : "chip"}
+                    onClick={() =>
+                      onChange({
+                        ...unit,
+                        removedIngredients: active
+                          ? unit.removedIngredients.filter(
+                              (entry) => entry !== ingredient,
+                            )
+                          : [...unit.removedIngredients, ingredient],
+                      })
+                    }
+                  >
+                    {active ? "SIN " : ""}
+                    {ingredient}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="empty-line">
+              Sin ingredientes editables configurados para esta burger.
+            </p>
+          )}
         </div>
       ) : null}
       {isBurgerLike ? (
-        <div className='builder-block'>
+        <div className="builder-block">
           <h4>Extras por burger</h4>
-          {extras.length > 0 ? <div className='chip-grid'>{extras.map((extra) => {
-            const active = unit.extras.some((entry) => entry.sku === extra.sku);
-            return <button type='button' key={extra.sku} className={active ? 'chip active' : 'chip'} onClick={() => onChange({ ...unit, extras: active ? unit.extras.filter((entry) => entry.sku !== extra.sku) : [...unit.extras, { sku: extra.sku, name: extra.name, price: extra.price }] })}>{extra.name}</button>;
-          })}</div> : <p className='empty-line'>Sin extras configurados.</p>}
+          {extras.length > 0 ? (
+            <div className="chip-grid">
+              {extras.map((extra) => {
+                const active = unit.extras.some(
+                  (entry) => entry.sku === extra.sku,
+                );
+                return (
+                  <button
+                    type="button"
+                    key={extra.sku}
+                    className={active ? "chip active" : "chip"}
+                    onClick={() =>
+                      onChange({
+                        ...unit,
+                        extras: active
+                          ? unit.extras.filter(
+                              (entry) => entry.sku !== extra.sku,
+                            )
+                          : [
+                              ...unit.extras,
+                              {
+                                sku: extra.sku,
+                                name: extra.name,
+                                price: extra.price,
+                              },
+                            ],
+                      })
+                    }
+                  >
+                    {extra.name}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="empty-line">Sin extras configurados.</p>
+          )}
         </div>
       ) : null}
-      {unit.itemKind === 'combo' ? (
-        <div className='builder-block'>
-          <h4>Guarnición obligatoria</h4>
-          {garnishes.length > 0 ? <div className='chip-grid'>{garnishes.map((garnish) => <button type='button' key={garnish.sku} className={unit.garnish?.sku === garnish.sku ? 'chip active' : 'chip'} onClick={() => onChange({ ...unit, garnish: { sku: garnish.sku, name: garnish.name } })}>{garnish.name}</button>)}</div> : <p className='empty-line error'>No hay guarniciones configuradas en el catálogo real.</p>}
+      {isBurgerLike ? (
+        <div className="builder-block">
+          <h4>
+            {unit.itemKind === "combo"
+              ? "Guarnición obligatoria"
+              : "Guarnición opcional"}
+          </h4>
+          {garnishes.length > 0 ? (
+            <div className="chip-grid">
+              {unit.itemKind === "burger" ? (
+                <button
+                  type="button"
+                  className={!unit.garnish ? "chip active" : "chip"}
+                  onClick={() => onChange({ ...unit, garnish: null })}
+                >
+                  Sin guarnición
+                </button>
+              ) : null}
+              {garnishes.map((garnish) => (
+                <button
+                  type="button"
+                  key={garnish.sku}
+                  className={
+                    unit.garnish?.sku === garnish.sku ? "chip active" : "chip"
+                  }
+                  onClick={() =>
+                    onChange({
+                      ...unit,
+                      garnish: { sku: garnish.sku, name: garnish.name },
+                    })
+                  }
+                >
+                  {garnish.name}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="empty-line error">
+              No hay guarniciones configuradas en el catálogo real.
+            </p>
+          )}
         </div>
       ) : null}
-      {isBurgerLike ? <label className='terminal-label'>Nota por burger opcional<textarea maxLength={220} value={unit.burgerNote ?? ''} onChange={(event) => onChange({ ...unit, burgerNote: event.target.value })} placeholder='Ej. bien cocida' /></label> : null}
+      {isBurgerLike ? (
+        <label className="terminal-label">
+          Nota por burger opcional
+          <textarea
+            maxLength={220}
+            value={unit.burgerNote ?? ""}
+            onChange={(event) =>
+              onChange({ ...unit, burgerNote: event.target.value })
+            }
+            placeholder="Ej. bien cocida"
+          />
+        </label>
+      ) : null}
     </article>
   );
 };
 
-const BuilderWindow = ({ draft, extras, garnishes, onQuantity, onUnitChange, onConfirm, onCancel }: { draft: BuilderDraft | null; extras: MenuItem[]; garnishes: MenuItem[]; onQuantity: (qty: 1 | 2 | 3) => void; onUnitChange: (index: number, unit: CartEntry) => void; onConfirm: () => void; onCancel: () => void }) => (
-  <section className='terminal-window flow-window'>
-    <div className='section-title'><span>WINDOW 02</span><h2>Builder / Ordenar</h2><p>Cada unidad queda separada para cocina y ticket.</p></div>
-    {!draft ? <EmptyState title='Selecciona una burger o combo' description='Inicia desde Menú para abrir el builder.' /> : (
-      <div className='builder-layout'>
+const BuilderWindow = ({
+  draft,
+  extras,
+  garnishes,
+  onQuantity,
+  onUnitChange,
+  onConfirm,
+  onCancel,
+}: {
+  draft: BuilderDraft | null;
+  extras: MenuItem[];
+  garnishes: MenuItem[];
+  onQuantity: (qty: 1 | 2 | 3) => void;
+  onUnitChange: (index: number, unit: CartEntry) => void;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) => (
+  <section className="order-panel">
+    <div className="section-title">
+      <span>Ordenar</span>
+      <h2>Personaliza tu burger</h2>
+      <p>Cada unidad queda separada para cocina y ticket.</p>
+    </div>
+    {!draft ? (
+      <EmptyState
+        title="Selecciona una burger o combo"
+        description="Inicia desde Menú para personalizar tu orden."
+      />
+    ) : (
+      <div className="builder-layout">
         <div>
-          <p className='status-line'>BUILD / {draft.itemKind.toUpperCase()}</p>
-          <h3 className='builder-title'>{draft.item.name}</h3>
-          <p className='muted'>{draft.item.description}</p>
-          {!draft.editLineKey ? <QuantitySelector value={draft.quantity} onChange={onQuantity} /> : null}
+          <p className="status-line">
+            {draft.itemKind === "combo"
+              ? "Combo con guarnición"
+              : "Burger personalizada"}
+          </p>
+          <h3 className="builder-title">{draft.item.name}</h3>
+          <p className="muted">{draft.item.description}</p>
+          {!draft.editLineKey ? (
+            <QuantitySelector value={draft.quantity} onChange={onQuantity} />
+          ) : null}
         </div>
-        <div className='unit-stack'>{draft.units.map((unit, index) => <UnitEditor key={unit.lineKey} unit={unit} index={index} item={draft.item} extras={extras} garnishes={garnishes} onChange={(next) => onUnitChange(index, next)} />)}</div>
-        {draft.error ? <p className='inline-error' role='alert'>{draft.error}</p> : null}
-        <div className='action-row'><TerminalButton className='secondary' onClick={onCancel}>[ CANCELAR ]</TerminalButton><TerminalButton onClick={onConfirm}>[ CONFIRMAR BUILDER ]</TerminalButton></div>
+        <div className="unit-stack">
+          {draft.units.map((unit, index) => (
+            <UnitEditor
+              key={unit.lineKey}
+              unit={unit}
+              index={index}
+              item={draft.item}
+              extras={extras}
+              garnishes={garnishes}
+              onChange={(next) => onUnitChange(index, next)}
+            />
+          ))}
+        </div>
+        {draft.error ? (
+          <p className="inline-error" role="alert">
+            {draft.error}
+          </p>
+        ) : null}
+        <div className="action-row">
+          <TerminalButton className="secondary" onClick={onCancel}>
+            Cancelar
+          </TerminalButton>
+          <TerminalButton onClick={onConfirm}>
+            Confirmar al ticket
+          </TerminalButton>
+        </div>
       </div>
     )}
   </section>
 );
 
-const TicketList = ({ cart, items, onEdit, onDuplicate, onRemove }: { cart: CartEntry[]; items: MenuItem[]; onEdit: (lineKey: string) => void; onDuplicate: (lineKey: string) => void; onRemove: (lineKey: string) => void }) => (
-  <div className='ticket-list'>
-    {cart.length === 0 ? <EmptyState title='Ticket vacío' description='Agrega productos desde Menú.' /> : cart.map((entry) => {
-      const price = items.find((item) => item.sku === entry.sku)?.price ?? 0;
-      return (
-        <article className='ticket-item' key={entry.lineKey}>
-          <div className='ticket-main'><h3>{entry.name} #{entry.itemDisplayIndex}</h3><strong>{formatCurrency(price)}</strong></div>
-          <ul>
-            {entry.removedIngredients.map((ingredient) => <li key={ingredient}>Sin {ingredient}</li>)}
-            {entry.extras.map((extra) => <li key={extra.sku ?? extra.name}>Extra {extra.name}</li>)}
-            {entry.garnish ? <li>Guarnición: {entry.garnish.name}</li> : null}
-            {entry.burgerNote ? <li>Nota: {entry.burgerNote}</li> : null}
-            {!entry.removedIngredients.length && !entry.extras.length && !entry.garnish && !entry.burgerNote ? <li>Normal</li> : null}
-          </ul>
-          <div className='ticket-actions'>{entry.itemKind === 'burger' || entry.itemKind === 'combo' ? <button type='button' onClick={() => onEdit(entry.lineKey)}>[ EDITAR ]</button> : null}<button type='button' onClick={() => onDuplicate(entry.lineKey)}>[ DUPLICAR ]</button><button type='button' onClick={() => onRemove(entry.lineKey)}>[ ELIMINAR ]</button></div>
-        </article>
-      );
-    })}
+const TicketList = ({
+  cart,
+  items,
+  onEdit,
+  onDuplicate,
+  onRemove,
+}: {
+  cart: CartEntry[];
+  items: MenuItem[];
+  onEdit: (lineKey: string) => void;
+  onDuplicate: (lineKey: string) => void;
+  onRemove: (lineKey: string) => void;
+}) => (
+  <div className="ticket-list">
+    {cart.length === 0 ? (
+      <EmptyState
+        title="Ticket vacío"
+        description="Agrega productos desde Menú."
+      />
+    ) : (
+      cart.map((entry) => {
+        const price = items.find((item) => item.sku === entry.sku)?.price ?? 0;
+        return (
+          <article className="ticket-item" key={entry.lineKey}>
+            <div className="ticket-main">
+              <h3>
+                {entry.name} #{entry.itemDisplayIndex}
+              </h3>
+              <strong>{formatCurrency(price)}</strong>
+            </div>
+            <ul>
+              {entry.removedIngredients.map((ingredient) => (
+                <li key={ingredient}>Sin {ingredient}</li>
+              ))}
+              {entry.extras.map((extra) => (
+                <li key={extra.sku ?? extra.name}>Extra {extra.name}</li>
+              ))}
+              {entry.garnish ? <li>Guarnición: {entry.garnish.name}</li> : null}
+              {entry.burgerNote ? <li>Nota: {entry.burgerNote}</li> : null}
+              {!entry.removedIngredients.length &&
+              !entry.extras.length &&
+              !entry.garnish &&
+              !entry.burgerNote ? (
+                <li>Normal</li>
+              ) : null}
+            </ul>
+            <div className="ticket-actions">
+              {entry.itemKind === "burger" || entry.itemKind === "combo" ? (
+                <button type="button" onClick={() => onEdit(entry.lineKey)}>
+                  Editar
+                </button>
+              ) : null}
+              <button type="button" onClick={() => onDuplicate(entry.lineKey)}>
+                Duplicar
+              </button>
+              <button type="button" onClick={() => onRemove(entry.lineKey)}>
+                Eliminar
+              </button>
+            </div>
+          </article>
+        );
+      })
+    )}
   </div>
 );
 
-const CheckoutWindow = ({ cart, items, total, customer, setCustomer, onSubmit, submitting, error, confirmation, onEdit, onDuplicate, onRemove, onMenu, onCreateAnother }: { cart: CartEntry[]; items: MenuItem[]; total: number; customer: CustomerDraft; setCustomer: (v: CustomerDraft) => void; onSubmit: () => void; submitting: boolean; error: string | null; confirmation: OrderConfirmation | null; onEdit: (lineKey: string) => void; onDuplicate: (lineKey: string) => void; onRemove: (lineKey: string) => void; onMenu: () => void; onCreateAnother: () => void }) => {
-  const customerReady = customer.name.trim().length >= 2 && normalizePhoneDigits(customer.phone).length >= 10;
-  const locationReady = Boolean(customer.location) && customer.paymentMethod !== 'unknown';
+const CheckoutWindow = ({
+  cart,
+  items,
+  total,
+  customer,
+  setCustomer,
+  onSubmit,
+  submitting,
+  error,
+  confirmation,
+  onEdit,
+  onDuplicate,
+  onRemove,
+  onMenu,
+  onCreateAnother,
+}: {
+  cart: CartEntry[];
+  items: MenuItem[];
+  total: number;
+  customer: CustomerDraft;
+  setCustomer: (v: CustomerDraft) => void;
+  onSubmit: () => void;
+  submitting: boolean;
+  error: string | null;
+  confirmation: OrderConfirmation | null;
+  onEdit: (lineKey: string) => void;
+  onDuplicate: (lineKey: string) => void;
+  onRemove: (lineKey: string) => void;
+  onMenu: () => void;
+  onCreateAnother: () => void;
+}) => {
+  const customerReady =
+    customer.name.trim().length >= 2 &&
+    normalizePhoneDigits(customer.phone).length >= 10;
+  const locationReady =
+    Boolean(customer.location) && customer.paymentMethod !== "unknown";
   return (
-    <section className='terminal-window flow-window'>
-      <div className='section-title'><span>WINDOW 03</span><h2>Checkout</h2><p>Ticket, datos, ubicación y pago antes de confirmar.</p></div>
-      <div className='checkout-grid'>
-        <div className='checkout-step'><span>STEP 1 / TICKET</span><TicketList cart={cart} items={items} onEdit={onEdit} onDuplicate={onDuplicate} onRemove={onRemove} /><TerminalButton className='secondary' onClick={onMenu}>[ VOLVER AL MENÚ ]</TerminalButton></div>
-        <div className={cart.length ? 'checkout-step' : 'checkout-step locked'}><span>STEP 2 / DATOS</span><label className='terminal-label'>Nombre<input value={customer.name} onChange={(event) => setCustomer({ ...customer, name: event.target.value })} placeholder='Tu nombre' /></label><label className='terminal-label'>Teléfono<input inputMode='tel' value={customer.phone} onChange={(event) => setCustomer({ ...customer, phone: event.target.value })} placeholder='55 0000 0000' /></label><label className='terminal-label'>Nota general opcional<textarea maxLength={500} value={customer.notes} onChange={(event) => setCustomer({ ...customer, notes: event.target.value })} placeholder='Nota general del pedido' /></label></div>
-        <div className={customerReady ? 'checkout-step' : 'checkout-step locked'}><span>STEP 3 / UBICACIÓN Y PAGO</span><div className='chip-grid'>{LOCATIONS.map((location) => <button type='button' key={location} className={customer.location === location ? 'chip active' : 'chip'} onClick={() => setCustomer({ ...customer, location })}>{location}</button>)}</div><label className='terminal-label'>Pago<select value={customer.paymentMethod} onChange={(event) => setCustomer({ ...customer, paymentMethod: event.target.value as OrderV2PaymentMethod })}><option value='unknown'>Seleccionar</option><option value='cash'>Efectivo</option><option value='transfer'>Transferencia</option><option value='card'>Tarjeta</option></select></label></div>
-        <div className={locationReady ? 'checkout-step confirm' : 'checkout-step locked confirm'}><span>STEP 4 / CONFIRMAR</span><p className='total-line'>TOTAL {formatCurrency(total)}</p><p className='muted'>El backend recalcula productos y total desde D1. No hay cobro en línea.</p><TerminalButton onClick={onSubmit} disabled={submitting || !cart.length}> {submitting ? '[ LOADING ]' : '[ CONFIRMAR ]'}</TerminalButton>{error ? <p className='inline-error' role='alert'>{error}</p> : null}{confirmation ? <OrderSuccess order={confirmation} onCreateAnother={onCreateAnother} /> : null}</div>
+    <section className="terminal-window flow-window">
+      <div className="section-title">
+        <span>Checkout</span>
+        <h2>Confirmar pedido</h2>
+        <p>Revisa ticket, datos, ubicación y pago antes de confirmar.</p>
+      </div>
+      <div className="checkout-grid">
+        <div className="checkout-step">
+          <span>1 · Ticket</span>
+          <TicketList
+            cart={cart}
+            items={items}
+            onEdit={onEdit}
+            onDuplicate={onDuplicate}
+            onRemove={onRemove}
+          />
+          <TerminalButton className="secondary" onClick={onMenu}>
+            Volver al menú
+          </TerminalButton>
+        </div>
+        <div className={cart.length ? "checkout-step" : "checkout-step locked"}>
+          <span>2 · Datos</span>
+          <label className="terminal-label">
+            Nombre
+            <input
+              value={customer.name}
+              onChange={(event) =>
+                setCustomer({ ...customer, name: event.target.value })
+              }
+              placeholder="Tu nombre"
+            />
+          </label>
+          <label className="terminal-label">
+            Teléfono
+            <input
+              inputMode="tel"
+              value={customer.phone}
+              onChange={(event) =>
+                setCustomer({ ...customer, phone: event.target.value })
+              }
+              placeholder="55 0000 0000"
+            />
+          </label>
+          <label className="terminal-label">
+            Nota general opcional
+            <textarea
+              maxLength={500}
+              value={customer.notes}
+              onChange={(event) =>
+                setCustomer({ ...customer, notes: event.target.value })
+              }
+              placeholder="Nota general del pedido"
+            />
+          </label>
+        </div>
+        <div
+          className={customerReady ? "checkout-step" : "checkout-step locked"}
+        >
+          <span>3 · Ubicación y pago</span>
+          <div className="chip-grid">
+            {LOCATIONS.map((location) => (
+              <button
+                type="button"
+                key={location}
+                className={
+                  customer.location === location ? "chip active" : "chip"
+                }
+                onClick={() => setCustomer({ ...customer, location })}
+              >
+                {location}
+              </button>
+            ))}
+          </div>
+          <label className="terminal-label">
+            Pago
+            <select
+              value={customer.paymentMethod}
+              onChange={(event) =>
+                setCustomer({
+                  ...customer,
+                  paymentMethod: event.target.value as OrderV2PaymentMethod,
+                })
+              }
+            >
+              <option value="unknown">Seleccionar</option>
+              <option value="cash">Efectivo</option>
+              <option value="transfer">Transferencia</option>
+              <option value="card">Tarjeta</option>
+            </select>
+          </label>
+        </div>
+        <div
+          className={
+            locationReady
+              ? "checkout-step confirm"
+              : "checkout-step locked confirm"
+          }
+        >
+          <span>4 · Confirmar</span>
+          <p className="total-line">Total {formatCurrency(total)}</p>
+          <p className="muted">
+            Confirmamos precios desde el catálogo. No se realiza ningún cobro en
+            línea.
+          </p>
+          <TerminalButton
+            onClick={onSubmit}
+            disabled={submitting || !cart.length}
+          >
+            {" "}
+            {submitting ? "Enviando pedido..." : "Confirmar pedido"}
+          </TerminalButton>
+          {error ? (
+            <p className="inline-error" role="alert">
+              {error}
+            </p>
+          ) : null}
+          {confirmation ? (
+            <OrderSuccess
+              order={confirmation}
+              onCreateAnother={onCreateAnother}
+            />
+          ) : null}
+        </div>
       </div>
     </section>
   );
 };
 
-const OrderSuccess = ({ order, onCreateAnother }: { order: OrderConfirmation; onCreateAnother: () => void }) => (
-  <section className='success-box' aria-live='polite'>
-    <h3>READY / Pedido recibido</h3>
-    <p>Folio: <strong>{order.folio}</strong></p>
+const OrderSuccess = ({
+  order,
+  onCreateAnother,
+}: {
+  order: OrderConfirmation;
+  onCreateAnother: () => void;
+}) => (
+  <section className="success-box" aria-live="polite">
+    <h3>Pedido recibido</h3>
+    <p>
+      Folio: <strong>{order.folio}</strong>
+    </p>
     <p>Estado: {statusLabels[order.status] ?? order.status}</p>
-    <p>Total confirmado: {formatCurrency(order.total)} {order.currency}</p>
+    <p>
+      Total confirmado: {formatCurrency(order.total)} {order.currency}
+    </p>
     <p>Pago: {paymentMethodLabels[order.paymentMethod]}</p>
     <p>Ubicación: {order.location}</p>
-    <TerminalButton onClick={onCreateAnother}>[ NUEVO PEDIDO ]</TerminalButton>
+    <TerminalButton onClick={onCreateAnother}>Nuevo pedido</TerminalButton>
   </section>
 );
 
 const TrustSection = () => (
-  <section className='terminal-window trust-grid'>
-    <article><h3>RUN / D1</h3><p>D1 es source of truth para catálogo, precios base y órdenes.</p></article>
-    <article><h3>READY / TORRES</h3><p>Ubicación operativa limitada a Torre GGA y Torre Valcob.</p></article>
-    <article><h3>CHECKOUT / MANUAL</h3><p>Confirmación sin cobro en línea ni automatización de mensajes.</p></article>
+  <section className="terminal-window trust-grid">
+    <article>
+      <h3>Catálogo real</h3>
+      <p>
+        Productos, precios y disponibilidad se confirman desde la fuente
+        operativa.
+      </p>
+    </article>
+    <article>
+      <h3>Torres disponibles</h3>
+      <p>Ubicación operativa limitada a Torre GGA y Torre Valcob.</p>
+    </article>
+    <article>
+      <h3>Pago al confirmar</h3>
+      <p>Confirmación sin cobro en línea ni automatización de mensajes.</p>
+    </article>
   </section>
 );
 
 export function PublicOrderApp() {
   const reduce = useReducedMotion() ?? false;
   const submittingRef = useRef(false);
-  const [windowMode, setWindowMode] = useState<WindowMode>('MENU');
+  const [windowMode, setWindowMode] = useState<WindowMode>("MENU");
   const [cart, setCart] = useState<CartEntry[]>([]);
   const [builder, setBuilder] = useState<BuilderDraft | null>(null);
-  const [menuData, setMenuData] = useState<MenuV2Response>(toMockResponse('fallback'));
+  const [menuData, setMenuData] = useState<MenuV2Response>(
+    toMockResponse("fallback"),
+  );
   const [loadingMenu, setLoadingMenu] = useState(true);
   const [showBoot, setShowBoot] = useState(true);
-  const [customer, setCustomer] = useState<CustomerDraft>(() => createEmptyCustomer());
+  const [customer, setCustomer] = useState<CustomerDraft>(() =>
+    createEmptyCustomer(),
+  );
   const [submitting, setSubmitting] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  const [orderConfirmation, setOrderConfirmation] = useState<OrderConfirmation | null>(null);
-  const total = useMemo(() => getCartTotal(cart, menuData.items), [cart, menuData.items]);
+  const [orderConfirmation, setOrderConfirmation] =
+    useState<OrderConfirmation | null>(null);
+  const total = useMemo(
+    () => getCartTotal(cart, menuData.items),
+    [cart, menuData.items],
+  );
   const count = getCartCount(cart);
-  const extras = menuData.items.filter((item) => item.category === 'extras' && inferItemKind(item) !== 'combo' && item.isAvailable);
-  const garnishes = menuData.items.filter((item) => item.category === 'guarniciones' && item.isAvailable);
+  const extras = menuData.items.filter(
+    (item) =>
+      item.category === "extras" &&
+      inferItemKind(item) !== "combo" &&
+      item.isAvailable,
+  );
+  const garnishes = menuData.items.filter(
+    (item) => item.category === "guarniciones" && item.isAvailable,
+  );
 
   useEffect(() => {
     let mounted = true;
-    const bootTimer = window.setTimeout(() => mounted && setShowBoot(false), reduce ? 250 : 1100);
+    const bootTimer = window.setTimeout(
+      () => mounted && setShowBoot(false),
+      reduce ? 250 : 1100,
+    );
     loadMenuV2().then((payload) => {
       if (!mounted) return;
       setMenuData(payload);
       setLoadingMenu(false);
       window.setTimeout(() => mounted && setShowBoot(false), reduce ? 0 : 250);
     });
-    return () => { mounted = false; window.clearTimeout(bootTimer); };
+    return () => {
+      mounted = false;
+      window.clearTimeout(bootTimer);
+    };
   }, [reduce]);
 
   const reindex = (entries: CartEntry[]) => {
@@ -349,78 +1062,159 @@ export function PublicOrderApp() {
   const startBuilder = (item: MenuItem, source?: CartEntry) => {
     if (!item.isAvailable) return;
     const itemKind = inferItemKind(item);
-    if (itemKind !== 'burger' && itemKind !== 'combo') {
-      setCart((prev) => reindex([...prev, makeUnit(item, itemKind, prev.filter((entry) => entry.sku === item.sku).length + 1)]));
-      setWindowMode('CHECKOUT');
+    if (itemKind !== "burger" && itemKind !== "combo") {
+      setCart((prev) =>
+        reindex([
+          ...prev,
+          makeUnit(
+            item,
+            itemKind,
+            prev.filter((entry) => entry.sku === item.sku).length + 1,
+          ),
+        ]),
+      );
+      setWindowMode("MENU");
       return;
     }
-    setBuilder({ item, itemKind, quantity: 1, units: [makeUnit(item, itemKind, 1, source)], error: null, editLineKey: source?.lineKey });
-    setWindowMode('BUILD');
+    setBuilder({
+      item,
+      itemKind,
+      quantity: 1,
+      units: [makeUnit(item, itemKind, 1, source)],
+      error: null,
+      editLineKey: source?.lineKey,
+    });
+    setWindowMode("MENU");
   };
 
   const updateBuilderQuantity = (quantity: 1 | 2 | 3) => {
     setBuilder((draft) => {
       if (!draft) return draft;
-      const units = Array.from({ length: quantity }, (_, index) => makeUnit(draft.item, draft.itemKind, index + 1, draft.units[index]));
+      const units = Array.from({ length: quantity }, (_, index) =>
+        makeUnit(draft.item, draft.itemKind, index + 1, draft.units[index]),
+      );
       return { ...draft, quantity, units, error: null };
     });
   };
 
-  const updateBuilderUnit = (index: number, unit: CartEntry) => setBuilder((draft) => draft ? { ...draft, units: draft.units.map((entry, entryIndex) => entryIndex === index ? unit : entry), error: null } : draft);
+  const updateBuilderUnit = (index: number, unit: CartEntry) =>
+    setBuilder((draft) =>
+      draft
+        ? {
+            ...draft,
+            units: draft.units.map((entry, entryIndex) =>
+              entryIndex === index ? unit : entry,
+            ),
+            error: null,
+          }
+        : draft,
+    );
 
   const confirmBuilder = () => {
     if (!builder) return;
-    if (builder.itemKind === 'combo' && builder.units.some((unit) => !unit.garnish)) {
-      setBuilder({ ...builder, error: garnishes.length ? 'El combo requiere elegir guarnición.' : 'No hay guarniciones configuradas para confirmar este combo.' });
+    if (
+      builder.itemKind === "combo" &&
+      builder.units.some((unit) => !unit.garnish)
+    ) {
+      setBuilder({
+        ...builder,
+        error: garnishes.length
+          ? "El combo requiere elegir guarnición."
+          : "No hay guarniciones configuradas para confirmar este combo.",
+      });
       return;
     }
     setCart((prev) => {
-      const withoutEdited = builder.editLineKey ? prev.filter((entry) => entry.lineKey !== builder.editLineKey) : prev;
+      const withoutEdited = builder.editLineKey
+        ? prev.filter((entry) => entry.lineKey !== builder.editLineKey)
+        : prev;
       return reindex([...withoutEdited, ...builder.units]);
     });
     setBuilder(null);
     setCheckoutError(null);
     setOrderConfirmation(null);
-    setWindowMode('CHECKOUT');
+    setWindowMode("CHECKOUT");
   };
 
   const duplicateLine = (lineKey: string) => {
     setCart((prev) => {
       const found = prev.find((entry) => entry.lineKey === lineKey);
       if (!found) return prev;
-      return reindex([...prev, { ...found, lineKey: createId('line') }]);
+      return reindex([...prev, { ...found, lineKey: createId("line") }]);
     });
   };
 
   const editLine = (lineKey: string) => {
     const found = cart.find((entry) => entry.lineKey === lineKey);
-    const item = found ? menuData.items.find((menuItem) => menuItem.sku === found.sku) : null;
+    const item = found
+      ? menuData.items.find((menuItem) => menuItem.sku === found.sku)
+      : null;
     if (found && item) startBuilder(item, found);
   };
 
-  const removeLine = (lineKey: string) => setCart((prev) => reindex(prev.filter((entry) => entry.lineKey !== lineKey)));
+  const removeLine = (lineKey: string) =>
+    setCart((prev) =>
+      reindex(prev.filter((entry) => entry.lineKey !== lineKey)),
+    );
 
   const handleCheckout = async () => {
     if (submittingRef.current) return;
     setCheckoutError(null);
     setOrderConfirmation(null);
     const validationError = validateCheckout(customer, cart, menuData.items);
-    if (validationError) { setCheckoutError(validationError); return; }
-    const payloadItems = cart.map((entry) => ({ sku: entry.sku, name: entry.name, qty: 1, lineKey: entry.lineKey, itemDisplayIndex: entry.itemDisplayIndex, itemKind: entry.itemKind, removedIngredients: entry.removedIngredients, extras: entry.extras, burgerNote: entry.burgerNote?.trim() || undefined, garnish: entry.garnish ?? null }));
-    const notes = [`Ubicación: ${customer.location}`, customer.notes.trim()].filter(Boolean).join('\n');
+    if (validationError) {
+      setCheckoutError(validationError);
+      return;
+    }
+    const payloadItems = cart.map((entry) => ({
+      sku: entry.sku,
+      name: entry.name,
+      qty: 1,
+      lineKey: entry.lineKey,
+      itemDisplayIndex: entry.itemDisplayIndex,
+      itemKind: entry.itemKind,
+      removedIngredients: entry.removedIngredients,
+      extras: entry.extras,
+      burgerNote: entry.burgerNote?.trim() || undefined,
+      garnish: entry.garnish ?? null,
+    }));
+    const notes = [`Ubicación: ${customer.location}`, customer.notes.trim()]
+      .filter(Boolean)
+      .join("\n");
     const idempotencyKey = getDraftIdempotencyKey({ customer, items: cart });
     submittingRef.current = true;
     setSubmitting(true);
     try {
-      const response = await createOrderV2({ customer: { name: customer.name.trim(), phone: normalizePhoneDigits(customer.phone) }, orderMode: orderModeForBackend, paymentMethod: customer.paymentMethod, notes, items: payloadItems }, idempotencyKey);
+      const response = await createOrderV2(
+        {
+          customer: {
+            name: customer.name.trim(),
+            phone: normalizePhoneDigits(customer.phone),
+          },
+          orderMode: orderModeForBackend,
+          paymentMethod: customer.paymentMethod,
+          notes,
+          items: payloadItems,
+        },
+        idempotencyKey,
+      );
       const order = response.data?.order;
-      if (!order) throw new Error('El backend no devolvió folio de confirmación.');
-      setOrderConfirmation({ ...order, paymentMethod: customer.paymentMethod, location: customer.location });
+      if (!order)
+        throw new Error("El backend no devolvió folio de confirmación.");
+      setOrderConfirmation({
+        ...order,
+        paymentMethod: customer.paymentMethod,
+        location: customer.location,
+      });
       setCart([]);
       setCustomer(createEmptyCustomer());
       clearDraftIdempotencyKey();
     } catch (error) {
-      setCheckoutError(error instanceof Error ? error.message : 'No se pudo enviar el pedido. Intenta de nuevo.');
+      setCheckoutError(
+        error instanceof Error
+          ? error.message
+          : "No se pudo enviar el pedido. Intenta de nuevo.",
+      );
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
@@ -433,16 +1227,56 @@ export function PublicOrderApp() {
     setCart([]);
     setCustomer(createEmptyCustomer());
     clearDraftIdempotencyKey();
-    setWindowMode('MENU');
+    setWindowMode("MENU");
   };
 
   return (
-    <main className='app-shell'>
+    <main className="app-shell">
       <LoadingOverlay loading={showBoot || loadingMenu} />
-      <AppChrome current={windowMode} count={count} total={total} onNavigate={setWindowMode} />
-      {windowMode === 'MENU' ? <MenuWindow categories={menuData.categories} items={menuData.items} cartCount={count} onSelect={startBuilder} onCheckout={() => setWindowMode('CHECKOUT')} reduce={reduce} /> : null}
-      {windowMode === 'BUILD' ? <BuilderWindow draft={builder} extras={extras} garnishes={garnishes} onQuantity={updateBuilderQuantity} onUnitChange={updateBuilderUnit} onConfirm={confirmBuilder} onCancel={() => { setBuilder(null); setWindowMode('MENU'); }} /> : null}
-      {windowMode === 'CHECKOUT' ? <CheckoutWindow cart={cart} items={menuData.items} total={total} customer={customer} setCustomer={setCustomer} onSubmit={handleCheckout} submitting={submitting} error={checkoutError} confirmation={orderConfirmation} onEdit={editLine} onDuplicate={duplicateLine} onRemove={removeLine} onMenu={() => setWindowMode('MENU')} onCreateAnother={handleCreateAnother} /> : null}
+      <AppChrome
+        current={windowMode}
+        count={count}
+        total={total}
+        onNavigate={setWindowMode}
+      />
+      {windowMode === "MENU" ? (
+        <MenuWindow
+          categories={menuData.categories}
+          items={menuData.items}
+          cartCount={count}
+          builder={builder}
+          extras={extras}
+          garnishes={garnishes}
+          onSelect={startBuilder}
+          onCheckout={() => setWindowMode("CHECKOUT")}
+          onQuantity={updateBuilderQuantity}
+          onUnitChange={updateBuilderUnit}
+          onConfirm={confirmBuilder}
+          onCancel={() => {
+            setBuilder(null);
+            setWindowMode("MENU");
+          }}
+          reduce={reduce}
+        />
+      ) : null}
+      {windowMode === "CHECKOUT" ? (
+        <CheckoutWindow
+          cart={cart}
+          items={menuData.items}
+          total={total}
+          customer={customer}
+          setCustomer={setCustomer}
+          onSubmit={handleCheckout}
+          submitting={submitting}
+          error={checkoutError}
+          confirmation={orderConfirmation}
+          onEdit={editLine}
+          onDuplicate={duplicateLine}
+          onRemove={removeLine}
+          onMenu={() => setWindowMode("MENU")}
+          onCreateAnother={handleCreateAnother}
+        />
+      ) : null}
       <TrustSection />
     </main>
   );

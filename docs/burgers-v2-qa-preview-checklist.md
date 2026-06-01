@@ -571,9 +571,9 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] Public V2 abre con loading inicial brandeado Burgers.exe y no reutiliza el logo como loader repetitivo.
 - [ ] La primera ventana visible después de carga es Menú.
 - [ ] Menú muestra Combos, Hamburguesas, Guarniciones y Bebidas; extras no aparecen como sección de productos principales.
-- [ ] Seleccionar burger abre Builder / Ordenar.
-- [ ] Seleccionar x2 DOUBLE LOAD o x3 TRIPLE STACK genera unidades separadas con `lineKey` distinto.
-- [ ] Cada unidad permite quitar ingredientes reales derivados del producto, mantiene pan bloqueado, extras por burger y nota opcional.
+- [ ] Seleccionar burger abre el panel integrado de Ordenar dentro del Menú.
+- [ ] Seleccionar x2 Doble o x3 Triple genera unidades separadas con `lineKey` distinto.
+- [ ] Cada unidad permite quitar ingredientes reales derivados del producto, mantiene pan no editable, extras por burger, guarnición según regla y nota opcional.
 - [ ] Extra en Burger #1 no modifica Burger #2; nota o ingrediente removido en Burger #3 no modifica las demás.
 - [ ] Si no hay extras reales disponibles, se muestra “Sin extras configurados” sin inventar extras.
 - [ ] Combo obliga guarnición y muestra error inline si se intenta confirmar sin guarnición.
@@ -589,3 +589,36 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] Backend recalcula precios base desde D1 y no confía en precios finales del frontend.
 - [ ] Confirmar no productos/extras/guarniciones/ubicaciones inventadas.
 - [ ] Confirmar no cambios a Internal V2 salvo tipos compartidos, legacy, `/api/order`, `/api/rpc`, Apps Script, Sheets sync, pagos reales, WhatsApp API ni `BOG_ACTIVE_ENV`.
+
+## V2-14 QA — Public gamer order UX refinement
+
+### Visual / flujo público
+
+- [ ] Public V2 se siente dark premium profesional con acento gamer/neón sutil, sin exceso de estética terminal.
+- [ ] La primera experiencia después del loading es Menú.
+- [ ] El flujo visible es Menú → Ordenar → Checkout.
+- [ ] No aparecen tres ventanas visibles tipo Menú / Ordenar / Checkout.
+- [ ] Ordenar aparece como panel integrado del Menú al seleccionar burger o combo.
+- [ ] Checkout permanece como sección separada.
+- [ ] Menú muestra cards limpias por categorías y CTA “Ordenar”/“Agregar”.
+- [ ] Extras no aparecen como sección principal del menú.
+
+### Ordenar / customizaciones
+
+- [ ] Al seleccionar una burger o combo, se puede elegir cantidad x1/x2/x3 con estados visuales distintos.
+- [ ] x2/x3 crean unidades separadas e independientes.
+- [ ] Cada unidad permite quitar ingredientes, agregar extras por burger y nota por burger opcional.
+- [ ] Extra/ingrediente/nota en una unidad no modifica las demás unidades.
+- [ ] Combo obliga elegir guarnición antes de confirmar al ticket.
+- [ ] Burger normal muestra guarnición opcional y opción clara “Sin guarnición”.
+- [ ] Las guarniciones listadas provienen solo del catálogo real; no se inventan productos.
+- [ ] Confirmar al ticket preserva `removedIngredients`, `extras`, `burgerNote` y `garnish` por item.
+- [ ] Ticket permite editar, duplicar y eliminar cada unidad.
+
+### Checkout / no-touch
+
+- [ ] Checkout mantiene Ticket, Datos cliente, Ubicación, Pago y Confirmar.
+- [ ] Ubicación solo ofrece Torre GGA y Torre Valcob.
+- [ ] No se muestra pickup/delivery al usuario.
+- [ ] Nota general opcional permanece separada de la nota por burger.
+- [ ] No se tocó Internal V2, legacy, `/api/order`, `/api/rpc`, Apps Script, Sheets sync, pagos reales, WhatsApp API ni `BOG_ACTIVE_ENV`.
