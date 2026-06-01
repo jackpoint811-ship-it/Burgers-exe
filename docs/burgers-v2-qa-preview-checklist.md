@@ -572,7 +572,7 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] La primera ventana visible después de carga es Menú.
 - [ ] Menú muestra Combos, Hamburguesas, Guarniciones y Bebidas; extras no aparecen como sección de productos principales.
 - [ ] Seleccionar burger abre el drawer/modal accesible de Ordenar sobre el Menú.
-- [ ] Seleccionar x2 Doble o x3 Triple genera unidades separadas con `lineKey` distinto.
+- [ ] Seleccionar `2 hamburguesas` o `3 hamburguesas` genera unidades separadas con `lineKey` distinto sin usar copy de tamaño/carne.
 - [ ] Cada unidad permite quitar ingredientes reales derivados del producto, mantiene pan no editable, extras por burger, guarnición según regla y nota opcional.
 - [ ] Extra en Burger #1 no modifica Burger #2; nota o ingrediente removido en Burger #3 no modifica las demás.
 - [ ] Si no hay extras reales disponibles, se muestra “Sin extras configurados” sin inventar extras.
@@ -605,8 +605,8 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 
 ### Ordenar / customizaciones
 
-- [ ] Al seleccionar una burger o combo, se puede elegir cantidad x1/x2/x3 con estados visuales distintos.
-- [ ] x2/x3 crean unidades separadas e independientes.
+- [ ] Al seleccionar una burger o combo, se puede elegir cantidad `1 hamburguesa`/`2 hamburguesas`/`3 hamburguesas` con estados visuales distintos.
+- [ ] `2 hamburguesas`/`3 hamburguesas` crean unidades separadas e independientes.
 - [ ] Cada unidad permite quitar ingredientes, agregar extras por burger y nota por burger opcional.
 - [ ] Extra/ingrediente/nota en una unidad no modifica las demás unidades.
 - [ ] Combo obliga elegir guarnición antes de confirmar al ticket.
@@ -633,11 +633,12 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] Confirm Escape closes the drawer on desktop/keyboard testing and returns to the menu without losing the current ticket.
 - [ ] Confirm the sticky footer remains accessible while scrolling long customization content and includes “Confirmar al ticket”.
 
-### x1 / x2 / x3 unit clarity
+### Claridad de cantidad por unidad
 
-- [ ] Select x1 and confirm the green state is used.
-- [ ] Select x2 and confirm the yellow state is used plus copy like “Se crearán 2 unidades editables de Burger OG”.
-- [ ] Select x3 and confirm the orange/red state is used plus copy like “Se crearán 3 unidades editables de Burger OG”.
+- [ ] Select `1 hamburguesa` and confirm the green state is used plus copy “Vas a pedir 1 hamburguesa editable.”
+- [ ] Select `2 hamburguesas` and confirm the yellow state is used plus copy like “Vas a pedir 2 hamburguesas. Cada una se puede editar por separado.”
+- [ ] Select `3 hamburguesas` and confirm the orange/red state is used plus copy like “Vas a pedir 3 hamburguesas. Cada una se puede editar por separado.”
+- [ ] Confirm quantity help says “No cambia el tamaño ni la carne; solo la cantidad.”
 - [ ] Confirm each unit editor is labeled `Burger OG #1`, `Burger OG #2`, `Burger OG #3` as applicable.
 - [ ] Edit Burger OG #1 differently from Burger OG #2 and confirm extras/removals/notes do not bleed between units.
 - [ ] Confirm the ticket shows the units as separate lines with unit price copy.
@@ -692,7 +693,8 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] Confirmar pregunta inicial “¿Qué quieres ordenar?” con opciones Hamburguesa y Combo.
 - [ ] Elegir Hamburguesa y continuar a productos disponibles.
 - [ ] Elegir Burger OG.
-- [ ] Elegir x2 y confirmar copy “Se crearán 2 unidades editables”.
+- [ ] Elegir `2 hamburguesas` y confirmar copy “Vas a pedir 2 hamburguesas. Cada una se puede editar por separado.”
+- [ ] Confirmar que los botones de cantidad dicen `1 hamburguesa`, `2 hamburguesas` y `3 hamburguesas`, sin términos que parezcan receta, tamaño o cantidad de carne.
 - [ ] Editar Burger #1 distinto a Burger #2: quitar ingredientes, elegir extras por burger y agregar nota opcional.
 - [ ] Confirmar que pan sigue no editable.
 - [ ] Continuar a guarniciones.
@@ -715,3 +717,7 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] Confirmar checkout con ticket, datos, ubicación Torre GGA/Torre Valcob, pago y “Confirmar pedido”.
 - [ ] Confirmar que checkout no muestra pickup/delivery al usuario.
 - [ ] Confirmar que no se tocó backend: sin cambios en `functions/api/**`, `/api/order`, `/api/rpc`, Apps Script, Sheets sync, pagos reales, WhatsApp API, `BOG_ACTIVE_ENV`, Internal V2 ni legacy.
+
+## Pendiente futuro de copy
+
+- [ ] Fase futura: reducir microcopy/texto innecesario una vez validado el flujo operativo.

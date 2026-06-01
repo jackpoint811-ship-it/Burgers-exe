@@ -372,7 +372,7 @@ See [Burgers.exe V2 cutover readiness runbook](./burgers-v2-cutover-runbook.md).
 - La app abre en Menú con identidad Burgers.exe dark premium: negro profundo, verde neón como acento, glow sutil, cards modernas y copy orientado a ordenar comida.
 - La carga inicial muestra una capa brandeada con wordmark Burgers.exe; transiciones internas usan estados de terminal y respetan `prefers-reduced-motion`.
 - Menú muestra únicamente secciones operativas visibles al cliente: Combos, Hamburguesas, Guarniciones y Bebidas. Los extras no aparecen como productos principales; solo se ofrecen dentro del panel de ordenar por burger.
-- Ordenar permite x1 Clásica, x2 Doble y x3 Triple. x2/x3 generan unidades separadas (`lineKey` distinto) para que cada burger sea editable de forma independiente.
+- Ordenar permite seleccionar `1 hamburguesa`, `2 hamburguesas` o `3 hamburguesas`; estas opciones representan cantidad de unidades, no tamaño ni cantidad de carne. `2 hamburguesas`/`3 hamburguesas` generan unidades separadas (`lineKey` distinto) para que cada burger sea editable de forma independiente.
 - Personalización por unidad: ingredientes derivados del producto real editables excepto pan, extras reales del catálogo por burger, nota opcional por burger y guarnición obligatoria para combos; las burgers normales permanecen sin guarnición dentro del panel y cualquier guarnición se agrega aparte desde Menú con su propio SKU/precio.
 - Checkout queda separado con pasos desbloqueables: ticket, datos cliente, ubicación/pago y confirmar. La ubicación visible al cliente está limitada a Torre GGA y Torre Valcob.
 - Para compatibilidad interna el payload conserva `orderMode` hacia `/api/orders-v2`, pero la UI no muestra pickup/delivery ni tipo de envío.
@@ -404,7 +404,7 @@ No cambia en V2-14:
 - Public Order V2 keeps the menu as the primary browsing surface, but burger/combo customization now opens in an accessible order drawer/bottom sheet instead of rendering inline inside the menu.
 - The order drawer uses `role="dialog"`, `aria-modal`, an `aria-labelledby` product header, a visible close button, Escape-to-close behavior, and focus return to the opener where possible.
 - The drawer has a sticky header with the selected product name and a sticky footer with the builder state/total plus the primary CTA “Confirmar al ticket”, so users do not need to scroll to the bottom of a long builder.
-- `x1`, `x2`, and `x3` remain separate unit builders. The UI states “Se crearán 2 unidades editables de Burger OG” / “Se crearán 3 unidades editables de Burger OG”, and each editor is labeled `Burger OG #1`, `Burger OG #2`, etc. Ticket lines stay separate and show unit pricing.
+- `1 hamburguesa`, `2 hamburguesas` y `3 hamburguesas` remain separate unit builders. The UI states “Vas a pedir 2 hamburguesas. Cada una se puede editar por separado.” / “Vas a pedir 3 hamburguesas. Cada una se puede editar por separado.” and adds “No cambia el tamaño ni la carne; solo la cantidad.” near the quantity buttons. Each editor is labeled `Burger OG #1`, `Burger OG #2`, etc. Ticket lines stay separate and show unit pricing.
 - Burger extras, removed ingredients, and per-burger notes stay scoped to each unit. Extras are operational kitchen customizations in the current pricing contract; the drawer total mirrors ticket/checkout by using catalog SKU base prices only. Pan remains included and non-editable.
 - Combos keep mandatory garnish selection inside the combo and validate inline when garnish is missing.
 - Normal burgers do not persist `garnish` internally. The burger editor shows “Guarnición opcional” and keeps “Sin guarnición” selected; in the guided flow, copy clarifies “Las guarniciones extra se eligen en el siguiente paso” and the persistent “Continuar” CTA advances to the guarniciones step. Guarniciones must be added as separate menu products with their own SKU/price (`itemKind="garnish"`).
@@ -419,10 +419,14 @@ No cambia en V2-14:
 - Las cards del menú no abren builder ni agregan productos; abren un modal informativo con nombre, imagen si existe, descripción, precio, disponibilidad y cierre accesible.
 - Se agrega un CTA persistente y mobile-first que respeta safe-area y cambia de copy según el paso: Ordenar, Continuar, Ir a checkout y Confirmar pedido.
 - El flujo guiado pregunta primero “¿Qué quieres ordenar?” con opciones Hamburguesa y Combo; después muestra productos disponibles de la elección.
-- x1/x2/x3 se mantiene como selección de cantidad y crea unidades separadas editables con copy explícito (“Se crearán 2 unidades editables”, “Se crearán 3 unidades editables”).
+- La cantidad se mantiene como selección de `1 hamburguesa`, `2 hamburguesas` o `3 hamburguesas`, crea unidades separadas editables y usa copy explícito: “Vas a pedir 1 hamburguesa editable.” / “Vas a pedir 2 hamburguesas. Cada una se puede editar por separado.” / “Vas a pedir 3 hamburguesas. Cada una se puede editar por separado.”
 - Cada unidad de burger/combo mantiene edición individual de ingredientes removibles, extras operativos para cocina y nota opcional; el pan sigue no editable.
 - Después de editar se agrega un paso de guarniciones opcionales. “No quiero guarnición · Saltar guarniciones” permite ir a checkout sin agregar extras.
 - Si el usuario pidió burger normal, cualquier guarnición extra elegida se agrega como línea separada `itemKind="garnish"` con precio propio; no se guarda como `garnish` dentro de la burger.
 - Si el usuario pidió combo, cada combo exige una guarnición incluida antes de continuar; esa guarnición se guarda dentro del combo. Las guarniciones extra del paso posterior se agregan como líneas separadas con precio propio.
 - Checkout conserva ticket, datos, ubicación Torre GGA/Torre Valcob, pago y confirmación. No se muestra pickup/delivery al usuario aunque el payload backend conserva el modo operativo interno existente.
 - No hubo cambios de backend: no se tocaron `functions/api/**`, `/api/order`, `/api/rpc`, Apps Script, Sheets sync, pagos reales, WhatsApp API, `BOG_ACTIVE_ENV`, Internal V2, legacy ni paquetes de configuración.
+
+### Pendiente futuro
+
+- Fase futura: reducir microcopy/texto innecesario una vez validado el flujo operativo.

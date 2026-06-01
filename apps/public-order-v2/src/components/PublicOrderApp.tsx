@@ -431,29 +431,42 @@ const QuantitySelector = ({
   value: 1 | 2 | 3;
   onChange: (qty: 1 | 2 | 3) => void;
 }) => (
-  <div
-    className="quantity-modes"
-    role="group"
-    aria-label="Cantidad por tipo de burger"
-  >
-    {(
-      [
-        { qty: 1, label: "x1 Clásica" },
-        { qty: 2, label: "x2 Doble" },
-        { qty: 3, label: "x3 Triple" },
-      ] as const
-    ).map((option) => (
-      <button
-        key={option.qty}
-        type="button"
-        className={`q${option.qty} ${value === option.qty ? "active" : ""}`}
-        onClick={() => onChange(option.qty)}
-      >
-        {option.label}
-      </button>
-    ))}
+  <div className="quantity-selector">
+    <div
+      className="quantity-modes"
+      role="group"
+      aria-label="Cantidad de hamburguesas"
+    >
+      {(
+        [
+          { qty: 1, label: "1 hamburguesa" },
+          { qty: 2, label: "2 hamburguesas" },
+          { qty: 3, label: "3 hamburguesas" },
+        ] as const
+      ).map((option) => (
+        <button
+          key={option.qty}
+          type="button"
+          className={`q${option.qty} ${value === option.qty ? "active" : ""}`}
+          onClick={() => onChange(option.qty)}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+    <p className="quantity-help">
+      No cambia el tamaño ni la carne; solo la cantidad.
+    </p>
   </div>
 );
+
+
+const getBurgerQuantityCopy = (quantity: 1 | 2 | 3) => {
+  if (quantity === 1) return "Vas a pedir 1 hamburguesa editable.";
+  if (quantity === 2)
+    return "Vas a pedir 2 hamburguesas. Cada una se puede editar por separado.";
+  return "Vas a pedir 3 hamburguesas. Cada una se puede editar por separado.";
+};
 
 const UnitEditor = ({
   unit,
@@ -673,11 +686,7 @@ const BuilderDialog = ({
 }) => {
   const closeRef = useRef<HTMLButtonElement | null>(null);
   const titleId = "order-builder-title";
-  const quantityCopy = draft
-    ? draft.quantity === 1
-      ? `Se creará 1 unidad editable de ${draft.item.name}`
-      : `Se crearán ${draft.quantity} unidades editables de ${draft.item.name}`
-    : "";
+  const quantityCopy = draft ? getBurgerQuantityCopy(draft.quantity) : "";
   const builderTotal = draft ? draft.units.length * draft.item.price : 0;
 
   useEffect(() => {
@@ -865,6 +874,7 @@ const GuidedOrderWindow = ({
   onUnitChange,
   onToggleExtraGarnish,
   onSkipGarnishes,
+  onBack,
 }: {
   step: GuidedStep;
   orderChoice: OrderChoice | null;
@@ -879,6 +889,7 @@ const GuidedOrderWindow = ({
   onUnitChange: (index: number, unit: CartEntry) => void;
   onToggleExtraGarnish: (sku: string) => void;
   onSkipGarnishes: () => void;
+  onBack: () => void;
 }) => {
   const title =
     step === "type"
@@ -897,20 +908,24 @@ const GuidedOrderWindow = ({
     return false;
   });
   const quantityCopy = builder
-    ? builder.quantity === 1
-      ? `Se creará 1 unidad editable`
-      : `Se crearán ${builder.quantity} unidades editables`
+    ? getBurgerQuantityCopy(builder.quantity)
     : "Selecciona un producto para editar unidades.";
 
   return (
     <section className="terminal-window flow-window guided-flow" id="order-flow">
-      <div className="section-title">
-        <span>Ordenar · flujo guiado</span>
-        <h2>{title}</h2>
-        <p>
-          Primero eliges Hamburguesa o Combo; después x1/x2/x3, edición por unidad,
-          guarniciones y checkout.
-        </p>
+      <div className="guided-flow-heading">
+        <TerminalButton className="secondary guided-back" onClick={onBack}>
+          Regresar
+        </TerminalButton>
+        <div className="section-title">
+          <span>Ordenar · flujo guiado</span>
+          <h2>{title}</h2>
+          <p>
+            Primero eliges el tipo y producto; después eliges cuántas hamburguesas
+            quieres, editas cada una por separado, agregas guarniciones y pasas a
+            checkout.
+          </p>
+        </div>
       </div>
 
       {step === "type" ? (
@@ -1469,7 +1484,7 @@ export function PublicOrderApp() {
         : prev;
       return reindex([...withoutEdited, ...units]);
     });
-    setBuilder(null);
+    setBuilder(builder.editLineKey ? null : { ...builder, error: null });
     setCheckoutError(null);
     setOrderConfirmation(null);
     if (builder.editLineKey) {
@@ -1524,7 +1539,39 @@ export function PublicOrderApp() {
         );
       }
       setExtraGarnishSkus([]);
+      setBuilder(null);
       setWindowMode("CHECKOUT");
+    }
+  };
+
+  const goBackGuidedOrder = () => {
+    if (guidedStep === "type") {
+      setWindowMode("MENU");
+      return;
+    }
+    if (guidedStep === "product") {
+      setBuilder(null);
+      setGuidedStep("type");
+      return;
+    }
+    if (guidedStep === "edit") {
+      setBuilder(null);
+      setGuidedStep("product");
+      return;
+    }
+    if (guidedStep === "garnishes") {
+      setExtraGarnishSkus([]);
+      setCart((prev) =>
+        builder
+          ? reindex(
+              prev.filter(
+                (entry) =>
+                  !builder.units.some((unit) => unit.lineKey === entry.lineKey),
+              ),
+            )
+          : prev,
+      );
+      setGuidedStep("edit");
     }
   };
 
@@ -1710,8 +1757,10 @@ export function PublicOrderApp() {
           onToggleExtraGarnish={toggleExtraGarnish}
           onSkipGarnishes={() => {
             setExtraGarnishSkus([]);
+            setBuilder(null);
             setWindowMode("CHECKOUT");
           }}
+          onBack={goBackGuidedOrder}
         />
       ) : null}
       <MenuInfoDialog item={infoItem} onClose={() => setInfoItem(null)} />
