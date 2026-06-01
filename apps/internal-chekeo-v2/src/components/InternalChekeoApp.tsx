@@ -1,4 +1,5 @@
 import {
+  type FormEvent,
   type ReactNode,
   useCallback,
   useEffect,
@@ -21,10 +22,9 @@ import {
 } from "@config/index";
 import { Button, Card, StatusPill } from "@ui/index";
 import {
-  ADMIN_TOKEN_CHANGED_EVENT,
-  clearAdminToken,
-  getAdminToken,
-  setAdminToken as persistAdminToken,
+  fetchInternalAuthStatus,
+  loginInternal,
+  logoutInternal,
 } from "../lib/admin-token";
 import {
   exportOrdersV2Csv,
@@ -92,11 +92,8 @@ type OrdersRuntime = {
   actionOrderId: string | null;
   error: string | null;
   notice: string | null;
-  adminToken: string;
-  setTokenInput: (value: string) => void;
-  tokenInput: string;
-  activateToken: () => void;
-  clearToken: () => void;
+  sessionActive: boolean;
+  onSessionExpired: () => void;
   reload: (includeTerminal?: boolean) => void;
   lastUpdated: string | null;
 };
@@ -449,10 +446,10 @@ const orderStatusOptions: Array<{ value: OrderV2Status | ""; label: string }> =
   ];
 
 const OrdersExportControls = ({
-  adminToken,
+  sessionActive,
   defaultIncludeTerminal,
 }: {
-  adminToken: string;
+  sessionActive: boolean;
   defaultIncludeTerminal: boolean;
 }) => {
   const [includeTerminal, setIncludeTerminal] = useState(
@@ -478,13 +475,13 @@ const OrdersExportControls = ({
   const parsedLimit = Number(limit);
   const invalidLimit =
     !Number.isInteger(parsedLimit) || parsedLimit < 1 || parsedLimit > 1000;
-  const disabled = exporting || !adminToken || invalidLimit;
+  const disabled = exporting || !sessionActive || invalidLimit;
 
   const downloadCsv = async () => {
     setError(null);
     setSuccess(null);
-    if (!adminToken) {
-      setError("Activa modo admin para exportar CSV");
+    if (!sessionActive) {
+      setError("Sesión expirada. Vuelve a iniciar sesión.");
       return;
     }
     if (invalidLimit) {
@@ -493,7 +490,7 @@ const OrdersExportControls = ({
     }
     setExporting(true);
     try {
-      const blob = await exportOrdersV2Csv(getAdminToken(), {
+      const blob = await exportOrdersV2Csv({
         includeTerminal,
         status,
         from,
@@ -531,9 +528,9 @@ const OrdersExportControls = ({
             Descarga órdenes V2 desde D1 para reporting manual.
           </p>
         </div>
-        {!adminToken ? (
+        {!sessionActive ? (
           <p className="text-[11px] text-amber-200">
-            Activa modo admin para exportar CSV
+            Sesión expirada. Vuelve a iniciar sesión.
           </p>
         ) : null}
       </div>
@@ -631,15 +628,9 @@ const SourcePanel = ({
     <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
       <div>
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-200">
-          {runtime.source === "d1" ? "Pedidos live D1" : "Fallback mock"}
+          Sesión admin activa
         </p>
-        <p className="text-[11px] text-zinc-400">
-          {runtime.source === "d1"
-            ? "Backend V2 · D1 orders"
-            : runtime.source === "fallback"
-              ? "Mostrando fallback mock por error de Backend V2."
-              : "Activa modo admin para operar órdenes live"}
-        </p>
+        <p className="text-[11px] text-zinc-400">Órdenes live desde D1</p>
       </div>
       <div className="flex flex-col gap-2 md:flex-row">
         {runtime.lastUpdated ? (
@@ -650,46 +641,18 @@ const SourcePanel = ({
         <Button
           className="border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs disabled:opacity-40"
           onClick={() => runtime.reload(includeTerminal)}
-          disabled={runtime.loading || !runtime.adminToken}
+          disabled={runtime.loading || !runtime.sessionActive}
         >
           {runtime.loading ? "Cargando…" : "Recargar órdenes"}
         </Button>
       </div>
     </div>
-    {!runtime.adminToken ? (
-      <div className="mt-3 rounded-lg border border-cyan-400/20 bg-cyan-400/10 p-2">
-        <p className="text-xs text-cyan-100">
-          Activa modo admin para cargar órdenes live.
-        </p>
-        <div className="mt-2 flex flex-col gap-2 md:flex-row">
-          <input
-            className="input md:mt-0"
-            type="password"
-            placeholder="Token admin preview"
-            value={runtime.tokenInput}
-            onChange={(e) => runtime.setTokenInput(e.target.value)}
-          />
-          <Button
-            className="bg-cyan-400 text-black"
-            onClick={runtime.activateToken}
-          >
-            Activar modo admin
-          </Button>
-        </div>
-      </div>
-    ) : (
-      <div className="mt-3 flex items-center gap-2">
-        <span className="chip">Token admin activo</span>
-        <Button
-          className="border border-zinc-700 bg-zinc-900 px-2 py-1 text-[11px]"
-          onClick={runtime.clearToken}
-        >
-          Cerrar modo admin
-        </Button>
-      </div>
-    )}
+    <div className="mt-3 flex flex-wrap items-center gap-2">
+      <span className="chip">Sesión admin activa</span>
+      <span className="chip">Órdenes live desde D1</span>
+    </div>
     <OrdersExportControls
-      adminToken={runtime.adminToken}
+      sessionActive={runtime.sessionActive}
       defaultIncludeTerminal={includeTerminal}
     />
     {runtime.error ? (
@@ -705,19 +668,86 @@ const SourcePanel = ({
   </Card>
 );
 
-const PinLoginMock = ({ onLogin }: { onLogin: () => void }) => (
-  <main className="shell">
-    <section className="login card">
-      <h1>Internal Chekeo V2</h1>
-      <p className="muted">Vista V2 · Backend V2 con fallback local</p>
-      <label htmlFor="pin">PIN</label>
-      <input id="pin" type="password" className="input" placeholder="••••" />
-      <Button className="mt-3 bg-cyan-400 text-black" onClick={onLogin}>
-        Entrar a consola
-      </Button>
-    </section>
-  </main>
-);
+const InternalLogin = ({
+  onLogin,
+  checkingSession,
+}: {
+  onLogin: () => void;
+  checkingSession: boolean;
+}) => {
+  const [pin, setPin] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const trimmed = pin.trim();
+    if (!trimmed) {
+      setError("Escribe tu PIN / contraseña.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      await loginInternal(trimmed);
+      setPin("");
+      onLogin();
+    } catch (loginError) {
+      setError(
+        loginError instanceof Error
+          ? loginError.message
+          : "No se pudo iniciar sesión.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <main className="shell flex items-center justify-center py-8">
+      <section className="login card w-full max-w-md border-cyan-400/20 bg-zinc-950/95 p-5 shadow-cyan-950/30">
+        <div className="mb-6 text-center">
+          <p className="text-2xl font-black tracking-tight text-zinc-50">
+            Burgers<span className="text-cyan-300">.exe</span>
+          </p>
+          <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.35em] text-cyan-200">
+            Chekeo
+          </p>
+        </div>
+        <form className="space-y-4" onSubmit={(event) => void submit(event)}>
+          <label className="block text-sm font-bold text-zinc-100" htmlFor="pin">
+            PIN / contraseña
+            <input
+              id="pin"
+              type="password"
+              className="input mt-2 min-h-12 text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"
+              placeholder="••••••"
+              value={pin}
+              onChange={(event) => {
+                setPin(event.target.value);
+                setError(null);
+              }}
+              autoComplete="current-password"
+              autoFocus
+              disabled={loading || checkingSession}
+            />
+          </label>
+          {error ? (
+            <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">
+              {error}
+            </p>
+          ) : null}
+          <Button
+            className="w-full bg-cyan-400 py-3 text-base font-black text-black disabled:opacity-50"
+            disabled={loading || checkingSession}
+          >
+            {loading || checkingSession ? "Entrando…" : "Entrar"}
+          </Button>
+        </form>
+      </section>
+    </main>
+  );
+};
 const OperatorHeader = ({
   active,
   onLogout,
@@ -733,7 +763,7 @@ const OperatorHeader = ({
         Burgers.exe Operator Console
       </h1>
       <p className="text-[11px] text-zinc-400">
-        Activos {active} · {source === "d1" ? "Backend V2" : "Fallback mock"} ·{" "}
+        Activos {active} · {source === "d1" ? "Backend V2" : "Modo offline"} ·{" "}
         {new Date().toLocaleTimeString()}
       </p>
     </div>
@@ -741,7 +771,7 @@ const OperatorHeader = ({
       className="border border-zinc-700 bg-zinc-900 px-2 py-1 text-[11px]"
       onClick={onLogout}
     >
-      Logout mock
+      Cerrar sesión
     </Button>
   </header>
 );
@@ -967,11 +997,11 @@ const CancellationReasonDialog = ({
     setPreset("Cliente canceló");
     setReason("Cliente canceló");
     setError(
-      runtime.source === "d1" && !runtime.adminToken
-        ? "Activa modo admin para cancelar órdenes live"
+      runtime.source === "d1" && !runtime.sessionActive
+        ? "Sesión expirada. Vuelve a iniciar sesión."
         : null,
     );
-  }, [request?.order.id, runtime.adminToken, runtime.source]);
+  }, [request?.order.id, runtime.sessionActive, runtime.source]);
 
   if (!request) return null;
   const { order } = request;
@@ -989,7 +1019,7 @@ const CancellationReasonDialog = ({
   const disabled =
     busy ||
     Boolean(validationError) ||
-    (runtime.source === "d1" && !runtime.adminToken);
+    (runtime.source === "d1" && !runtime.sessionActive);
 
   const selectPreset = (nextPreset: CancellationReasonPreset) => {
     setPreset(nextPreset);
@@ -1003,8 +1033,8 @@ const CancellationReasonDialog = ({
       setError(validationError);
       return;
     }
-    if (runtime.source === "d1" && !runtime.adminToken) {
-      setError("Activa modo admin para cancelar órdenes live");
+    if (runtime.source === "d1" && !runtime.sessionActive) {
+      setError("Sesión expirada. Vuelve a iniciar sesión.");
       return;
     }
     try {
@@ -1702,7 +1732,7 @@ const EmptyCloseState = () => (
   </Card>
 );
 
-const OperationalClosePanel = ({ adminToken }: { adminToken: string }) => {
+const OperationalClosePanel = ({ sessionActive }: { sessionActive: boolean }) => {
   const [from, setFrom] = useState(todayDateInput());
   const [to, setTo] = useState(todayDateInput());
   const [includeTerminal, setIncludeTerminal] = useState(true);
@@ -1715,17 +1745,16 @@ const OperationalClosePanel = ({ adminToken }: { adminToken: string }) => {
   const hasData = Boolean(summary && summary.totals.orders > 0);
 
   const loadSummary = useCallback(async () => {
-    const token = getAdminToken();
-    if (!token) {
+    if (!sessionActive) {
       setSummary(null);
-      setError("Activa modo admin para cargar cierre");
+      setError("Sesión expirada. Vuelve a iniciar sesión.");
       return;
     }
     setLoading(true);
     setError(null);
     setNotice(null);
     try {
-      const data = await fetchOrdersV2Summary(token, {
+      const data = await fetchOrdersV2Summary({
         from,
         to,
         includeTerminal,
@@ -1744,27 +1773,26 @@ const OperationalClosePanel = ({ adminToken }: { adminToken: string }) => {
     } finally {
       setLoading(false);
     }
-  }, [from, includeTerminal, to]);
+  }, [from, includeTerminal, sessionActive, to]);
 
   useEffect(() => {
-    if (adminToken) void loadSummary();
+    if (sessionActive) void loadSummary();
     else {
       setSummary(null);
-      setError("Activa modo admin para cargar cierre");
+      setError("Sesión expirada. Vuelve a iniciar sesión.");
     }
-  }, [adminToken, loadSummary]);
+  }, [sessionActive, loadSummary]);
 
   const downloadRangeCsv = async () => {
-    const token = getAdminToken();
-    if (!token) {
-      setError("Activa modo admin para exportar CSV");
+    if (!sessionActive) {
+      setError("Sesión expirada. Vuelve a iniciar sesión.");
       return;
     }
     setExporting(true);
     setError(null);
     setNotice(null);
     try {
-      const blob = await exportOrdersV2Csv(token, {
+      const blob = await exportOrdersV2Csv({
         from,
         to,
         includeTerminal,
@@ -1807,7 +1835,7 @@ const OperationalClosePanel = ({ adminToken }: { adminToken: string }) => {
           <Button
             className="border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm disabled:opacity-40"
             onClick={() => void downloadRangeCsv()}
-            disabled={exporting || !adminToken}
+            disabled={exporting || !sessionActive}
           >
             {exporting ? "Exportando…" : "Exportar CSV del rango"}
           </Button>
@@ -1842,14 +1870,14 @@ const OperationalClosePanel = ({ adminToken }: { adminToken: string }) => {
           <Button
             className="bg-cyan-400 px-3 py-2 text-sm font-bold text-black disabled:opacity-40"
             onClick={() => void loadSummary()}
-            disabled={loading || !adminToken}
+            disabled={loading || !sessionActive}
           >
             {loading ? "Calculando…" : "Actualizar cierre"}
           </Button>
         </div>
-        {!adminToken ? (
+        {!sessionActive ? (
           <p className="mt-2 rounded bg-amber-500/10 px-2 py-1 text-xs text-amber-200">
-            Activa modo admin para cargar cierre
+            Sesión expirada. Vuelve a iniciar sesión.
           </p>
         ) : null}
         {error ? (
@@ -2172,7 +2200,7 @@ const PaymentNotesPanel = ({
           <Button
             className="border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs disabled:opacity-40"
             onClick={() => runtime.reload(true)}
-            disabled={runtime.loading || !runtime.adminToken}
+            disabled={runtime.loading || !runtime.sessionActive}
           >
             {runtime.loading ? "Cargando…" : "Recargar órdenes"}
           </Button>
@@ -2188,7 +2216,7 @@ const PaymentNotesPanel = ({
             </button>
           ))}
         </div>
-        {!runtime.adminToken ? (
+        {!runtime.sessionActive ? (
           <p className="mt-3 rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-100">
             Activa el token admin para declarar pagos en D1.
           </p>
@@ -2258,21 +2286,21 @@ const PaymentNotesPanel = ({
                 <Button
                   className="border border-emerald-700 bg-emerald-950/50 px-3 py-1.5 text-xs text-emerald-100 disabled:opacity-40"
                   onClick={() => void runPaymentAction(order, "paid")}
-                  disabled={busy || !runtime.adminToken}
+                  disabled={busy || !runtime.sessionActive}
                 >
                   {busy ? "Actualizando…" : "Marcar pagado"}
                 </Button>
                 <Button
                   className="border border-amber-700 bg-amber-950/50 px-3 py-1.5 text-xs text-amber-100 disabled:opacity-40"
                   onClick={() => void runPaymentAction(order, "pending")}
-                  disabled={busy || !runtime.adminToken}
+                  disabled={busy || !runtime.sessionActive}
                 >
                   {busy ? "Actualizando…" : "Marcar pendiente"}
                 </Button>
                 <Button
                   className="border border-rose-700 bg-rose-950/50 px-3 py-1.5 text-xs text-rose-100 disabled:opacity-40"
                   onClick={() => void runPaymentAction(order, "cancelled")}
-                  disabled={busy || !runtime.adminToken}
+                  disabled={busy || !runtime.sessionActive}
                 >
                   {busy ? "Actualizando…" : "Marcar pago cancelado"}
                 </Button>
@@ -2287,7 +2315,7 @@ const PaymentNotesPanel = ({
                       draft,
                     )
                   }
-                  disabled={busy || !runtime.adminToken}
+                  disabled={busy || !runtime.sessionActive}
                 >
                   {busy ? "Guardando…" : "Guardar nota"}
                 </Button>
@@ -2579,8 +2607,7 @@ export function InternalChekeoApp() {
   const [cancellationRequest, setCancellationRequest] =
     useState<CancellationRequest>(null);
   const [ordersSource, setOrdersSource] = useState<OrdersSource>("mock");
-  const [adminToken, setAdminTokenState] = useState("");
-  const [tokenInput, setTokenInput] = useState("");
+  const [checkingSession, setCheckingSession] = useState(true);
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [ordersError, setOrdersError] = useState<string | null>(null);
   const [ordersNotice, setOrdersNotice] = useState<string | null>(null);
@@ -2588,20 +2615,21 @@ export function InternalChekeoApp() {
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const reduce = useReducedMotion();
 
+  const expireSession = useCallback(() => {
+    setLogged(false);
+    setOrders(asInternalOrders(mockOrders));
+    setOrdersSource("mock");
+    setOrdersError("Sesión expirada. Vuelve a iniciar sesión.");
+    setSelected(null);
+    setCancellationRequest(null);
+  }, []);
+
   const loadLiveOrders = useCallback(
     async (includeTerminal = tab === "historial" || tab === "pagos") => {
-      const token = getAdminToken();
-      setAdminTokenState(token);
-      if (!token) {
-        setOrders(asInternalOrders(mockOrders));
-        setOrdersSource("mock");
-        setOrdersError("Activa modo admin para cargar órdenes live");
-        return;
-      }
       setLoadingOrders(true);
       setOrdersError(null);
       try {
-        const liveOrders = await fetchOrdersV2Admin(token, {
+        const liveOrders = await fetchOrdersV2Admin({
           includeTerminal,
           limit: includeTerminal ? 50 : 25,
         });
@@ -2615,32 +2643,50 @@ export function InternalChekeoApp() {
         );
         setOrdersNotice("Órdenes live actualizadas desde Backend V2");
       } catch (error) {
-        setOrders(asInternalOrders(mockOrders));
-        setOrdersSource("fallback");
-        setOrdersError(
+        const message =
           error instanceof Error
             ? error.message
-            : "No se pudieron cargar órdenes live; mostrando fallback mock",
-        );
+            : "No se pudieron cargar órdenes live";
+        if (/UNAUTHORIZED|401/i.test(message)) {
+          expireSession();
+          return;
+        }
+        setOrders(asInternalOrders(mockOrders));
+        setOrdersSource("fallback");
+        setOrdersError(message);
       } finally {
         setLoadingOrders(false);
       }
     },
-    [tab],
+    [expireSession, tab],
   );
 
   useEffect(() => {
-    const syncToken = () => setAdminTokenState(getAdminToken());
-    syncToken();
-    window.addEventListener(ADMIN_TOKEN_CHANGED_EVENT, syncToken);
-    return () =>
-      window.removeEventListener(ADMIN_TOKEN_CHANGED_EVENT, syncToken);
+    let cancelled = false;
+    const checkSession = async () => {
+      setCheckingSession(true);
+      try {
+        const authenticated = await fetchInternalAuthStatus();
+        if (cancelled) return;
+        setLogged(authenticated);
+        if (authenticated)
+          void loadLiveOrders(tab === "historial" || tab === "pagos");
+      } catch {
+        if (!cancelled) setLogged(false);
+      } finally {
+        if (!cancelled) setCheckingSession(false);
+      }
+    };
+    void checkSession();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
     if (logged && tab !== "catalogo" && tab !== "cierre")
       void loadLiveOrders(tab === "historial" || tab === "pagos");
-  }, [logged, tab, adminToken, loadLiveOrders]);
+  }, [logged, tab, loadLiveOrders]);
 
   const move: MoveOrderStatus = async (id, s, reason) => {
     if (ordersSource !== "d1") {
@@ -2698,20 +2744,10 @@ export function InternalChekeoApp() {
       );
       return;
     }
-    const token = getAdminToken();
-    if (!token) {
-      const message =
-        s === "cancelled"
-          ? "Activa modo admin para cancelar órdenes live"
-          : "Activa modo admin para operar órdenes live";
-      setOrdersError(message);
-      throw new Error(message);
-    }
     setActionOrderId(id);
     setOrdersError(null);
     try {
       const updated = await updateOrderV2Status(
-        token,
         id,
         s,
         reason ?? `Internal V2 ${tab}`,
@@ -2733,6 +2769,7 @@ export function InternalChekeoApp() {
           ? error.message
           : "No se pudo actualizar el estado live";
       setOrdersError(message);
+      if (/UNAUTHORIZED|401/i.test(message)) expireSession();
       throw error instanceof Error ? error : new Error(message);
     } finally {
       setActionOrderId(null);
@@ -2760,16 +2797,10 @@ export function InternalChekeoApp() {
       setOrdersNotice("Pago operativo actualizado en fallback mock");
       return;
     }
-    const token = getAdminToken();
-    if (!token) {
-      const message = "Activa modo admin para operar pagos live";
-      setOrdersError(message);
-      throw new Error(message);
-    }
     setActionOrderId(id);
     setOrdersError(null);
     try {
-      const updated = await updateOrderV2Payment(token, id, {
+      const updated = await updateOrderV2Payment(id, {
         paymentStatus,
         notes,
         reason,
@@ -2784,6 +2815,7 @@ export function InternalChekeoApp() {
           ? error.message
           : "No se pudo actualizar el pago operativo";
       setOrdersError(message);
+      if (/UNAUTHORIZED|401/i.test(message)) expireSession();
       throw error instanceof Error ? error : new Error(message);
     } finally {
       setActionOrderId(null);
@@ -2827,16 +2859,9 @@ export function InternalChekeoApp() {
       return;
     }
 
-    const token = getAdminToken();
-    if (!token) {
-      const message = "Activa modo admin para operar cocina live";
-      setOrdersError(message);
-      throw new Error(message);
-    }
-
     setOrdersError(null);
     try {
-      const updated = await updateKitchenItemV2(token, orderId, {
+      const updated = await updateKitchenItemV2(orderId, {
         lineKey,
         itemKind,
         done,
@@ -2855,6 +2880,7 @@ export function InternalChekeoApp() {
           ? error.message
           : "No se pudo actualizar el checklist de cocina";
       setOrdersError(message);
+      if (/UNAUTHORIZED|401/i.test(message)) expireSession();
       throw error instanceof Error ? error : new Error(message);
     }
   };
@@ -2865,23 +2891,8 @@ export function InternalChekeoApp() {
     actionOrderId,
     error: ordersError,
     notice: ordersNotice,
-    adminToken,
-    tokenInput,
-    setTokenInput,
-    activateToken: () => {
-      if (!tokenInput.trim()) return;
-      persistAdminToken(tokenInput);
-      setAdminTokenState(tokenInput.trim());
-      setTokenInput("");
-      void loadLiveOrders(tab === "historial" || tab === "pagos");
-    },
-    clearToken: () => {
-      clearAdminToken();
-      setAdminTokenState("");
-      setOrdersSource("mock");
-      setOrders(asInternalOrders(mockOrders));
-      setOrdersError("Activa modo admin para cargar órdenes live");
-    },
+    sessionActive: logged,
+    onSessionExpired: expireSession,
     reload: (includeTerminal?: boolean) => {
       void loadLiveOrders(Boolean(includeTerminal));
     },
@@ -2917,18 +2928,25 @@ export function InternalChekeoApp() {
           />
         ),
         historial: <HistoryPanel orders={orders} runtime={runtime} />,
-        cierre: <OperationalClosePanel adminToken={adminToken} />,
+        cierre: <OperationalClosePanel sessionActive={logged} />,
         catalogo: <CatalogAdminPanel />,
       })[tab],
     [orders, ordersSource, tab, runtime, toggleKitchenItemDone],
   );
-  if (!logged) return <PinLoginMock onLogin={() => setLogged(true)} />;
+  if (!logged) return <InternalLogin checkingSession={checkingSession} onLogin={() => { setLogged(true); void loadLiveOrders(tab === "historial" || tab === "pagos"); }} />;
   return (
     <main className="shell">
       <OperatorHeader
         active={active.length}
         source={ordersSource}
-        onLogout={() => setLogged(false)}
+        onLogout={() => {
+          void logoutInternal();
+          setLogged(false);
+          setOrdersSource("mock");
+          setOrders(asInternalOrders(mockOrders));
+          setSelected(null);
+          setCancellationRequest(null);
+        }}
       />
       <OperatorTabs
         tab={tab}

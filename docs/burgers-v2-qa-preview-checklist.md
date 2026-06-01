@@ -26,7 +26,7 @@ Checklist para validar V2 en URL de preview (Cloudflare Pages o local preview), 
 
 ## Internal Chekeo V2 (`internal-chekeo-v2`)
 
-- [ ] PIN mock permite entrar al shell.
+- [ ] Login PIN real permite entrar al shell.
 - [ ] Tabs principales cambian correctamente.
 - [ ] Dashboard mock renderiza KPIs/estado esperado.
 - [ ] Vista de pedidos carga y permite interacción mock.
@@ -35,7 +35,7 @@ Checklist para validar V2 en URL de preview (Cloudflare Pages o local preview), 
 - [ ] Modal de detalle abre/cierra sin errores.
 - [ ] Pagos/notas mock editables según flujo definido.
 - [ ] Historial mock visible y consistente.
-- [ ] Logout mock regresa al estado inicial.
+- [ ] Logout de sesión regresa al login.
 - [ ] `prefers-reduced-motion` respetado.
 - [ ] Mobile 320px usable.
 - [ ] Mobile 390px usable.
@@ -70,10 +70,10 @@ Si aparece conexión real a backend productivo o dependencia operativa (auth/she
 ## QA catálogo admin V2 (internal preview)
 
 - Abrir internal preview.
-- Entrar con PIN mock.
+- Entrar con PIN real.
 - Ir a tab **Catálogo**.
 - Confirmar carga de catálogo live (`source=d1`).
-- Ingresar token admin preview y activar edición.
+- Usar sesión interna activa para editar.
 - Editar descripción/precio/disponibilidad de un item.
 - Guardar y confirmar feedback "Producto actualizado".
 - Confirmar que `GET /api/menu-v2` refleja cambios.
@@ -101,7 +101,7 @@ Si aparece conexión real a backend productivo o dependencia operativa (auth/she
 
 - [ ] Entrar a Internal Chekeo V2 preview.
 - [ ] Abrir tab Catálogo.
-- [ ] Activar modo admin con `BOG_MENU_ADMIN_TOKEN`; confirmar que el token se guarda solo en `sessionStorage`.
+- [ ] Iniciar sesión con PIN interno; confirmar que no se guarda token admin en storage.
 - [ ] Editar un producto con `source: d1`.
 - [ ] En “Imagen del producto”, subir una imagen válida `.jpg`, `.png`, `.webp` o `.avif` menor o igual a 5 MB.
 - [ ] Confirmar estado “Subiendo…” y mensaje “Imagen actualizada”.
@@ -120,7 +120,7 @@ Si aparece conexión real a backend productivo o dependencia operativa (auth/she
 
 - Entrar a Internal Chekeo V2 preview.
 - Abrir tab Catálogo.
-- Activar token admin preview.
+- Usar sesión interna activa.
 - Abrir la sección interna Promos.
 - Confirmar Source: `Catálogo live` (`source: d1`). Si aparece `Fallback local` o `Catálogo local`, validar que edición/upload quedan bloqueados.
 - Buscar y abrir la promo Combo OG.
@@ -236,8 +236,8 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 ### Flujo Internal live
 
 - [ ] Abrir Internal V2 preview.
-- [ ] Activar token admin con `BOG_ORDERS_ADMIN_TOKEN` o fallback `BOG_MENU_ADMIN_TOKEN`.
-- [ ] Confirmar que el token se guarda solo en `sessionStorage` y no en `localStorage`.
+- [ ] Iniciar sesión con `BOG_INTERNAL_PIN`.
+- [ ] Confirmar que no se guarda token admin en storage del navegador.
 - [ ] Confirmar copy “Pedidos live D1”, “Source: Órdenes live” y “Backend V2”.
 - [ ] Confirmar que aparece la orden `BX-20260529-4F1BEC` cuando está activa.
 - [ ] Presionar “Recargar órdenes” y confirmar que vuelve a consultar `GET /api/orders-v2-admin`.
@@ -349,7 +349,7 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 
 - [ ] Botón “Exportar CSV” visible en Internal Chekeo V2 junto a los controles de órdenes/source.
 - [ ] Sin token admin, el botón queda deshabilitado y se muestra “Activa modo admin para exportar CSV”.
-- [ ] Activar token admin desde el flujo compartido habilita exportación.
+- [ ] La sesión interna habilita exportación.
 - [ ] Export default descarga un archivo `.csv` desde `GET /api/orders-v2-admin/export.csv`.
 - [ ] La descarga usa `download="orders-v2-export.csv"` cuando el navegador lo permite.
 - [ ] Errores JSON del backend se muestran en la UI sin imprimir el token.
@@ -427,7 +427,7 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 ### Internal Chekeo V2 UI
 
 - [ ] Abrir Internal V2 preview en mobile width (320px+) y desktop.
-- [ ] Activar token admin y cargar órdenes live D1.
+- [ ] Iniciar sesión y cargar órdenes live D1.
 - [ ] Confirmar que cada tarjeta de Pedido muestra botones compactos “WhatsApp” y “Copiar mensaje”.
 - [ ] Abrir el modal de detalle y confirmar el copy “Acción manual: abre WhatsApp con mensaje prellenado.”
 - [ ] Confirmar que el modal muestra selector de template con Recibido, En preparación, Listo y Entregado.
@@ -496,7 +496,7 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 
 ### Internal cancel UX
 
-- [ ] Activar token admin y abrir Internal Chekeo V2 en mobile width (320px+) y desktop.
+- [ ] Iniciar sesión y abrir Internal Chekeo V2 en mobile width (320px+) y desktop.
 - [ ] En Pedidos, presionar “Cancelar” y confirmar que no cancela directo: abre modal con folio y cliente.
 - [ ] En el modal de detalle, presionar “Cancelar” y confirmar que abre el mismo flujo de razón.
 - [ ] Confirmar presets: Cliente canceló, Sin stock, Pago no confirmado, Pedido duplicado, Error de captura y Otro.
@@ -552,7 +552,7 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] Confirmar que no hay `alert()` en Internal/Public V2.
 - [ ] Confirmar que botones críticos quedan deshabilitados mientras hay loading/submitting/updating.
 - [ ] Confirmar que el token admin no se imprime en consola y no viaja en query params.
-- [ ] Confirmar que clear token sigue limpiando `sessionStorage` y vuelve a estado mock/sin admin.
+- [ ] Confirmar que logout limpia la cookie de sesión y vuelve al login.
 - [ ] Confirmar que Public V2 mantiene error inline recuperable después de error de red/backend.
 - [ ] Confirmar que Public V2 limpia idempotency key después de success y no deja pegado el draft anterior.
 - [ ] Confirmar que Public V2 no envía precios ni total; el backend confirma total desde D1.
@@ -775,3 +775,19 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] Sin token o con error D1, confirmar que Cocina muestra fallback visual y el aviso `Fallback visual: estados de cocina no se guardan en D1.` sin usar `alert()`.
 - [ ] Confirmar que no se crearon migraciones ni tablas nuevas.
 - [ ] Confirmar que no se tocaron legacy, `/api/order`, `/api/rpc`, Apps Script, Sheets sync, `BOG_ACTIVE_ENV`, pagos reales, WhatsApp API ni Public V2.
+
+## QA Fase 3 — Internal PIN session sin token visible
+
+- [ ] Abrir Internal V2 sin cookie de sesión y confirmar login con wordmark Burgers.exe, título Chekeo, campo PIN / contraseña y botón Entrar.
+- [ ] Escribir PIN incorrecto y confirmar error inline sin `alert()`.
+- [ ] Escribir PIN correcto y presionar Enter; confirmar entrada a la consola.
+- [ ] Confirmar que no aparece copy visible de token admin ni acciones de modo admin por token.
+- [ ] Confirmar que SourcePanel muestra “Sesión admin activa”, “Órdenes live desde D1” y botón Recargar órdenes.
+- [ ] Confirmar que Pedidos carga órdenes live D1 con sesión cookie.
+- [ ] Confirmar que Cocina permite marcar burger/Side Quest con sesión cookie.
+- [ ] Confirmar que Pagos y Cierre cargan con sesión cookie.
+- [ ] Recargar la página y confirmar que mantiene sesión mientras `bog_internal_session` siga vigente.
+- [ ] Logout y confirmar regreso al login.
+- [ ] Confirmar que el frontend no guarda token admin en storage del navegador.
+- [ ] Confirmar que endpoints admin siguen aceptando `Authorization: Bearer $BOG_ORDERS_ADMIN_TOKEN` para herramientas.
+- [ ] Confirmar que no se tocaron legacy, `/api/order`, `/api/rpc`, Apps Script, Sheets sync ni `BOG_ACTIVE_ENV`.

@@ -119,7 +119,7 @@ const buildCsv = (orders: OrderExportRow[], itemsByOrder: Map<string, ItemExport
 
 export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
   if (!env.BOG_MENU_DB) return errorResponse(503, 'D1_NOT_CONFIGURED', 'BOG_MENU_DB no está configurado.');
-  const authError = requireAdminToken(request, env);
+  const authError = await requireAdminToken(request, env);
   if (authError) return authError;
 
   const url = new URL(request.url);

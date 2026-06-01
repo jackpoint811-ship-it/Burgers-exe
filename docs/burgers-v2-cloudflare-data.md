@@ -126,7 +126,7 @@ bucket_name = "burgers-exe-assets-v2-preview"
 - Upload usa `multipart/form-data` con un solo campo `file`. Límite máximo: 5 MB. Tipos aceptados: `image/jpeg`, `image/png`, `image/webp`, `image/avif`. No acepta SVG, GIF, data URLs, content-type vacío ni múltiples archivos.
 - El key se genera automáticamente bajo `menu/` con SKU normalizado y timestamp, por ejemplo `menu/brg-og-20260528T184000Z.webp`; no se confía en rutas del filename original.
 - Al subir una imagen nueva, si existía un `image_key` previo bajo `menu/`, se intenta borrar de R2 sin bloquear la actualización si falla el delete. No se borran URLs externas.
-- El flujo UI en Catálogo es: activar token admin en `sessionStorage`, editar producto, seleccionar archivo, `Subir imagen`, confirmar nuevo `imageKey` en la card/lista y validar Public V2 sin redeploy.
+- El flujo UI en Catálogo es: iniciar sesión, editar producto, seleccionar archivo, `Subir imagen`, confirmar nuevo `imageKey` en la card/lista y validar Public V2 sin redeploy.
 - El botón `Quitar imagen / usar placeholder` llama DELETE, limpia referencias en D1 y Public V2 vuelve al placeholder por fallback.
 - No hay upload público ni upload desde el cliente público; los endpoints admin son same-origin y requieren `Authorization: Bearer <token>`.
 - Después de configurar bindings + secret, hacer redeploy de internal preview.
@@ -270,7 +270,7 @@ Internal Chekeo V2 usa los endpoints admin de órdenes V2 para leer y operar ped
 
 ### Token admin
 
-- La consola interna requiere un token admin guardado solo en `sessionStorage` durante la sesión del navegador.
+- La consola interna requiere login PIN y mantiene sesión en cookie HttpOnly durante la sesión operativa.
 - El backend valida `BOG_ORDERS_ADMIN_TOKEN` y puede usar `BOG_MENU_ADMIN_TOKEN` como fallback operativo según la configuración existente de Functions.
 - El token se reutiliza con el flujo admin del Catálogo para evitar guardar credenciales duplicadas o exponerlas en Public V2.
 
@@ -300,7 +300,7 @@ V2-9D no agrega endpoints, tablas, migrations ni bindings de Cloudflare. El fluj
 - `GET /api/orders-v2-admin`
 - `PATCH /api/orders-v2-admin/:id/status`
 
-La consola interna sigue usando D1 orders mediante Backend V2 y token admin compartido en `sessionStorage`; Public V2 sigue creando órdenes con `Idempotency-Key`. No se modifica `/api/order`, `/api/rpc`, Apps Script, Sheets, legacy, `cloudflare/public-order`, `cloudflare/internal-chekeo`, pagos, WhatsApp ni `BOG_ACTIVE_ENV`.
+La consola interna sigue usando D1 orders mediante Backend V2 y sesión interna por cookie HttpOnly; Public V2 sigue creando órdenes con `Idempotency-Key`. No se modifica `/api/order`, `/api/rpc`, Apps Script, Sheets, legacy, `cloudflare/public-order`, `cloudflare/internal-chekeo`, pagos, WhatsApp ni `BOG_ACTIVE_ENV`.
 
 ## V2-10A.1 Protected orders CSV export
 
@@ -362,7 +362,7 @@ V2-10A.1 does not change Public V2, Internal V2, `/api/order`, `/api/rpc`, Apps 
 
 ## V2-10A.2 Internal CSV export usage
 
-Internal Chekeo V2 can trigger the existing protected CSV export from the operator UI. Operators must first activate admin mode; the browser then reads the shared sessionStorage admin token and sends it only as `Authorization: Bearer <token>` when calling `GET /api/orders-v2-admin/export.csv`.
+Internal Chekeo V2 can trigger the existing protected CSV export from the operator UI. Operators must first sign in; the browser sends the HttpOnly session cookie with `credentials: include` when calling `GET /api/orders-v2-admin/export.csv`. `Authorization: Bearer` remains supported for tooling.
 
 The Internal UI can send these query params to the existing endpoint:
 
@@ -534,7 +534,7 @@ Confirmaciones de data flow:
 - D1 (`BOG_MENU_DB`) sigue siendo source of truth para menú, órdenes, cierre y CSV.
 - Public V2 crea órdenes mediante `POST /api/orders-v2` sin enviar precios ni total desde el frontend; solo envía `sku` y `qty` por item.
 - Internal V2 opera órdenes/cierre/export con endpoints admin existentes y token por header `Authorization: Bearer ...`.
-- El token admin permanece en `sessionStorage`, se limpia con la acción existente de cerrar modo admin y no se imprime en consola ni se manda por query string.
+- El token admin no se guarda en storage del navegador; logout limpia la cookie HttpOnly y no se imprimen secretos en consola ni se mandan por query string.
 - CSV y Sheets siguen siendo procesos manuales/export; no hay sync automático con Sheets ni Apps Script.
 - Pagos siguen siendo estados declarados (`pending`, `paid`, `cancelled`) sobre D1. No hay cobro real, Stripe, MercadoPago ni provider de pagos.
 - WhatsApp sigue siendo deep link/manual en navegador. No hay WhatsApp Business/API ni envío automático.
@@ -593,3 +593,14 @@ No-touch V2-12:
 - Si `done=true`, se inserta `type="KITCHEN_ITEM_DONE"`; si `done=false`, se inserta `type="KITCHEN_ITEM_REOPENED"`. Ambos eventos usan `detail_json={ lineKey, itemKind, source: "internal-v2" }` y actor `internal-v2`.
 - El endpoint no cambia `orders_v2.status`, no marca `ready` automáticamente y no toca pagos, WhatsApp, Sheets sync, Apps Script, `/api/order` ni `/api/rpc`.
 - La lectura admin de órdenes incluye los eventos de la orden para que Internal pueda restaurar el checklist después de recargar; el último evento por `lineKey` define si ese item está hecho o pendiente.
+
+## Internal V2 auth/session (Fase 3)
+
+- Configurar `BOG_INTERNAL_PIN` en Cloudflare Pages para el PIN humano de Internal Chekeo V2.
+- Mantener `BOG_ORDERS_ADMIN_TOKEN` configurado: sigue protegiendo `/api/orders-v2-admin*`, firma la cookie de sesión y conserva compatibilidad con `Authorization: Bearer`.
+- Endpoints nuevos:
+  - `POST /api/internal-v2-auth/login` recibe `{ "pin": "..." }`, valida contra `BOG_INTERNAL_PIN` o fallback temporal `BOG_ORDERS_ADMIN_TOKEN`, y crea `bog_internal_session` sin devolver secretos.
+  - `GET /api/internal-v2-auth/status` devuelve solo `authenticated: true/false`.
+  - `POST /api/internal-v2-auth/logout` limpia la cookie.
+- La cookie `bog_internal_session` es `HttpOnly`; por diseño el frontend no puede leerla ni copiar tokens a storage.
+- No guardar ni commitear valores reales de `BOG_INTERNAL_PIN`, `BOG_ORDERS_ADMIN_TOKEN` ni tokens admin en el repo.

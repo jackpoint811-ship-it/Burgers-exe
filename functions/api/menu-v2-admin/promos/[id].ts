@@ -1,8 +1,9 @@
 import { validateAssetKey, validateImageUrl } from '../../_asset-utils';
 import { mapD1PromoToPromoCard } from '../../_menu-v2-utils';
+import { requireAdminToken, type AdminEnv } from '../../_orders-v2-utils';
 
 /* PATCH /api/menu-v2-admin/promos/:id */
-type Env = { BOG_MENU_DB?: D1Database; BOG_MENU_ADMIN_TOKEN?: string };
+type Env = AdminEnv;
 
 type UpdatePayload = {
   title: string;
@@ -22,13 +23,6 @@ const PROMO_SELECT =
 const json = (status: number, payload: unknown) =>
   new Response(JSON.stringify(payload), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
 
-const safeEqual = (left: string, right: string): boolean => {
-  if (left.length !== right.length) return false;
-  let result = 0;
-  for (let i = 0; i < left.length; i += 1) result |= left.charCodeAt(i) ^ right.charCodeAt(i);
-  return result === 0;
-};
-
 const normalizeOptionalString = (value: unknown): string | null => {
   if (value == null) return null;
   if (typeof value !== 'string') return null;
@@ -36,12 +30,10 @@ const normalizeOptionalString = (value: unknown): string | null => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
-const getAuthorizedId = (env: Env, params: EventContext<Env, string, unknown>['params'], request: Request): { id: string } | Response => {
-  if (!env.BOG_MENU_ADMIN_TOKEN || !env.BOG_MENU_DB) return json(503, { ok: false, error: 'Admin disabled' });
-
-  const authHeader = request.headers.get('Authorization');
-  const providedToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
-  if (!providedToken || !safeEqual(providedToken, env.BOG_MENU_ADMIN_TOKEN)) return json(401, { ok: false, error: 'Unauthorized' });
+const getAuthorizedId = async (env: Env, params: EventContext<Env, string, unknown>['params'], request: Request): Promise<{ id: string } | Response> => {
+  if (!env.BOG_MENU_DB) return json(503, { ok: false, error: 'Admin disabled' });
+  const authError = await requireAdminToken(request, env);
+  if (authError) return authError;
 
   const id = String(params.id ?? '').trim();
   if (!id) return json(400, { ok: false, error: 'Invalid promo id' });
@@ -79,7 +71,7 @@ const parseBody = (input: unknown): UpdatePayload | null => {
 };
 
 export const onRequestPatch: PagesFunction<Env> = async ({ env, params, request }) => {
-  const auth = getAuthorizedId(env, params, request);
+  const auth = await getAuthorizedId(env, params, request);
   if (auth instanceof Response) return auth;
   const db = env.BOG_MENU_DB;
   if (!db) return json(503, { ok: false, error: 'Admin disabled' });

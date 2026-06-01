@@ -227,7 +227,7 @@ Decisions:
 
 ## V2-10A.2 Internal orders CSV export button
 
-V2-10A.2 adds a minimal Internal Chekeo V2 control to download the protected orders CSV from `GET /api/orders-v2-admin/export.csv`. The UI reuses the shared sessionStorage admin token flow and sends that token only through the `Authorization: Bearer <token>` header.
+V2-10A.2 adds a minimal Internal Chekeo V2 control to download the protected orders CSV from `GET /api/orders-v2-admin/export.csv`. The UI reuses the shared HttpOnly internal session flow and uses the HttpOnly session cookie from the browser; Authorization Bearer remains available for tools.
 
 Decisions:
 
@@ -457,3 +457,14 @@ No cambia en V2-14:
 - Burgers/combos y guarniciones extra tienen checklist independiente. Marcar una burger hecha no marca guarniciones, y marcar una guarnición hecha no cambia burgers.
 - El checklist por item se persiste sin migración ni tabla nueva usando eventos en `order_events_v2`: `KITCHEN_ITEM_DONE` y `KITCHEN_ITEM_REOPENED` con `detail_json={ lineKey, itemKind, source: "internal-v2" }`.
 - Internal deriva el estado por item desde eventos: el último evento del `lineKey` gana. No hay auto-ready; el estado de orden `ready` sigue siendo una acción manual existente.
+
+## V2-10 Internal Chekeo PIN session (Fase 3)
+
+- Internal Chekeo V2 usa un login inicial real con PIN/contraseña antes de mostrar la consola operativa.
+- El token admin ya no se captura ni se muestra en SourcePanel, Pedidos, Cocina, Pagos, Cierre ni Catálogo.
+- La sesión interna se maneja con cookie `bog_internal_session` `HttpOnly`, `SameSite=Lax`, `Path=/` y duración de 12 horas; el frontend solo consulta estado/login/logout con `credentials: "include"`.
+- `BOG_INTERNAL_PIN` es la variable recomendada para el PIN operativo del equipo.
+- `BOG_ORDERS_ADMIN_TOKEN` sigue siendo el secreto que protege endpoints admin y firma la sesión interna; si `BOG_INTERNAL_PIN` falta, login acepta temporalmente `BOG_ORDERS_ADMIN_TOKEN` para no romper previews existentes.
+- `Authorization: Bearer <BOG_ORDERS_ADMIN_TOKEN>` se mantiene compatible para herramientas internas, scripts y QA técnico.
+- No hay secrets en repo, no se expone el token al frontend y no se guarda token admin en storage del navegador.
+- Para requests autenticados por cookie, los endpoints admin validan `Origin` same-origin cuando el header está presente para reducir riesgo CSRF.

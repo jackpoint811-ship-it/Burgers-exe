@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { MenuItem, MenuV2Response, PromoCard as PromoCardType } from '@config/index';
 import { Button, Card } from '@ui/index';
-import { ADMIN_TOKEN_CHANGED_EVENT, clearAdminToken, getAdminToken, setAdminToken as persistAdminToken } from '../lib/admin-token';
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
 const ACCEPTED_IMAGE_TYPES_LABEL = 'JPG, PNG, WebP o AVIF hasta 5 MB';
@@ -45,8 +44,6 @@ export function CatalogAdminPanel() {
   const [promoQuery, setPromoQuery] = useState('');
   const [category, setCategory] = useState('all');
   const [availability, setAvailability] = useState('all');
-  const [adminToken, setAdminToken] = useState('');
-  const [tokenInput, setTokenInput] = useState('');
   const [editing, setEditing] = useState<MenuItem | null>(null);
   const [editingPromo, setEditingPromo] = useState<PromoCardType | null>(null);
   const [form, setForm] = useState<EditForm | null>(null);
@@ -82,11 +79,7 @@ export function CatalogAdminPanel() {
   };
 
   useEffect(() => {
-    const syncToken = () => setAdminToken(getAdminToken());
-    syncToken();
-    window.addEventListener(ADMIN_TOKEN_CHANGED_EVENT, syncToken);
     void loadMenu();
-    return () => window.removeEventListener(ADMIN_TOKEN_CHANGED_EVENT, syncToken);
   }, []);
 
   const filtered = useMemo(() => {
@@ -105,7 +98,7 @@ export function CatalogAdminPanel() {
   }, [menu, promoQuery]);
 
   const sourceLabel = menu?.source === 'd1' ? 'Catálogo live' : menu?.source === 'fallback' ? 'Fallback local' : 'Catálogo local';
-  const canEdit = Boolean(adminToken && menu?.source === 'd1');
+  const canEdit = Boolean(menu?.source === 'd1');
   const imagePreviewUrl = getAssetUrl(form?.imageUrl, form?.imageKey);
   const promoImagePreviewUrl = getAssetUrl(promoForm?.imageUrl, promoForm?.imageKey);
   const imageBusy = uploading || removingImage;
@@ -188,7 +181,7 @@ export function CatalogAdminPanel() {
 
   const onUploadImage = async () => {
     if (!editing || !form) return;
-    if (!adminToken) { setImageError('Activa el token admin antes de subir imágenes'); return; }
+
     if (menu?.source !== 'd1') { setImageError('El upload solo está disponible con source d1'); return; }
     const fileError = validateSelectedFile(selectedFile);
     if (fileError || !selectedFile) { setImageError(fileError); return; }
@@ -198,7 +191,7 @@ export function CatalogAdminPanel() {
     try {
       const body = new FormData();
       body.append('file', selectedFile);
-      const res = await fetch(`/api/menu-v2-admin/items/${encodeURIComponent(editing.sku)}/image`, { method: 'POST', headers: { Authorization: `Bearer ${adminToken}` }, body });
+      const res = await fetch(`/api/menu-v2-admin/items/${encodeURIComponent(editing.sku)}/image`, { method: 'POST', credentials: 'include', body });
       const data = (await res.json()) as ItemImageMutationResponse;
       if (!res.ok || !data.ok || !data.item) throw new Error(data.error ?? 'Error al subir imagen');
       updateEditedImageFromItem(data.item);
@@ -215,7 +208,7 @@ export function CatalogAdminPanel() {
 
   const onPromoUploadImage = async () => {
     if (!editingPromo || !promoForm) return;
-    if (!adminToken) { setPromoImageError('Activa el token admin antes de subir imágenes'); return; }
+
     if (menu?.source !== 'd1') { setPromoImageError('El upload solo está disponible con source d1'); return; }
     const fileError = validateSelectedFile(selectedPromoFile);
     if (fileError || !selectedPromoFile) { setPromoImageError(fileError); return; }
@@ -225,7 +218,7 @@ export function CatalogAdminPanel() {
     try {
       const body = new FormData();
       body.append('file', selectedPromoFile);
-      const res = await fetch(`/api/menu-v2-admin/promos/${encodeURIComponent(editingPromo.id)}/image`, { method: 'POST', headers: { Authorization: `Bearer ${adminToken}` }, body });
+      const res = await fetch(`/api/menu-v2-admin/promos/${encodeURIComponent(editingPromo.id)}/image`, { method: 'POST', credentials: 'include', body });
       const data = (await res.json()) as PromoMutationResponse;
       if (!res.ok || !data.ok || !data.promo) throw new Error(data.error ?? 'Error al subir imagen de promo');
       updateEditedPromo(data.promo);
@@ -242,13 +235,13 @@ export function CatalogAdminPanel() {
 
   const onRemoveImage = async () => {
     if (!editing || !form) return;
-    if (!adminToken) { setImageError('Activa el token admin antes de quitar imágenes'); return; }
+
     if (menu?.source !== 'd1') { setImageError('La eliminación de imagen solo está disponible con source d1'); return; }
 
     setRemovingImage(true);
     setImageError(null);
     try {
-      const res = await fetch(`/api/menu-v2-admin/items/${encodeURIComponent(editing.sku)}/image`, { method: 'DELETE', headers: { Authorization: `Bearer ${adminToken}` } });
+      const res = await fetch(`/api/menu-v2-admin/items/${encodeURIComponent(editing.sku)}/image`, { method: 'DELETE', credentials: 'include' });
       const data = (await res.json()) as ItemImageMutationResponse;
       if (!res.ok || !data.ok || !data.item) throw new Error(data.error ?? 'Error al quitar imagen');
       updateEditedImageFromItem(data.item);
@@ -265,13 +258,13 @@ export function CatalogAdminPanel() {
 
   const onPromoRemoveImage = async () => {
     if (!editingPromo || !promoForm) return;
-    if (!adminToken) { setPromoImageError('Activa el token admin antes de quitar imágenes'); return; }
+
     if (menu?.source !== 'd1') { setPromoImageError('La eliminación de imagen solo está disponible con source d1'); return; }
 
     setPromoRemovingImage(true);
     setPromoImageError(null);
     try {
-      const res = await fetch(`/api/menu-v2-admin/promos/${encodeURIComponent(editingPromo.id)}/image`, { method: 'DELETE', headers: { Authorization: `Bearer ${adminToken}` } });
+      const res = await fetch(`/api/menu-v2-admin/promos/${encodeURIComponent(editingPromo.id)}/image`, { method: 'DELETE', credentials: 'include' });
       const data = (await res.json()) as PromoMutationResponse;
       if (!res.ok || !data.ok || !data.promo) throw new Error(data.error ?? 'Error al quitar imagen de promo');
       updateEditedPromo(data.promo);
@@ -293,7 +286,7 @@ export function CatalogAdminPanel() {
     try {
       const res = await fetch(`/api/menu-v2-admin/items/${encodeURIComponent(editing.sku)}`, {
         method: 'PATCH',
-        headers: { 'content-type': 'application/json', Authorization: `Bearer ${adminToken}` },
+        credentials: 'include', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ name: form.name, description: form.description, price: Number(form.price), isAvailable: form.isAvailable, badge: form.badge || null, promoLabel: form.promoLabel || null, sortOrder: Number(form.sortOrder), imageUrl: form.imageUrl || null, imageKey: form.imageKey || null })
       });
       const data: unknown = await res.json();
@@ -313,7 +306,7 @@ export function CatalogAdminPanel() {
 
   const onPromoSave = async () => {
     if (!editingPromo || !promoForm || promoValidationError) return;
-    if (!adminToken) { setPromoSaveError('Activa el token admin antes de editar promos'); return; }
+
     if (menu?.source !== 'd1') { setPromoSaveError('La edición solo está disponible con source d1'); return; }
 
     setPromoSaving(true);
@@ -321,7 +314,7 @@ export function CatalogAdminPanel() {
     try {
       const res = await fetch(`/api/menu-v2-admin/promos/${encodeURIComponent(editingPromo.id)}`, {
         method: 'PATCH',
-        headers: { 'content-type': 'application/json', Authorization: `Bearer ${adminToken}` },
+        credentials: 'include', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ title: promoForm.title, description: promoForm.description, badge: promoForm.badge || null, promoLabel: promoForm.promoLabel || null, isAvailable: promoForm.isAvailable, isFeatured: promoForm.isFeatured, sortOrder: Number(promoForm.sortOrder), imageUrl: promoForm.imageUrl || null, imageKey: promoForm.imageKey || null })
       });
       const data = (await res.json()) as PromoMutationResponse;
@@ -344,7 +337,7 @@ export function CatalogAdminPanel() {
         <div><h3 className='font-bold'>Catálogo V2</h3><p className='muted'>Source: {sourceLabel}</p></div>
         {menu?.source !== 'd1' ? <p className='text-xs text-amber-300'>Edición deshabilitada hasta conectar D1.</p> : null}
       </div>
-      {!adminToken ? <div className='mt-2 flex flex-col gap-2 md:flex-row'><input className='input md:mt-0' type='password' placeholder='Token admin preview' value={tokenInput} onChange={(e) => setTokenInput(e.target.value)} /><Button onClick={() => { if (!tokenInput.trim()) return; persistAdminToken(tokenInput.trim()); setAdminToken(tokenInput.trim()); setTokenInput(''); }}>Activar edición</Button></div> : <div className='mt-2'><Button className='border border-zinc-700 bg-zinc-900' onClick={() => { clearAdminToken(); setAdminToken(''); }}>Cerrar modo admin</Button></div>}
+      <div className='mt-2 flex flex-wrap gap-2'><span className='chip'>Sesión admin activa</span><span className='chip'>Catálogo D1</span></div>
     </Card>
 
     <div className='flex gap-2 overflow-x-auto pb-1'>
