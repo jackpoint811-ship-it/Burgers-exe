@@ -673,3 +673,45 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 ### No-touch verification
 
 - [ ] Confirm no backend, Functions API, `/api/order`, `/api/rpc`, Apps Script, Sheets sync, real payments, WhatsApp API, Internal V2, legacy, `packages/config`, or `BOG_ACTIVE_ENV` changes were made for this UX update.
+
+## V2-10 Public Order kiosko McDonald's-style QA
+
+### Menú visual
+
+- [ ] Abrir Public Order V2 y confirmar que la pantalla inicial es un menú visual limpio, no un constructor técnico.
+- [ ] Confirmar categorías visibles: Hamburguesas, Combos, Guarniciones y Bebidas.
+- [ ] Tocar una card del menú y confirmar que solo abre modal informativo con nombre, imagen si existe, descripción, precio y disponibilidad.
+- [ ] Confirmar que tocar una card no inicia builder y no agrega productos al ticket.
+- [ ] Cerrar el modal con “Cerrar”.
+- [ ] Confirmar que el modal usa `role="dialog"`, `aria-modal`, foco razonable y Escape para cerrar.
+
+### Flujo guiado Ordenar
+
+- [ ] Confirmar que el CTA grande “Ordenar” está siempre visible en menú y respeta safe-area móvil.
+- [ ] Presionar “Ordenar”.
+- [ ] Confirmar pregunta inicial “¿Qué quieres ordenar?” con opciones Hamburguesa y Combo.
+- [ ] Elegir Hamburguesa y continuar a productos disponibles.
+- [ ] Elegir Burger OG.
+- [ ] Elegir x2 y confirmar copy “Se crearán 2 unidades editables”.
+- [ ] Editar Burger #1 distinto a Burger #2: quitar ingredientes, elegir extras por burger y agregar nota opcional.
+- [ ] Confirmar que pan sigue no editable.
+- [ ] Continuar a guarniciones.
+
+### Guarniciones y combos
+
+- [ ] En guarniciones, confirmar botón claro “No quiero guarnición · Saltar guarniciones”.
+- [ ] Saltar guarniciones e ir a checkout.
+- [ ] Volver al menú/flujo y agregar una guarnición extra; confirmar que aparece como línea separada `itemKind="garnish"` con precio propio.
+- [ ] Probar Combo.
+- [ ] Confirmar que cada combo exige guarnición incluida antes de continuar y muestra error inline si falta.
+- [ ] Confirmar que la guarnición incluida del combo se guarda como `garnish` dentro del combo.
+- [ ] Confirmar que cualquier guarnición extra adicional se agrega como línea separada con precio propio.
+- [ ] Confirmar que solo se muestran guarniciones reales del catálogo y no se inventan opciones.
+
+### Checkout, ticket y no-touch
+
+- [ ] Confirmar ticket con editar, duplicar, eliminar, unidades separadas y precio unitario.
+- [ ] Confirmar combos con guarnición incluida visible.
+- [ ] Confirmar checkout con ticket, datos, ubicación Torre GGA/Torre Valcob, pago y “Confirmar pedido”.
+- [ ] Confirmar que checkout no muestra pickup/delivery al usuario.
+- [ ] Confirmar que no se tocó backend: sin cambios en `functions/api/**`, `/api/order`, `/api/rpc`, Apps Script, Sheets sync, pagos reales, WhatsApp API, `BOG_ACTIVE_ENV`, Internal V2 ni legacy.

@@ -19,7 +19,9 @@ import {
 } from "../lib/order";
 import { createOrderV2 } from "../lib/orders-v2";
 
-type WindowMode = "MENU" | "CHECKOUT";
+type WindowMode = "MENU" | "ORDER" | "CHECKOUT";
+type GuidedStep = "type" | "product" | "edit" | "garnishes";
+type OrderChoice = "burger" | "combo";
 type CustomerDraft = {
   name: string;
   phone: string;
@@ -312,11 +314,11 @@ const AppChrome = ({
 
 const MenuCard = ({
   item,
-  onSelect,
+  onExplore,
   reduce,
 }: {
   item: MenuItem;
-  onSelect: (item: MenuItem) => void;
+  onExplore: (item: MenuItem) => void;
   reduce: boolean;
 }) => {
   const src = resolveAssetUrl(item.imageUrl, item.imageKey);
@@ -325,6 +327,16 @@ const MenuCard = ({
     <motion.article
       whileTap={reduce ? undefined : { scale: 0.98 }}
       className="menu-card"
+      role="button"
+      tabIndex={0}
+      onClick={() => onExplore(item)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onExplore(item);
+        }
+      }}
+      aria-label={`Ver información de ${item.name}`}
     >
       <div className="menu-visual">
         {src ? (
@@ -348,19 +360,9 @@ const MenuCard = ({
         <p>{item.description}</p>
         <div className="card-footer">
           <strong>{formatCurrency(item.price)}</strong>
-          <TerminalButton
-            className={
-              isPrimaryBuilderItem(item) ? "order-button" : "add-button"
-            }
-            disabled={!item.isAvailable}
-            onClick={() => onSelect(item)}
-          >
-            {item.isAvailable
-              ? isPrimaryBuilderItem(item)
-                ? "Ordenar"
-                : "Agregar"
-              : "Agotado"}
-          </TerminalButton>
+          <span className={item.isAvailable ? "availability-pill" : "availability-pill off"}>
+            {item.isAvailable ? "Disponible" : "Agotado"}
+          </span>
         </div>
       </div>
     </motion.article>
@@ -370,12 +372,12 @@ const MenuCard = ({
 const MenuWindow = ({
   categories,
   items,
-  onSelect,
+  onExplore,
   reduce,
 }: {
   categories: MenuV2Response["categories"];
   items: MenuItem[];
-  onSelect: (item: MenuItem) => void;
+  onExplore: (item: MenuItem) => void;
   reduce: boolean;
 }) => {
   const comboItems = items.filter((item) => inferItemKind(item) === "combo");
@@ -389,7 +391,7 @@ const MenuWindow = ({
         <span>Menú → Ordenar → Checkout</span>
         <h2>Menú</h2>
         <p>
-          Personaliza ingredientes, extras y guarnición al ordenar cada burger.
+          Explora el catálogo visual. Las cards solo muestran información; presiona Ordenar para iniciar el flujo guiado.
         </p>
       </div>
       {REQUIRED_MENU.map(({ key, label }) => {
@@ -404,7 +406,7 @@ const MenuWindow = ({
                   <MenuCard
                     key={item.sku}
                     item={item}
-                    onSelect={onSelect}
+                    onExplore={onExplore}
                     reduce={reduce}
                   />
                 ))}
@@ -779,6 +781,272 @@ const BuilderDialog = ({
   );
 };
 
+
+const MenuInfoDialog = ({
+  item,
+  onClose,
+}: {
+  item: MenuItem | null;
+  onClose: () => void;
+}) => {
+  const closeRef = useRef<HTMLButtonElement | null>(null);
+  const titleId = "menu-info-title";
+  const src = item ? resolveAssetUrl(item.imageUrl, item.imageKey) : undefined;
+
+  useEffect(() => {
+    if (!item) return;
+    const previous =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    closeRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      previous?.focus();
+    };
+  }, [item?.sku, onClose]);
+
+  if (!item) return null;
+
+  return (
+    <div className="order-dialog-backdrop info-backdrop" role="presentation">
+      <section
+        aria-labelledby={titleId}
+        aria-modal="true"
+        className="info-dialog"
+        role="dialog"
+      >
+        {src ? (
+          <img
+            src={src}
+            alt={item.name}
+            className="info-dialog-image"
+            onError={(event) => {
+              event.currentTarget.style.display = "none";
+            }}
+          />
+        ) : null}
+        <div className="info-dialog-body">
+          <p className="status-line">Vista de menú</p>
+          <h2 id={titleId}>{item.name}</h2>
+          <p className="muted">{item.description}</p>
+          <div className="info-dialog-meta">
+            <strong>{formatCurrency(item.price)}</strong>
+            <span className={item.isAvailable ? "availability-pill" : "availability-pill off"}>
+              {item.isAvailable ? "Disponible" : "Agotado"}
+            </span>
+          </div>
+          <button ref={closeRef} type="button" className="terminal-button" onClick={onClose}>
+            Cerrar
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+};
+
+const GuidedOrderWindow = ({
+  step,
+  orderChoice,
+  items,
+  builder,
+  extras,
+  garnishes,
+  extraGarnishSkus,
+  onChoice,
+  onProduct,
+  onQuantity,
+  onUnitChange,
+  onToggleExtraGarnish,
+  onSkipGarnishes,
+}: {
+  step: GuidedStep;
+  orderChoice: OrderChoice | null;
+  items: MenuItem[];
+  builder: BuilderDraft | null;
+  extras: MenuItem[];
+  garnishes: MenuItem[];
+  extraGarnishSkus: string[];
+  onChoice: (choice: OrderChoice) => void;
+  onProduct: (item: MenuItem) => void;
+  onQuantity: (qty: 1 | 2 | 3) => void;
+  onUnitChange: (index: number, unit: CartEntry) => void;
+  onToggleExtraGarnish: (sku: string) => void;
+  onSkipGarnishes: () => void;
+}) => {
+  const title =
+    step === "type"
+      ? "¿Qué quieres ordenar?"
+      : step === "product"
+        ? orderChoice === "combo"
+          ? "Escoge tu combo"
+          : "Escoge tu hamburguesa"
+        : step === "edit"
+          ? "Edita cada unidad"
+          : "Guarniciones opcionales";
+  const filteredItems = items.filter((item) => {
+    const kind = inferItemKind(item);
+    if (orderChoice === "burger") return kind === "burger" && item.isAvailable;
+    if (orderChoice === "combo") return kind === "combo" && item.isAvailable;
+    return false;
+  });
+  const quantityCopy = builder
+    ? builder.quantity === 1
+      ? `Se creará 1 unidad editable`
+      : `Se crearán ${builder.quantity} unidades editables`
+    : "Selecciona un producto para editar unidades.";
+
+  return (
+    <section className="terminal-window flow-window guided-flow" id="order-flow">
+      <div className="section-title">
+        <span>Ordenar · flujo guiado</span>
+        <h2>{title}</h2>
+        <p>
+          Primero eliges Hamburguesa o Combo; después x1/x2/x3, edición por unidad,
+          guarniciones y checkout.
+        </p>
+      </div>
+
+      {step === "type" ? (
+        <div className="choice-grid" role="group" aria-label="¿Qué quieres ordenar?">
+          <button
+            type="button"
+            className={orderChoice === "burger" ? "choice-card active" : "choice-card"}
+            onClick={() => onChoice("burger")}
+          >
+            <span>Hamburguesa</span>
+            <strong>Burger personalizada</strong>
+            <em>Pan fijo, ingredientes editables, extras por burger.</em>
+          </button>
+          <button
+            type="button"
+            className={orderChoice === "combo" ? "choice-card active" : "choice-card"}
+            onClick={() => onChoice("combo")}
+          >
+            <span>Combo</span>
+            <strong>Combo con guarnición incluida</strong>
+            <em>Debe elegir guarnición incluida por cada combo.</em>
+          </button>
+        </div>
+      ) : null}
+
+      {step === "product" ? (
+        <div className="product-pick-grid">
+          {filteredItems.length ? (
+            filteredItems.map((item) => {
+              const src = resolveAssetUrl(item.imageUrl, item.imageKey);
+              return (
+                <button
+                  type="button"
+                  key={item.sku}
+                  className={builder?.item.sku === item.sku ? "product-pick active" : "product-pick"}
+                  onClick={() => onProduct(item)}
+                >
+                  {src ? <img src={src} alt="" loading="lazy" /> : null}
+                  <span>{item.name}</span>
+                  <strong>{formatCurrency(item.price)}</strong>
+                </button>
+              );
+            })
+          ) : (
+            <EmptyState
+              title="Sin productos disponibles"
+              description="El catálogo real no tiene productos disponibles para esta elección."
+            />
+          )}
+        </div>
+      ) : null}
+
+      {step === "edit" && builder ? (
+        <div className="builder-layout">
+          <div className="builder-intro">
+            <span>{builder.itemKind === "combo" ? "Combo" : "Hamburguesa"}</span>
+            <p>{quantityCopy}</p>
+            {!builder.editLineKey ? <QuantitySelector value={builder.quantity} onChange={onQuantity} /> : null}
+          </div>
+          <div className="unit-stack">
+            {builder.units.map((unit, index) => (
+              <UnitEditor
+                key={unit.lineKey}
+                unit={unit}
+                index={index}
+                item={builder.item}
+                extras={extras}
+                garnishes={garnishes}
+                onChange={(next) => onUnitChange(index, next)}
+                onShowGarnishes={() => undefined}
+              />
+            ))}
+          </div>
+          {builder.error ? <p className="inline-error" role="alert">{builder.error}</p> : null}
+        </div>
+      ) : null}
+
+      {step === "garnishes" ? (
+        <div className="garnish-step">
+          <p className="muted">
+            Guarniciones extra opcionales: se agregan como línea separada con itemKind="garnish" y precio propio.
+          </p>
+          <TerminalButton className="secondary" onClick={onSkipGarnishes}>
+            No quiero guarnición · Saltar guarniciones
+          </TerminalButton>
+          {garnishes.length ? (
+            <div className="product-pick-grid">
+              {garnishes.map((item) => {
+                const active = extraGarnishSkus.includes(item.sku);
+                const src = resolveAssetUrl(item.imageUrl, item.imageKey);
+                return (
+                  <button
+                    type="button"
+                    key={item.sku}
+                    className={active ? "product-pick active" : "product-pick"}
+                    onClick={() => onToggleExtraGarnish(item.sku)}
+                  >
+                    {src ? <img src={src} alt="" loading="lazy" /> : null}
+                    <span>{item.name}</span>
+                    <strong>{formatCurrency(item.price)}</strong>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <EmptyState
+              title="Sin guarniciones reales"
+              description="No se inventan guarniciones; solo se usan las configuradas en catálogo."
+            />
+          )}
+        </div>
+      ) : null}
+    </section>
+  );
+};
+
+const PersistentOrderCta = ({
+  label,
+  detail,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  detail: string;
+  disabled?: boolean;
+  onClick: () => void;
+}) => (
+  <aside className="persistent-cta" aria-label="Acción principal">
+    <div>
+      <span>Siguiente paso</span>
+      <strong>{detail}</strong>
+    </div>
+    <TerminalButton disabled={disabled} onClick={onClick}>
+      {label}
+    </TerminalButton>
+  </aside>
+);
+
 const TicketList = ({
   cart,
   items,
@@ -1079,6 +1347,10 @@ export function PublicOrderApp() {
   const [windowMode, setWindowMode] = useState<WindowMode>("MENU");
   const [cart, setCart] = useState<CartEntry[]>([]);
   const [builder, setBuilder] = useState<BuilderDraft | null>(null);
+  const [guidedStep, setGuidedStep] = useState<GuidedStep>("type");
+  const [orderChoice, setOrderChoice] = useState<OrderChoice | null>(null);
+  const [infoItem, setInfoItem] = useState<MenuItem | null>(null);
+  const [extraGarnishSkus, setExtraGarnishSkus] = useState<string[]>([]);
   const [menuData, setMenuData] = useState<MenuV2Response>(
     toMockResponse("fallback"),
   );
@@ -1136,20 +1408,8 @@ export function PublicOrderApp() {
   const startBuilder = (item: MenuItem, source?: CartEntry) => {
     if (!item.isAvailable) return;
     const itemKind = inferItemKind(item);
-    if (itemKind !== "burger" && itemKind !== "combo") {
-      setCart((prev) =>
-        reindex([
-          ...prev,
-          makeUnit(
-            item,
-            itemKind,
-            prev.filter((entry) => entry.sku === item.sku).length + 1,
-          ),
-        ]),
-      );
-      setWindowMode("MENU");
-      return;
-    }
+    if (itemKind !== "burger" && itemKind !== "combo") return;
+    setOrderChoice(itemKind === "combo" ? "combo" : "burger");
     setBuilder({
       item,
       itemKind,
@@ -1158,7 +1418,8 @@ export function PublicOrderApp() {
       error: null,
       editLineKey: source?.lineKey,
     });
-    setWindowMode("MENU");
+    setGuidedStep(source ? "edit" : "edit");
+    setWindowMode("ORDER");
   };
 
   const updateBuilderQuantity = (quantity: 1 | 2 | 3) => {
@@ -1210,8 +1471,66 @@ export function PublicOrderApp() {
     setBuilder(null);
     setCheckoutError(null);
     setOrderConfirmation(null);
-    setWindowMode("CHECKOUT");
+    if (builder.editLineKey) {
+      setWindowMode("CHECKOUT");
+    } else {
+      setGuidedStep("garnishes");
+      setWindowMode("ORDER");
+    }
   };
+
+  const beginGuidedOrder = () => {
+    setBuilder(null);
+    setOrderChoice(null);
+    setExtraGarnishSkus([]);
+    setCheckoutError(null);
+    setOrderConfirmation(null);
+    setGuidedStep("type");
+    setWindowMode("ORDER");
+  };
+
+  const continueGuidedOrder = () => {
+    if (guidedStep === "type") {
+      if (!orderChoice) return;
+      setGuidedStep("product");
+      return;
+    }
+    if (guidedStep === "product") {
+      if (!builder) return;
+      setGuidedStep("edit");
+      return;
+    }
+    if (guidedStep === "edit") {
+      confirmBuilder();
+      return;
+    }
+    if (guidedStep === "garnishes") {
+      const selectedGarnishes = garnishes.filter((item) =>
+        extraGarnishSkus.includes(item.sku),
+      );
+      if (selectedGarnishes.length) {
+        setCart((prev) =>
+          reindex([
+            ...prev,
+            ...selectedGarnishes.map((item, index) =>
+              makeUnit(
+                item,
+                "garnish",
+                prev.filter((entry) => entry.sku === item.sku).length + index + 1,
+              ),
+            ),
+          ]),
+        );
+      }
+      setExtraGarnishSkus([]);
+      setWindowMode("CHECKOUT");
+    }
+  };
+
+  const toggleExtraGarnish = (sku: string) =>
+    setExtraGarnishSkus((prev) =>
+      prev.includes(sku) ? prev.filter((entry) => entry !== sku) : [...prev, sku],
+    );
 
   const duplicateLine = (lineKey: string) => {
     setCart((prev) => {
@@ -1307,6 +1626,42 @@ export function PublicOrderApp() {
     setWindowMode("MENU");
   };
 
+  const primaryLabel =
+    windowMode === "MENU"
+      ? "Ordenar"
+      : windowMode === "CHECKOUT"
+        ? "Confirmar pedido"
+        : guidedStep === "garnishes"
+          ? "Ir a checkout"
+          : "Continuar";
+  const primaryDetail =
+    windowMode === "MENU"
+      ? "Abrir flujo guiado"
+      : windowMode === "CHECKOUT"
+        ? `Ticket · ${formatCurrency(total)}`
+        : guidedStep === "type"
+          ? "Elige Hamburguesa o Combo"
+          : guidedStep === "product"
+            ? "Escoge producto disponible"
+            : guidedStep === "edit"
+              ? "Edita unidades separadas"
+              : "Guarniciones extra opcionales";
+  const primaryDisabled =
+    (windowMode === "ORDER" && guidedStep === "type" && !orderChoice) ||
+    (windowMode === "ORDER" && guidedStep === "product" && !builder) ||
+    (windowMode === "CHECKOUT" && (submitting || !cart.length));
+  const handlePrimaryAction = () => {
+    if (windowMode === "MENU") {
+      beginGuidedOrder();
+      return;
+    }
+    if (windowMode === "ORDER") {
+      continueGuidedOrder();
+      return;
+    }
+    handleCheckout();
+  };
+
   return (
     <main className="app-shell">
       <LoadingOverlay loading={showBoot || loadingMenu} />
@@ -1320,38 +1675,45 @@ export function PublicOrderApp() {
         <MenuWindow
           categories={menuData.categories}
           items={menuData.items}
-          onSelect={startBuilder}
+          onExplore={setInfoItem}
           reduce={reduce}
         />
       ) : null}
-      <BuilderDialog
-        draft={builder}
-        extras={extras}
-        garnishes={garnishes}
-        total={total}
-        count={count}
-        onQuantity={updateBuilderQuantity}
-        onUnitChange={updateBuilderUnit}
-        onConfirm={confirmBuilder}
-        onCancel={() => {
-          setBuilder(null);
-          setWindowMode("MENU");
-        }}
-        onCheckout={() => {
-          setBuilder(null);
-          setWindowMode("CHECKOUT");
-        }}
-        onShowGarnishes={() => {
-          setBuilder(null);
-          setWindowMode("MENU");
-          window.setTimeout(() =>
-            document.getElementById("menu-guarniciones")?.scrollIntoView({
-              block: "start",
-              behavior: reduce ? "auto" : "smooth",
-            }),
-          );
-        }}
-      />
+      {windowMode === "ORDER" ? (
+        <GuidedOrderWindow
+          step={guidedStep}
+          orderChoice={orderChoice}
+          items={menuData.items}
+          builder={builder}
+          extras={extras}
+          garnishes={garnishes}
+          extraGarnishSkus={extraGarnishSkus}
+          onChoice={(choice) => {
+            setOrderChoice(choice);
+            setBuilder(null);
+          }}
+          onProduct={(item) => {
+            if (!item.isAvailable) return;
+            const itemKind = inferItemKind(item);
+            if (itemKind !== "burger" && itemKind !== "combo") return;
+            setBuilder({
+              item,
+              itemKind,
+              quantity: 1,
+              units: [makeUnit(item, itemKind, 1)],
+              error: null,
+            });
+          }}
+          onQuantity={updateBuilderQuantity}
+          onUnitChange={updateBuilderUnit}
+          onToggleExtraGarnish={toggleExtraGarnish}
+          onSkipGarnishes={() => {
+            setExtraGarnishSkus([]);
+            setWindowMode("CHECKOUT");
+          }}
+        />
+      ) : null}
+      <MenuInfoDialog item={infoItem} onClose={() => setInfoItem(null)} />
       {windowMode === "CHECKOUT" ? (
         <CheckoutWindow
           cart={cart}
@@ -1371,13 +1733,11 @@ export function PublicOrderApp() {
         />
       ) : null}
       <TrustSection />
-      <FloatingCart
-        count={count}
-        total={total}
-        onCheckout={() => {
-          setBuilder(null);
-          setWindowMode("CHECKOUT");
-        }}
+      <PersistentOrderCta
+        label={primaryLabel}
+        detail={primaryDetail}
+        disabled={primaryDisabled}
+        onClick={handlePrimaryAction}
       />
     </main>
   );
