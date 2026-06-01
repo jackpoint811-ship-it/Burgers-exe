@@ -446,3 +446,14 @@ No cambia en V2-14:
 - La shell conserva enfoque mobile-first, controles táctiles mínimos de 44px, foco visible, modal con `role="dialog"`/`aria-modal` y soporte `prefers-reduced-motion`.
 - `Main Quest` solo renderiza opciones seleccionables para productos reales disponibles en `menuData.items`: `availableBurgerItems` para hamburguesas y `availableComboItems` para combos. Si no existen combos reales como `menu_items`, la opción `Combo` se oculta y cualquier selección stale se limpia.
 - Las `promoCards`/promos/concursos del `Menu` siguen siendo banners informativos; no se convierten en productos ordenables ni generan SKUs de combo inventados.
+
+## Fase 2 Internal Cocina y Side Quest checklist (2026-06-01)
+
+- Internal V2 Cocina opera sobre órdenes reales D1 cuando existe token admin; el fallback mock queda solo como vista visual y muestra aviso de que los estados no se persisten en D1.
+- Cocina lee las customizaciones desde `order_items_v2.snapshot_json` expuestas como `OrderV2Item.snapshot`: `lineKey`, `itemDisplayIndex`, `itemKind`, `removedIngredients`, `extras`, `burgerNote`, `garnish` y `extrasTotalCents`.
+- La vista Cocina deja de usar la tarjeta administrativa pesada: no muestra teléfono, pago, WhatsApp, source, export CSV ni acciones de pago; muestra folio, cliente, ubicación extraída de `notes`, burgers/combos por unidad, MOD, UPGRADE, nota por burger, guarnición incluida de combo y nota general.
+- Las líneas `itemKind="burger"` y `itemKind="combo"` se muestran como acordeones de preparación. La primera burger pendiente abre por default; al marcarla hecha queda verde, se repliega y se abre la siguiente pendiente. Si todas están hechas, la orden muestra `Burgers listas`.
+- Side Quest es una subvista separada para guarniciones extra: solo líneas `itemKind="garnish"`. La guarnición incluida de combo se renderiza dentro del combo y no entra como pendiente de Side Quest.
+- Burgers/combos y guarniciones extra tienen checklist independiente. Marcar una burger hecha no marca guarniciones, y marcar una guarnición hecha no cambia burgers.
+- El checklist por item se persiste sin migración ni tabla nueva usando eventos en `order_events_v2`: `KITCHEN_ITEM_DONE` y `KITCHEN_ITEM_REOPENED` con `detail_json={ lineKey, itemKind, source: "internal-v2" }`.
+- Internal deriva el estado por item desde eventos: el último evento del `lineKey` gana. No hay auto-ready; el estado de orden `ready` sigue siendo una acción manual existente.

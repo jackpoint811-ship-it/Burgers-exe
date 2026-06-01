@@ -580,3 +580,16 @@ No-touch V2-12:
 - El backend suma el precio real de extras al `line_total_cents` y al total de la orden desde D1; no confía en precios enviados por el frontend.
 - Las guarniciones incluidas de combo se validan contra D1 como categoría `guarniciones` y se guardan dentro del snapshot del combo. Las guarniciones de `Side Quest` viajan como líneas separadas con su propio SKU/precio.
 - Los combos ordenables deben existir como registros reales disponibles en `menuData.items`/D1 `menu_items`; `promoCards` no se transforman en líneas de pedido.
+
+## Fase 2 kitchen item checklist sobre D1 events (2026-06-01)
+
+- No se agrega migración, tabla ni columna nueva para cocina. La persistencia del checklist usa `order_events_v2`.
+- `order_items_v2.snapshot_json` es el contrato operativo para cocina: Internal V2 lee de ahí `lineKey`, `itemDisplayIndex`, `itemKind`, `removedIngredients`, `extras`, `burgerNote`, `garnish` y `extrasTotalCents`.
+- MOD corresponde a `removedIngredients`; UPGRADE corresponde a `extras`; la nota por burger corresponde a `burgerNote`.
+- Las guarniciones extra se identifican por `itemKind="garnish"`. La guarnición incluida de un combo viaja como `garnish` dentro del snapshot del combo y no debe duplicarse como Side Quest pendiente.
+- Endpoint admin protegido: `PATCH /api/orders-v2-admin/:id/kitchen-item` con `Authorization: Bearer <admin token>`.
+- Payload válido: `{ "lineKey": string, "itemKind": "burger" | "combo" | "garnish", "done": boolean }`.
+- Validaciones del endpoint: orden existente, `lineKey` requerido, `itemKind` permitido, `done` boolean, `lineKey` presente dentro de `order_items_v2.snapshot_json` de esa orden y coincidencia contra `snapshot.itemKind` cuando exista.
+- Si `done=true`, se inserta `type="KITCHEN_ITEM_DONE"`; si `done=false`, se inserta `type="KITCHEN_ITEM_REOPENED"`. Ambos eventos usan `detail_json={ lineKey, itemKind, source: "internal-v2" }` y actor `internal-v2`.
+- El endpoint no cambia `orders_v2.status`, no marca `ready` automáticamente y no toca pagos, WhatsApp, Sheets sync, Apps Script, `/api/order` ni `/api/rpc`.
+- La lectura admin de órdenes incluye los eventos de la orden para que Internal pueda restaurar el checklist después de recargar; el último evento por `lineKey` define si ese item está hecho o pendiente.

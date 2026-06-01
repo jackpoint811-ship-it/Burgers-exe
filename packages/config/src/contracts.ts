@@ -5,7 +5,7 @@ export type Availability = {
   days?: number[];
 };
 
-export type DataSource = 'd1' | 'mock' | 'fallback';
+export type DataSource = "d1" | "mock" | "fallback";
 
 export type AssetRef = {
   imageUrl?: string;
@@ -17,7 +17,7 @@ export type AssetRef = {
 
 export type MenuCategory = {
   id: string;
-  key: 'burgers' | 'extras' | 'guarniciones' | 'drinks';
+  key: "burgers" | "extras" | "guarniciones" | "drinks";
   name: string;
   sortOrder: number;
   updatedAt?: string;
@@ -25,7 +25,7 @@ export type MenuCategory = {
 
 export type MenuItem = {
   sku: string;
-  category: MenuCategory['key'];
+  category: MenuCategory["key"];
   name: string;
   description: string;
   price: number;
@@ -60,8 +60,8 @@ export type PromoCard = {
 
 export type SiteConfig = {
   brandName: string;
-  currency: 'MXN';
-  orderModes: Array<'pickup' | 'delivery'>;
+  currency: "MXN";
+  orderModes: Array<"pickup" | "delivery">;
   supportPhone: string;
   heroCta: string;
   notice: string;
@@ -77,19 +77,34 @@ export type MenuV2Response = {
   source: DataSource;
 };
 
-export type OrderStatus = 'new' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
-export type PriorityLevel = 'normal' | 'warning' | 'urgent';
-export type PaymentMethod = 'cash' | 'card' | 'transfer' | 'wallet';
-export type PaymentState = 'paid' | 'pending' | 'refunded';
+export type OrderStatus =
+  | "new"
+  | "preparing"
+  | "ready"
+  | "delivered"
+  | "cancelled";
+export type PriorityLevel = "normal" | "warning" | "urgent";
+export type PaymentMethod = "cash" | "card" | "transfer" | "wallet";
+export type PaymentState = "paid" | "pending" | "refunded";
 
-export type OrderItem = { name: string; qty: number; note?: string; price: number };
-export type OrderTimelineEvent = { id: string; label: string; time: string; tone?: 'default' | 'success' | 'warning' };
+export type OrderItem = {
+  name: string;
+  qty: number;
+  note?: string;
+  price: number;
+};
+export type OrderTimelineEvent = {
+  id: string;
+  label: string;
+  time: string;
+  tone?: "default" | "success" | "warning";
+};
 
 export type MockOrder = {
   id: string;
   folio: string;
   customer: string;
-  channel: 'walk-in' | 'pickup' | 'delivery';
+  channel: "walk-in" | "pickup" | "delivery";
   createdAt: string;
   status: OrderStatus;
   priority: PriorityLevel;
@@ -98,25 +113,37 @@ export type MockOrder = {
   note?: string;
   items: OrderItem[];
   total: number;
-  kitchenStation: 'grill' | 'assembly' | 'dispatch';
+  kitchenStation: "grill" | "assembly" | "dispatch";
   timeline: OrderTimelineEvent[];
 };
 
+export type OrderV2Status =
+  | "new"
+  | "preparing"
+  | "ready"
+  | "delivered"
+  | "cancelled";
+export type OrderV2Mode = "pickup" | "delivery";
+export type OrderV2PaymentMethod = "cash" | "transfer" | "card" | "unknown";
+export type OrderV2PaymentStatus = "pending" | "paid" | "cancelled";
+export type OrderV2Source = "public-v2" | "internal-v2" | "seed" | "import";
 
-export type OrderV2Status = 'new' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
-export type OrderV2Mode = 'pickup' | 'delivery';
-export type OrderV2PaymentMethod = 'cash' | 'transfer' | 'card' | 'unknown';
-export type OrderV2PaymentStatus = 'pending' | 'paid' | 'cancelled';
-export type OrderV2Source = 'public-v2' | 'internal-v2' | 'seed' | 'import';
+export type OrderV2ItemKind =
+  | "burger"
+  | "combo"
+  | "garnish"
+  | "drink"
+  | "other";
 
 export type OrderV2ItemCustomization = {
   lineKey?: string;
   itemDisplayIndex?: number;
-  itemKind?: 'burger' | 'combo' | 'garnish' | 'drink' | 'other';
+  itemKind?: OrderV2ItemKind;
   removedIngredients?: string[];
   extras?: Array<{ sku?: string; name: string; price?: number }>;
   burgerNote?: string;
   garnish?: { sku?: string; name: string } | null;
+  extrasTotalCents?: number;
 };
 
 export type OrderV2Item = {
@@ -175,10 +202,10 @@ export type CreateOrderV2Payload = {
 export type CreateOrderV2Response = {
   ok: boolean;
   data?: {
-    order: Pick<OrderV2, 'id' | 'folio' | 'status' | 'createdAt'> & {
+    order: Pick<OrderV2, "id" | "folio" | "status" | "createdAt"> & {
       subtotal: number;
       total: number;
-      currency: 'MXN';
+      currency: "MXN";
       idempotencyKey: string;
     };
     idempotent?: boolean;
@@ -188,16 +215,14 @@ export type CreateOrderV2Response = {
 
 export type OrdersV2AdminResponse = {
   ok: boolean;
-  data?: { orders: OrderV2[]; source?: 'd1' };
+  data?: { orders: OrderV2[]; source?: "d1" };
   error?: OrderV2Error;
 };
-
-
 
 export type OrdersV2SummaryResponse = {
   ok: boolean;
   data?: {
-    source: 'd1';
+    source: "d1";
     range: { from: string; to: string; fromUtc: string; toUtc: string };
     totals: {
       orders: number;
@@ -209,9 +234,19 @@ export type OrdersV2SummaryResponse = {
       averageTicket: number;
     };
     byStatus: Record<OrderV2Status, number>;
-    byPaymentMethod: Array<{ paymentMethod: string; orders: number; total: number }>;
+    byPaymentMethod: Array<{
+      paymentMethod: string;
+      orders: number;
+      total: number;
+    }>;
     byOrderMode: Array<{ orderMode: string; orders: number; total: number }>;
-    topItems: Array<{ sku: string; name: string; qty: number; total: number; orders: number }>;
+    topItems: Array<{
+      sku: string;
+      name: string;
+      qty: number;
+      total: number;
+      orders: number;
+    }>;
     recentOrders: Array<{
       id: string;
       folio: string;
@@ -223,7 +258,10 @@ export type OrdersV2SummaryResponse = {
       paymentStatus: string;
       total: number;
     }>;
-    durations: { newToReadyAvgSeconds: number | null; newToDeliveredAvgSeconds: number | null };
+    durations: {
+      newToReadyAvgSeconds: number | null;
+      newToDeliveredAvgSeconds: number | null;
+    };
     generatedAt: string;
   };
   error?: OrderV2Error;
@@ -252,7 +290,24 @@ export type UpdateOrderV2PaymentResponse = {
   error?: OrderV2Error;
 };
 
-export type KitchenEvent = { id: string; orderId: string; label: string; at: string };
+export type UpdateKitchenItemPayload = {
+  lineKey: string;
+  itemKind: Extract<OrderV2ItemKind, "burger" | "combo" | "garnish">;
+  done: boolean;
+};
+
+export type UpdateKitchenItemResponse = {
+  ok: boolean;
+  data?: { order: OrderV2; event?: OrderV2Event };
+  error?: OrderV2Error;
+};
+
+export type KitchenEvent = {
+  id: string;
+  orderId: string;
+  label: string;
+  at: string;
+};
 export type OperatorStats = {
   activeOrders: number;
   pendingOrders: number;

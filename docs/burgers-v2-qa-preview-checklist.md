@@ -742,3 +742,36 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] Confirmar no llamadas ni cambios a `/api/order`, `/api/rpc`, Apps Script, Sheets sync, `BOG_ACTIVE_ENV`, WhatsApp ni pasarelas externas.
 - [ ] Confirmar que `Combo` en `Main Quest` solo aparece si existe al menos un combo real disponible en `menuData.items`; si solo hay promo/concurso en `promoCards`, no debe mostrarse como opción ordenable.
 - [ ] Confirmar que una promo/concurso visible en `Menu` permanece como banner informativo y no inventa SKUs ni combos ordenables.
+
+## Fase 2 Internal Cocina y Side Quest QA (2026-06-01)
+
+### Creación de orden real desde Public V2
+
+- [ ] Crear orden desde Public con Burger OG, MOD `Sin cebolla`, UPGRADE `Extra Bacon`, nota por burger y Side Quest `Fries OG`.
+- [ ] Confirmar que la orden queda en D1 con `snapshot_json` por item y `lineKey` único por unidad.
+
+### Vista Cocina Internal V2
+
+- [ ] Abrir Internal V2 / Cocina con token admin real.
+- [ ] Confirmar que la vista no muestra teléfono, payment status, WhatsApp, source, export CSV ni acciones de pago.
+- [ ] Confirmar que cada orden muestra folio grande, cliente grande y ubicación extraída de `notes` (`Ubicación: Torre GGA` o `Ubicación: Torre Valcob`).
+- [ ] Confirmar que cada burger/combo aparece como unidad separada y muestra MOD desde `removedIngredients`, UPGRADE desde `extras`, nota por burger desde `burgerNote` y nota general si existe.
+- [ ] Confirmar que si no hay modificaciones se muestra `Sin MOD` y `Sin UPGRADE` como texto pequeño.
+- [ ] Confirmar que un combo muestra `Guarnición incluida: ...` dentro del combo y que esa guarnición incluida no aparece en Side Quest pendiente.
+
+### Acordeones y checklist independiente
+
+- [ ] Crear o ubicar orden con más de una burger/combo y confirmar que la primera burger pendiente abre por default.
+- [ ] Marcar una burger hecha y confirmar que queda verde, se repliega y abre automáticamente la siguiente pendiente.
+- [ ] Confirmar que cuando no quedan burgers pendientes se muestra `Burgers listas`.
+- [ ] Confirmar que Side Quest sigue pendiente después de marcar burger hecha.
+- [ ] Entrar a Side Quest, marcar la guarnición hecha y confirmar que no cambia el estado de la burger.
+- [ ] Recargar órdenes y confirmar que los estados hechos se restauran desde eventos D1 `KITCHEN_ITEM_DONE` / `KITCHEN_ITEM_REOPENED`.
+- [ ] Reabrir una burger o guarnición y confirmar que se inserta evento `KITCHEN_ITEM_REOPENED` y el item vuelve a pendiente.
+- [ ] Marcar la orden como lista con la acción manual existente y confirmar que no hubo auto-ready al completar el checklist.
+
+### Fallback y no-touch
+
+- [ ] Sin token o con error D1, confirmar que Cocina muestra fallback visual y el aviso `Fallback visual: estados de cocina no se guardan en D1.` sin usar `alert()`.
+- [ ] Confirmar que no se crearon migraciones ni tablas nuevas.
+- [ ] Confirmar que no se tocaron legacy, `/api/order`, `/api/rpc`, Apps Script, Sheets sync, `BOG_ACTIVE_ENV`, pagos reales, WhatsApp API ni Public V2.
