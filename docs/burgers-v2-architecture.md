@@ -368,14 +368,33 @@ See [Burgers.exe V2 cutover readiness runbook](./burgers-v2-cutover-runbook.md).
 
 ## Fase 1 Public official order flow (2026-05-31)
 
-- Public Order V2 deja de ser un formulario largo y opera en tres ventanas separadas: **Menú → Builder/Ordenar → Checkout**.
-- La app abre en Menú con identidad gamer-terminal Burgers.exe: negro profundo, verde neón, etiquetas `C:\BURGERS.EXE`, botones bracketed y estados RUN/READY/LOADING/ERROR.
+- Public Order V2 deja de ser un formulario largo y opera con flujo público **Menú → Ordenar → Checkout**.
+- La app abre en Menú con identidad Burgers.exe dark premium: negro profundo, verde neón como acento, glow sutil, cards modernas y copy orientado a ordenar comida.
 - La carga inicial muestra una capa brandeada con wordmark Burgers.exe; transiciones internas usan estados de terminal y respetan `prefers-reduced-motion`.
-- Menú muestra únicamente secciones operativas visibles al cliente: Combos, Hamburguesas, Guarniciones y Bebidas. Los extras no aparecen como productos principales; solo se ofrecen dentro del builder por burger.
-- Builder permite x1 RUN, x2 DOUBLE LOAD y x3 TRIPLE STACK. x2/x3 generan unidades separadas (`lineKey` distinto) para que cada burger sea editable de forma independiente.
-- Personalización por unidad: ingredientes derivados del producto real editables excepto pan, extras reales del catálogo por burger, nota opcional por burger y guarnición obligatoria para combos.
+- Menú muestra únicamente secciones operativas visibles al cliente: Combos, Hamburguesas, Guarniciones y Bebidas. Los extras no aparecen como productos principales; solo se ofrecen dentro del panel de ordenar por burger.
+- Ordenar permite x1 Clásica, x2 Doble y x3 Triple. x2/x3 generan unidades separadas (`lineKey` distinto) para que cada burger sea editable de forma independiente.
+- Personalización por unidad: ingredientes derivados del producto real editables excepto pan, extras reales del catálogo por burger, nota opcional por burger y guarnición obligatoria para combos; las burgers normales permanecen sin guarnición dentro del panel y cualquier guarnición se agrega aparte desde Menú con su propio SKU/precio.
 - Checkout queda separado con pasos desbloqueables: ticket, datos cliente, ubicación/pago y confirmar. La ubicación visible al cliente está limitada a Torre GGA y Torre Valcob.
 - Para compatibilidad interna el payload conserva `orderMode` hacia `/api/orders-v2`, pero la UI no muestra pickup/delivery ni tipo de envío.
 - D1 sigue siendo source of truth para catálogo, precios base y creación de orden; el frontend no envía precios finales confiables.
 - No se agregan productos, extras, guarniciones ni ubicaciones fuera de lo disponible en catálogo/config existente.
 - No se toca Internal V2, legacy, `/api/order`, `/api/rpc`, Apps Script, Sheets sync, pagos reales, WhatsApp API ni `BOG_ACTIVE_ENV`.
+
+## V2-14 Public gamer order UX refinement
+
+V2-14 refina Public Order V2 después de PR #179 sin tocar backend ni contratos.
+
+Alcance UX:
+
+- Public V2 conserva identidad Burgers.exe con dark premium, acentos neón y microinteracciones sutiles, pero reduce el lenguaje visual de terminal/consola.
+- El flujo público visible queda como `Menú → Ordenar → Checkout`.
+- `Ordenar` ya no es una ventana/página aparte: se integra como panel dentro de la experiencia de Menú al seleccionar una burger o combo.
+- Checkout sigue siendo sección separada para ticket, datos del cliente, ubicación, pago y confirmación.
+- Extras no se muestran como sección principal del menú; se mantienen como customización por burger dentro del panel de ordenar.
+- Guarniciones usan únicamente productos reales de la categoría `guarniciones`: son obligatorias dentro de combos; las burgers normales muestran `Sin guarnición` y dirigen a agregar una guarnición aparte desde Menú para conservar precio propio.
+
+No cambia en V2-14:
+
+- No cambia backend, schema, endpoints, `/api/order`, `/api/rpc`, Apps Script, Sheets sync, pagos reales, WhatsApp API ni `BOG_ACTIVE_ENV`.
+- No cambia Internal V2, legacy ni Cloudflare legacy apps.
+- Las customizaciones por item siguen enviando `lineKey`, `itemDisplayIndex`, `itemKind`, `removedIngredients`, `extras`, `burgerNote` y `garnish` en el snapshot público V2; `garnish` solo aplica dentro de combos, mientras una guarnición suelta viaja como línea `itemKind=garnish`.
