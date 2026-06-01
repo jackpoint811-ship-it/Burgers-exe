@@ -523,39 +523,45 @@ const UnitEditor = ({
         <div className="builder-block">
           <h4>Extras por burger</h4>
           {extras.length > 0 ? (
-            <div className="chip-grid">
-              {extras.map((extra) => {
-                const active = unit.extras.some(
-                  (entry) => entry.sku === extra.sku,
-                );
-                return (
-                  <button
-                    type="button"
-                    key={extra.sku}
-                    className={active ? "chip active" : "chip"}
-                    onClick={() =>
-                      onChange({
-                        ...unit,
-                        extras: active
-                          ? unit.extras.filter(
-                              (entry) => entry.sku !== extra.sku,
-                            )
-                          : [
-                              ...unit.extras,
-                              {
-                                sku: extra.sku,
-                                name: extra.name,
-                                price: extra.price,
-                              },
-                            ],
-                      })
-                    }
-                  >
-                    {extra.name}
-                  </button>
-                );
-              })}
-            </div>
+            <>
+              <div className="chip-grid">
+                {extras.map((extra) => {
+                  const active = unit.extras.some(
+                    (entry) => entry.sku === extra.sku,
+                  );
+                  return (
+                    <button
+                      type="button"
+                      key={extra.sku}
+                      className={active ? "chip active" : "chip"}
+                      onClick={() =>
+                        onChange({
+                          ...unit,
+                          extras: active
+                            ? unit.extras.filter(
+                                (entry) => entry.sku !== extra.sku,
+                              )
+                            : [
+                                ...unit.extras,
+                                {
+                                  sku: extra.sku,
+                                  name: extra.name,
+                                  price: extra.price,
+                                },
+                              ],
+                        })
+                      }
+                    >
+                      {extra.name}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="empty-line">
+                Los extras se guardan para cocina; el total confirmado se
+                calcula desde catálogo.
+              </p>
+            </>
           ) : (
             <p className="empty-line">Sin extras configurados.</p>
           )}
@@ -668,15 +674,7 @@ const BuilderDialog = ({
       ? `Se creará 1 unidad editable de ${draft.item.name}`
       : `Se crearán ${draft.quantity} unidades editables de ${draft.item.name}`
     : "";
-  const builderTotal = draft
-    ? draft.units.reduce(
-        (acc, unit) =>
-          acc +
-          draft.item.price +
-          unit.extras.reduce((sum, extra) => sum + (extra.price ?? 0), 0),
-        0,
-      )
-    : 0;
+  const builderTotal = draft ? draft.units.length * draft.item.price : 0;
 
   useEffect(() => {
     if (!draft) return;
@@ -762,6 +760,9 @@ const BuilderDialog = ({
             <span>{quantityCopy}</span>
             <strong>{formatCurrency(builderTotal)}</strong>
           </div>
+          <p className="drawer-total-note">
+            Extras guardados para cocina; total confirmado desde catálogo.
+          </p>
           <div className="drawer-footer-actions">
             {count > 0 ? (
               <TerminalButton className="secondary" onClick={onCheckout}>

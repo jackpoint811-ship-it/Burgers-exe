@@ -641,6 +641,7 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] Confirm each unit editor is labeled `Burger OG #1`, `Burger OG #2`, `Burger OG #3` as applicable.
 - [ ] Edit Burger OG #1 differently from Burger OG #2 and confirm extras/removals/notes do not bleed between units.
 - [ ] Confirm the ticket shows the units as separate lines with unit price copy.
+- [ ] Select extras and confirm the drawer total still matches ticket/checkout catalog pricing, with copy explaining extras are saved for cocina and total confirmado comes from catálogo.
 
 ### Guarniciones
 

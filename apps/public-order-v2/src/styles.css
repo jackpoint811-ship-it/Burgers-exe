@@ -657,6 +657,11 @@ p {
   color: var(--amber);
   font-size: 1.35rem;
 }
+.drawer-total-note {
+  margin: -4px 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
 .drawer-footer-actions {
   display: grid;
   gap: 8px;
