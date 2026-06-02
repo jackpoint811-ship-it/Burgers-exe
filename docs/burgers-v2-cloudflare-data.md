@@ -673,6 +673,6 @@ Fase 4C no agrega tablas, migraciones ni endpoints. La imagen de tickets se gene
 
 No existe upload a R2, no existe tabla D1 de imágenes y no se persisten blobs generados. `wa.me` se usa solo para abrir WhatsApp con texto encoded; no hay WhatsApp API ni envío automático. La descarga del PNG queda en el dispositivo del operador para adjuntarse manualmente.
 
-Los datos permitidos en la imagen son: nombre del participante, `customerPhoneMasked`, campaña, total tickets, burger tickets, referral tickets, código de invitado si se puede relacionar de forma segura, último folio, último pedido y fecha/hora de generación. El teléfono completo no se devuelve ni se pinta en el canvas.
+Los datos permitidos en la imagen son: nombre del participante, `customerPhoneMasked`, campaña, total tickets, burger tickets, referral tickets, código de invitado solo si existe un match seguro y único por nombre normalizado + teléfono enmascarado, último folio, último pedido y fecha/hora de generación. El teléfono completo no se devuelve ni se pinta en el canvas. Si el match no es seguro o es ambiguo, el canvas muestra el fallback “solicita tu código en Burgers.exe”.
 
 La validación final del sorteo sigue dependiendo de D1 y de las reglas operativas: órdenes canceladas no cuentan, `pending`/`valid` suman referidos e `invalid` no suma. La imagen incluye el aviso “Tickets sujetos a validación final.”

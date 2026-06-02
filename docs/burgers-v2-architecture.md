@@ -510,7 +510,7 @@ Fase 4B agrega códigos de invitado para el sorteo mensual sin crear login de cl
 
 Fase 4C agrega en Chekeo V2 > **Sorteos** la generación frontend de una imagen PNG brandeada para un participante, sin backend nuevo, sin migración, sin R2 y sin guardar archivos en D1. En **Resultados** y **Top usuarios por tickets** aparece el botón **Imagen**, que abre un modal mobile-first “Imagen para WhatsApp” con preview, descarga y acciones de texto.
 
-La imagen se genera con Canvas nativo en `apps/internal-chekeo-v2` usando solo datos ya disponibles del summary: `customerName`, `customerPhoneMasked`, `burgerTickets`, `referralTickets`, `totalTickets`, `lastOrderFolio` y `lastOrderAt`, más la campaña seleccionada/activa y códigos de invitado ya cargados en el panel cuando pueden relacionarse con teléfono enmascarado y nombre sin exponer teléfono completo. Si no hay relación segura, se muestra “Código: solicita tu código en Burgers.exe”.
+La imagen se genera con Canvas nativo en `apps/internal-chekeo-v2` usando solo datos ya disponibles del summary: `customerName`, `customerPhoneMasked`, `burgerTickets`, `referralTickets`, `totalTickets`, `lastOrderFolio` y `lastOrderAt`, más la campaña seleccionada/activa. El código de invitado solo se muestra cuando hay exactamente un código activo con match seguro por `ownerName` normalizado igual a `customerName` normalizado y `ownerPhoneMasked` igual a `customerPhoneMasked`; nunca se usa teléfono enmascarado por sí solo porque últimos 4 dígitos pueden repetirse. Si no hay match seguro o hay ambigüedad, se muestra “Código: solicita tu código en Burgers.exe”.
 
 Acciones disponibles:
 

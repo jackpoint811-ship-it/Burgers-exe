@@ -842,7 +842,7 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 3. Buscar un participante con tickets o usar **Top usuarios por tickets**.
 4. Presionar **Imagen**.
 5. Confirmar que abre el modal **Imagen para WhatsApp** y muestra estado “Generando imagen…” mientras crea el PNG.
-6. Confirmar preview visual con nombre, total tickets, burger tickets, referral tickets, teléfono enmascarado, campaña, código o fallback de código, fecha de generación y aviso de validación final.
+6. Confirmar preview visual con nombre, total tickets, burger tickets, referral tickets, teléfono enmascarado, campaña, código solo si hay match seguro por nombre normalizado + teléfono enmascarado, o fallback de código, fecha de generación y aviso de validación final.
 7. Descargar PNG y abrirlo localmente para validar legibilidad en formato vertical móvil.
 8. Copiar texto y confirmar que contiene nombre, total tickets, burger tickets, referidos, código y aviso “Tickets sujetos a validación final.”
 9. Abrir WhatsApp y confirmar que `wa.me` lleva texto encoded; no intenta adjuntar imagen automáticamente ni enviar el mensaje.
@@ -850,4 +850,5 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 11. Si Web Share API no soporta archivos, confirmar que la acción se oculta y aparece fallback claro para descargar y compartir manualmente.
 12. Confirmar que no aparece teléfono completo en UI, canvas, texto o mensajes de error.
 13. Confirmar que no aparece token, Authorization Bearer, WhatsApp API, R2 upload, D1 image table, `localStorage` ni `sessionStorage` para la imagen.
-14. Confirmar que la imagen no bloquea operación si no hay código de invitado relacionado: debe mostrar “solicita tu código en Burgers.exe”.
+14. Confirmar que la imagen no bloquea operación si no hay código de invitado con match seguro y único por nombre normalizado + teléfono enmascarado: debe mostrar “solicita tu código en Burgers.exe”.
+15. Confirmar con datos ambiguos que coincidir solo por `ownerPhoneMasked === customerPhoneMasked` nunca muestra código de invitado.

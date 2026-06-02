@@ -60,17 +60,16 @@ const formatDateTime = (value?: string) => {
 
 const participantKey = (participant: RaffleParticipantSummary) => `${participant.customerPhoneMasked}-${participant.lastOrderFolio}`;
 
-const normalizeLookupName = (value: string) => value.trim().replace(/\s+/g, " ").toLowerCase();
+const normalizeLookupName = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().replace(/\s+/g, " ").toLowerCase();
 
 const resolveReferralCodeForParticipant = (participant: RaffleParticipantSummary, codes: RaffleReferralCodeV2[]) => {
-  const activeCodes = codes.filter((code) => code.isActive);
-  const phoneMatches = activeCodes.filter((code) => code.ownerPhoneMasked && code.ownerPhoneMasked === participant.customerPhoneMasked);
-  if (phoneMatches.length === 1) return phoneMatches[0]?.code ?? RAFFLE_SHARE_FALLBACK_CODE;
   const normalizedName = normalizeLookupName(participant.customerName);
-  const nameAndPhoneMatches = phoneMatches.filter((code) => normalizeLookupName(code.ownerName) === normalizedName);
-  if (nameAndPhoneMatches.length === 1) return nameAndPhoneMatches[0]?.code ?? RAFFLE_SHARE_FALLBACK_CODE;
-  const nameMatches = activeCodes.filter((code) => normalizeLookupName(code.ownerName) === normalizedName);
-  if (nameMatches.length === 1 && nameMatches[0]?.ownerPhoneMasked === participant.customerPhoneMasked) return nameMatches[0].code;
+  const strongMatches = codes.filter((code) => (
+    code.isActive
+    && code.ownerPhoneMasked === participant.customerPhoneMasked
+    && normalizeLookupName(code.ownerName) === normalizedName
+  ));
+  if (strongMatches.length === 1) return strongMatches[0]?.code ?? RAFFLE_SHARE_FALLBACK_CODE;
   return RAFFLE_SHARE_FALLBACK_CODE;
 };
 
