@@ -30,9 +30,11 @@
 
 
 
-  var MENU = JSON.parse(JSON.stringify(FALLBACK_MENU));
-  var menuSource = 'local-fallback';
+  var MENU = { burgers: [], sides: [], extras: [] };
+  var menuSource = 'd1';
   var menuWarnings = [];
+  var menuLoadStatus = 'loading';
+  var menuLoadError = '';
   var WITHOUT = {
     OG: ['Sin Tocino', 'Sin Queso americano', 'Sin Queso manchego', 'Sin Jitomate', 'Sin Lechuga', 'Sin Pepinillos', 'Sin Catsup', 'Sin Mostaza', 'Sin Mayonesa'],
     BBQ: ['Sin Tocino', 'Sin Queso americano', 'Sin Queso manchego', 'Sin Aros de cebolla', 'Sin Pepinillos', 'Sin Salsa bbq']
@@ -98,7 +100,7 @@
       for (var i = 1; i <= (counts[sku] || 0); i += 1) {
         var id = sku + '-' + i;
         var old = state.burgerUnits.find(function (u) { return u.id === id; });
-        units.push(old || { id: id, sku: sku, label: sku + ' #' + i, without: [], extras: [] });
+        units.push(normalizeBurgerUnit(old || { id: id, sku: sku, label: sku + ' #' + i, without: [], extras: {} }));
       }
     });
     state.burgerUnits = units;
@@ -107,29 +109,67 @@
   // ---------------------------------------------------------------------------
   // Generic helpers
   // ---------------------------------------------------------------------------
+
+  function normalizeExtrasQty(raw) {
+    var out = {};
+    if (Array.isArray(raw)) {
+      raw.forEach(function (entry) {
+        var item = MENU.extras.find(function (x) { return x.name === entry || x.sku === entry; });
+        var sku = item ? item.sku : String(entry || '').trim();
+        if (sku) out[sku] = (out[sku] || 0) + 1;
+      });
+      return out;
+    }
+    if (raw && typeof raw === 'object') {
+      Object.keys(raw).forEach(function (sku) {
+        var qty = Math.max(0, Math.floor(Number(raw[sku] || 0)));
+        if (sku && qty > 0) out[sku] = qty;
+      });
+    }
+    return out;
+  }
+
+  function normalizeBurgerUnit(unit) {
+    var next = unit || {};
+    return {
+      id: String(next.id || next.sku || 'burger'),
+      sku: String(next.sku || ''),
+      label: String(next.label || next.sku || 'Burger'),
+      without: Array.isArray(next.without) ? next.without.slice() : [],
+      extras: normalizeExtrasQty(next.extras)
+    };
+  }
+
   function toPrice(value, fallback) {
     var parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : fallback;
   }
 
   function normalizeApiMenuResponse(data) {
-    if (!data || data.ok !== true || !data.data) return null;
+    if (!data || data.ok !== true) return null;
+    var source = data.data || data;
 
     function normalizeItem(item) {
-      if (!item || !item.sku || !item.name) return null;
+      if (!item || !(item.menu_item_id || item.sku || item.producto_id) || !(item.name || item.nombre)) return null;
+      var priceCents = Number(item.price_cents != null ? item.price_cents : Math.round(toPrice(item.price != null ? item.price : item.precio_publico, 0) * 100));
+      var sku = String(item.menu_item_id || item.sku || item.producto_id);
       return {
-        sku: String(item.sku),
-        name: String(item.name),
-        price: toPrice(item.price, 0),
-        description: String(item.description || ''),
+        menu_item_id: sku,
+        sku: sku,
+        item_type: String(item.item_type || item.tipo || ''),
+        name: String(item.name || item.nombre),
+        price_cents: Number.isFinite(priceCents) ? priceCents : 0,
+        price: (Number.isFinite(priceCents) ? priceCents : 0) / 100,
+        description: String(item.description || item.descripcion || ''),
         image_url: item.image_url ? String(item.image_url) : '',
-        image_status: item.image_status ? String(item.image_status) : ''
+        image_key: item.image_key ? String(item.image_key) : ''
       };
     }
 
-    var burgers = (Array.isArray(data.data.burgers) ? data.data.burgers : []).map(normalizeItem).filter(Boolean);
-    var sides = (Array.isArray(data.data.guarniciones) ? data.data.guarniciones : []).map(normalizeItem).filter(Boolean);
-    var extras = (Array.isArray(data.data.extras) ? data.data.extras : []).map(normalizeItem).filter(Boolean);
+    var burgers = (Array.isArray(source.burgers) ? source.burgers : []).map(normalizeItem).filter(Boolean);
+    var sidesSource = Array.isArray(source.sides) ? source.sides : source.guarniciones;
+    var sides = (Array.isArray(sidesSource) ? sidesSource : []).map(normalizeItem).filter(Boolean);
+    var extras = (Array.isArray(source.extras) ? source.extras : []).map(normalizeItem).filter(Boolean);
 
     return { burgers: burgers, sides: sides, extras: extras };
   }
@@ -153,19 +193,42 @@
         menuSource = String((payload && payload.source) || 'unknown');
         menuWarnings = Array.isArray(payload && payload.warnings) ? payload.warnings.slice() : [];
       } catch (error) {
-        MENU = JSON.parse(JSON.stringify(FALLBACK_MENU));
-        menuSource = 'local-fallback';
-        menuWarnings = [String((error && error.message) || 'menu fetch failed')];
+        MENU = { burgers: [], sides: [], extras: [] };
+        menuSource = 'd1-error';
+        menuLoadStatus = 'error';
+        menuLoadError = String((error && error.message) || 'No se pudo cargar el menú.');
+        menuWarnings = [menuLoadError];
       } finally {
+        if (MENU.burgers.length || MENU.sides.length || MENU.extras.length) {
+          menuLoadStatus = 'ready';
+          menuLoadError = '';
+        } else if (menuLoadStatus !== 'error') {
+          menuLoadStatus = 'empty';
+          menuLoadError = 'El menú está vacío en D1.';
+        }
         window.clearTimeout(timeoutId);
       }
       return MENU;
     })();
   }
 
+  function extraBySkuOrName(value) { return MENU.extras.find(function (x) { return x.sku === value || x.name === value; }); }
   function extraPriceByName(name) {
-    var found = MENU.extras.find(function (x) { return x.name === name; });
-    return found ? toPrice(found.price, 5) : 5;
+    var found = extraBySkuOrName(name);
+    return found ? toPrice(found.price, 0) : 0;
+  }
+  function priceCents(item) { return Number(item && item.price_cents != null ? item.price_cents : Math.round(toPrice(item && item.price, 0) * 100)); }
+  function getExtraQty(unit, sku) { return Number((unit.extras || {})[sku] || 0); }
+  function extrasQtyLabel(unit) {
+    var labels = [];
+    MENU.extras.forEach(function (x) {
+      var qty = getExtraQty(unit, x.sku);
+      if (qty > 0) labels.push(qty + ' ' + x.name);
+    });
+    return labels.join(', ') || 'Sin extras';
+  }
+  function extrasLineTotal(unit) {
+    return MENU.extras.reduce(function (sum, x) { return sum + getExtraQty(unit, x.sku) * x.price; }, 0);
   }
 
   function bySku(list, sku) { return list.find(function (x) { return x.sku === sku; }); }
@@ -260,6 +323,8 @@
 
     if (draft.burgerUnits && draft.customer) {
       state = draft;
+      state.burgerUnits = (state.burgerUnits || []).map(normalizeBurgerUnit);
+      state.sidesQty = state.sidesQty || {};
       return;
     }
 
@@ -287,8 +352,7 @@
   function calcTotal() {
     var total = 0;
     state.burgerUnits.forEach(function (u) {
-      var extrasTotal = (u.extras || []).reduce(function (sum, extraName) { return sum + extraPriceByName(extraName); }, 0);
-      total += burgerPrice(u.sku) + extrasTotal;
+      total += burgerPrice(u.sku) + extrasLineTotal(u);
     });
     MENU.sides.forEach(function (s) { total += (state.sidesQty[s.sku] || 0) * s.price; });
     return total;
@@ -297,7 +361,7 @@
   function calcOrderItemCount() {
     var extraItems = 0;
     var sideItems = 0;
-    state.burgerUnits.forEach(function (u) { extraItems += (u.extras || []).length; });
+    state.burgerUnits.forEach(function (u) { Object.keys(u.extras || {}).forEach(function (sku) { extraItems += Number(u.extras[sku] || 0); }); });
     MENU.sides.forEach(function (s) { sideItems += Number(state.sidesQty[s.sku] || 0); });
     return countBurgers() + extraItems + sideItems;
   }
@@ -307,19 +371,30 @@
   }
 
   function buildPayload() {
-    var items = {};
+    var lineMap = {};
+
+    function addLine(item, quantity) {
+      var qty = Math.max(0, Math.floor(Number(quantity || 0)));
+      if (!item || !item.sku || qty <= 0) return;
+      if (!lineMap[item.sku]) {
+        lineMap[item.sku] = {
+          menu_item_id: item.sku,
+          item_type: item.item_type || '',
+          quantity: 0,
+          unit_price_cents: priceCents(item)
+        };
+      }
+      lineMap[item.sku].quantity += qty;
+    }
 
     state.burgerUnits.forEach(function (u) {
-      items[u.sku] = (items[u.sku] || 0) + 1;
-      (u.extras || []).forEach(function (ex) {
-        var sku = 'EXTRA_' + ex.toUpperCase().replace(/ /g, '_').replace('Ñ', 'N');
-        items[sku] = (items[sku] || 0) + 1;
-      });
+      addLine(bySku(MENU.burgers, u.sku), 1);
+      MENU.extras.forEach(function (x) { addLine(x, getExtraQty(u, x.sku)); });
     });
 
-    Object.keys(state.sidesQty).forEach(function (sku) {
-      if (state.sidesQty[sku] > 0) items[sku] = (items[sku] || 0) + state.sidesQty[sku];
-    });
+    MENU.sides.forEach(function (s) { addLine(s, state.sidesQty[s.sku] || 0); });
+
+    var orderItems = Object.keys(lineMap).map(function (sku) { return lineMap[sku]; });
 
     return {
       customerName: state.customer.customerName.trim(),
@@ -327,14 +402,20 @@
       location: state.customer.location,
       paymentMethod: state.customer.paymentMethod,
       note: state.customer.note.trim(),
-      items: Object.keys(items).map(function (sku) { return { sku: sku, qty: items[sku] }; }),
+      order_items: orderItems,
+      items: orderItems.map(function (line) { return { sku: line.menu_item_id, qty: line.quantity }; }),
       personalizations: {
         burgers: state.burgerUnits.map(function (u, i) {
           return {
             sku: u.sku,
             burgerIndex: Number(u.id.split('-')[1] || (i + 1)),
             without: (u.without || []).slice(),
-            extras: (u.extras || []).slice()
+            extras: MENU.extras.reduce(function (acc, x) {
+              var qty = getExtraQty(u, x.sku);
+              for (var n = 0; n < qty; n += 1) acc.push(x.name);
+              return acc;
+            }, []),
+            extras_qty: Object.assign({}, u.extras)
           };
         })
       },
@@ -424,10 +505,14 @@
   }
 
   function renderMenuStep() {
-    var fallbackHint = menuSource !== 'apps-script' ? '<p class="muted">Menú temporal cargado</p>' : '';
-    return '<h2>MENÚ</h2>' + fallbackHint + '<h3>Burgers</h3><div class="menu-grid">' + renderMenuCards(MENU.burgers) + '</div>' +
+    if (menuLoadStatus === 'loading') return '<h2>MENÚ</h2><div class="menu-state menu-state-loading" role="status" aria-live="polite"><strong>Cargando menú desde D1...</strong><p>Preparando burgers, guarniciones y extras.</p></div>';
+    if (menuLoadStatus === 'error') return '<h2>MENÚ</h2><div class="menu-state menu-state-error" role="alert"><strong>No se pudo cargar el menú.</strong><p>' + escapeHtml(menuLoadError || 'D1 no respondió.') + '</p><button type="button" class="secondary" id="retryMenuBtn">Reintentar</button></div>';
+    if (!MENU.burgers.length && !MENU.sides.length && !MENU.extras.length) return '<h2>MENÚ</h2><div class="menu-state menu-state-empty"><strong>Menú vacío.</strong><p>Aplica el seed de MENU_LIVE en D1 para publicar productos.</p></div>';
+    var d1Hint = '<p class="muted">Menú cargado desde D1' + (menuSource ? ' · ' + escapeHtml(menuSource) : '') + '</p>';
+    return '<h2>MENÚ</h2>' + d1Hint + '<h3>Burgers</h3><div class="menu-grid">' + renderMenuCards(MENU.burgers) + '</div>' +
       '<h3>Guarniciones</h3><div class="menu-grid">' + renderMenuCards(MENU.sides) + '</div>' +
-      '<button id="startBtn" class="primary">INICIAR PEDIDO</button>';
+      '<h3>Extras</h3><div class="menu-grid">' + renderMenuCards(MENU.extras) + '</div>' +
+      '<button id="startBtn" class="primary"' + (!MENU.burgers.length ? ' disabled' : '') + '>INICIAR PEDIDO</button>';
   }
 
   function renderBurgersStep() {
@@ -459,30 +544,33 @@
 
   function renderExtrasStep() {
     if (!state.burgerUnits.length) return '<h2>EXTRAS</h2><p class="muted">No hay burgers.</p>';
+    if (!MENU.extras.length) return '<h2>EXTRAS</h2><p class="muted">No hay extras activos en D1.</p>';
     return '<h2>EXTRAS</h2>' + state.burgerUnits.map(function (u, i) {
-      var extrasSummary = (u.extras || []).join(', ') || 'Sin extras';
       return '<div class="custom-card custom-card-edit" data-unit-card="' + escapeHtml(u.id) + '">' +
         '<p class="custom-context">Extras para: ' + escapeHtml(u.label) + '</p>' +
-        '<h4>Agrega algo extra</h4>' +
-        '<p class="custom-help">Cada extra suma según precio de menú.</p>' +
-        '<p class="custom-summary">Extras: ' + escapeHtml(extrasSummary) + '</p>' +
-        '<div class="choice-list">' + MENU.extras.map(function (x) {
-          var isChecked = u.extras.indexOf(x.name) >= 0;
-          return '<label class="choice-row choice-row-extra" data-choice-row="extra">' +
-            '<input class="choice-input" type="checkbox" data-kind="extra" data-i="' + i + '" value="' + x.name + '" ' + (isChecked ? 'checked' : '') + '>' +
-            '<span class="choice-main">' +
-              '<span class="choice-text">' + escapeHtml(x.name) + '</span>' +
-              '<span class="choice-price">+' + money(extraPriceByName(x.name)) + '</span>' +
-            '</span>' +
-            '<span class="choice-state">' + (isChecked ? 'Agregado' : 'No agregado') + '</span>' +
-          '</label>';
+        '<h4>Agrega cantidades independientes</h4>' +
+        '<p class="custom-help">Puedes agregar más de una porción del mismo extra.</p>' +
+        '<p class="custom-summary">Extras: ' + escapeHtml(extrasQtyLabel(u)) + '</p>' +
+        '<div class="menu-grid compact-grid">' + MENU.extras.map(function (x) {
+          var qty = getExtraQty(u, x.sku);
+          return '<article class="menu-item' + (qty > 0 ? ' is-selected' : '') + '" data-sku-card="extra-' + i + '-' + x.sku + '">' +
+            '<h3>' + escapeHtml(x.name) + '</h3>' +
+            '<p class="menu-price">+' + money(x.price) + '</p>' +
+            '<small class="menu-description">' + escapeHtml(x.description) + '</small>' +
+            '<div class="qty">' +
+              '<button class="qty-btn qty-btn-minus" data-op="minus" data-extra-sku="' + x.sku + '" data-unit-index="' + i + '" aria-label="Quitar ' + escapeHtml(x.name) + '" ' + (qty === 0 ? 'disabled' : '') + '>-</button>' +
+              '<span class="qty-count" aria-live="polite">' + qty + '</span>' +
+              '<button class="qty-btn qty-btn-plus" data-op="plus" data-extra-sku="' + x.sku + '" data-unit-index="' + i + '" aria-label="Agregar ' + escapeHtml(x.name) + '">+</button>' +
+            '</div>' +
+          '</article>';
         }).join('') + '</div>' +
       '</div>';
     }).join('');
   }
 
   function renderSidesStep() {
-    return '<h2>GUARNICIONES</h2><div class="menu-grid">' + renderMenuCards(MENU.sides, state.sidesQty) + '</div>';
+    if (!MENU.sides.length) return '<h2>GUARNICIONES</h2><p class="muted">No hay guarniciones activas en D1.</p>';
+    return '<h2>GUARNICIONES</h2><p class="muted">Agrega varias guarniciones con cantidades independientes.</p><div class="menu-grid">' + renderMenuCards(MENU.sides, state.sidesQty) + '</div>';
   }
 
   function renderDataStep() {
@@ -523,8 +611,8 @@
 
   function renderSummaryStep() {
     var lines = state.burgerUnits.map(function (u) {
-      var ex = (u.extras || []).map(function (name) { return escapeHtml(name) + ' +' + money(extraPriceByName(name)); }).join(', ') || 'Sin extras';
-      return '<div class="ticket-line"><strong>' + escapeHtml(u.label) + ' — ' + money(burgerPrice(u.sku)) + '</strong><p>Quitar: ' + escapeHtml((u.without || []).join(', ') || 'Sin cambios') + '</p><p>Extras: ' + ex + '</p><p>Subtotal burger: ' + money(burgerPrice(u.sku) + (u.extras || []).reduce(function (sum, extraName) { return sum + extraPriceByName(extraName); }, 0)) + '</p></div>';
+      var ex = MENU.extras.map(function (x) { var qty = getExtraQty(u, x.sku); return qty ? escapeHtml(x.name) + ' x' + qty + ' +' + money(qty * x.price) : ''; }).filter(Boolean).join(', ') || 'Sin extras';
+      return '<div class="ticket-line"><strong>' + escapeHtml(u.label) + ' — ' + money(burgerPrice(u.sku)) + '</strong><p>Quitar: ' + escapeHtml((u.without || []).join(', ') || 'Sin cambios') + '</p><p>Extras: ' + ex + '</p><p>Subtotal burger: ' + money(burgerPrice(u.sku) + extrasLineTotal(u)) + '</p></div>';
     }).join('');
 
     var sides = MENU.sides.map(function (s) {
@@ -832,6 +920,13 @@
       return;
     }
 
+    if (button.id === 'retryMenuBtn') {
+      menuLoadStatus = 'loading';
+      redraw();
+      fetchPublicMenu().then(redraw).catch(redraw);
+      return;
+    }
+
     if (button.id === 'startBtn') {
       state.step = 1;
       redrawAndFocusCurrentStep();
@@ -849,10 +944,24 @@
       return;
     }
 
+    var op = button.getAttribute('data-op');
+    var extraSku = button.getAttribute('data-extra-sku');
+    if (extraSku) {
+      var unitIndex = Number(button.getAttribute('data-unit-index'));
+      var unit = state.burgerUnits[unitIndex];
+      if (!unit) return;
+      unit.extras = unit.extras || {};
+      unit.extras[extraSku] = Math.max(0, Number(unit.extras[extraSku] || 0) + (op === 'plus' ? 1 : -1));
+      if (unit.extras[extraSku] <= 0) delete unit.extras[extraSku];
+      redraw();
+      var extraCard = document.querySelector('[data-sku-card="extra-' + unitIndex + '-' + extraSku + '"]');
+      if (extraCard) pulseClass(extraCard, 'menu-item-pulse', 160);
+      return;
+    }
+
     var sku = button.getAttribute('data-sku');
     if (!sku) return;
 
-    var op = button.getAttribute('data-op');
     if ((op === 'minus' || op === 'plus') && button.disabled) return;
     var stepName = getCurrentStepName();
     var changedSku = sku;
@@ -887,10 +996,12 @@
     }
 
     if (target.getAttribute('data-kind') === 'extra') {
-      var extras = state.burgerUnits[index].extras;
-      var extraPos = extras.indexOf(target.value);
-      if (target.checked && extraPos < 0) extras.push(target.value);
-      if (!target.checked && extraPos >= 0) extras.splice(extraPos, 1);
+      var extras = state.burgerUnits[index].extras || {};
+      var extraItem = extraBySkuOrName(target.value);
+      var extraSku = extraItem ? extraItem.sku : target.value;
+      if (target.checked) extras[extraSku] = Math.max(1, Number(extras[extraSku] || 0));
+      if (!target.checked) delete extras[extraSku];
+      state.burgerUnits[index].extras = extras;
       optionChanged = true;
     }
 
@@ -908,7 +1019,7 @@
       var unit = state.burgerUnits[index] || { without: [], extras: [] };
       var isWithout = target.getAttribute('data-kind') === 'without';
       var withoutSummary = (unit.without || []).map(function (opt) { return opt.replace(/^Sin\s+/i, ''); }).join(', ') || 'Sin cambios';
-      var extrasSummary = (unit.extras || []).join(', ') || 'Sin extras';
+      var extrasSummary = extrasQtyLabel(unit);
 
       if (choiceState) {
         if (isWithout) {
@@ -1186,6 +1297,7 @@
   redraw();
 
   fetchPublicMenu().then(function () {
+    state.burgerUnits = (state.burgerUnits || []).map(normalizeBurgerUnit);
     redraw();
   }).catch(function () {
     redraw();

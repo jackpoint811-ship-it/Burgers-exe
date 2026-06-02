@@ -18,7 +18,12 @@
     "db:v2:seed:local": "wrangler d1 execute burgers-exe-menu-v2-preview --local --file=./migrations/0002_v2_menu_seed.sql",
     "db:v2:seed:remote": "wrangler d1 execute burgers-exe-menu-v2-preview --remote --file=./migrations/0002_v2_menu_seed.sql",
     "db:v2:orders:migrate:local": "wrangler d1 execute burgers-exe-menu-v2-preview --local --file=./migrations/0003_v2_orders_schema.sql",
-    "db:v2:orders:migrate:remote": "wrangler d1 execute burgers-exe-menu-v2-preview --remote --file=./migrations/0003_v2_orders_schema.sql"
+    "db:v2:orders:migrate:remote": "wrangler d1 execute burgers-exe-menu-v2-preview --remote --file=./migrations/0003_v2_orders_schema.sql",
+    "public-order:dev": "cd cloudflare/public-order && wrangler pages dev . --d1 BOG_MENU_DB=REPLACE_WITH_D1_DATABASE_ID --r2 BOG_MENU_ASSETS=burgers-exe-menu-assets",
+    "public-order:d1:migrate:local": "wrangler d1 execute burgers-exe-menu-live --local --config cloudflare/public-order/wrangler.toml --file=./migrations/0006_public_live_menu_d1_schema.sql",
+    "public-order:d1:seed:local": "wrangler d1 execute burgers-exe-menu-live --local --config cloudflare/public-order/wrangler.toml --file=./migrations/0007_public_live_menu_seed.sql",
+    "public-order:d1:migrate:remote": "wrangler d1 execute burgers-exe-menu-live --remote --config cloudflare/public-order/wrangler.toml --file=./migrations/0006_public_live_menu_d1_schema.sql",
+    "public-order:d1:seed:remote": "wrangler d1 execute burgers-exe-menu-live --remote --config cloudflare/public-order/wrangler.toml --file=./migrations/0007_public_live_menu_seed.sql"
   },
   "dependencies": {
     "@radix-ui/react-tabs": "^1.1.12",

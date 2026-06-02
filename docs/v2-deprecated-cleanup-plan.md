@@ -46,7 +46,7 @@ The official Chekeo V2 deployment requires:
 
 * `BOG_INTERNAL_PIN`.
 * `BOG_MENU_DB`.
-* `BOG_ASSETS_BUCKET`.
+* `BOG_MENU_ASSETS`.
 
 These are part of the active V2 operational path and should not be removed during deprecated legacy cleanup.
 

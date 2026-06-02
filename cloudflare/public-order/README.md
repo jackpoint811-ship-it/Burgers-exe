@@ -1,150 +1,173 @@
-# Burgers.exe Public Order (Cloudflare) — UX Fase 2
+# Burgers.exe Public Order (Cloudflare Pages Functions)
 
-## Estado actual
-Flujo frontend rediseñado como wizard por pasos:
+## Runtime actual
+Este frontend público usa **Cloudflare Pages + Pages Functions**:
 
-`MENU > BURGERS > CUSTOM > EXTRAS > GUARNICIONES > DATOS > RESUMEN`
+- Sitio vanilla mobile-first en `cloudflare/public-order/index.html`, `styles.css` y `app.js`.
+- Endpoints Pages Functions en `cloudflare/public-order/functions/api/*`.
+- `GET /api/menu` lee el Live Menu desde **Cloudflare D1** (`BOG_MENU_DB`).
+- R2 (`BOG_MENU_ASSETS`) queda configurado para imágenes/assets del menú; la tabla guarda `image_key` y puede exponer `image_url` cuando exista dominio público o endpoint de assets.
 
-Se mantiene **dry-run por defecto** y no se realizaron cambios en Apps Script ni en contratos backend.
+El menú público ya no consulta Google Sheets ni Apps Script en runtime. Apps Script sigue existiendo únicamente como upstream de escritura de pedidos mientras se migra persistencia de órdenes.
 
-## Nuevo state shape (frontend)
-```js
-state = {
-  step,
-  burgerUnits: [{ id, sku, label, without: [], extras: [] }],
-  sidesQty: {},
-  customer: { customerName, phone, location, paymentMethod, note },
-  ts
-}
-```
+## Contrato de `GET /api/menu`
+Respuesta exitosa:
 
-## Compatibilidad con `/api/order`
-`buildPayload()` conserva el formato operativo:
-- `items` global por SKU (incluye suma de extras por burger).
-- `personalizations.burgers[]` con `{ sku, burgerIndex, without, extras }`.
-
-Ejemplo: dos burgers con `Tocino` extra en cada una -> `items` contiene `{ sku: "EXTRA_TOCINO", qty: 2 }`.
-
-## UX Fase 2 (backend Apps Script)
-El backend ahora persiste detalle por burger en columnas existentes:
-- `Burgers.exe`
-- `BBQ Burger`
-- `Describe como quieres tus Burgers`
-
-Formato esperado por burger:
-- `OG #1: Con todo | Extras: Sin extras`
-- `OG #1: Quitar: Sin Pepinillos | Extras: Tocino +$5`
-
-Validaciones aplicadas en backend:
-- `personalizations.burgers[].extras` debe ser array (si se envía).
-- Solo se permiten extras en allowlist:
-  - `Pepinillos`, `Queso americano`, `Queso manchego`, `Tocino`, `Catsup`, `Mostaza`, `Tomate`.
-- Se rechazan textos restringidos (`Chequeo Manual`, `(+1)`).
-- Se valida consistencia entre extras por burger y `items` globales por SKU (`EXTRA_*`), rechazando payload inconsistente con:
-  - `Extras por burger no coinciden con items globales.`
-
-Importante:
-- El cálculo de precio no toma `personalizations.extras`; el total sigue calculándose desde `items` globales.
-
-## Control de pedidos desde Google Sheets (order gate)
-El frontend ahora consulta `GET /api/order-gate` para decidir si debe bloquear el flujo de pedidos.
-
-### Contrato esperado de `/api/order-gate`
 ```json
 {
   "ok": true,
-  "closed": false,
-  "title": "PEDIDOS CERRADOS POR AHORA",
-  "message": "Por el momento no estamos recibiendo pedidos. Únete al grupo de WhatsApp para enterarte cuando abramos pedidos otra vez.",
-  "whatsappUrl": "https://chat.whatsapp.com/GycE5zALOypGPvJVaMfbPp"
+  "source": "d1",
+  "burgers": [],
+  "sides": [],
+  "extras": [],
+  "data": {
+    "burgers": [],
+    "sides": [],
+    "guarniciones": [],
+    "extras": [],
+    "all": []
+  },
+  "warnings": [],
+  "timestamp": "2026-06-02T00:00:00.000Z"
 }
 ```
 
-### Configuración sugerida en Google Sheets
-Usar una hoja/tab llamada **Admin** o **Control Pedidos** (no borrar ni renombrar hojas existentes).
+Cada item incluye:
 
-Celdas a leer:
-- `A1`: `Control de pedidos`
-- `A2`: `Cerrar pedidos`
-- `B2`: checkbox / boolean (`TRUE` cierra pedidos, `FALSE` abre pedidos)
-- `A3`: `Título modal`
-- `B3`: `PEDIDOS CERRADOS POR AHORA`
-- `A4`: `Mensaje modal`
-- `B4`: `Por el momento no estamos recibiendo pedidos. Únete al grupo de WhatsApp para enterarte cuando abramos pedidos otra vez.`
-- `A5`: `Link WhatsApp`
-- `B5`: `https://chat.whatsapp.com/GycE5zALOypGPvJVaMfbPp`
+```json
+{
+  "menu_item_id": "OG",
+  "sku": "OG",
+  "item_type": "Burger",
+  "name": "OG",
+  "description": "...",
+  "price_cents": 8500,
+  "price": 85,
+  "image_url": "",
+  "image_key": "menu/OG.png"
+}
+```
 
-### Apps Script (upstream) listo para pegar
-Pega este snippet en tu proyecto de Apps Script **vinculado a la hoja** y despliega como Web App:
+## Contrato de envío público
+`POST /api/order` acepta líneas separadas:
 
-```js
-function doGet(e) {
-  var DEFAULTS = {
-    closed: false,
-    title: 'PEDIDOS CERRADOS POR AHORA',
-    message: 'Por el momento no estamos recibiendo pedidos. Únete al grupo de WhatsApp para enterarte cuando abramos pedidos otra vez.',
-    whatsappUrl: 'https://chat.whatsapp.com/GycE5zALOypGPvJVaMfbPp'
-  };
-
-  try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getSheetByName('Control Pedidos');
-
-    if (!sheet) {
-      return jsonOutput({ ok: true, closed: false, title: DEFAULTS.title, message: DEFAULTS.message, whatsappUrl: DEFAULTS.whatsappUrl });
+```json
+{
+  "payload": {
+    "customerName": "Ada",
+    "phone": "5512345678",
+    "location": "Torre GGA",
+    "paymentMethod": "Pago mismo dia",
+    "note": "",
+    "order_items": [
+      { "menu_item_id": "OG", "item_type": "Burger", "quantity": 1, "unit_price_cents": 8500 },
+      { "menu_item_id": "PAPAS_OG", "item_type": "Guarnicion", "quantity": 2, "unit_price_cents": 2000 },
+      { "menu_item_id": "EXTRA_TOCINO", "item_type": "Extra", "quantity": 2, "unit_price_cents": 500 }
+    ],
+    "personalizations": {
+      "burgers": [
+        { "sku": "OG", "burgerIndex": 1, "without": [], "extras": ["Tocino", "Tocino"], "extras_qty": { "EXTRA_TOCINO": 2 } }
+      ]
     }
-
-    var b2 = sheet.getRange('B2').getValue(); // checkbox / boolean
-    var b3 = sheet.getRange('B3').getDisplayValue();
-    var b4 = sheet.getRange('B4').getDisplayValue();
-    var b5 = sheet.getRange('B5').getDisplayValue();
-    var b6 = sheet.getRange('B6').getDisplayValue(); // no usado todavía en frontend
-
-    var closed = b2 === true || String(b2).toLowerCase() === 'true';
-    var title = String(b3 || '').trim() || DEFAULTS.title;
-    var message = String(b4 || '').trim() || DEFAULTS.message;
-    var whatsappUrl = String(b5 || '').trim() || DEFAULTS.whatsappUrl;
-
-    return jsonOutput({
-      ok: true,
-      closed: closed,
-      title: title,
-      message: message,
-      whatsappUrl: whatsappUrl
-    });
-  } catch (err) {
-    return jsonOutput({
-      ok: true,
-      closed: false,
-      title: 'PEDIDOS CERRADOS POR AHORA',
-      message: 'Por el momento no estamos recibiendo pedidos. Únete al grupo de WhatsApp para enterarte cuando abramos pedidos otra vez.',
-      whatsappUrl: 'https://chat.whatsapp.com/GycE5zALOypGPvJVaMfbPp',
-      // opcional para depuración:
-      // error: String(err && err.message ? err.message : err)
-    });
   }
 }
-
-function jsonOutput(payload) {
-  return ContentService
-    .createTextOutput(JSON.stringify(payload))
-    .setMimeType(ContentService.MimeType.JSON);
-}
 ```
 
-> Nota sobre `B6`: actualmente el frontend **no usa** texto de botón configurable. Puedes guardar ahí un texto futuro, pero por ahora el botón se muestra fijo como **"Unirme al grupo de WhatsApp"**.
+El endpoint recalcula precios desde D1 y rechaza diferencias con `PRICE_MISMATCH`.
 
-### Despliegue exacto del Web App (Apps Script)
-1. En Apps Script: **Deploy > New deployment**.
-2. Tipo: **Web app**.
-3. **Execute as**: `Me`.
-4. **Who has access**: `Anyone`.
-5. Haz deploy y copia la **Web App URL**.
-6. En Cloudflare (`public-order`), configura la variable de entorno `APPS_SCRIPT_ORDER_GATE_ENDPOINT` con esa URL.
-7. Re-deploy de Cloudflare Pages/Functions para tomar el cambio de variable.
+## SQL creado
 
-> Importante: el checkbox (`B2`) **no controlará el modal** hasta que `APPS_SCRIPT_ORDER_GATE_ENDPOINT` esté configurado en Cloudflare.
+- `migrations/0006_public_live_menu_d1_schema.sql`
+  - Crea `menu_categories` y `menu_items` si no existen.
+  - Añade columnas compatibles con MENU_LIVE (`origin_cost_ref`, `updated_by`) para bases nuevas.
+  - Crea `order_items` line-oriented para futura persistencia D1 de órdenes públicas.
+  - Crea índices por categoría/disponibilidad/orden, SKU y líneas de pedido.
+- `migrations/0007_public_live_menu_seed.sql`
+  - Inserta las burgers, guarniciones y extras de `MENU_LIVE` con `price_cents`.
 
-### Seguridad operativa
-- Si `/api/order-gate` falla o no está configurado, el sitio **queda abierto** (`closed: false`) para evitar bloqueos accidentales.
-- El frontend agrega guard en `submit()` para impedir `POST /api/order` cuando `closed` sea `true`.
+> Nota: si tu D1 ya tenía `menu_items` de v2, SQLite no agrega columnas con `CREATE TABLE IF NOT EXISTS`. El runtime no depende de `origin_cost_ref` ni `updated_by`; si quieres conservar esos metadatos en una DB existente, agrega una migración `ALTER TABLE` separada.
+
+## Crear recursos Cloudflare
+
+```bash
+npx wrangler d1 create burgers-exe-menu-live
+npx wrangler r2 bucket create burgers-exe-menu-assets
+```
+
+Después de crear D1, Wrangler imprime un bloque `[[d1_databases]]` con el `database_id` real. Copia ese valor y reemplaza `REPLACE_WITH_D1_DATABASE_ID` en `cloudflare/public-order/wrangler.toml`; no dejes el placeholder en preview/producción. En Cloudflare Pages, confirma también en **Settings > Functions > D1 database bindings** que el binding se llama exactamente `BOG_MENU_DB` y apunta a la misma base. Para R2, confirma en **Settings > Functions > R2 bucket bindings** que el binding se llama exactamente `BOG_MENU_ASSETS`.
+
+## Aplicar migraciones y seed
+
+Local:
+
+```bash
+npm run public-order:d1:migrate:local
+npm run public-order:d1:seed:local
+```
+
+Remoto:
+
+```bash
+npm run public-order:d1:migrate:remote
+npm run public-order:d1:seed:remote
+```
+
+## Correr localmente en Codespaces
+
+```bash
+npm install
+npm run public-order:d1:migrate:local
+npm run public-order:d1:seed:local
+npm run public-order:dev
+```
+
+> Wrangler Pages lee `wrangler.toml` desde el directorio del proyecto Pages; por eso `public-order:dev` entra a `cloudflare/public-order` antes de iniciar. Si reemplazaste `database_id` en `wrangler.toml`, ajusta también el valor del flag `--d1 BOG_MENU_DB=<database_id>` en `package.json` para que `pages dev` use la misma D1 local.
+
+Luego abre la URL local de Wrangler y verifica:
+
+```bash
+curl http://127.0.0.1:8788/api/menu
+```
+
+## QA manual
+
+### QA manual obligatoria antes de merge
+
+Caso de regresión para cantidades y compatibilidad legacy:
+
+1. Inicia el sitio con `npm run public-order:dev` y abre el flujo público.
+2. Selecciona exactamente:
+   - `1 OG`
+   - `2 Tocino`
+   - `1 Queso americano`
+   - `2 Papas OG`
+   - `1 Aros de cebolla`
+3. Resultado esperado en UI:
+   - Resumen muestra la burger `OG` con extras `Tocino x2` y `Queso americano x1`.
+   - Resumen muestra guarniciones como líneas separadas: `Papas a la francesa OG x2` y `Aros de Cebolla x1`.
+   - Total esperado con el seed actual: `$170.00` (`8500 + 2*500 + 1*500 + 2*2000 + 1*3000 = 17000` centavos).
+4. Resultado esperado en `POST /api/order` / dry-run:
+   - `payload.order_items[]` incluye `{ menu_item_id: "OG", quantity: 1, unit_price_cents: 8500 }`.
+   - `payload.order_items[]` incluye `{ menu_item_id: "EXTRA_TOCINO", quantity: 2, unit_price_cents: 500 }`.
+   - `payload.order_items[]` incluye `{ menu_item_id: "EXTRA_QUESO_AMERICANO", quantity: 1, unit_price_cents: 500 }`.
+   - `payload.order_items[]` incluye `{ menu_item_id: "PAPAS_OG", quantity: 2, unit_price_cents: 2000 }`.
+   - `payload.order_items[]` incluye `{ menu_item_id: "AROS_CEBOLLA", quantity: 1, unit_price_cents: 3000 }`.
+   - `data.total_cents` es `17000`; el backend lo recalcula desde D1 y no desde precios del cliente.
+   - No hay `PRICE_MISMATCH`.
+   - `preparedPayload.payload.items` legacy conserva cantidades agregadas por SKU, incluyendo `{ sku: "PAPAS_OG", qty: 2 }` y `{ sku: "AROS_CEBOLLA", qty: 1 }`, para no perder guarniciones múltiples en escritura upstream, tickets, cocina o WhatsApp existentes.
+
+- [ ] `GET /api/menu` responde `ok: true`, `source: d1`, y contiene `burgers`, `sides`, `extras`.
+- [ ] En la pantalla MENÚ se ven burgers, guarniciones y extras desde D1.
+- [ ] En GUARNICIONES se puede seleccionar `2 Papas OG`, `1 Aros de Cebolla`, `1 Papas Lemon&Pepper`.
+- [ ] En EXTRAS se puede seleccionar `2 Tocino` y `1 Queso americano` para una burger.
+- [ ] El resumen muestra cada guarnición como línea independiente con cantidad y subtotal.
+- [ ] El total se calcula con `price_cents` de D1.
+- [ ] Al enviar, DevTools muestra `payload.order_items[]` con líneas separadas.
+- [ ] A 320px de ancho no hay overflow horizontal.
+- [ ] Si se rompe o desconfigura D1, el MENÚ muestra estado de error con botón Reintentar y no queda en blanco.
+
+## Riesgos / deuda técnica
+
+- Las imágenes en R2 quedan configuradas por binding y `image_key`, pero falta definir la estrategia final de entrega pública (`/api/assets`, custom domain o URLs firmadas).
+- La escritura de pedidos continúa pasando por Apps Script; `order_items` queda listo para migrar persistencia pública a D1 en una fase posterior.
+- El contrato legacy `items` sigue viajando por compatibilidad con Apps Script; el contrato nuevo autoritativo es `order_items`.

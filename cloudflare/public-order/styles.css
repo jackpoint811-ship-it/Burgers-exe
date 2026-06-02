@@ -738,3 +738,34 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
     padding: 7px 0;
   }
 }
+
+.menu-state {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: rgba(6, 10, 16, 0.86);
+  box-shadow: inset 0 0 0 1px rgba(114, 255, 159, 0.08);
+  overflow-wrap: anywhere;
+}
+
+.menu-state strong { color: var(--text); }
+.menu-state p { margin: 0; color: var(--muted); }
+.menu-state-error { border-color: var(--danger); }
+.menu-state-error strong { color: var(--danger-text); }
+.menu-state-loading strong::after {
+  content: "";
+  display: inline-block;
+  width: 1.5em;
+  animation: loadingDots 1.1s steps(4, end) infinite;
+}
+
+.compact-grid { margin-top: var(--space-3); }
+
+@keyframes loadingDots {
+  0% { content: ""; }
+  25% { content: "."; }
+  50% { content: ".."; }
+  75%, 100% { content: "..."; }
+}

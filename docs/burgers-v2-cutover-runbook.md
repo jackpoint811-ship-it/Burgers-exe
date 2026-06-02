@@ -17,7 +17,7 @@ Key operating principles:
 The following V2 capabilities have been validated before this cutover-readiness phase:
 
 - D1 catalog served by `GET /api/menu-v2`.
-- R2 catalog assets served through same-origin asset endpoints backed by `BOG_ASSETS_BUCKET`.
+- R2 catalog assets served through same-origin asset endpoints backed by `BOG_MENU_ASSETS`.
 - Public V2 creates real orders in D1 through `POST /api/orders-v2`.
 - Internal V2 operates live orders from D1 through admin endpoints after PIN login.
 - Status flow supports `new -> preparing -> ready -> delivered` and terminal cancellation.
@@ -35,7 +35,7 @@ Current preview environment references:
 - Public preview project: `burgers-exe-public-v2-preview`.
 - Internal preview project: `burgers-exe-internal-v2-preview`.
 - D1 binding: `BOG_MENU_DB`.
-- R2 binding: `BOG_ASSETS_BUCKET`.
+- R2 binding: `BOG_MENU_ASSETS`.
 - Internal PIN config: `BOG_INTERNAL_PIN`.
 
 Release rule: do not change `BOG_ACTIVE_ENV` without explicit approval from the designated release owner. This runbook prepares cutover; it does not execute cutover or mutate Cloudflare configuration.
@@ -45,7 +45,7 @@ Release rule: do not change `BOG_ACTIVE_ENV` without explicit approval from the 
 Before any pilot/pre-production cutover window, confirm all of the following:
 
 - [ ] `BOG_MENU_DB` is bound to the correct D1 database for the target preview/pre-production environment.
-- [ ] `BOG_ASSETS_BUCKET` is bound to the correct R2 bucket for catalog assets.
+- [ ] `BOG_MENU_ASSETS` is bound to the correct R2 bucket for catalog assets.
 - [ ] `BOG_INTERNAL_PIN` is configured for Internal V2 PIN login.
 - [ ] Public and internal routes/projects remain separated.
 - [ ] Public V2 preview URL is validated before sharing.

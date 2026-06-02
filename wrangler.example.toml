@@ -7,5 +7,5 @@ database_name = "burgers-exe-menu-v2-preview"
 database_id = "REPLACE_WITH_D1_DATABASE_ID"
 
 [[r2_buckets]]
-binding = "BOG_ASSETS_BUCKET"
+binding = "BOG_MENU_ASSETS"
 bucket_name = "burgers-exe-assets-v2-preview"

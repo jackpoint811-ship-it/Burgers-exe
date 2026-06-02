@@ -25,7 +25,7 @@ V2 production operations use Cloudflare D1 and R2 as the authoritative systems.
 - Orders: D1 tables `orders_v2`, `order_items_v2`, and `order_events_v2`.
 - Catalog: D1 menu tables.
 - Raffles: D1 tables `raffle_campaigns_v2`, `raffle_referral_codes_v2`, and `raffle_referrals_v2`.
-- Assets: R2 bucket binding `BOG_ASSETS_BUCKET`.
+- Assets: R2 bucket binding `BOG_MENU_ASSETS`.
 - Internal auth: `BOG_INTERNAL_PIN` with the HttpOnly session cookie `bog_internal_session`.
 
 Google Sheets and Apps Script are no longer the operational source of truth for V2 production.

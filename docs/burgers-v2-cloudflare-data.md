@@ -15,7 +15,7 @@
 Required bindings:
 
 - `BOG_MENU_DB`
-- `BOG_ASSETS_BUCKET`
+- `BOG_MENU_ASSETS`
 
 Optional:
 
@@ -37,7 +37,7 @@ Not required:
 Required bindings/secrets:
 
 - `BOG_MENU_DB`
-- `BOG_ASSETS_BUCKET`
+- `BOG_MENU_ASSETS`
 - `BOG_INTERNAL_PIN`
 
 Not required:
@@ -113,7 +113,7 @@ Quita temporalmente binding `BOG_MENU_DB` en local/preview y valida que:
 ## R2 assets para catálogo V2
 
 - Bucket preview recomendado: `burgers-exe-assets-v2-preview`.
-- Binding requerido en Pages Functions: `BOG_ASSETS_BUCKET`.
+- Binding requerido en Pages Functions: `BOG_MENU_ASSETS`.
 - Crear bucket:
 
 ```bash
@@ -124,7 +124,7 @@ npx wrangler r2 bucket create burgers-exe-assets-v2-preview
 
 ```toml
 [[r2_buckets]]
-binding = "BOG_ASSETS_BUCKET"
+binding = "BOG_MENU_ASSETS"
 bucket_name = "burgers-exe-assets-v2-preview"
 ```
 
@@ -145,7 +145,7 @@ bucket_name = "burgers-exe-assets-v2-preview"
 
 - Endpoint: `GET /api/assets-v2/<key>`.
 - Ejemplo: `/api/assets-v2/menu/burger-og.webp`.
-- Sirve objetos desde `BOG_ASSETS_BUCKET` con `Cache-Control: public, max-age=3600`.
+- Sirve objetos desde `BOG_MENU_ASSETS` con `Cache-Control: public, max-age=3600`.
 - Bloquea keys vacías, traversal (`..`), backslashes, doble slash y extensiones no permitidas.
 - Extensiones permitidas: `.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`.
 - No lista el bucket y no expone upload público.
@@ -165,7 +165,7 @@ bucket_name = "burgers-exe-assets-v2-preview"
   - `POST /api/menu-v2-admin/items/:sku/image` sube una imagen desde Internal Chekeo Catálogo, la guarda en R2 y actualiza D1 (`image_key = <key>`, `image_url = NULL`).
   - `DELETE /api/menu-v2-admin/items/:sku/image` quita la imagen del producto, limpia `image_key`/`image_url` en D1 y activa el placeholder público.
 - Requiere binding D1 en `burgers-exe-internal-v2-preview`: `BOG_MENU_DB`.
-- Requiere binding R2 en `burgers-exe-internal-v2-preview`: `BOG_ASSETS_BUCKET` para upload; en DELETE es opcional para limpiar D1, pero si existe intenta borrar el objeto R2 actual.
+- Requiere binding R2 en `burgers-exe-internal-v2-preview`: `BOG_MENU_ASSETS` para upload; en DELETE es opcional para limpiar D1, pero si existe intenta borrar el objeto R2 actual.
 - Requiere login interno con `BOG_INTERNAL_PIN`; los endpoints admin aceptan únicamente la cookie HttpOnly `bog_internal_session` creada por `/api/internal-v2-auth/login`.
 - Si `BOG_INTERNAL_PIN`, `BOG_MENU_DB` o el R2 requerido para upload no existe, el endpoint responde `503 { ok:false, error:{ code:"AUTH_NOT_CONFIGURED", message:"Internal auth is not configured." } }` o el error de binding correspondiente.
 - Upload usa `multipart/form-data` con un solo campo `file`. Límite máximo: 5 MB. Tipos aceptados: `image/jpeg`, `image/png`, `image/webp`, `image/avif`. No acepta SVG, GIF, data URLs, content-type vacío ni múltiples archivos.
@@ -188,7 +188,7 @@ bucket_name = "burgers-exe-assets-v2-preview"
 - Requisitos:
   - `BOG_MENU_DB` para leer/actualizar `promo_cards`.
   - `BOG_INTERNAL_PIN` como único secreto de Internal V2; crea la cookie HttpOnly `bog_internal_session` después del login.
-  - `BOG_ASSETS_BUCKET` para `POST`; en `DELETE` es opcional y solo se usa para intentar borrar el objeto anterior.
+  - `BOG_MENU_ASSETS` para `POST`; en `DELETE` es opcional y solo se usa para intentar borrar el objeto anterior.
 - `PATCH` solo permite campos seguros: `title`, `description`, `badge`, `promoLabel`, `isAvailable`, `isFeatured`, `sortOrder`, `imageUrl`, `imageKey`. No inserta, no borra, no modifica `id`, no toca productos, no toca órdenes.
 - Validación de imagen manual:
   - `imageUrl` vacío/null, ruta same-origin que empieza con `/` o URL `https://`.
@@ -618,7 +618,7 @@ No-touch V2-12:
 ## Public quest kiosk data contract (2026-06-01)
 
 - Public Order V2 sigue leyendo catálogo únicamente desde `GET /api/menu-v2`: `categories`, `items`, `promos`, `siteConfig`, `updatedAt` y `source`.
-- No se hardcodean productos, precios, extras, guarniciones, promos, concursos ni assets. Las imágenes se resuelven con `imageUrl` seguro o `imageKey` vía `/api/assets-v2` usando el R2 existente (`BOG_ASSETS_BUCKET`).
+- No se hardcodean productos, precios, extras, guarniciones, promos, concursos ni assets. Las imágenes se resuelven con `imageUrl` seguro o `imageKey` vía `/api/assets-v2` usando el R2 existente (`BOG_MENU_ASSETS`).
 - Las promos/concursos de la primera pantalla salen de `menuData.promos`; si no hay promos disponibles, la sección se oculta.
 - Los extras no aparecen en `Menu`; solo se ofrecen como `UPGRADE` dentro de `Workbench` y deben existir como `menu_items.category_key = 'extras'` disponibles en D1.
 - `POST /api/orders-v2` valida cada extra por SKU contra D1, exige categoría `extras` y disponibilidad, normaliza nombre/precio desde D1 y guarda el arreglo normalizado en `snapshot_json`.
