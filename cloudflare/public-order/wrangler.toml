@@ -10,7 +10,7 @@ pages_build_output_dir = "."
 binding = "BOG_MENU_DB"
 database_name = "burgers-exe-menu-live"
 # Replace after `wrangler d1 create burgers-exe-menu-live`.
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_id = "95be98c4-1654-40a7-893a-a1977cb488a2"
 
 [[r2_buckets]]
 binding = "BOG_MENU_ASSETS"
