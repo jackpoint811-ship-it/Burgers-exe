@@ -17,7 +17,9 @@ function normalizeOrderItems(orderItems, legacyItems, priceTable) {
       const catalogItem = priceTable[menuItemId];
       const quantity = Number(item && (item.quantity != null ? item.quantity : item.qty));
       if (!menuItemId || !catalogItem || !Number.isFinite(quantity) || quantity <= 0) return null;
-      const unitPriceCents = Number(item && item.unit_price_cents != null ? item.unit_price_cents : catalogItem.unit_price_cents);
+      // Client price is accepted only as an optimistic concurrency check.
+      // Source of truth for totals is always catalogItem.unit_price_cents from D1.
+      const clientUnitPriceCents = Number(item && item.unit_price_cents != null ? item.unit_price_cents : catalogItem.unit_price_cents);
       return {
         menu_item_id: menuItemId,
         sku: menuItemId,
@@ -27,7 +29,7 @@ function normalizeOrderItems(orderItems, legacyItems, priceTable) {
         unit_price_cents: catalogItem.unit_price_cents,
         unit_price: catalogItem.unit_price,
         name: catalogItem.name,
-        client_unit_price_cents: Number.isFinite(unitPriceCents) ? unitPriceCents : null
+        client_unit_price_cents: Number.isFinite(clientUnitPriceCents) ? clientUnitPriceCents : null
       };
     })
     .filter(Boolean);

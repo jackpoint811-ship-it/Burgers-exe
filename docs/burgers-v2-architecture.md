@@ -19,7 +19,7 @@
 - Public official is <https://burgers-exe.pages.dev>.
 - Chekeo official is <https://chekeo2-0.pages.dev>.
 - D1 is the source of truth for orders, catalog, and raffles.
-- R2 handles catalog assets through `BOG_ASSETS_BUCKET`.
+- R2 handles catalog assets through `BOG_MENU_ASSETS`.
 - PIN-only auth is the internal authentication model, using `BOG_INTERNAL_PIN` and an HttpOnly session cookie.
 - Legacy, Apps Script, and Sheets remain deprecated but not deleted.
 - Public V2 preview and Internal V2 preview remain available as backup.
@@ -116,7 +116,7 @@
 
 ## V2-8 R2 catalog assets (preview)
 
-- `GET /api/assets-v2/<key>` sirve imágenes same-origin desde el binding R2 `BOG_ASSETS_BUCKET` para catálogo V2.
+- `GET /api/assets-v2/<key>` sirve imágenes same-origin desde el binding R2 `BOG_MENU_ASSETS` para catálogo V2.
 - Public Order V2 resuelve `imageUrl` seguro o `imageKey` R2 y conserva placeholders visuales si falta o falla la imagen.
 - Internal Chekeo V2 permite editar referencias `imageUrl`/`imageKey` de productos; no sube archivos.
 - La validación bloquea traversal, backslashes, doble slash, esquemas inseguros y extensiones no permitidas.
@@ -125,7 +125,7 @@
 ## V2-8.2 Internal catalog image upload (preview)
 
 - Internal Chekeo V2 Catálogo agrega upload protegido por sesión interna HttpOnly para imágenes de producto.
-- `POST /api/menu-v2-admin/items/:sku/image` valida `multipart/form-data`, limita a 5 MB, acepta solo JPG/PNG/WebP/AVIF, guarda en R2 (`BOG_ASSETS_BUCKET`) bajo `menu/` y actualiza D1 (`BOG_MENU_DB`).
+- `POST /api/menu-v2-admin/items/:sku/image` valida `multipart/form-data`, limita a 5 MB, acepta solo JPG/PNG/WebP/AVIF, guarda en R2 (`BOG_MENU_ASSETS`) bajo `menu/` y actualiza D1 (`BOG_MENU_DB`).
 - `DELETE /api/menu-v2-admin/items/:sku/image` limpia `image_key`/`image_url` para volver al placeholder y, si hay R2 disponible, intenta borrar el asset previo bajo `menu/`.
 - Public Order V2 no sube imágenes: solo lee `imageKey` desde `/api/assets-v2/<key>` y mantiene fallback visual si no hay imagen o si falla la carga.
 - Esta fase no conecta órdenes reales, pagos reales, `/api/order`, `/api/rpc`, Apps Script, Sheets, V1 ni producción.

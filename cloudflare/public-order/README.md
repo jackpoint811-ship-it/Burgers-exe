@@ -94,7 +94,7 @@ npx wrangler d1 create burgers-exe-menu-live
 npx wrangler r2 bucket create burgers-exe-menu-assets
 ```
 
-Después de crear D1, copia el `database_id` real y reemplaza `REPLACE_WITH_D1_DATABASE_ID` en `cloudflare/public-order/wrangler.toml` o configúralo en el dashboard/entorno de Pages.
+Después de crear D1, Wrangler imprime un bloque `[[d1_databases]]` con el `database_id` real. Copia ese valor y reemplaza `REPLACE_WITH_D1_DATABASE_ID` en `cloudflare/public-order/wrangler.toml`; no dejes el placeholder en preview/producción. En Cloudflare Pages, confirma también en **Settings > Functions > D1 database bindings** que el binding se llama exactamente `BOG_MENU_DB` y apunta a la misma base. Para R2, confirma en **Settings > Functions > R2 bucket bindings** que el binding se llama exactamente `BOG_MENU_ASSETS`.
 
 ## Aplicar migraciones y seed
 
@@ -130,6 +130,31 @@ curl http://127.0.0.1:8788/api/menu
 ```
 
 ## QA manual
+
+### QA manual obligatoria antes de merge
+
+Caso de regresión para cantidades y compatibilidad legacy:
+
+1. Inicia el sitio con `npm run public-order:dev` y abre el flujo público.
+2. Selecciona exactamente:
+   - `1 OG`
+   - `2 Tocino`
+   - `1 Queso americano`
+   - `2 Papas OG`
+   - `1 Aros de cebolla`
+3. Resultado esperado en UI:
+   - Resumen muestra la burger `OG` con extras `Tocino x2` y `Queso americano x1`.
+   - Resumen muestra guarniciones como líneas separadas: `Papas a la francesa OG x2` y `Aros de Cebolla x1`.
+   - Total esperado con el seed actual: `$170.00` (`8500 + 2*500 + 1*500 + 2*2000 + 1*3000 = 17000` centavos).
+4. Resultado esperado en `POST /api/order` / dry-run:
+   - `payload.order_items[]` incluye `{ menu_item_id: "OG", quantity: 1, unit_price_cents: 8500 }`.
+   - `payload.order_items[]` incluye `{ menu_item_id: "EXTRA_TOCINO", quantity: 2, unit_price_cents: 500 }`.
+   - `payload.order_items[]` incluye `{ menu_item_id: "EXTRA_QUESO_AMERICANO", quantity: 1, unit_price_cents: 500 }`.
+   - `payload.order_items[]` incluye `{ menu_item_id: "PAPAS_OG", quantity: 2, unit_price_cents: 2000 }`.
+   - `payload.order_items[]` incluye `{ menu_item_id: "AROS_CEBOLLA", quantity: 1, unit_price_cents: 3000 }`.
+   - `data.total_cents` es `17000`; el backend lo recalcula desde D1 y no desde precios del cliente.
+   - No hay `PRICE_MISMATCH`.
+   - `preparedPayload.payload.items` legacy conserva cantidades agregadas por SKU, incluyendo `{ sku: "PAPAS_OG", qty: 2 }` y `{ sku: "AROS_CEBOLLA", qty: 1 }`, para no perder guarniciones múltiples en escritura upstream, tickets, cocina o WhatsApp existentes.
 
 - [ ] `GET /api/menu` responde `ok: true`, `source: d1`, y contiene `burgers`, `sides`, `extras`.
 - [ ] En la pantalla MENÚ se ven burgers, guarniciones y extras desde D1.

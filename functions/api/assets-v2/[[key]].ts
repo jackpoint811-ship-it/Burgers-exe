@@ -1,14 +1,14 @@
 import { inferImageContentType, normalizeAssetKey } from '../_asset-utils';
 
-type Env = { BOG_ASSETS_BUCKET?: R2Bucket };
+type Env = { BOG_MENU_ASSETS?: R2Bucket };
 
 const notFound = () => new Response('Not found', { status: 404, headers: { 'cache-control': 'no-store' } });
 
 export const onRequestGet: PagesFunction<Env> = async ({ env, params }) => {
   const key = normalizeAssetKey(params.key);
-  if (!key || !env.BOG_ASSETS_BUCKET) return notFound();
+  if (!key || !env.BOG_MENU_ASSETS) return notFound();
 
-  const object = await env.BOG_ASSETS_BUCKET.get(key);
+  const object = await env.BOG_MENU_ASSETS.get(key);
   if (!object) return notFound();
 
   const headers = new Headers();

@@ -3,7 +3,7 @@ import { mapD1PromoToPromoCard } from '../../../_menu-v2-utils';
 import { requireAdminToken, type AdminEnv } from '../../../_orders-v2-utils';
 
 /* POST/DELETE /api/menu-v2-admin/promos/:id/image */
-type Env = AdminEnv & { BOG_ASSETS_BUCKET?: R2Bucket };
+type Env = AdminEnv & { BOG_MENU_ASSETS?: R2Bucket };
 
 type PromoRow = {
   id: string;
@@ -85,7 +85,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, params, request }
   const auth = await getAuthorizedId(env, params, request);
   if (auth instanceof Response) return auth;
   const db = env.BOG_MENU_DB;
-  const bucket = env.BOG_ASSETS_BUCKET;
+  const bucket = env.BOG_MENU_ASSETS;
   if (!db || !bucket) return json(503, { ok: false, error: 'Admin disabled' });
 
   const contentType = request.headers.get('content-type') ?? '';
@@ -146,7 +146,7 @@ export const onRequestDelete: PagesFunction<Env> = async ({ env, params, request
   const currentPromo = (await fetchPromo(db, auth.id)) as PromoRow | null;
   if (!currentPromo) return json(404, { ok: false, error: 'Promo not found' });
 
-  const deleteWarning = await deletePreviousPromoAsset(env.BOG_ASSETS_BUCKET, currentPromo.imageKey ?? currentPromo.asset_image_key);
+  const deleteWarning = await deletePreviousPromoAsset(env.BOG_MENU_ASSETS, currentPromo.imageKey ?? currentPromo.asset_image_key);
 
   const result = await db.prepare(
     'UPDATE promo_cards SET asset_image_key = NULL, asset_image_url = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?'

@@ -2,7 +2,7 @@ import { normalizeAssetKey } from '../../../_asset-utils';
 import { mapD1ItemToMenuItem } from '../../../_menu-v2-utils';
 import { requireAdminToken, type AdminEnv } from '../../../_orders-v2-utils';
 
-type Env = AdminEnv & { BOG_ASSETS_BUCKET?: R2Bucket };
+type Env = AdminEnv & { BOG_MENU_ASSETS?: R2Bucket };
 
 type MenuItemRow = {
   sku: string;
@@ -82,7 +82,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, params, request }
   const auth = await getAuthorizedSku(env, params, request);
   if (auth instanceof Response) return auth;
   const db = env.BOG_MENU_DB;
-  const bucket = env.BOG_ASSETS_BUCKET;
+  const bucket = env.BOG_MENU_ASSETS;
   if (!db || !bucket) return json(503, { ok: false, error: 'Admin disabled' });
 
   const contentType = request.headers.get('content-type') ?? '';
@@ -143,7 +143,7 @@ export const onRequestDelete: PagesFunction<Env> = async ({ env, params, request
   const currentItem = (await fetchItem(db, auth.sku)) as MenuItemRow | null;
   if (!currentItem) return json(404, { ok: false, error: 'Item not found' });
 
-  const deleteWarning = await deletePreviousMenuAsset(env.BOG_ASSETS_BUCKET, currentItem.imageKey);
+  const deleteWarning = await deletePreviousMenuAsset(env.BOG_MENU_ASSETS, currentItem.imageKey);
 
   const result = await db.prepare(
     'UPDATE menu_items SET image_key = NULL, image_url = NULL, updated_at = CURRENT_TIMESTAMP WHERE sku = ?'
