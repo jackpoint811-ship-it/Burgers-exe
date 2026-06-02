@@ -852,3 +852,22 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 13. Confirmar que no aparece token, Authorization Bearer, WhatsApp API, R2 upload, D1 image table, `localStorage` ni `sessionStorage` para la imagen.
 14. Confirmar que la imagen no bloquea operación si no hay código de invitado con match seguro y único por nombre normalizado + teléfono enmascarado: debe mostrar “solicita tu código en Burgers.exe”.
 15. Confirmar con datos ambiguos que coincidir solo por `ownerPhoneMasked === customerPhoneMasked` nunca muestra código de invitado.
+
+## QA Fase 4D — Success público con tickets y código propio
+
+1. Tener una campaña de sorteo activa.
+2. Crear pedido público con 1 burger sin usar código de invitado.
+3. Confirmar que Success muestra “Tickets ganados por esta orden” y `+1 tickets` cuando `ticket_per_burger=1`.
+4. Confirmar que Success muestra “Tu código para invitar”.
+5. Presionar “Copiar código” y confirmar “Código copiado.”; si Clipboard falla, confirmar fallback inline sin `alert()`.
+6. Crear pedido público con 2 burgers o combos y confirmar que Success muestra los tickets de burger/combo correspondientes a `ticket_per_burger * qty`.
+7. Crear otro pedido con el mismo teléfono y confirmar que reutiliza el mismo `customerReferralCode`.
+8. Crear pedido con otro teléfono usando ese código en Checkout.
+9. Confirmar que Success del comprador muestra sus burger tickets y no promete +2 tickets al comprador por usar código.
+10. Confirmar que Success dice “Código aplicado. Los tickets de referido se asignan a quien te invitó.” cuando el código de invitado aplicó y `referralUsedTickets` es 0.
+11. Confirmar en Chekeo que el dueño del código recibe los referral tickets (`ticket_per_referral`, normalmente +2).
+12. Desactivar campaña, crear pedido y confirmar que Success no muestra `earnedTickets` ni `customerReferralCode`.
+13. Confirmar que guarniciones, bebidas y otros no suman tickets.
+14. Confirmar que el pedido no se bloquea si falla generación de `customerReferralCode` o cálculo de `earnedTickets`.
+15. Confirmar que no aparece teléfono completo, dueño del código usado, WhatsApp API, envío automático, tokens, `Authorization Bearer`, `BOG_ORDERS_ADMIN_TOKEN` ni `BOG_MENU_ADMIN_TOKEN`.
+16. Confirmar que no se llama `/api/order` ni `/api/rpc` y que no se tocaron legacy, Apps Script, Sheets sync, pagos reales, auth PIN-only flow ni migraciones.

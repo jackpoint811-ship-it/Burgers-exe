@@ -1237,3 +1237,38 @@ p {
 .field-label small { color: var(--muted); font-size: 0.78rem; font-weight: 650; }
 .success-note { border: 1px solid rgba(52, 211, 153, 0.38); border-radius: 14px; background: rgba(52, 211, 153, 0.1); color: #bbf7d0 !important; padding: 10px 12px; }
 .success-note.muted { border-color: rgba(251, 191, 36, 0.34); background: rgba(251, 191, 36, 0.09); color: #fde68a !important; }
+.success-reward-card,
+.success-referral-card {
+  width: min(100%, 520px);
+  display: grid;
+  gap: 0.65rem;
+  justify-items: center;
+  border: 1px solid rgba(52, 211, 153, 0.34);
+  border-radius: 22px;
+  background: radial-gradient(circle at 50% 0, rgba(52, 211, 153, 0.18), rgba(2, 6, 4, 0.78) 58%);
+  padding: 1rem;
+  margin-top: 0.35rem;
+}
+.success-reward-card ul { margin: 0; padding: 0; list-style: none; color: #d1fae5; font-weight: 850; }
+.success-reward-card li { margin: 0.2rem 0; }
+.success-reward-card p,
+.success-referral-card p { color: var(--muted); line-height: 1.45; }
+.success-ticket-total {
+  color: #fff;
+  font-size: clamp(2rem, 10vw, 3.6rem);
+  letter-spacing: -0.06em;
+  text-shadow: 0 0 24px rgba(52, 211, 153, 0.32);
+}
+.success-referral-code {
+  user-select: all;
+  color: #022c22;
+  background: linear-gradient(135deg, #bbf7d0, #34d399);
+  border-radius: 18px;
+  padding: 0.75rem 1rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: clamp(1.3rem, 8vw, 2.25rem);
+  letter-spacing: 0.06em;
+  overflow-wrap: anywhere;
+}
+.success-copy-status { color: #bbf7d0 !important; font-weight: 900; }
+.success-copy-status.error { color: #fde68a !important; }

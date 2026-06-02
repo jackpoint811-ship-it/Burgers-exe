@@ -200,6 +200,12 @@ export type CreateOrderV2Payload = {
   referralCode?: string;
 };
 
+export type OrderV2EarnedTickets = {
+  burgerTickets: number;
+  referralUsedTickets: number;
+  totalTickets: number;
+};
+
 export type CreateOrderV2Response = {
   ok: boolean;
   data?: {
@@ -211,6 +217,9 @@ export type CreateOrderV2Response = {
     };
     idempotent?: boolean;
     referralAccepted?: boolean;
+    customerReferralCode?: string;
+    activeRaffleTitle?: string;
+    earnedTickets?: OrderV2EarnedTickets;
   };
   error?: OrderV2Error;
 };

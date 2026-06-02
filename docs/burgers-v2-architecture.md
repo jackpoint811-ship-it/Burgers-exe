@@ -520,3 +520,15 @@ Acciones disponibles:
 - **Compartir imagen**: solo aparece cuando Web Share API soporta `files`; si no, la UI muestra fallback para descargar y compartir manualmente.
 
 Privacidad y operación: el canvas y el texto solo incluyen teléfono enmascarado, nunca teléfono completo. No se usa `localStorage` ni `sessionStorage` para guardar imagen o credenciales. No se agregan tokens, Authorization Bearer, WhatsApp API, pagos reales ni Sheets sync. El footer de la imagen recuerda: “Guarda esta imagen. Tickets sujetos a validación final.”
+
+## Fase 4D — Success público con rewards de referido
+
+- `POST /api/orders-v2` mantiene el flujo público sin login de cliente, sin Google login, sin WhatsApp API, sin tokens y sin headers `Authorization Bearer`.
+- Después de persistir una orden real, si existe campaña activa, la respuesta pública puede incluir `activeRaffleTitle`, `earnedTickets` y `customerReferralCode`.
+- `referralCode` en Checkout es el código de otra persona que el comprador usa; `customerReferralCode` en Success es el código propio del comprador para compartir.
+- Si el teléfono normalizado del comprador ya tiene código en `raffle_referral_codes_v2` para la campaña activa, se reutiliza ese código.
+- Si no existe, backend intenta generar un código seguro con nombre normalizado, palabra permitida (`BURGER`, `SMASH`, `BACON`, `PICKLES`, `CHEESE`, `FRIES`) y número 1–100, evitando colisiones.
+- La generación/cálculo de sorteo nunca bloquea la orden: si falla, se devuelve la orden normal y, cuando es posible, se registra un evento seguro en `order_events_v2`.
+- `earnedTickets` es informativo solo para esa orden: burgers/combos suman `ticket_per_burger * qty`; guarniciones, bebidas y otros no suman; `referralUsedTickets` es 0 porque los tickets por referido son para quien invitó.
+- Public Success muestra “Tickets ganados por esta orden” cuando `earnedTickets` existe y “Tu código para invitar” cuando `customerReferralCode` existe, con botón de copiar vía Clipboard API y fallback inline sin `alert()`.
+- Success no muestra teléfono completo, no expone dueño del código usado, no pide registro y no abre WhatsApp automático.

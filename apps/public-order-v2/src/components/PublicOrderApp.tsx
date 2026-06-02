@@ -44,6 +44,9 @@ type OrderConfirmation = NonNullable<CreateOrderV2Response["data"]>["order"] & {
   paymentMethod: OrderV2PaymentMethod;
   location: CustomerDraft["location"];
   referralAccepted?: boolean;
+  customerReferralCode?: string;
+  activeRaffleTitle?: string;
+  earnedTickets?: NonNullable<CreateOrderV2Response["data"]>["earnedTickets"];
 };
 type DraftSnapshot = { customer: CustomerDraft; items: CartEntry[] };
 
@@ -426,20 +429,52 @@ const Checkout = ({ cart, items, total, customer, setCustomer, onBack, onSubmit,
   </section>
 );
 
-const Success = ({ order, onCreateAnother }: { order: OrderConfirmation; onCreateAnother: () => void }) => (
-  <section className="quest-panel success-panel" aria-live="polite">
-    <span className="eyebrow">Success</span>
-    <h2>Pedido recibido</h2>
-    <p>Folio: <strong>{order.folio}</strong></p>
-    <p>Estado: {statusLabels[order.status] ?? order.status}</p>
-    <p>Total confirmado: {formatCurrency(order.total)}</p>
-    <p>Ubicación: {order.location}</p>
-    <p>Pago: {paymentMethodLabels[order.paymentMethod]}</p>
-    {order.referralAccepted === true ? <p className="success-note">Código de invitado aplicado.</p> : null}
-    {order.referralAccepted === false ? <p className="success-note muted">Pedido recibido. El código de invitado no aplicó.</p> : null}
-    <QuestButton onClick={onCreateAnother}>NUEVA QUEST</QuestButton>
-  </section>
-);
+const Success = ({ order, onCreateAnother }: { order: OrderConfirmation; onCreateAnother: () => void }) => {
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
+  const earnedTickets = order.earnedTickets;
+  const copyReferralCode = async () => {
+    if (!order.customerReferralCode) return;
+    try {
+      await navigator.clipboard.writeText(order.customerReferralCode);
+      setCopyStatus("copied");
+    } catch {
+      setCopyStatus("error");
+    }
+  };
+
+  return (
+    <section className="quest-panel success-panel" aria-live="polite">
+      <span className="eyebrow">Success</span>
+      <h2>Pedido recibido</h2>
+      <p>Folio: <strong>{order.folio}</strong></p>
+      <p>Estado: {statusLabels[order.status] ?? order.status}</p>
+      <p>Total confirmado: {formatCurrency(order.total)}</p>
+      <p>Ubicación: {order.location}</p>
+      <p>Pago: {paymentMethodLabels[order.paymentMethod]}</p>
+      {earnedTickets ? <article className="success-reward-card">
+        <span className="eyebrow">Tickets ganados por esta orden</span>
+        <strong className="success-ticket-total">+{earnedTickets.totalTickets} tickets</strong>
+        <ul>
+          <li>Burgers/combos: +{earnedTickets.burgerTickets}</li>
+          {earnedTickets.referralUsedTickets > 0 ? <li>Código aplicado: +{earnedTickets.referralUsedTickets}</li> : null}
+        </ul>
+        {order.referralAccepted === true && earnedTickets.referralUsedTickets === 0 ? <p>Código aplicado. Los tickets de referido se asignan a quien te invitó.</p> : null}
+      </article> : null}
+      {order.customerReferralCode ? <article className="success-referral-card">
+        <span className="eyebrow">Tu código para invitar</span>
+        <strong className="success-referral-code">{order.customerReferralCode}</strong>
+        {order.activeRaffleTitle ? <p>Sorteo activo: {order.activeRaffleTitle}</p> : null}
+        <p>Comparte tu código. Por cada amigo que haga pedido con tu código ganas 2 tickets.</p>
+        <QuestButton className="ghost" onClick={copyReferralCode}>Copiar código</QuestButton>
+        {copyStatus === "copied" ? <p className="success-copy-status">Código copiado.</p> : null}
+        {copyStatus === "error" ? <p className="success-copy-status error">No se pudo copiar automático. Mantén presionado el código para copiarlo manualmente.</p> : null}
+      </article> : null}
+      {order.referralAccepted === true && !earnedTickets ? <p className="success-note">Código de invitado aplicado.</p> : null}
+      {order.referralAccepted === false ? <p className="success-note muted">Pedido recibido. El código de invitado no aplicó.</p> : null}
+      <QuestButton onClick={onCreateAnother}>NUEVA QUEST</QuestButton>
+    </section>
+  );
+};
 
 const PersistentCta = ({ section, count, total, disabled, submitting, onClick }: { section: QuestSection; count: number; total: number; disabled?: boolean; submitting?: boolean; onClick: () => void }) => {
   if (section === "success" || (section === "checkout" && !count)) return null;
@@ -562,7 +597,7 @@ export function PublicOrderApp() {
       const response = await createOrderV2({ customer: { name: customer.name.trim(), phone: normalizePhoneDigits(customer.phone) }, orderMode: orderModeForBackend, paymentMethod: customer.paymentMethod, notes, items: payloadItems, ...(referralCode ? { referralCode } : {}) }, idempotencyKey);
       const order = response.data?.order;
       if (!order) throw new Error("El backend no devolvió folio de confirmación.");
-      setOrderConfirmation({ ...order, paymentMethod: customer.paymentMethod, location: customer.location, referralAccepted: response.data?.referralAccepted });
+      setOrderConfirmation({ ...order, paymentMethod: customer.paymentMethod, location: customer.location, referralAccepted: response.data?.referralAccepted, customerReferralCode: response.data?.customerReferralCode, activeRaffleTitle: response.data?.activeRaffleTitle, earnedTickets: response.data?.earnedTickets });
       setCart([]);
       setCustomer(createEmptyCustomer());
       clearDraftIdempotencyKey();
