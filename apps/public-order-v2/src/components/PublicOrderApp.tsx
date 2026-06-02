@@ -340,11 +340,11 @@ const MainQuest = ({ choice, availableBurgerItems, availableComboItems, builder,
   );
 };
 
-const QuantityControl = ({ value, onChange }: { value: 1 | 2 | 3; onChange: (qty: 1 | 2 | 3) => void }) => (
-  <div className="qty-control" role="group" aria-label="Cantidad de unidades">
-    <button type="button" onClick={() => onChange(Math.max(1, value - 1) as 1 | 2 | 3)} disabled={value === 1}>−</button>
+const QuantityControl = ({ value, onChange, min = 1, max = 3, label = "Cantidad de unidades" }: { value: number; onChange: (qty: number) => void; min?: number; max?: number; label?: string }) => (
+  <div className="qty-control" role="group" aria-label={label}>
+    <button type="button" onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min}>−</button>
     <strong>x{value}</strong>
-    <button type="button" onClick={() => onChange(Math.min(3, value + 1) as 1 | 2 | 3)} disabled={value === 3}>+</button>
+    <button type="button" onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max}>+</button>
   </div>
 );
 
@@ -359,9 +359,26 @@ const UnitEditor = ({ unit, index, item, extras, garnishes, onChange }: { unit: 
         const active = unit.removedIngredients.includes(ingredient);
         return <button type="button" key={ingredient} className={active ? "chip active" : "chip"} onClick={() => onChange({ ...unit, removedIngredients: active ? unit.removedIngredients.filter((entry) => entry !== ingredient) : [...unit.removedIngredients, ingredient] })}>Sin {ingredient}</button>;
       })}</div> : <p className="muted">Sin ingredientes editables para esta burger.</p>}</div> : null}
-      {isBurgerLike ? <div className="builder-block"><h4>UPGRADE</h4><p className="builder-hint">Agrega extras.</p>{extras.length ? <div className="chip-grid">{extras.map((extra) => {
-        const active = unit.extras.some((entry) => entry.sku === extra.sku);
-        return <button type="button" key={extra.sku} className={active ? "chip active" : "chip"} onClick={() => onChange({ ...unit, extras: active ? unit.extras.filter((entry) => entry.sku !== extra.sku) : [...unit.extras, { sku: extra.sku, name: extra.name, price: extra.price }] })}>{extra.name} +{formatCurrency(extra.price)}</button>;
+      {isBurgerLike ? <div className="builder-block"><h4>UPGRADE</h4><p className="builder-hint">Agrega extras. Puedes sumar múltiples piezas del mismo extra.</p>{extras.length ? <div className="chip-grid">{extras.map((extra) => {
+        const quantity = unit.extras.filter((entry) => entry.sku === extra.sku).length;
+        const removeOne = () => {
+          let removed = false;
+          onChange({ ...unit, extras: unit.extras.filter((entry) => {
+            if (!removed && entry.sku === extra.sku) { removed = true; return false; }
+            return true;
+          }) });
+        };
+        return <div className={quantity ? "side-card active" : "side-card"} key={extra.sku}><button type="button" className={quantity ? "chip active" : "chip"} onClick={() => onChange({ ...unit, extras: [...unit.extras, { sku: extra.sku, name: extra.name, price: extra.price }] })}>{extra.name} +{formatCurrency(extra.price)}</button>{quantity ? <QuantityControl value={quantity} min={0} max={10} label={`Cantidad de ${extra.name}`} onChange={(nextQty) => {
+          if (nextQty > quantity) onChange({ ...unit, extras: [...unit.extras, ...Array.from({ length: nextQty - quantity }, () => ({ sku: extra.sku, name: extra.name, price: extra.price }))] });
+          else if (nextQty < quantity) {
+            const remainingToRemove = quantity - nextQty;
+            let removedCount = 0;
+            onChange({ ...unit, extras: unit.extras.filter((entry) => {
+              if (entry.sku === extra.sku && removedCount < remainingToRemove) { removedCount += 1; return false; }
+              return true;
+            }) });
+          }
+        }} /> : null}{quantity ? <button type="button" className="chip" onClick={removeOne}>Quitar uno</button> : null}</div>;
       })}</div> : <p className="muted">Sin extras disponibles.</p>}</div> : null}
       {unit.itemKind === "combo" ? <div className="builder-block"><h4>Guarnición incluida</h4>{garnishes.length ? <div className="chip-grid">{garnishes.map((garnish) => <button type="button" key={garnish.sku} className={unit.garnish?.sku === garnish.sku ? "chip active" : "chip"} onClick={() => onChange({ ...unit, garnish: { sku: garnish.sku, name: garnish.name } })}>{garnish.name}</button>)}</div> : <p className="inline-error">No hay guarniciones disponibles para confirmar este combo.</p>}</div> : null}
       {isBurgerLike ? <label className="field-label">Nota por burger opcional<textarea maxLength={220} value={unit.burgerNote ?? ""} onChange={(event) => onChange({ ...unit, burgerNote: event.target.value })} placeholder="Ej. bien cocida" /></label> : null}
@@ -369,7 +386,7 @@ const UnitEditor = ({ unit, index, item, extras, garnishes, onChange }: { unit: 
   );
 };
 
-const Workbench = ({ builder, extras, garnishes, onBack, onQuantity, onUnitChange }: { builder: BuilderDraft | null; extras: MenuItem[]; garnishes: MenuItem[]; onBack: () => void; onQuantity: (qty: 1 | 2 | 3) => void; onUnitChange: (index: number, unit: CartEntry) => void }) => (
+const Workbench = ({ builder, extras, garnishes, onBack, onQuantity, onUnitChange }: { builder: BuilderDraft | null; extras: MenuItem[]; garnishes: MenuItem[]; onBack: () => void; onQuantity: (qty: number) => void; onUnitChange: (index: number, unit: CartEntry) => void }) => (
   <section className="quest-panel">
     <QuestButton className="ghost" onClick={onBack}>Regresar</QuestButton>
     <span className="eyebrow">Workbench</span>
@@ -379,13 +396,16 @@ const Workbench = ({ builder, extras, garnishes, onBack, onQuantity, onUnitChang
   </section>
 );
 
-const SideQuest = ({ garnishes, selected, onToggle, onBack, onSkip, reduce }: { garnishes: MenuItem[]; selected: string[]; onToggle: (sku: string) => void; onBack: () => void; onSkip: () => void; reduce: boolean }) => (
+const SideQuest = ({ garnishes, selected, onQuantity, onBack, onSkip, reduce }: { garnishes: MenuItem[]; selected: Record<string, number>; onQuantity: (sku: string, quantity: number) => void; onBack: () => void; onSkip: () => void; reduce: boolean }) => (
   <section className="quest-panel">
     <QuestButton className="ghost" onClick={onBack}>Regresar</QuestButton>
     <span className="eyebrow">Side Quest</span>
     <h2>Guarniciones extra opcionales</h2>
-    <p className="muted">Opcional. Si tu combo incluye guarnición, ya va incluida.</p>
-    {garnishes.length ? <div className="kiosk-grid">{garnishes.map((item) => <div className={selected.includes(item.sku) ? "side-card active" : "side-card"} key={item.sku}><ProductCard item={item} mode="select" onClick={() => onToggle(item.sku)} reduce={reduce} /></div>)}</div> : <EmptyState title="Sin guarniciones disponibles" description="Puedes continuar sin guarnición extra." />}
+    <p className="muted">Opcional. Si tu combo incluye guarnición, ya va incluida. Puedes agregar varias piezas de la misma guarnición.</p>
+    {garnishes.length ? <div className="kiosk-grid">{garnishes.map((item) => {
+      const quantity = selected[item.sku] ?? 0;
+      return <div className={quantity ? "side-card active" : "side-card"} key={item.sku}><ProductCard item={item} mode="select" onClick={() => onQuantity(item.sku, quantity + 1)} reduce={reduce} /><QuantityControl value={quantity} min={0} max={10} label={`Cantidad de ${item.name}`} onChange={(nextQty) => onQuantity(item.sku, nextQty)} /></div>;
+    })}</div> : <EmptyState title="Sin guarniciones disponibles" description="Puedes continuar sin guarnición extra." />}
     <QuestButton className="ghost" onClick={onSkip}>Continuar sin guarnición</QuestButton>
   </section>
 );
@@ -399,7 +419,7 @@ const TicketList = ({ cart, items, onEdit, onDuplicate, onRemove }: { cart: Cart
         <div><h3>{entry.name} #{entry.itemDisplayIndex}</h3><strong>{formatCurrency(price + extrasTotal)}</strong></div>
         <ul>
           {entry.removedIngredients.map((ingredient) => <li key={ingredient}>MOD · Sin {ingredient}</li>)}
-          {entry.extras.map((extra) => <li key={extra.sku ?? extra.name}>UPGRADE · {extra.name}{extra.price ? ` +${formatCurrency(extra.price)}` : ""}</li>)}
+          {entry.extras.map((extra, extraIndex) => <li key={`${extra.sku ?? extra.name}-${extraIndex}`}>UPGRADE · {extra.name}{extra.price ? ` +${formatCurrency(extra.price)}` : ""}</li>)}
           {entry.garnish ? <li>Guarnición incluida: {entry.garnish.name}</li> : null}
           {entry.burgerNote ? <li>Nota: {entry.burgerNote}</li> : null}
           {!entry.removedIngredients.length && !entry.extras.length && !entry.garnish && !entry.burgerNote ? <li>Unidad separada · precio unitario</li> : null}
@@ -493,7 +513,7 @@ export function PublicOrderApp() {
   const [builder, setBuilder] = useState<BuilderDraft | null>(null);
   const [orderChoice, setOrderChoice] = useState<OrderChoice | null>(null);
   const [infoItem, setInfoItem] = useState<MenuItem | null>(null);
-  const [extraGarnishSkus, setExtraGarnishSkus] = useState<string[]>([]);
+  const [extraGarnishQuantities, setExtraGarnishQuantities] = useState<Record<string, number>>({});
   const [menuData, setMenuData] = useState<MenuV2Response>(toFallbackMenuResponse("fallback"));
   const [raffleCampaign, setRaffleCampaign] = useState<RaffleCampaignPublicV2 | null>(null);
   const [loadingMenu, setLoadingMenu] = useState(true);
@@ -538,7 +558,7 @@ export function PublicOrderApp() {
     const seen = new Map<string, number>();
     return entries.map((entry) => { const next = (seen.get(entry.sku) ?? 0) + 1; seen.set(entry.sku, next); return { ...entry, itemDisplayIndex: next }; });
   };
-  const beginQuest = () => { setOrderChoice(null); setBuilder(null); setExtraGarnishSkus([]); setCheckoutError(null); setOrderConfirmation(null); navigate("main"); };
+  const beginQuest = () => { setOrderChoice(null); setBuilder(null); setExtraGarnishQuantities({}); setCheckoutError(null); setOrderConfirmation(null); navigate("main"); };
   const startBuilder = (item: MenuItem, source?: CartEntry) => {
     if (!item.isAvailable) return;
     const itemKind = inferItemKind(item);
@@ -547,7 +567,7 @@ export function PublicOrderApp() {
     setBuilder({ item, itemKind, quantity: 1, units: [makeUnit(item, itemKind, 1, source)], error: null, editLineKey: source?.lineKey });
     navigate("workbench");
   };
-  const updateBuilderQuantity = (quantity: 1 | 2 | 3) => setBuilder((draft) => draft ? { ...draft, quantity, units: Array.from({ length: quantity }, (_, index) => makeUnit(draft.item, draft.itemKind, index + 1, draft.units[index])), error: null } : draft);
+  const updateBuilderQuantity = (quantity: number) => setBuilder((draft) => draft ? { ...draft, quantity: Math.min(3, Math.max(1, quantity)) as 1 | 2 | 3, units: Array.from({ length: Math.min(3, Math.max(1, quantity)) }, (_, index) => makeUnit(draft.item, draft.itemKind, index + 1, draft.units[index])), error: null } : draft);
   const updateBuilderUnit = (index: number, unit: CartEntry) => setBuilder((draft) => draft ? { ...draft, units: draft.units.map((entry, entryIndex) => entryIndex === index ? unit : entry), error: null } : draft);
   const confirmBuilder = () => {
     if (!builder) return false;
@@ -566,11 +586,11 @@ export function PublicOrderApp() {
     return true;
   };
   const addSideQuestAndCheckout = () => {
-    const selectedGarnishes = garnishes.filter((item) => extraGarnishSkus.includes(item.sku));
+    const selectedGarnishes = garnishes.flatMap((item) => Array.from({ length: extraGarnishQuantities[item.sku] ?? 0 }, () => item));
     if (selectedGarnishes.length) {
       setCart((prev) => reindex([...prev, ...selectedGarnishes.map((item, index) => makeUnit(item, "garnish", prev.filter((entry) => entry.sku === item.sku).length + index + 1))]));
     }
-    setExtraGarnishSkus([]);
+    setExtraGarnishQuantities({});
     setBuilder(null);
     navigate("checkout");
   };
@@ -612,7 +632,7 @@ export function PublicOrderApp() {
       setSubmitting(false);
     }
   };
-  const handleCreateAnother = () => { setOrderConfirmation(null); setCheckoutError(null); setCart([]); setCustomer(createEmptyCustomer()); clearDraftIdempotencyKey(); setBuilder(null); setOrderChoice(null); setExtraGarnishSkus([]); navigate("menu"); };
+  const handleCreateAnother = () => { setOrderConfirmation(null); setCheckoutError(null); setCart([]); setCustomer(createEmptyCustomer()); clearDraftIdempotencyKey(); setBuilder(null); setOrderChoice(null); setExtraGarnishQuantities({}); navigate("menu"); };
   const primaryDisabled = (section === "main" && !builder) || (section === "workbench" && !builder) || (section === "checkout" && (submitting || !cart.length));
   const primaryAction = () => {
     if (section === "menu") beginQuest();
@@ -630,7 +650,7 @@ export function PublicOrderApp() {
       {section === "menu" ? <MenuSection menuData={menuData} raffleCampaign={raffleCampaign} onExplore={setInfoItem} onStart={beginQuest} reduce={reduce} /> : null}
       {section === "main" ? <MainQuest choice={orderChoice} availableBurgerItems={availableBurgerItems} availableComboItems={availableComboItems} builder={builder} onBack={() => navigate("menu")} onChoice={(choice) => { setOrderChoice(choice); setBuilder(null); }} onProduct={startBuilder} reduce={reduce} /> : null}
       {section === "workbench" ? <Workbench builder={builder} extras={extras} garnishes={garnishes} onBack={() => navigate("main")} onQuantity={updateBuilderQuantity} onUnitChange={updateBuilderUnit} /> : null}
-      {section === "side" ? <SideQuest garnishes={garnishes} selected={extraGarnishSkus} onToggle={(sku) => setExtraGarnishSkus((prev) => prev.includes(sku) ? prev.filter((entry) => entry !== sku) : [...prev, sku])} onBack={() => navigate("workbench")} onSkip={() => { setExtraGarnishSkus([]); navigate("checkout"); }} reduce={reduce} /> : null}
+      {section === "side" ? <SideQuest garnishes={garnishes} selected={extraGarnishQuantities} onQuantity={(sku, quantity) => setExtraGarnishQuantities((prev) => ({ ...prev, [sku]: Math.min(10, Math.max(0, quantity)) }))} onBack={() => navigate("workbench")} onSkip={() => { setExtraGarnishQuantities({}); navigate("checkout"); }} reduce={reduce} /> : null}
       {section === "checkout" && cart.length ? <Checkout cart={cart} items={menuData.items} total={total} customer={customer} setCustomer={setCustomer} onBack={() => navigate(cart.length ? "side" : "menu")} onSubmit={handleCheckout} submitting={submitting} error={checkoutError} onEdit={editLine} onDuplicate={duplicateLine} onRemove={removeLine} /> : null}
       {section === "success" && orderConfirmation ? <Success order={orderConfirmation} onCreateAnother={handleCreateAnother} /> : null}
       <MenuInfoDialog item={infoItem} onClose={() => setInfoItem(null)} />
