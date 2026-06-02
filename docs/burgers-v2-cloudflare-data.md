@@ -153,10 +153,65 @@ bucket_name = "burgers-exe-assets-v2-preview"
 
 ### Estrategia de URLs
 
-- `imageUrl` permite rutas same-origin que empiecen con `/` o URLs externas `https://`.
 - `imageKey` apunta a R2 y la UI pública lo resuelve a `/api/assets-v2/<key>`.
+- `imageKey` tiene prioridad sobre `imageUrl` para que los objetos R2 del catálogo real sean same-origin.
+- `imageUrl` permite rutas same-origin que empiecen con `/` o URLs externas `https://` sin credenciales cuando no hay `imageKey` válido.
 - Si la imagen falla, la UI mantiene el placeholder visual existente.
 - No usar `r2.dev` como estrategia final de producción. Para producción, usar custom domain o continuar sirviendo por Pages Function según la estrategia de cache/seguridad.
+
+## Producción: assets reales de menú en R2
+
+El bucket oficial de catálogo es `burgers-exe-menu-assets` y el binding de Pages Functions debe mantenerse como `BOG_MENU_ASSETS`. Public Order V2 no lee el bucket directamente desde el navegador: los productos con `image_key` en D1 se resuelven en la UI como URLs same-origin bajo `/api/assets-v2/<image_key>`; por ejemplo, `menu/OG.png` se solicita como `/api/assets-v2/menu/OG.png`.
+
+### Subir assets con Wrangler
+
+No subas binarios pesados al repositorio. Guarda los archivos fuente localmente o en el flujo operativo de diseño, y súbelos al bucket R2 con keys que coincidan con D1:
+
+```bash
+npx wrangler r2 object put burgers-exe-menu-assets/menu/OG.png --file ./assets/menu/OG.png
+```
+
+Ejemplos para el catálogo actual:
+
+```bash
+npx wrangler r2 object put burgers-exe-menu-assets/menu/BBQ.png --file ./assets/menu/BBQ.png
+npx wrangler r2 object put burgers-exe-menu-assets/menu/PAPAS_OG.png --file ./assets/menu/PAPAS_OG.png
+npx wrangler r2 object put burgers-exe-menu-assets/menu/PAPAS_ESPECIALES.png --file ./assets/menu/PAPAS_ESPECIALES.png
+npx wrangler r2 object put burgers-exe-menu-assets/menu/PAPAS_LEMON_PEPPER.png --file ./assets/menu/PAPAS_LEMON_PEPPER.png
+npx wrangler r2 object put burgers-exe-menu-assets/menu/AROS_CEBOLLA.png --file ./assets/menu/AROS_CEBOLLA.png
+npx wrangler r2 object put burgers-exe-menu-assets/menu/EXTRA_TOCINO.png --file ./assets/menu/EXTRA_TOCINO.png
+```
+
+### Reglas de seguridad del endpoint público
+
+- Endpoint: `GET /api/assets-v2/<key>`.
+- Bucket usado por el endpoint: `env.BOG_MENU_ASSETS`.
+- No lista objetos, no acepta uploads públicos y solo permite `GET`.
+- Responde `404` si falta el binding, el objeto no existe o la key es inválida.
+- Bloquea traversal (`..`), backslashes, segmentos vacíos, doble slash, caracteres fuera de `A-Z`, `a-z`, `0-9`, `.`, `_`, `-`, `/`, y extensiones no permitidas.
+- Extensiones permitidas: `.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`.
+- La UI prefiere `imageKey` sobre `imageUrl`; si `imageKey` existe y es válido, siempre solicita `/api/assets-v2/<image_key>`.
+- `imageUrl` solo se usa como fallback cuando es una ruta same-origin segura (`/...`, no `//...`) o una URL `https://` sin credenciales.
+- Si la imagen no existe en R2 o falla al cargar, la tarjeta conserva el placeholder visual y no rompe el layout.
+
+### QA obligatorio post-deploy
+
+1. Verificar que `/api/menu-v2` devuelve `source: "d1"` e incluye `imageKey` para los SKUs reales:
+
+   ```bash
+   curl -s https://burgers-exe.pages.dev/api/menu-v2 | python3 -c 'import json,sys; data=json.load(sys.stdin); items={item["sku"]: item for item in data["items"]}; assert data["source"]=="d1", data["source"]; assert items["OG"].get("imageKey")=="menu/OG.png", items["OG"]; print("OK", data["source"], items["OG"]["imageKey"])'
+   ```
+
+2. Verificar que el asset same-origin responde con tipo de imagen cuando ya fue subido:
+
+   ```bash
+   curl -I https://burgers-exe.pages.dev/api/assets-v2/menu/OG.png
+   ```
+
+3. Abrir Public Order V2 en DevTools Network y confirmar que la UI intenta cargar `/api/assets-v2/menu/OG.png` para el producto `OG`.
+4. Probar temporalmente una key válida que no exista en R2; debe responder `404` y la tarjeta debe seguir mostrando el placeholder sin colapsar.
+5. Probar viewport mobile de `320px` de ancho; no debe haber overflow horizontal en tarjetas, promos, diálogo de detalle ni CTA persistente.
+6. Continuar solo hasta checkout para QA visual; no modificar `BOG_ACTIVE_ENV`, no activar escritura real de pedidos y no ejecutar flujos que creen órdenes reales salvo rollout separado.
 
 ## Preview admin de catálogo (V2)
 

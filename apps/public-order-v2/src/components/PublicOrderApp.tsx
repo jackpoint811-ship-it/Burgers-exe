@@ -89,12 +89,31 @@ const createId = (prefix: string) => {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return `${prefix}-${crypto.randomUUID()}`;
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 };
+const SAFE_IMAGE_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._/-]*\.(?:avif|jpe?g|png|webp)$/i;
+
+const isSafeSameOriginPath = (value: string) => value.startsWith("/") && !value.startsWith("//") && !value.includes("\\");
+const isSafeHttpsImageUrl = (value: string) => {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && !url.username && !url.password;
+  } catch {
+    return false;
+  }
+};
+const isSafeAssetKey = (value: string) => {
+  const key = value.trim().replace(/^\/+/, "");
+  if (!key || !SAFE_IMAGE_KEY_PATTERN.test(key) || key.includes("..") || key.includes("\\") || key.includes("//")) return false;
+  return key.split("/").every((segment) => segment && segment !== "." && segment !== "..");
+};
 const resolveAssetUrl = (imageUrl?: string, imageKey?: string): string | undefined => {
+  const trimmedKey = imageKey?.trim().replace(/^\/+/, "");
+  if (trimmedKey && isSafeAssetKey(trimmedKey)) {
+    return `/api/assets-v2/${trimmedKey.split("/").map((segment) => encodeURIComponent(segment)).join("/")}`;
+  }
+
   const trimmedUrl = imageUrl?.trim();
-  if (trimmedUrl && ((trimmedUrl.startsWith("/") && !trimmedUrl.startsWith("//")) || trimmedUrl.startsWith("https://"))) return trimmedUrl;
-  const trimmedKey = imageKey?.trim();
-  if (!trimmedKey) return undefined;
-  return `/api/assets-v2/${trimmedKey.split("/").map((segment) => encodeURIComponent(segment)).join("/")}`;
+  if (trimmedUrl && (isSafeSameOriginPath(trimmedUrl) || isSafeHttpsImageUrl(trimmedUrl))) return trimmedUrl;
+  return undefined;
 };
 const inferItemKind = (item: MenuItem): TicketItemKind => {
   const seed = `${item.category} ${item.name} ${item.tags.join(" ")}`.toLowerCase();
