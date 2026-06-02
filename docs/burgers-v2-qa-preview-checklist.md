@@ -834,3 +834,20 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 14. Probar código inválido: confirmar que el pedido no se bloquea y Success muestra “Pedido recibido. El código de invitado no aplicó.”
 15. Confirmar que Public nunca muestra dueño del código ni teléfonos.
 16. Confirmar que no se introducen Authorization Bearer, tokens admin, WhatsApp API, pagos reales ni imagen brandeada; eso último queda para Fase 4C.
+
+## QA Fase 4C — Imagen brandeada para WhatsApp manual
+
+1. Entrar a Chekeo con PIN y confirmar que la sesión sigue usando cookie HttpOnly `bog_internal_session`.
+2. Ir a **Sorteos**.
+3. Buscar un participante con tickets o usar **Top usuarios por tickets**.
+4. Presionar **Imagen**.
+5. Confirmar que abre el modal **Imagen para WhatsApp** y muestra estado “Generando imagen…” mientras crea el PNG.
+6. Confirmar preview visual con nombre, total tickets, burger tickets, referral tickets, teléfono enmascarado, campaña, código o fallback de código, fecha de generación y aviso de validación final.
+7. Descargar PNG y abrirlo localmente para validar legibilidad en formato vertical móvil.
+8. Copiar texto y confirmar que contiene nombre, total tickets, burger tickets, referidos, código y aviso “Tickets sujetos a validación final.”
+9. Abrir WhatsApp y confirmar que `wa.me` lleva texto encoded; no intenta adjuntar imagen automáticamente ni enviar el mensaje.
+10. Si Web Share API soporta archivos, usar **Compartir imagen** y confirmar que abre el selector nativo con el PNG.
+11. Si Web Share API no soporta archivos, confirmar que la acción se oculta y aparece fallback claro para descargar y compartir manualmente.
+12. Confirmar que no aparece teléfono completo en UI, canvas, texto o mensajes de error.
+13. Confirmar que no aparece token, Authorization Bearer, WhatsApp API, R2 upload, D1 image table, `localStorage` ni `sessionStorage` para la imagen.
+14. Confirmar que la imagen no bloquea operación si no hay código de invitado relacionado: debe mostrar “solicita tu código en Burgers.exe”.
