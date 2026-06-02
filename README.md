@@ -1,5 +1,25 @@
 # Burgers.exe
 
+## Official V2 production status
+
+Burgers.exe V2 is the official production flow after the completed cutover.
+
+* Public oficial: https://burgers-exe.pages.dev
+* Chekeo oficial: https://chekeo2-0.pages.dev
+* Source of truth: Cloudflare D1.
+* Assets: Cloudflare R2.
+* Internal auth: PIN-only.
+* V2 apps oficiales:
+  * `apps/public-order-v2`
+  * `apps/internal-chekeo-v2`
+* Legacy, Apps Script, Sheets sync, and old Cloudflare folders are deprecated and kept only for rollback/history.
+
+For current V2 architecture and cutover details, see `docs/v2-official-cutover.md`, `docs/burgers-v2-architecture.md`, and `docs/burgers-v2-cloudflare-data.md`.
+
+## Historical legacy status
+
+The notes below describe the pre-V2 legacy flow and are preserved for historical reference only. They are no longer the official production architecture.
+
 ## Estado final del proyecto
 Proyecto operativo por fases con transición hacia arquitectura de dos superficies: **Burgers.exe** (pública) y **Chekeo 2.0** (interna), usando Google Sheets como backend.
 

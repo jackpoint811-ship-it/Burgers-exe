@@ -91,3 +91,18 @@ Checklist final para validar el pulido operativo de Public V2 y Chekeo V2. Esta 
 - [ ] Preview backup is accessible.
 - [ ] Legacy was not touched.
 - [ ] Apps Script and Sheets are not used as the source of truth.
+
+## Deprecated reference audit
+
+- [ ] README principal apunta a V2 oficial.
+- [ ] `docs/README.md` existe o el índice documental es claro.
+- [ ] `legacy` folders tienen `DEPRECATED.md`/`README.md`.
+- [ ] `cloudflare/public-order` tiene `DEPRECATED.md`/`README.md`.
+- [ ] `cloudflare/internal-chekeo` tiene `DEPRECATED.md`/`README.md`.
+- [ ] No se modificó código legacy.
+- [ ] No se borró código.
+- [ ] No se tocó Apps Script.
+- [ ] No se tocó Sheets sync.
+- [ ] No se tocó `BOG_ACTIVE_ENV`.
+- [ ] No se tocó backend/frontend V2.
+- [ ] Builds siguen pasando.
