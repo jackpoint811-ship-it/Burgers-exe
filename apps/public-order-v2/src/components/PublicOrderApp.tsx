@@ -6,11 +6,13 @@ import {
   type OrderV2Mode,
   type OrderV2PaymentMethod,
   type PromoCard,
+  type RaffleCampaignPublicV2,
 } from "@config/index";
 import { EmptyState } from "@ui/index";
 import { motion, useReducedMotion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { loadMenuV2, toMockResponse } from "../lib/menu-v2";
+import { loadActiveRaffleV2 } from "../lib/raffles-v2";
 import {
   type CartEntry,
   type TicketItemKind,
@@ -186,6 +188,27 @@ const AppHeader = ({ count, total }: { count: number; total: number }) => (
   </header>
 );
 
+const RaffleBanner = ({ campaign }: { campaign: RaffleCampaignPublicV2 | null }) => {
+  if (!campaign) return null;
+  const src = resolveAssetUrl(campaign.bannerImageUrl, campaign.bannerImageKey);
+  return (
+    <section className="raffle-banner" aria-label="Sorteo activo">
+      {src ? (
+        <div className="raffle-banner-media">
+          <img src={src} alt={campaign.title} loading="lazy" onError={(event) => { event.currentTarget.style.display = "none"; }} />
+        </div>
+      ) : null}
+      <div className="raffle-banner-copy">
+        <span>Sorteo activo</span>
+        <h2>{campaign.title}</h2>
+        {campaign.description ? <p>{campaign.description}</p> : null}
+        {campaign.rulesText ? <p className="raffle-rules">{campaign.rulesText}</p> : null}
+        <strong>{campaign.ticketPerBurger || 1} ticket por burger pedida.</strong>
+      </div>
+    </section>
+  );
+};
+
 const PromoRail = ({ promos }: { promos: PromoCard[] }) => {
   const active = promos.filter((promo) => promo.isAvailable).sort((a, b) => a.sortOrder - b.sortOrder);
   if (!active.length) return null;
@@ -236,7 +259,7 @@ const ProductCard = ({ item, mode, onClick, reduce }: { item: MenuItem; mode: "i
   );
 };
 
-const MenuSection = ({ menuData, onExplore, onStart, reduce }: { menuData: MenuV2Response; onExplore: (item: MenuItem) => void; onStart: () => void; reduce: boolean }) => {
+const MenuSection = ({ menuData, raffleCampaign, onExplore, onStart, reduce }: { menuData: MenuV2Response; raffleCampaign: RaffleCampaignPublicV2 | null; onExplore: (item: MenuItem) => void; onStart: () => void; reduce: boolean }) => {
   const visibleItems = menuData.items.filter((item) => item.category !== "extras");
   const comboItems = menuData.items.filter((item) => inferItemKind(item) === "combo");
   const byGroup = (key: MenuCategory["key"] | "combos") => key === "combos" ? comboItems : visibleItems.filter((item) => item.category === key);
@@ -248,6 +271,7 @@ const MenuSection = ({ menuData, onExplore, onStart, reduce }: { menuData: MenuV
         <p>Catálogo real, visual gamer premium y flujo de pedido tipo quest.</p>
         <QuestButton onClick={onStart}>INICIAR QUEST</QuestButton>
       </div>
+      <RaffleBanner campaign={raffleCampaign} />
       <PromoRail promos={menuData.promos} />
       {MENU_GROUPS.map(({ key, label }) => {
         const list = byGroup(key).sort((a, b) => a.sortOrder - b.sortOrder);
@@ -426,6 +450,7 @@ export function PublicOrderApp() {
   const [infoItem, setInfoItem] = useState<MenuItem | null>(null);
   const [extraGarnishSkus, setExtraGarnishSkus] = useState<string[]>([]);
   const [menuData, setMenuData] = useState<MenuV2Response>(toMockResponse("fallback"));
+  const [raffleCampaign, setRaffleCampaign] = useState<RaffleCampaignPublicV2 | null>(null);
   const [loadingMenu, setLoadingMenu] = useState(true);
   const [showBoot, setShowBoot] = useState(true);
   const [customer, setCustomer] = useState<CustomerDraft>(() => createEmptyCustomer());
@@ -453,6 +478,7 @@ export function PublicOrderApp() {
   useEffect(() => {
     let mounted = true;
     const bootTimer = window.setTimeout(() => mounted && setShowBoot(false), reduce ? 250 : 1300);
+    void loadActiveRaffleV2().then((campaign) => { if (mounted) setRaffleCampaign(campaign); });
     loadMenuV2().then((payload) => {
       if (!mounted) return;
       setMenuData(payload);
@@ -555,7 +581,7 @@ export function PublicOrderApp() {
     <main className="app-shell">
       <LoadingOverlay loading={showBoot || loadingMenu} />
       <AppHeader count={count} total={total} />
-      {section === "menu" ? <MenuSection menuData={menuData} onExplore={setInfoItem} onStart={beginQuest} reduce={reduce} /> : null}
+      {section === "menu" ? <MenuSection menuData={menuData} raffleCampaign={raffleCampaign} onExplore={setInfoItem} onStart={beginQuest} reduce={reduce} /> : null}
       {section === "main" ? <MainQuest choice={orderChoice} availableBurgerItems={availableBurgerItems} availableComboItems={availableComboItems} builder={builder} onBack={() => navigate("menu")} onChoice={(choice) => { setOrderChoice(choice); setBuilder(null); }} onProduct={startBuilder} reduce={reduce} /> : null}
       {section === "workbench" ? <Workbench builder={builder} extras={extras} garnishes={garnishes} onBack={() => navigate("main")} onQuantity={updateBuilderQuantity} onUnitChange={updateBuilderUnit} /> : null}
       {section === "side" ? <SideQuest garnishes={garnishes} selected={extraGarnishSkus} onToggle={(sku) => setExtraGarnishSkus((prev) => prev.includes(sku) ? prev.filter((entry) => entry !== sku) : [...prev, sku])} onBack={() => navigate("workbench")} onSkip={() => { setExtraGarnishSkus([]); navigate("checkout"); }} reduce={reduce} /> : null}

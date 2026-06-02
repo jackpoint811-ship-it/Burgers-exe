@@ -789,3 +789,29 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 - [ ] Confirmar que el frontend no guarda credenciales internas en storage del navegador.
 - [ ] Confirmar que endpoints admin sin cookie válida responden `401 UNAUTHORIZED` y no aceptan credenciales por header.
 - [ ] Confirmar que no se tocaron legacy, `/api/order`, `/api/rpc`, Apps Script, Sheets sync ni `BOG_ACTIVE_ENV`.
+
+## QA Preview — Fase 4A Sorteos
+
+1. Aplicar `migrations/0004_v2_raffles_schema.sql` en D1 preview.
+2. Redeploy Public V2 e Internal/Chekeo V2.
+3. Entrar a Chekeo con PIN; confirmar que `BOG_INTERNAL_PIN` + cookie HttpOnly `bog_internal_session` siguen siendo el único flujo admin.
+4. Abrir la tab **Sorteos**.
+5. Crear sorteo mensual sin inventar premios/datos no operativos.
+6. Activarlo y confirmar que cualquier otra campaña queda inactiva.
+7. Confirmar que `GET /api/raffles-v2/active` devuelve solo la campaña activa.
+8. Confirmar que el banner/reglas aparecen en el Menu público si hay campaña activa.
+9. Confirmar que Public no muestra sección si no hay campaña activa y no bloquea pedidos si falla el endpoint de sorteo.
+10. Crear orden con 1 burger y confirmar summary = 1 ticket.
+11. Crear orden con 2 burgers o líneas `qty > 1` y confirmar que suma por unidad.
+12. Crear orden con combo y confirmar que suma 1 ticket por unidad.
+13. Crear orden con guarnición/bebida solamente y confirmar que no suma.
+14. Cancelar orden y confirmar que no cuenta.
+15. Confirmar que órdenes `delivered` sí cuentan.
+16. Confirmar top usuarios por tickets.
+17. Buscar participante por nombre.
+18. Buscar participante por teléfono normalizado o últimos 4 dígitos.
+19. Confirmar estado vacío: “Sin participantes encontrados”.
+20. Confirmar que UI/API solo muestran `customerPhoneMasked`, nunca teléfono completo.
+21. Confirmar que `referralTickets` es 0 en Fase 4A y que referidos quedan para Fase 4B.
+22. Confirmar que imagen brandeada/WhatsApp quedan para Fase 4C.
+23. Confirmar que no aparece ningún token, bearer auth headers, WhatsApp API, pagos reales nuevos ni Sheets sync.

@@ -604,3 +604,35 @@ No-touch V2-12:
   - `POST /api/internal-v2-auth/logout` limpia la cookie.
 - La cookie `bog_internal_session` es `HttpOnly`, `SameSite=Lax`, `Path=/`, dura 12 horas y usa `Secure` en HTTPS; por diseño el frontend no puede leerla ni copiar credenciales a storage.
 - No guardar ni commitear valores reales de `BOG_INTERNAL_PIN` en el repo. Para rotar acceso, cambiar `BOG_INTERNAL_PIN` y redeploy.
+
+## Fase 4A — D1 raffle_campaigns_v2
+
+La migración `migrations/0004_v2_raffles_schema.sql` crea `raffle_campaigns_v2`:
+
+- `id TEXT PRIMARY KEY`
+- `title TEXT NOT NULL`
+- `description TEXT`
+- `rules_text TEXT`
+- `banner_image_key TEXT`
+- `banner_image_url TEXT`
+- `starts_at TEXT`
+- `ends_at TEXT`
+- `is_active INTEGER NOT NULL DEFAULT 0`
+- `ticket_per_burger INTEGER NOT NULL DEFAULT 1`
+- `ticket_per_referral INTEGER NOT NULL DEFAULT 2`
+- timestamps `created_at` y `updated_at`
+
+Índices:
+
+- `idx_raffle_campaigns_active`
+- `idx_raffle_campaigns_dates`
+
+Puede haber campañas históricas, pero Public V2 usa solo una campaña activa. Cuando Chekeo activa una campaña, las demás se desactivan en la misma operación. No existe tabla de tickets todavía: el resumen se calcula desde `orders_v2` y `order_items_v2`.
+
+### Cálculo de tickets desde D1
+
+`GET /api/raffles-v2-admin/summary` toma la campaña activa o `campaignId`, filtra órdenes `new`, `preparing`, `ready` y `delivered`, excluye `cancelled`, y cuenta `qty * ticket_per_burger` solo cuando `snapshot_json.itemKind` es `burger` o `combo`. Guarniciones, bebidas y otros no suman. Si falta `itemKind`, no se infiere ni se cuenta en Fase 4A.
+
+Los participantes se agrupan por `customer_phone` normalizado. La respuesta usa `customerPhoneMasked`; la búsqueda puede usar teléfono completo, normalizado o últimos 4 dígitos, pero el teléfono completo nunca se devuelve a Chekeo.
+
+`BOG_INTERNAL_PIN` sigue siendo el único secret Internal V2 y la sesión admin usa cookie HttpOnly `bog_internal_session`. No se agregan tokens administrativos, bearer auth headers, WhatsApp API, pagos reales nuevos ni Sheets sync. Referidos quedan para Fase 4B e imagen brandeada/WhatsApp para Fase 4C.
