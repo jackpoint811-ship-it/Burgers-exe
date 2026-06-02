@@ -28,9 +28,19 @@ type OrderTicketRow = {
   snapshot_json: string;
 };
 
+type ReferralTicketRow = {
+  referrer_phone: string;
+  referrer_name: string;
+  tickets_awarded: number;
+  created_at: string;
+  updated_at: string;
+  code: string;
+};
+
 type ParticipantAccumulator = RaffleParticipantSummary & {
   customerPhoneNormalized: string;
   searchName: string;
+  lastActivityAt: string;
 };
 
 const MAX_DESCRIPTION_LENGTH = 600;
@@ -268,7 +278,8 @@ export const calculateSummary = async (db: D1Database, campaign: RaffleCampaignV
         referralTickets: 0,
         totalTickets: 0,
         lastOrderFolio: String(row.folio || ''),
-        lastOrderAt: String(row.created_at || '')
+        lastOrderAt: String(row.created_at || ''),
+        lastActivityAt: String(row.created_at || '')
       });
       continue;
     }
@@ -281,7 +292,8 @@ export const calculateSummary = async (db: D1Database, campaign: RaffleCampaignV
       referralTickets: 0,
       totalTickets: 0,
       lastOrderFolio: String(row.folio || ''),
-      lastOrderAt: String(row.created_at || '')
+      lastOrderAt: String(row.created_at || ''),
+      lastActivityAt: String(row.created_at || '')
     };
     current.burgerTickets += burgerTickets;
     current.totalTickets = current.burgerTickets + current.referralTickets;
@@ -290,13 +302,49 @@ export const calculateSummary = async (db: D1Database, campaign: RaffleCampaignV
       current.searchName = current.customerName.toLowerCase();
       current.lastOrderFolio = String(row.folio || current.lastOrderFolio);
       current.lastOrderAt = String(row.created_at || current.lastOrderAt);
+      current.lastActivityAt = String(row.created_at || current.lastActivityAt);
+    }
+    byPhone.set(phone, current);
+  }
+
+
+  const referralRows = await db.prepare(
+    `SELECT referrer_phone, referrer_name, tickets_awarded, created_at, updated_at, '' AS code
+     FROM raffle_referrals_v2
+     WHERE campaign_id = ? AND status IN ('pending', 'valid')
+     ORDER BY updated_at DESC, created_at DESC`
+  ).bind(campaign.id).all<ReferralTicketRow>();
+
+  for (const row of referralRows.results ?? []) {
+    const phone = normalizePhone(row.referrer_phone);
+    if (!phone) continue;
+    const activityAt = String(row.updated_at || row.created_at || '');
+    const current = byPhone.get(phone) ?? {
+      customerName: String(row.referrer_name || 'Sin nombre'),
+      customerPhoneMasked: maskPhone(phone),
+      customerPhoneNormalized: phone,
+      searchName: String(row.referrer_name || '').toLowerCase(),
+      burgerTickets: 0,
+      referralTickets: 0,
+      totalTickets: 0,
+      lastOrderFolio: '—',
+      lastOrderAt: activityAt,
+      lastActivityAt: activityAt
+    };
+    current.referralTickets += Math.max(0, Number(row.tickets_awarded) || campaign.ticketPerReferral || 2);
+    current.totalTickets = current.burgerTickets + current.referralTickets;
+    if (!current.lastActivityAt || activityAt > current.lastActivityAt) {
+      current.customerName = String(row.referrer_name || current.customerName);
+      current.searchName = current.customerName.toLowerCase();
+      current.lastActivityAt = activityAt;
+      if (!current.lastOrderFolio || current.lastOrderFolio === '—') current.lastOrderAt = activityAt;
     }
     byPhone.set(phone, current);
   }
 
   const participants = [...byPhone.values()]
     .filter((participant) => participant.totalTickets > 0)
-    .sort((a, b) => b.totalTickets - a.totalTickets || b.lastOrderAt.localeCompare(a.lastOrderAt));
+    .sort((a, b) => b.totalTickets - a.totalTickets || b.lastActivityAt.localeCompare(a.lastActivityAt));
   const trimmedQ = q.trim();
   const normalizedQ = normalizePhone(trimmedQ);
   const lowerQ = trimmedQ.toLowerCase();
@@ -317,4 +365,89 @@ export const calculateSummary = async (db: D1Database, campaign: RaffleCampaignV
   };
 };
 
-export { errorResponse, json };
+export { errorResponse, generateId, json, normalizePhone };
+
+export type ReferralCodeRow = {
+  id: string;
+  campaign_id: string;
+  owner_phone: string;
+  owner_name: string;
+  code: string;
+  label_text: string | null;
+  is_active: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ReferralRow = {
+  id: string;
+  campaign_id: string;
+  referral_code_id: string;
+  referrer_phone: string;
+  referrer_name: string;
+  referred_order_id: string;
+  referred_customer_phone: string;
+  referred_customer_name: string;
+  status: string;
+  tickets_awarded: number;
+  invalid_reason: string | null;
+  created_at: string;
+  updated_at: string;
+  code?: string;
+  referred_order_folio?: string;
+};
+
+export const REFERRAL_BURGER_WORDS = ['BURGER', 'SMASH', 'BACON', 'PICKLES', 'CHEESE', 'FRIES'] as const;
+export const REFERRAL_STATUSES = ['pending', 'valid', 'invalid'] as const;
+
+export const maskNormalizedPhone = maskPhone;
+
+export const normalizeReferralCode = (value: unknown) => String(value ?? '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toUpperCase()
+  .replace(/[^A-Z0-9-]+/g, '-')
+  .replace(/-+/g, '-')
+  .replace(/^-|-$/g, '')
+  .slice(0, 32);
+
+export const normalizeReferralNamePart = (value: unknown) => {
+  const firstName = String(value ?? '').trim().split(/\s+/)[0] ?? '';
+  return normalizeReferralCode(firstName).replace(/-/g, '').slice(0, 14);
+};
+
+export const buildReferralCodeText = (ownerName: string, burgerWord: string, number: number) => {
+  const namePart = normalizeReferralNamePart(ownerName);
+  const safeWord = REFERRAL_BURGER_WORDS.includes(burgerWord as typeof REFERRAL_BURGER_WORDS[number]) ? burgerWord : '';
+  const safeNumber = Number.isInteger(number) && number >= 1 && number <= 100 ? String(number).padStart(2, '0') : '';
+  if (!namePart || !safeWord || !safeNumber) return '';
+  return normalizeReferralCode(`${namePart}-${safeWord}-${safeNumber}`);
+};
+
+export const mapReferralCode = (row: ReferralCodeRow) => ({
+  id: row.id,
+  campaignId: row.campaign_id,
+  ownerName: row.owner_name,
+  ownerPhoneMasked: maskPhone(normalizePhone(row.owner_phone)),
+  code: row.code,
+  labelText: row.label_text ?? undefined,
+  isActive: Boolean(row.is_active),
+  createdAt: row.created_at,
+  updatedAt: row.updated_at
+});
+
+export const mapReferral = (row: ReferralRow) => ({
+  id: row.id,
+  campaignId: row.campaign_id,
+  code: row.code ?? '',
+  referrerName: row.referrer_name,
+  referrerPhoneMasked: maskPhone(normalizePhone(row.referrer_phone)),
+  referredCustomerName: row.referred_customer_name,
+  referredCustomerPhoneMasked: maskPhone(normalizePhone(row.referred_customer_phone)),
+  referredOrderFolio: row.referred_order_folio ?? '',
+  status: row.status as 'pending' | 'valid' | 'invalid',
+  ticketsAwarded: Number(row.tickets_awarded) || 0,
+  invalidReason: row.invalid_reason ?? undefined,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at
+});

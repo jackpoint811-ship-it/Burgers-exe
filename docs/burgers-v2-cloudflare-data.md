@@ -636,3 +636,33 @@ Puede haber campañas históricas, pero Public V2 usa solo una campaña activa. 
 Los participantes se agrupan por `customer_phone` normalizado. La respuesta usa `customerPhoneMasked`; la búsqueda puede usar teléfono completo, normalizado o últimos 4 dígitos, pero el teléfono completo nunca se devuelve a Chekeo.
 
 `BOG_INTERNAL_PIN` sigue siendo el único secret Internal V2 y la sesión admin usa cookie HttpOnly `bog_internal_session`. No se agregan tokens administrativos, bearer auth headers, WhatsApp API, pagos reales nuevos ni Sheets sync. Referidos quedan para Fase 4B e imagen brandeada/WhatsApp para Fase 4C.
+
+## D1 Fase 4B — Referidos de sorteos
+
+La migración `migrations/0005_v2_raffles_referrals_schema.sql` agrega dos tablas operativas:
+
+### `raffle_referral_codes_v2`
+
+Guarda un código por participante y campaña:
+
+- `campaign_id` referencia `raffle_campaigns_v2(id)`.
+- `owner_phone` se guarda normalizado para deduplicar por campaña; las APIs admin devuelven `ownerPhoneMasked`.
+- `code` es único por campaña y se genera en backend desde nombre + palabra burger permitida + número 1–100.
+- `is_active` permite desactivar códigos sin borrar campañas ni participantes.
+
+Índices: campaña, código, owner, unique `(campaign_id, code)` y unique `(campaign_id, owner_phone)`.
+
+### `raffle_referrals_v2`
+
+Guarda el pedido referido cuando Public V2 crea una orden con código aceptado:
+
+- `campaign_id` referencia `raffle_campaigns_v2(id)`.
+- `referral_code_id` referencia `raffle_referral_codes_v2(id)`.
+- `referred_order_id` referencia `orders_v2(id)` y es único para evitar doble referido por orden.
+- `status` puede ser `pending`, `valid` o `invalid`.
+- `tickets_awarded` usa `ticket_per_referral` de la campaña activa, default 2.
+- `invalid_reason` se requiere al invalidar desde Chekeo.
+
+Regla de conteo: `pending` y `valid` suman referral tickets; `invalid` no suma. No se borran campañas ni órdenes: se invalidan referidos cambiando status.
+
+Public V2 nunca bloquea una orden por código inválido, self-referral o falla aislada del referido. Si el teléfono referido coincide con `owner_phone`, no se crea ticket de referido.

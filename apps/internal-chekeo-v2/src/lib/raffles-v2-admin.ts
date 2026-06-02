@@ -1,9 +1,16 @@
 import type {
   CreateRaffleCampaignPayload,
+  CreateRaffleReferralCodePayload,
   RaffleCampaignMutationResponse,
   RaffleCampaignsAdminResponse,
+  RaffleReferralCodeMutationResponse,
+  RaffleReferralCodesAdminResponse,
+  RaffleReferralMutationResponse,
+  RaffleReferralsAdminResponse,
   RaffleSummaryResponse,
   UpdateRaffleCampaignPayload,
+  UpdateRaffleReferralCodePayload,
+  UpdateRaffleReferralPayload,
 } from "@config/index";
 
 const buildSessionFetchInit = (init: RequestInit = {}): RequestInit => ({
@@ -62,4 +69,42 @@ export const fetchRaffleSummaryV2 = async (options: { campaignId?: string; q?: s
   const envelope = await parseJsonEnvelope<RaffleSummaryResponse>(res);
   if (!envelope.data) throw new Error("Backend V2 no devolvió resumen de sorteo");
   return envelope.data;
+};
+
+
+export const fetchRaffleReferralCodesV2 = async (options: { campaignId: string; q?: string }) => {
+  const params = new URLSearchParams({ campaignId: options.campaignId });
+  if (options.q?.trim()) params.set("q", options.q.trim());
+  const res = await fetch(`/api/raffles-v2-admin/referral-codes?${params}`, buildSessionFetchInit());
+  const envelope = await parseJsonEnvelope<RaffleReferralCodesAdminResponse>(res);
+  return envelope.data?.codes ?? [];
+};
+
+export const createRaffleReferralCodeV2 = async (payload: CreateRaffleReferralCodePayload) => {
+  const res = await fetch("/api/raffles-v2-admin/referral-codes", buildSessionFetchInit({ method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }));
+  const envelope = await parseJsonEnvelope<RaffleReferralCodeMutationResponse>(res);
+  if (!envelope.data?.code) throw new Error("Backend V2 no devolvió código creado");
+  return envelope.data.code;
+};
+
+export const updateRaffleReferralCodeV2 = async (id: string, payload: UpdateRaffleReferralCodePayload) => {
+  const res = await fetch(`/api/raffles-v2-admin/referral-codes/${encodeURIComponent(id)}`, buildSessionFetchInit({ method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }));
+  const envelope = await parseJsonEnvelope<RaffleReferralCodeMutationResponse>(res);
+  if (!envelope.data?.code) throw new Error("Backend V2 no devolvió código actualizado");
+  return envelope.data.code;
+};
+
+export const fetchRaffleReferralsV2 = async (options: { campaignId: string; q?: string; status?: string }) => {
+  const params = new URLSearchParams({ campaignId: options.campaignId, status: options.status || "all" });
+  if (options.q?.trim()) params.set("q", options.q.trim());
+  const res = await fetch(`/api/raffles-v2-admin/referrals?${params}`, buildSessionFetchInit());
+  const envelope = await parseJsonEnvelope<RaffleReferralsAdminResponse>(res);
+  return envelope.data?.referrals ?? [];
+};
+
+export const updateRaffleReferralV2 = async (id: string, payload: UpdateRaffleReferralPayload) => {
+  const res = await fetch(`/api/raffles-v2-admin/referrals/${encodeURIComponent(id)}`, buildSessionFetchInit({ method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }));
+  const envelope = await parseJsonEnvelope<RaffleReferralMutationResponse>(res);
+  if (!envelope.data?.referral) throw new Error("Backend V2 no devolvió referido actualizado");
+  return envelope.data.referral;
 };

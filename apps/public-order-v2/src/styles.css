@@ -1234,3 +1234,6 @@ p {
   .raffle-banner-media { min-height: 7rem; max-height: 9rem; }
   .raffle-banner-copy { padding: 0 1rem 1rem; }
 }
+.field-label small { color: var(--muted); font-size: 0.78rem; font-weight: 650; }
+.success-note { border: 1px solid rgba(52, 211, 153, 0.38); border-radius: 14px; background: rgba(52, 211, 153, 0.1); color: #bbf7d0 !important; padding: 10px 12px; }
+.success-note.muted { border-color: rgba(251, 191, 36, 0.34); background: rgba(251, 191, 36, 0.09); color: #fde68a !important; }

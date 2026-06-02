@@ -197,6 +197,7 @@ export type CreateOrderV2Payload = {
   notes?: string;
   items: Array<{ sku: string; qty: number } & OrderV2ItemCustomization>;
   idempotencyKey?: string;
+  referralCode?: string;
 };
 
 export type CreateOrderV2Response = {
@@ -209,6 +210,7 @@ export type CreateOrderV2Response = {
       idempotencyKey: string;
     };
     idempotent?: boolean;
+    referralAccepted?: boolean;
   };
   error?: OrderV2Error;
 };
@@ -349,6 +351,37 @@ export type RaffleParticipantSummary = {
   lastOrderAt: string;
 };
 
+export type RaffleReferralBurgerWord = "BURGER" | "SMASH" | "BACON" | "PICKLES" | "CHEESE" | "FRIES";
+export type RaffleReferralStatus = "pending" | "valid" | "invalid";
+
+export type RaffleReferralCodeV2 = {
+  id: string;
+  campaignId: string;
+  ownerName: string;
+  ownerPhoneMasked: string;
+  code: string;
+  labelText?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type RaffleReferralV2 = {
+  id: string;
+  campaignId: string;
+  code: string;
+  referrerName: string;
+  referrerPhoneMasked: string;
+  referredCustomerName: string;
+  referredCustomerPhoneMasked: string;
+  referredOrderFolio: string;
+  status: RaffleReferralStatus;
+  ticketsAwarded: number;
+  invalidReason?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type RaffleActiveResponse = {
   ok: boolean;
   data?: { campaign: RaffleCampaignPublicV2 | null };
@@ -364,6 +397,49 @@ export type RaffleCampaignsAdminResponse = {
 export type RaffleCampaignMutationResponse = {
   ok: boolean;
   data?: { campaign: RaffleCampaignV2 };
+  error?: OrderV2Error;
+};
+
+export type RaffleReferralCodesAdminResponse = {
+  ok: boolean;
+  data?: { codes: RaffleReferralCodeV2[] };
+  error?: OrderV2Error;
+};
+
+export type RaffleReferralCodeMutationResponse = {
+  ok: boolean;
+  data?: { code: RaffleReferralCodeV2 };
+  error?: OrderV2Error;
+};
+
+export type CreateRaffleReferralCodePayload = {
+  campaignId: string;
+  ownerName: string;
+  ownerPhone: string;
+  burgerWord: RaffleReferralBurgerWord;
+  number: number;
+};
+
+export type UpdateRaffleReferralCodePayload = {
+  isActive?: boolean;
+  labelText?: string;
+  ownerName?: string;
+};
+
+export type RaffleReferralsAdminResponse = {
+  ok: boolean;
+  data?: { referrals: RaffleReferralV2[] };
+  error?: OrderV2Error;
+};
+
+export type UpdateRaffleReferralPayload = {
+  status: RaffleReferralStatus;
+  invalidReason?: string;
+};
+
+export type RaffleReferralMutationResponse = {
+  ok: boolean;
+  data?: { referral: RaffleReferralV2 };
   error?: OrderV2Error;
 };
 

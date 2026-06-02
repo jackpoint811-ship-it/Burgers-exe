@@ -493,3 +493,15 @@ Burgers.exe V2 agrega la base operativa de sorteos mensuales sin referidos, sin 
 - Imagen brandeada/WhatsApp quedan para Fase 4C.
 
 Chekeo nunca muestra teléfono completo: el summary devuelve `customerPhoneMasked` con formato `****5678`. No se agregan tokens, no se usa bearer auth headers, no hay WhatsApp API, no pagos reales nuevos y no hay Sheets sync.
+
+## Fase 4B — Referidos para sorteos mensuales
+
+Fase 4B agrega códigos de invitado para el sorteo mensual sin crear login de cliente, sin tokens, sin WhatsApp API y sin pagos reales. Chekeo V2 sigue protegido únicamente por PIN con cookie HttpOnly `bog_internal_session`; Public V2 sigue creando órdenes reales en D1 sin auth pública.
+
+- Cada burger/combo pedido mantiene `ticket_per_burger` desde `orders_v2` + `order_items_v2`.
+- Cada amigo invitado válido otorga `ticket_per_referral` (default 2) al dueño del código.
+- Los códigos se generan en backend con formato humano y seguro: `NOMBRE-PALABRA-00`, usando palabras permitidas `BURGER`, `SMASH`, `BACON`, `PICKLES`, `CHEESE`, `FRIES`, uppercase, sin acentos, solo `A-Z`, `0-9` y guiones, máximo 32 caracteres.
+- Public Checkout acepta `referralCode` opcional. Un código inválido o self-referral no bloquea el pedido real y no expone datos del dueño del código.
+- Al usar un código activo de la campaña activa se crea `raffle_referrals_v2` en `pending`. `pending` y `valid` cuentan para tickets; `invalid` no cuenta.
+- Chekeo > Sorteos permite crear/desactivar códigos, revisar pedidos referidos, invalidarlos con razón antes del sorteo y reabrirlos a `pending` o `valid`.
+- La imagen brandeada para compartir y operación WhatsApp quedan explícitamente para Fase 4C.

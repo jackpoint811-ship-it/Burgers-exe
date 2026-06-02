@@ -815,3 +815,22 @@ curl -i "$INTERNAL_V2_URL/api/orders-v2-admin?includeTerminal=true&limit=10" \
 21. Confirmar que `referralTickets` es 0 en Fase 4A y que referidos quedan para Fase 4B.
 22. Confirmar que imagen brandeada/WhatsApp quedan para Fase 4C.
 23. Confirmar que no aparece ningún token, bearer auth headers, WhatsApp API, pagos reales nuevos ni Sheets sync.
+
+## QA Fase 4B — Referidos para sorteos
+
+1. Aplicar `migrations/0005_v2_raffles_referrals_schema.sql` en D1 preview/producción según ambiente.
+2. Redeploy Public V2 e Internal/Chekeo V2.
+3. Entrar a Chekeo con PIN y confirmar cookie HttpOnly `bog_internal_session`.
+4. En Chekeo > Sorteos, crear código para participante A con palabra burger permitida y número 1–100.
+5. Copiar el código generado y confirmar que la UI solo muestra teléfonos enmascarados.
+6. Crear orden en Public para participante B usando ese código en “Código de invitado”.
+7. Confirmar que el pedido se crea normalmente y Success muestra “Código de invitado aplicado.”
+8. En Summary, confirmar que A recibe 2 referral tickets y B recibe sus tickets por burger/combo.
+9. Buscar A por nombre y por últimos 4 dígitos.
+10. Ver el pedido referido en la lista de “Pedidos referidos”.
+11. Invalidar referido con razón inline; confirmar que los 2 tickets de A se restan.
+12. Marcar válido de nuevo; confirmar que los tickets vuelven.
+13. Probar self-referral: usar un código con el mismo teléfono del dueño y confirmar que no suma referido ni bloquea pedido.
+14. Probar código inválido: confirmar que el pedido no se bloquea y Success muestra “Pedido recibido. El código de invitado no aplicó.”
+15. Confirmar que Public nunca muestra dueño del código ni teléfonos.
+16. Confirmar que no se introducen Authorization Bearer, tokens admin, WhatsApp API, pagos reales ni imagen brandeada; eso último queda para Fase 4C.
