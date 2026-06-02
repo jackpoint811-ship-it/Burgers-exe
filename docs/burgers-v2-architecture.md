@@ -505,3 +505,18 @@ Fase 4B agrega códigos de invitado para el sorteo mensual sin crear login de cl
 - Al usar un código activo de la campaña activa se crea `raffle_referrals_v2` en `pending`. `pending` y `valid` cuentan para tickets; `invalid` no cuenta.
 - Chekeo > Sorteos permite crear/desactivar códigos, revisar pedidos referidos, invalidarlos con razón antes del sorteo y reabrirlos a `pending` o `valid`.
 - La imagen brandeada para compartir y operación WhatsApp quedan explícitamente para Fase 4C.
+
+## Fase 4C — Imagen brandeada de tickets para WhatsApp manual
+
+Fase 4C agrega en Chekeo V2 > **Sorteos** la generación frontend de una imagen PNG brandeada para un participante, sin backend nuevo, sin migración, sin R2 y sin guardar archivos en D1. En **Resultados** y **Top usuarios por tickets** aparece el botón **Imagen**, que abre un modal mobile-first “Imagen para WhatsApp” con preview, descarga y acciones de texto.
+
+La imagen se genera con Canvas nativo en `apps/internal-chekeo-v2` usando solo datos ya disponibles del summary: `customerName`, `customerPhoneMasked`, `burgerTickets`, `referralTickets`, `totalTickets`, `lastOrderFolio` y `lastOrderAt`, más la campaña seleccionada/activa. El código de invitado solo se muestra cuando hay exactamente un código activo con match seguro por `ownerName` normalizado igual a `customerName` normalizado y `ownerPhoneMasked` igual a `customerPhoneMasked`; nunca se usa teléfono enmascarado por sí solo porque últimos 4 dígitos pueden repetirse. Si no hay match seguro o hay ambigüedad, se muestra “Código: solicita tu código en Burgers.exe”.
+
+Acciones disponibles:
+
+- **Descargar PNG**: crea un archivo local para adjuntarlo manualmente.
+- **Copiar texto**: copia un mensaje corto con nombre, tickets y código.
+- **Abrir WhatsApp**: usa `wa.me` únicamente con texto encoded; no adjunta imagen ni envía automáticamente.
+- **Compartir imagen**: solo aparece cuando Web Share API soporta `files`; si no, la UI muestra fallback para descargar y compartir manualmente.
+
+Privacidad y operación: el canvas y el texto solo incluyen teléfono enmascarado, nunca teléfono completo. No se usa `localStorage` ni `sessionStorage` para guardar imagen o credenciales. No se agregan tokens, Authorization Bearer, WhatsApp API, pagos reales ni Sheets sync. El footer de la imagen recuerda: “Guarda esta imagen. Tickets sujetos a validación final.”

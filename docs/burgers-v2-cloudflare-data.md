@@ -666,3 +666,13 @@ Guarda el pedido referido cuando Public V2 crea una orden con código aceptado:
 Regla de conteo: `pending` y `valid` suman referral tickets; `invalid` no suma. No se borran campañas ni órdenes: se invalidan referidos cambiando status.
 
 Public V2 nunca bloquea una orden por código inválido, self-referral o falla aislada del referido. Si el teléfono referido coincide con `owner_phone`, no se crea ticket de referido.
+
+## Fase 4C — Datos y persistencia de imagen brandeada
+
+Fase 4C no agrega tablas, migraciones ni endpoints. La imagen de tickets se genera en el navegador de Chekeo V2 con Canvas nativo desde el summary administrativo y los códigos de invitado ya cargados en el panel.
+
+No existe upload a R2, no existe tabla D1 de imágenes y no se persisten blobs generados. `wa.me` se usa solo para abrir WhatsApp con texto encoded; no hay WhatsApp API ni envío automático. La descarga del PNG queda en el dispositivo del operador para adjuntarse manualmente.
+
+Los datos permitidos en la imagen son: nombre del participante, `customerPhoneMasked`, campaña, total tickets, burger tickets, referral tickets, código de invitado solo si existe un match seguro y único por nombre normalizado + teléfono enmascarado, último folio, último pedido y fecha/hora de generación. El teléfono completo no se devuelve ni se pinta en el canvas. Si el match no es seguro o es ambiguo, el canvas muestra el fallback “solicita tu código en Burgers.exe”.
+
+La validación final del sorteo sigue dependiendo de D1 y de las reglas operativas: órdenes canceladas no cuentan, `pending`/`valid` suman referidos e `invalid` no suma. La imagen incluye el aviso “Tickets sujetos a validación final.”

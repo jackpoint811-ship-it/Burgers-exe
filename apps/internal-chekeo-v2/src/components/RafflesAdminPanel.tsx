@@ -2,6 +2,7 @@ import { type FormEvent, useEffect, useMemo, useState } from "react";
 import type { CreateRaffleCampaignPayload, RaffleCampaignV2, RaffleParticipantSummary, RaffleReferralCodeV2, RaffleReferralStatus, RaffleReferralV2, RaffleSummaryResponse } from "@config/index";
 import { Button, Card, StatusPill } from "@ui/index";
 import { createRaffleCampaignV2, createRaffleReferralCodeV2, fetchRaffleCampaignsV2, fetchRaffleReferralCodesV2, fetchRaffleReferralsV2, fetchRaffleSummaryV2, updateRaffleCampaignV2, updateRaffleReferralCodeV2, updateRaffleReferralV2 } from "../lib/raffles-v2-admin";
+import { RAFFLE_SHARE_FALLBACK_CODE, buildRaffleShareText, buildWhatsAppUrl, downloadBlob, generateRaffleTicketImage, shareBlobIfSupported, type RaffleShareImageData } from "../lib/raffle-share-image";
 
 type RaffleSummary = NonNullable<RaffleSummaryResponse["data"]>;
 type RaffleForm = {
@@ -59,19 +60,159 @@ const formatDateTime = (value?: string) => {
 
 const participantKey = (participant: RaffleParticipantSummary) => `${participant.customerPhoneMasked}-${participant.lastOrderFolio}`;
 
-const ParticipantList = ({ title, participants, empty }: { title: string; participants: RaffleParticipantSummary[]; empty: string }) => (
+const normalizeLookupName = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().replace(/\s+/g, " ").toLowerCase();
+
+const resolveReferralCodeForParticipant = (participant: RaffleParticipantSummary, codes: RaffleReferralCodeV2[]) => {
+  const normalizedName = normalizeLookupName(participant.customerName);
+  const strongMatches = codes.filter((code) => (
+    code.isActive
+    && code.ownerPhoneMasked === participant.customerPhoneMasked
+    && normalizeLookupName(code.ownerName) === normalizedName
+  ));
+  if (strongMatches.length === 1) return strongMatches[0]?.code ?? RAFFLE_SHARE_FALLBACK_CODE;
+  return RAFFLE_SHARE_FALLBACK_CODE;
+};
+
+const makeShareFilename = (data: RaffleShareImageData) => {
+  const safeName = data.customerName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "participante";
+  return `burgers-exe-tickets-${safeName}.png`;
+};
+
+const RaffleShareImageModal = ({ data, onClose }: { data: RaffleShareImageData; onClose: () => void }) => {
+  const [blob, setBlob] = useState<Blob | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [loadingImage, setLoadingImage] = useState(true);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [shareError, setShareError] = useState<string | null>(null);
+  const shareText = useMemo(() => buildRaffleShareText(data), [data]);
+  const [canShareFiles, setCanShareFiles] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    let nextUrl: string | null = null;
+    setLoadingImage(true);
+    setShareError(null);
+    setActionMessage(null);
+    setBlob(null);
+    setPreviewUrl(null);
+    generateRaffleTicketImage(data)
+      .then((nextBlob) => {
+        if (cancelled) return;
+        nextUrl = URL.createObjectURL(nextBlob);
+        setBlob(nextBlob);
+        setPreviewUrl(nextUrl);
+        const file = new File([nextBlob], "burgers-exe-tickets.png", { type: "image/png" });
+        setCanShareFiles(Boolean("share" in navigator && navigator.canShare?.({ files: [file], text: shareText, title: "Burgers.exe tickets" })));
+      })
+      .catch((imageError) => {
+        if (!cancelled) setShareError(imageError instanceof Error ? imageError.message : "No se pudo generar la imagen.");
+      })
+      .finally(() => { if (!cancelled) setLoadingImage(false); });
+    return () => {
+      cancelled = true;
+      if (nextUrl) URL.revokeObjectURL(nextUrl);
+    };
+  }, [data, shareText]);
+
+  const copyText = async () => {
+    setShareError(null);
+    try {
+      await navigator.clipboard.writeText(shareText);
+      setActionMessage("Texto copiado para WhatsApp.");
+    } catch {
+      setShareError("No se pudo copiar el texto. Selecciónalo manualmente desde la vista previa.");
+    }
+  };
+
+  const downloadImage = () => {
+    if (!blob) { setShareError("Espera a que termine de generarse la imagen."); return; }
+    downloadBlob(blob, makeShareFilename(data));
+    setActionMessage("Imagen descargada.");
+  };
+
+  const openWhatsApp = () => {
+    window.open(buildWhatsAppUrl(shareText), "_blank", "noopener,noreferrer");
+    setActionMessage("WhatsApp abierto con texto. Adjunta la imagen manualmente si ya la descargaste.");
+  };
+
+  const shareImage = async () => {
+    if (!blob) { setShareError("Espera a que termine de generarse la imagen."); return; }
+    setShareError(null);
+    try {
+      const shared = await shareBlobIfSupported(blob, shareText);
+      if (shared) setActionMessage("Imagen enviada al selector de compartir.");
+      else setShareError("Tu navegador no permite compartir archivos. Descarga la imagen y compártela manualmente.");
+    } catch (shareImageError) {
+      setShareError(shareImageError instanceof Error ? shareImageError.message : "No se pudo compartir la imagen.");
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/80 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="raffle-share-title">
+      <div className="max-h-[96vh] w-full max-w-5xl overflow-y-auto rounded-t-3xl border border-emerald-400/30 bg-zinc-950 p-4 shadow-2xl shadow-emerald-950/40 sm:rounded-3xl sm:p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-black uppercase tracking-[0.25em] text-emerald-200">Fase 4C</p>
+            <h3 id="raffle-share-title" className="text-xl font-black text-zinc-50">Imagen para WhatsApp</h3>
+            <p className="mt-1 text-xs text-zinc-400">WhatsApp no permite adjuntar imagen automáticamente desde este botón. Descarga la imagen y adjúntala manualmente.</p>
+          </div>
+          <Button type="button" className="border border-zinc-700 px-3 py-2 text-sm" onClick={onClose}>Cerrar</Button>
+        </div>
+
+        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)]">
+          <div className="rounded-2xl border border-zinc-800 bg-black p-3">
+            {loadingImage ? <div className="grid min-h-[380px] place-items-center text-sm font-bold text-emerald-200">Generando imagen…</div> : null}
+            {!loadingImage && previewUrl ? <img src={previewUrl} alt={`Preview de tickets de ${data.customerName}`} className="mx-auto max-h-[72vh] w-full rounded-xl object-contain" /> : null}
+            {!loadingImage && !previewUrl ? <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-100">No se pudo mostrar el preview.</div> : null}
+          </div>
+
+          <div className="space-y-3">
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-3">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-400">Datos incluidos</p>
+              <div className="mt-2 grid gap-2 text-sm text-zinc-200 sm:grid-cols-2">
+                <span>Nombre: <strong>{data.customerName}</strong></span>
+                <span>Teléfono: <strong>{data.customerPhoneMasked}</strong></span>
+                <span>Total: <strong>{data.totalTickets}</strong></span>
+                <span>Burger tickets: <strong>{data.burgerTickets}</strong></span>
+                <span>Referidos: <strong>{data.referralTickets}</strong></span>
+                <span>Código: <strong>{data.referralCodeText}</strong></span>
+              </div>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Button type="button" className="bg-emerald-400 px-4 py-3 font-black text-emerald-950 disabled:opacity-50" disabled={!blob || loadingImage} onClick={downloadImage}>Descargar PNG</Button>
+              <Button type="button" className="border border-cyan-400/40 bg-cyan-400/10 px-4 py-3 font-black text-cyan-100" onClick={() => void copyText()}>Copiar texto</Button>
+              <Button type="button" className="border border-emerald-500/40 bg-zinc-900 px-4 py-3 font-black text-emerald-100" onClick={openWhatsApp}>Abrir WhatsApp</Button>
+              {canShareFiles ? <Button type="button" className="border border-violet-400/40 bg-violet-400/10 px-4 py-3 font-black text-violet-100 disabled:opacity-50" disabled={!blob || loadingImage} onClick={() => void shareImage()}>Compartir imagen</Button> : null}
+            </div>
+
+            {!canShareFiles ? <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-100">Compartir imagen no está disponible en este navegador. Descarga la imagen y compártela manualmente.</p> : null}
+            {actionMessage ? <p className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-100">{actionMessage}</p> : null}
+            {shareError ? <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-100">{shareError}</p> : null}
+            <textarea className="input min-h-44 text-sm" readOnly value={shareText} aria-label="Texto para WhatsApp" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ParticipantList = ({ title, participants, empty, onImage }: { title: string; participants: RaffleParticipantSummary[]; empty: string; onImage: (participant: RaffleParticipantSummary) => void }) => (
   <Card className="p-3">
     <h3 className="text-sm font-black text-zinc-100">{title}</h3>
     <div className="mt-3 space-y-2">
       {participants.length ? participants.map((participant) => (
         <div key={participantKey(participant)} className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-3">
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="font-black text-zinc-50">{participant.customerName}</p>
               <p className="text-xs text-zinc-400">{participant.customerPhoneMasked} · Último folio {participant.lastOrderFolio || "—"}</p>
               <p className="text-xs text-zinc-500">Último pedido: {formatDateTime(participant.lastOrderAt)}</p>
             </div>
-            <strong className="text-2xl font-black text-emerald-300">{participant.totalTickets}</strong>
+            <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end">
+              <strong className="text-2xl font-black text-emerald-300">{participant.totalTickets}</strong>
+              <Button type="button" className="border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-black text-emerald-100" onClick={() => onImage(participant)}>Imagen</Button>
+            </div>
           </div>
           <div className="mt-2 grid grid-cols-3 gap-2 text-center text-[11px] text-zinc-300">
             <span className="rounded-lg bg-zinc-900 px-2 py-1">Burger tickets: {participant.burgerTickets}</span>
@@ -103,9 +244,27 @@ export const RafflesAdminPanel = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [shareParticipant, setShareParticipant] = useState<RaffleParticipantSummary | null>(null);
 
   const activeCampaign = useMemo(() => campaigns.find((campaign) => campaign.isActive) ?? null, [campaigns]);
   const selectedCampaign = useMemo(() => campaigns.find((campaign) => campaign.id === selectedCampaignId) ?? activeCampaign, [activeCampaign, campaigns, selectedCampaignId]);
+  const shareImageData = useMemo<RaffleShareImageData | null>(() => {
+    if (!shareParticipant) return null;
+    const campaign = summary?.campaign ?? selectedCampaign ?? activeCampaign;
+    return {
+      customerName: shareParticipant.customerName,
+      customerPhoneMasked: shareParticipant.customerPhoneMasked,
+      campaignTitle: campaign?.title ?? "Sorteo mensual",
+      burgerTickets: shareParticipant.burgerTickets,
+      referralTickets: shareParticipant.referralTickets,
+      totalTickets: shareParticipant.totalTickets,
+      lastOrderFolio: shareParticipant.lastOrderFolio,
+      lastOrderAt: shareParticipant.lastOrderAt,
+      referralCodeText: resolveReferralCodeForParticipant(shareParticipant, referralCodes),
+      generatedAt: new Date(),
+      rulesText: campaign?.rulesText ?? undefined,
+    };
+  }, [activeCampaign, referralCodes, selectedCampaign, shareParticipant, summary?.campaign]);
 
   const reload = async () => {
     setError(null);
@@ -363,8 +522,8 @@ export const RafflesAdminPanel = () => {
           <label className="text-xs font-bold text-zinc-300">Buscar participante<input className="input mt-1" placeholder="Nombre o últimos 4 dígitos" value={search} onChange={(event) => setSearch(event.target.value)} /></label>
           <p className="mt-2 text-[11px] text-zinc-500">Busca por nombre, teléfono normalizado o últimos 4 dígitos. La respuesta/UI nunca muestra el teléfono completo.</p>
         </Card>
-        <ParticipantList title="Resultados" participants={summary?.participantResults ?? []} empty={debouncedSearch ? "Sin participantes encontrados" : "Escribe nombre o últimos 4 dígitos para buscar."} />
-        <ParticipantList title="Top usuarios por tickets" participants={summary?.topParticipants ?? []} empty="Aún no hay participantes con tickets para esta campaña." />
+        <ParticipantList title="Resultados" participants={summary?.participantResults ?? []} empty={debouncedSearch ? "Sin participantes encontrados" : "Escribe nombre o últimos 4 dígitos para buscar."} onImage={setShareParticipant} />
+        <ParticipantList title="Top usuarios por tickets" participants={summary?.topParticipants ?? []} empty="Aún no hay participantes con tickets para esta campaña." onImage={setShareParticipant} />
         <Card className="p-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <label className="text-xs font-bold text-zinc-300">Buscar pedidos referidos<input className="input mt-1" placeholder="Código, nombre, teléfono o folio" value={referralSearch} onChange={(event) => setReferralSearch(event.target.value)} /></label>
@@ -376,10 +535,11 @@ export const RafflesAdminPanel = () => {
         </Card>
 
         <Card className="p-3 text-xs text-zinc-400">
-          <p className="font-bold text-zinc-200">Notas operativas Fase 4A</p>
-          <p className="mt-1">Delivered sí cuenta; cancelled no cuenta. Referidos pending/valid suman; invalid no suma. Self-referral e inválidos no bloquean pedidos. Imagen brandeada/WhatsApp queda para Fase 4C.</p>
+          <p className="font-bold text-zinc-200">Notas operativas Fase 4C</p>
+          <p className="mt-1">Delivered sí cuenta; cancelled no cuenta. Referidos pending/valid suman; invalid no suma. La imagen brandeada se genera solo en frontend, usa teléfono enmascarado y WhatsApp se abre únicamente con texto.</p>
         </Card>
       </div>
+      {shareImageData ? <RaffleShareImageModal data={shareImageData} onClose={() => setShareParticipant(null)} /> : null}
     </section>
   );
 };
