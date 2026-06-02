@@ -14,6 +14,16 @@
 - Framer Motion para microinteracciones.
 - Lucide para iconografía.
 
+## Official cutover status
+
+- Public official is <https://burgers-exe.pages.dev>.
+- Chekeo official is <https://chekeo2-0.pages.dev>.
+- D1 is the source of truth for orders, catalog, and raffles.
+- R2 handles catalog assets through `BOG_ASSETS_BUCKET`.
+- PIN-only auth is the internal authentication model, using `BOG_INTERNAL_PIN` and an HttpOnly session cookie.
+- Legacy, Apps Script, and Sheets remain deprecated but not deleted.
+- Public V2 preview and Internal V2 preview remain available as backup.
+
 ## Estructura propuesta
 
 - `apps/public-order-v2`: landing + ordering shell.

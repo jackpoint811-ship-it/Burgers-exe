@@ -1,6 +1,51 @@
 # Burgers.exe V2 Cloudflare Data Foundation (D1/R2 assets)
 
-> Advertencia: esta fase es **solo preview/mock-safe**. No usar para operación real todavía.
+> Nota histórica: las secciones de fases preview anteriores conservan su contexto original. La configuración oficial de producción vigente está documentada abajo en `Official Cloudflare Pages production configuration`.
+
+
+## Official Cloudflare Pages production configuration
+
+### Public Pages project
+
+- URL: <https://burgers-exe.pages.dev>
+- Build command: `npm run build:public`
+- Output directory: `dist/public-order-v2`
+- Root directory: repo root / empty
+
+Required bindings:
+
+- `BOG_MENU_DB`
+- `BOG_ASSETS_BUCKET`
+
+Optional:
+
+- `ORDERS_V2_WRITE_ENABLED`
+
+Not required:
+
+- `BOG_INTERNAL_PIN`
+- Admin tokens
+- Apps Script secrets
+
+### Internal Pages project
+
+- URL: <https://chekeo2-0.pages.dev>
+- Build command: `npm run build:internal`
+- Output directory: `dist/internal-chekeo-v2`
+- Root directory: repo root / empty
+
+Required bindings/secrets:
+
+- `BOG_MENU_DB`
+- `BOG_ASSETS_BUCKET`
+- `BOG_INTERNAL_PIN`
+
+Not required:
+
+- `BOG_ORDERS_ADMIN_TOKEN`
+- `BOG_MENU_ADMIN_TOKEN`
+- Authorization Bearer
+- Apps Script secrets
 
 ## D1 recomendado
 
