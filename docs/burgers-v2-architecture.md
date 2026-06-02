@@ -468,3 +468,28 @@ No cambia en V2-14:
 - Los endpoints admin no aceptan credenciales por header; requieren cookie `bog_internal_session` válida y same-origin cuando `Origin` existe.
 - No hay secrets en repo, no hay credenciales visibles en frontend y no se usa `localStorage`/`sessionStorage` para credenciales internas.
 - Para requests autenticados por cookie, los endpoints admin validan `Origin` same-origin cuando el header está presente para reducir riesgo CSRF.
+
+## Fase 4A — Sorteos mensuales V2
+
+Burgers.exe V2 agrega la base operativa de sorteos mensuales sin referidos, sin imagen brandeada y sin WhatsApp automático. La administración vive en Chekeo V2 en la tab **Sorteos** y continúa protegida únicamente por el login PIN-only con cookie HttpOnly `bog_internal_session`; `BOG_INTERNAL_PIN` sigue siendo el único secret de Internal V2.
+
+### Endpoints
+
+- `GET /api/raffles-v2/active`: público, sin auth, devuelve solo la campaña activa o `campaign: null`. Si D1 no está disponible o hay una falla, responde seguro con `campaign: null` para no bloquear pedidos públicos.
+- `GET /api/raffles-v2-admin/campaigns`: lista campañas para Chekeo con campaña activa primero.
+- `POST /api/raffles-v2-admin/campaigns`: crea campaña; si `isActive` es true, desactiva las demás en la misma operación D1.
+- `PATCH /api/raffles-v2-admin/campaigns/:id`: edita campaña; activar una campaña desactiva las demás.
+- `GET /api/raffles-v2-admin/summary`: calcula tickets desde `orders_v2` + `order_items_v2` y permite búsqueda de participantes por nombre, teléfono normalizado o últimos 4 dígitos.
+
+### Reglas de tickets Fase 4A
+
+- `burger` suma 1 ticket por unidad.
+- `combo` suma 1 ticket por unidad porque incluye burger.
+- `garnish`, `drink` y `other` no suman.
+- Estados incluidos: `new`, `preparing`, `ready`, `delivered`.
+- `delivered` sí cuenta; `cancelled` no cuenta.
+- Si falta `snapshot_json.itemKind`, el item no se cuenta en Fase 4A para evitar inferencias inseguras.
+- `referralTickets` siempre es 0 en Fase 4A. Referidos quedan para Fase 4B.
+- Imagen brandeada/WhatsApp quedan para Fase 4C.
+
+Chekeo nunca muestra teléfono completo: el summary devuelve `customerPhoneMasked` con formato `****5678`. No se agregan tokens, no se usa bearer auth headers, no hay WhatsApp API, no pagos reales nuevos y no hay Sheets sync.

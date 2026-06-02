@@ -308,6 +308,92 @@ export type KitchenEvent = {
   label: string;
   at: string;
 };
+
+export type RaffleCampaignV2 = {
+  id: string;
+  title: string;
+  description?: string;
+  rulesText?: string;
+  bannerImageKey?: string;
+  bannerImageUrl?: string;
+  startsAt?: string;
+  endsAt?: string;
+  isActive: boolean;
+  ticketPerBurger: number;
+  ticketPerReferral: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type RaffleCampaignPublicV2 = Pick<
+  RaffleCampaignV2,
+  | "id"
+  | "title"
+  | "description"
+  | "rulesText"
+  | "bannerImageKey"
+  | "bannerImageUrl"
+  | "startsAt"
+  | "endsAt"
+  | "ticketPerBurger"
+  | "ticketPerReferral"
+>;
+
+export type RaffleParticipantSummary = {
+  customerName: string;
+  customerPhoneMasked: string;
+  burgerTickets: number;
+  referralTickets: number;
+  totalTickets: number;
+  lastOrderFolio: string;
+  lastOrderAt: string;
+};
+
+export type RaffleActiveResponse = {
+  ok: boolean;
+  data?: { campaign: RaffleCampaignPublicV2 | null };
+  error?: OrderV2Error;
+};
+
+export type RaffleCampaignsAdminResponse = {
+  ok: boolean;
+  data?: { campaigns: RaffleCampaignV2[] };
+  error?: OrderV2Error;
+};
+
+export type RaffleCampaignMutationResponse = {
+  ok: boolean;
+  data?: { campaign: RaffleCampaignV2 };
+  error?: OrderV2Error;
+};
+
+export type RaffleSummaryResponse = {
+  ok: boolean;
+  data?: {
+    campaign: RaffleCampaignV2 | null;
+    totalTickets: number;
+    totalParticipants: number;
+    topParticipants: RaffleParticipantSummary[];
+    participantResults: RaffleParticipantSummary[];
+  };
+  error?: OrderV2Error;
+};
+
+export type CreateRaffleCampaignPayload = {
+  title: string;
+  description?: string;
+  rulesText?: string;
+  bannerImageKey?: string;
+  bannerImageUrl?: string;
+  startsAt?: string;
+  endsAt?: string;
+  isActive?: boolean;
+  ticketPerBurger?: number;
+  ticketPerReferral?: number;
+};
+
+export type UpdateRaffleCampaignPayload = Partial<CreateRaffleCampaignPayload>;
+
 export type OperatorStats = {
   activeOrders: number;
   pendingOrders: number;

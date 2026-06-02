@@ -41,6 +41,7 @@ import {
   type WhatsappOrderMessageType,
 } from "../lib/whatsapp";
 import { CatalogAdminPanel } from "./CatalogAdminPanel";
+import { RafflesAdminPanel } from "./RafflesAdminPanel";
 
 type TabKey =
   | "inicio"
@@ -49,7 +50,8 @@ type TabKey =
   | "pagos"
   | "historial"
   | "cierre"
-  | "catalogo";
+  | "catalogo"
+  | "sorteos";
 type OrdersSource = "d1" | "mock" | "fallback";
 type OrdersV2Summary = NonNullable<OrdersV2SummaryResponse["data"]>;
 type KitchenItemKind = Extract<OrderV2ItemKind, "burger" | "combo" | "garnish">;
@@ -2587,6 +2589,7 @@ const OperatorTabs = ({
         ["historial", "Historial"],
         ["cierre", "Cierre"],
         ["catalogo", "Catálogo"],
+        ["sorteos", "Sorteos"],
       ].map(([k, l]) => (
         <Tabs.Trigger key={k} value={k} className="tab">
           {l}
@@ -2930,6 +2933,7 @@ export function InternalChekeoApp() {
         historial: <HistoryPanel orders={orders} runtime={runtime} />,
         cierre: <OperationalClosePanel sessionActive={logged} />,
         catalogo: <CatalogAdminPanel />,
+        sorteos: <RafflesAdminPanel />,
       })[tab],
     [orders, ordersSource, tab, runtime, toggleKitchenItemDone],
   );
