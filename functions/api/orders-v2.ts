@@ -312,7 +312,7 @@ const buildRaffleSuccessData = async (db: D1Database, params: { order: OrderV2; 
 
 export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
   if (!env.BOG_MENU_DB) return errorResponse(503, 'MISSING_DB', 'BOG_MENU_DB no está configurado.');
-  if (env.ORDERS_V2_WRITE_ENABLED === 'false') return errorResponse(403, 'ORDERING_DISABLED', 'Órdenes V2 deshabilitadas temporalmente.');
+  if (env.ORDERS_V2_WRITE_ENABLED !== 'true') return errorResponse(403, 'ORDERING_DISABLED', 'Órdenes V2 deshabilitadas temporalmente.');
 
   const body = await parseJsonObject(request);
   if (!body) return errorResponse(400, 'INVALID_JSON', 'JSON inválido.');

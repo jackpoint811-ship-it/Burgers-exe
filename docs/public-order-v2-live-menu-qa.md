@@ -50,3 +50,33 @@ After the R2 production bucket `burgers-exe-menu-assets` is populated and bound 
 3. Confirm a missing but valid object key returns `404` and the product card keeps its neon placeholder instead of breaking layout.
 4. Confirm a `320px` mobile viewport has no horizontal overflow in the product grid, promo rail, product detail dialog, or sticky CTA.
 5. Do not change `BOG_ACTIVE_ENV`, do not enable real order writes, and do not delete legacy data during image QA.
+
+## Order write gate QA
+
+`POST /api/orders-v2` is fail-closed for real order writes. Keep `BOG_MENU_DB` bound so the endpoint can return `503 MISSING_DB` only when the database binding itself is missing. With the D1 binding present:
+
+- `ORDERS_V2_WRITE_ENABLED=false` must return `403 ORDERING_DISABLED`.
+- `ORDERS_V2_WRITE_ENABLED` absent must return `403 ORDERING_DISABLED`.
+- Only `ORDERS_V2_WRITE_ENABLED=true` can create a real order after payload, catalog, pricing, and insert validation pass.
+
+Disabled smoke test:
+
+```bash
+curl -i -X POST "$PUBLIC_ORDER_ORIGIN/api/orders-v2" \
+  -H 'content-type: application/json' \
+  -H 'idempotency-key: qa-orders-v2-disabled' \
+  --data '{"customer":{"name":"QA Disabled","phone":"5512345678"},"orderMode":"pickup","paymentMethod":"cash","items":[{"sku":"OG","qty":1}]}'
+```
+
+Expected response: HTTP `403` with error code `ORDERING_DISABLED` when `ORDERS_V2_WRITE_ENABLED=false` or when the variable is not configured.
+
+Enabled smoke test for controlled cutover only:
+
+```bash
+curl -i -X POST "$PUBLIC_ORDER_ORIGIN/api/orders-v2" \
+  -H 'content-type: application/json' \
+  -H 'idempotency-key: qa-orders-v2-enabled' \
+  --data '{"customer":{"name":"QA Enabled","phone":"5512345678"},"orderMode":"pickup","paymentMethod":"cash","items":[{"sku":"OG","qty":1}]}'
+```
+
+Expected response: HTTP `201` and an order summary only when `ORDERS_V2_WRITE_ENABLED=true`. Do not enable this flag in Cloudflare during routine live-menu, R2, or visual QA.
