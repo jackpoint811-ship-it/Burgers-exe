@@ -35,3 +35,18 @@ curl -s https://burgers-exe.pages.dev/api/menu-v2 | python3 -c 'import json,sys;
 4. Start a quest, choose a burger, and verify extras can be added more than once through the quantity controls.
 5. Continue to Side Quest and verify the same guarnición can be added with quantity greater than one.
 6. Continue to checkout only for UI validation. Do not enable real order writes unless a separate rollout explicitly changes the write flag.
+
+## R2 image QA
+
+After the R2 production bucket `burgers-exe-menu-assets` is populated and bound as `BOG_MENU_ASSETS`, validate catalog images without changing order-write flags:
+
+1. Confirm `/api/menu-v2` returns `imageKey` for live D1 items:
+
+   ```bash
+   curl -s https://burgers-exe.pages.dev/api/menu-v2 | python3 -c 'import json,sys; data=json.load(sys.stdin); og=next(item for item in data["items"] if item["sku"]=="OG"); assert data["source"]=="d1", data["source"]; assert og.get("imageKey")=="menu/OG.png", og; print("OK", og["sku"], og["imageKey"])'
+   ```
+
+2. Confirm the UI tries to load the same-origin R2 proxy URL `/api/assets-v2/menu/OG.png` for `OG` in DevTools Network.
+3. Confirm a missing but valid object key returns `404` and the product card keeps its neon placeholder instead of breaking layout.
+4. Confirm a `320px` mobile viewport has no horizontal overflow in the product grid, promo rail, product detail dialog, or sticky CTA.
+5. Do not change `BOG_ACTIVE_ENV`, do not enable real order writes, and do not delete legacy data during image QA.

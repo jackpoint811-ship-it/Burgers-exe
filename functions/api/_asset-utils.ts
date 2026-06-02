@@ -1,4 +1,5 @@
 const SAFE_IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.avif']);
+const SAFE_ASSET_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._/-]*$/;
 
 export const normalizeAssetKey = (rawKey: unknown): string | null => {
   const joined = Array.isArray(rawKey) ? rawKey.join('/') : String(rawKey ?? '');
@@ -9,7 +10,8 @@ export const normalizeAssetKey = (rawKey: unknown): string | null => {
     return null;
   }
   const key = decoded.replace(/^\/+/, '');
-  if (!key || key.includes('..') || key.includes('\\') || key.includes('//')) return null;
+  if (!key || key.includes('..') || key.includes('\\') || key.includes('//') || !SAFE_ASSET_KEY_PATTERN.test(key)) return null;
+  if (!key.split('/').every((segment) => segment && segment !== '.' && segment !== '..')) return null;
   const lower = key.toLowerCase();
   if (![...SAFE_IMAGE_EXTENSIONS].some((extension) => lower.endsWith(extension))) return null;
   return key;
