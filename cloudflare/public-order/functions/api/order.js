@@ -7,18 +7,38 @@ function jsonResponse(status, body) {
   });
 }
 
-function normalizeItems(items, priceTable) {
-  if (!Array.isArray(items)) return [];
-  return items
-    .map((item) => ({
-      sku: String(item && item.sku ? item.sku : '').trim(),
-      qty: Number(item && item.qty ? item.qty : 0)
-    }))
-    .filter((item) => item.sku && item.qty > 0 && Object.prototype.hasOwnProperty.call(priceTable, item.sku));
+function normalizeOrderItems(orderItems, legacyItems, priceTable) {
+  const rawItems = Array.isArray(orderItems) && orderItems.length ? orderItems : legacyItems;
+  if (!Array.isArray(rawItems)) return [];
+
+  return rawItems
+    .map((item) => {
+      const menuItemId = String(item && (item.menu_item_id || item.sku) ? (item.menu_item_id || item.sku) : '').trim();
+      const catalogItem = priceTable[menuItemId];
+      const quantity = Number(item && (item.quantity != null ? item.quantity : item.qty));
+      if (!menuItemId || !catalogItem || !Number.isFinite(quantity) || quantity <= 0) return null;
+      const unitPriceCents = Number(item && item.unit_price_cents != null ? item.unit_price_cents : catalogItem.unit_price_cents);
+      return {
+        menu_item_id: menuItemId,
+        sku: menuItemId,
+        item_type: String(item && item.item_type ? item.item_type : catalogItem.item_type),
+        quantity: Math.floor(quantity),
+        qty: Math.floor(quantity),
+        unit_price_cents: catalogItem.unit_price_cents,
+        unit_price: catalogItem.unit_price,
+        name: catalogItem.name,
+        client_unit_price_cents: Number.isFinite(unitPriceCents) ? unitPriceCents : null
+      };
+    })
+    .filter(Boolean);
 }
 
-function computeTotal(items, priceTable) {
-  return items.reduce((acc, item) => acc + item.qty * (priceTable[item.sku] || 0), 0);
+function computeTotalCents(orderItems) {
+  return orderItems.reduce((acc, item) => acc + item.quantity * item.unit_price_cents, 0);
+}
+
+function toLegacyItems(orderItems) {
+  return orderItems.map((item) => ({ sku: item.menu_item_id, qty: item.quantity }));
 }
 
 
@@ -98,16 +118,25 @@ export async function onRequest(context) {
   const catalog = await getMenuCatalog(env);
   const priceTable = buildPriceTableFromCatalog(catalog);
 
-  const items = normalizeItems(payload.items, priceTable);
-  if (!items.length) return jsonResponse(400, { ok: false, error: { code: 'INVALID_PAYLOAD', message: 'Agrega al menos un item válido' } });
-  const total = computeTotal(items, priceTable);
+  const orderItems = normalizeOrderItems(payload.order_items, payload.items, priceTable);
+  if (!orderItems.length) return jsonResponse(400, { ok: false, error: { code: 'INVALID_PAYLOAD', message: 'Agrega al menos un item válido' } });
+  const hasPriceMismatch = orderItems.some((item) => item.client_unit_price_cents != null && item.client_unit_price_cents !== item.unit_price_cents);
+  if (hasPriceMismatch) return jsonResponse(409, { ok: false, error: { code: 'PRICE_MISMATCH', message: 'El precio del menú cambió. Recarga el menú e intenta de nuevo.' } });
+  const totalCents = computeTotalCents(orderItems);
+  const total = totalCents / 100;
   const normalized = {
     customerName: String(payload.customerName || '').trim(),
     phone: String(payload.phone || '').trim(),
     location: String(payload.location || '').trim(),
     paymentMethod: String(payload.paymentMethod || '').trim(),
     note: String(payload.note || '').trim(),
-    items,
+    items: toLegacyItems(orderItems),
+    order_items: orderItems.map((item) => ({
+      menu_item_id: item.menu_item_id,
+      item_type: item.item_type,
+      quantity: item.quantity,
+      unit_price_cents: item.unit_price_cents
+    })),
     personalizations: normalizePersonalizations(payload.personalizations),
     timestamp: String(payload.timestamp || '')
   };
@@ -115,12 +144,12 @@ export async function onRequest(context) {
   const writeEnabled = env.PUBLIC_ORDER_WRITE_ENABLED === 'true';
   const preparedPayload = {
     action: 'createPublicOrder',
-    payload: { ...normalized, total },
+    payload: { ...normalized, total, total_cents: totalCents },
     auth: { secret: env.APPS_SCRIPT_SHARED_SECRET || '', scheme: 'shared-secret-body-v1' }
   };
 
   if (!writeEnabled) {
-    return jsonResponse(200, { ok: true, data: { mode: 'dry-run', total, pricingSource: catalog.source, menuWarnings: catalog.warnings || [], preparedPayload: { action: preparedPayload.action, payload: preparedPayload.payload, auth: { scheme: preparedPayload.auth.scheme } } } });
+    return jsonResponse(200, { ok: true, data: { mode: 'dry-run', total, total_cents: totalCents, pricingSource: catalog.source, menuWarnings: catalog.warnings || [], preparedPayload: { action: preparedPayload.action, payload: preparedPayload.payload, auth: { scheme: preparedPayload.auth.scheme } } } });
   }
 
   if (!env.APPS_SCRIPT_ORDER_ENDPOINT || !env.APPS_SCRIPT_SHARED_SECRET) {
@@ -133,7 +162,7 @@ export async function onRequest(context) {
     if (!upstreamResp.ok || !upstreamData || upstreamData.ok !== true) {
       return jsonResponse(502, { ok: false, error: { code: 'UPSTREAM_ERROR', message: 'Apps Script rechazó la solicitud.' }, data: upstreamData });
     }
-    return jsonResponse(200, { ok: true, data: { total, pricingSource: catalog.source, menuWarnings: catalog.warnings || [], upstream: upstreamData.data || null } });
+    return jsonResponse(200, { ok: true, data: { total, total_cents: totalCents, pricingSource: catalog.source, menuWarnings: catalog.warnings || [], upstream: upstreamData.data || null } });
   } catch (err) {
     return jsonResponse(502, { ok: false, error: { code: 'UPSTREAM_NETWORK', message: 'No se pudo contactar Apps Script.' }, data: { detail: err && err.message ? err.message : 'Error desconocido' } });
   }

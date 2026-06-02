@@ -1,5 +1,18 @@
 name = "burgers-exe-public-order"
-compatibility_date = "2026-05-13"
+compatibility_date = "2026-05-03"
+pages_build_output_dir = "."
 
 [vars]
 # No secrets here. Configure in Cloudflare dashboard.
+# PUBLIC_ORDER_WRITE_ENABLED defaults to false unless set in the dashboard/local env.
+
+[[d1_databases]]
+binding = "BOG_MENU_DB"
+database_name = "burgers-exe-menu-live"
+# Replace after `wrangler d1 create burgers-exe-menu-live`.
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+[[r2_buckets]]
+binding = "BOG_MENU_ASSETS"
+bucket_name = "burgers-exe-menu-assets"
+# For production, create the bucket and attach a custom/public domain or serve through a Worker route.
