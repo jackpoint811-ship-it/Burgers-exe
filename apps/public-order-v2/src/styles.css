@@ -1272,3 +1272,205 @@ p {
 }
 .success-copy-status { color: #bbf7d0 !important; font-weight: 900; }
 .success-copy-status.error { color: #fde68a !important; }
+
+/* Operational polish: compact mobile flow + reserved floating CTA space */
+.app-shell {
+  padding-bottom: calc(92px + env(safe-area-inset-bottom));
+}
+.hero-copy-block {
+  min-height: 170px;
+  gap: 10px;
+}
+.hero-copy-block p,
+.section-subcopy {
+  max-width: 34rem;
+  font-size: 0.98rem;
+  line-height: 1.45;
+}
+.raffle-banner {
+  margin-top: 0.5rem;
+}
+.promo-rail {
+  gap: 10px;
+}
+.menu-cluster {
+  margin-top: 10px;
+}
+.kiosk-card {
+  grid-template-rows: auto 1fr;
+  min-height: 0;
+}
+.kiosk-visual {
+  min-height: 0;
+  height: 150px;
+}
+.kiosk-visual.no-image {
+  height: auto;
+  min-height: 58px;
+  place-items: start;
+  padding: 12px 14px;
+  background:
+    radial-gradient(circle at 12% 20%, rgba(57, 255, 136, 0.22), transparent 32%),
+    linear-gradient(135deg, rgba(57, 255, 136, 0.1), rgba(255, 209, 102, 0.06));
+}
+.kiosk-visual.no-image span {
+  display: inline-flex;
+  max-width: 100%;
+  border: 1px solid rgba(57, 255, 136, 0.24);
+  border-radius: 999px;
+  padding: 0.38rem 0.62rem;
+  overflow: hidden;
+  color: #d1fae5;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.kiosk-body {
+  gap: 6px;
+  padding: 13px;
+}
+.kiosk-body p {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.35;
+}
+.choice-card {
+  min-height: 92px;
+}
+.builder-hint {
+  margin: -4px 0 2px;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+.checkout-panel {
+  padding-bottom: clamp(22px, 5vw, 38px);
+}
+.success-reward-card,
+.success-referral-card {
+  padding: 0.85rem;
+}
+.success-referral-code {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-wrap: normal;
+  white-space: nowrap;
+  font-size: clamp(1rem, 5.4vw, 1.75rem);
+  letter-spacing: 0.035em;
+}
+.persistent-cta {
+  left: max(8px, env(safe-area-inset-left));
+  right: max(8px, env(safe-area-inset-right));
+  bottom: max(8px, env(safe-area-inset-bottom));
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  width: min(760px, calc(100vw - 16px));
+  padding: 8px;
+  border-radius: 18px;
+}
+.persistent-cta span {
+  font-size: 0.68rem;
+}
+.persistent-cta strong {
+  display: block;
+  overflow: hidden;
+  max-width: 100%;
+  font-size: 0.9rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.persistent-cta .quest-button {
+  min-height: 44px;
+  padding: 0.68rem 0.85rem;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+@media (max-width: 430px) {
+  .app-shell {
+    padding: 10px 10px calc(104px + env(safe-area-inset-bottom));
+  }
+  .quest-panel {
+    border-radius: 24px;
+    padding: 16px;
+  }
+  .hero-copy-block {
+    min-height: 142px;
+  }
+  .hero-copy-block h1 {
+    font-size: clamp(2.7rem, 16vw, 4.4rem);
+  }
+  .promo-card {
+    padding: 8px;
+  }
+  .promo-card img {
+    height: 108px;
+  }
+  .raffle-banner-copy p,
+  .promo-card p {
+    font-size: 0.82rem;
+  }
+  .kiosk-grid {
+    gap: 10px;
+  }
+  .kiosk-visual {
+    height: 122px;
+  }
+  .kiosk-visual.no-image {
+    min-height: 52px;
+  }
+  .kiosk-body {
+    padding: 12px;
+  }
+  .choice-card {
+    min-height: 86px;
+    padding: 14px;
+  }
+  .qty-control {
+    grid-template-columns: 46px 72px 46px;
+  }
+  .qty-control button,
+  .qty-control strong {
+    min-height: 46px;
+  }
+  .persistent-cta {
+    grid-template-columns: minmax(0, 0.78fr) minmax(112px, auto);
+  }
+}
+@media (max-width: 340px) {
+  .persistent-cta {
+    grid-template-columns: 1fr;
+  }
+  .persistent-cta .quest-button {
+    width: 100%;
+  }
+}
+
+/* Keep the floating ticket compact even at 320px. */
+@media (max-width: 430px) {
+  .persistent-cta {
+    grid-template-columns: minmax(0, 0.72fr) minmax(106px, auto);
+    padding: 6px;
+  }
+  .persistent-cta span {
+    font-size: 0.62rem;
+  }
+  .persistent-cta strong {
+    font-size: 0.82rem;
+  }
+  .persistent-cta .quest-button {
+    min-height: 40px;
+    padding: 0.58rem 0.66rem;
+    font-size: 0.72rem;
+  }
+}
+@media (max-width: 340px) {
+  .persistent-cta {
+    grid-template-columns: minmax(0, 0.65fr) minmax(102px, auto);
+  }
+  .persistent-cta .quest-button {
+    font-size: 0.68rem;
+  }
+}

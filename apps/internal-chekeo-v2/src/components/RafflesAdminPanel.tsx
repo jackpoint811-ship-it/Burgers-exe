@@ -152,7 +152,7 @@ const RaffleShareImageModal = ({ data, onClose }: { data: RaffleShareImageData; 
       <div className="max-h-[96vh] w-full max-w-5xl overflow-y-auto rounded-t-3xl border border-emerald-400/30 bg-zinc-950 p-4 shadow-2xl shadow-emerald-950/40 sm:rounded-3xl sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[11px] font-black uppercase tracking-[0.25em] text-emerald-200">Fase 4C</p>
+            <p className="text-[11px] font-black uppercase tracking-[0.25em] text-emerald-200">Imagen para compartir</p>
             <h3 id="raffle-share-title" className="text-xl font-black text-zinc-50">Imagen para WhatsApp</h3>
             <p className="mt-1 text-xs text-zinc-400">WhatsApp no permite adjuntar imagen automáticamente desde este botón. Descarga la imagen y adjúntala manualmente.</p>
           </div>
@@ -162,8 +162,8 @@ const RaffleShareImageModal = ({ data, onClose }: { data: RaffleShareImageData; 
         <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)]">
           <div className="rounded-2xl border border-zinc-800 bg-black p-3">
             {loadingImage ? <div className="grid min-h-[380px] place-items-center text-sm font-bold text-emerald-200">Generando imagen…</div> : null}
-            {!loadingImage && previewUrl ? <img src={previewUrl} alt={`Preview de tickets de ${data.customerName}`} className="mx-auto max-h-[72vh] w-full rounded-xl object-contain" /> : null}
-            {!loadingImage && !previewUrl ? <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-100">No se pudo mostrar el preview.</div> : null}
+            {!loadingImage && previewUrl ? <img src={previewUrl} alt={`Imagen de tickets de ${data.customerName}`} className="mx-auto max-h-[72vh] w-full rounded-xl object-contain" /> : null}
+            {!loadingImage && !previewUrl ? <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-100">No se pudo mostrar la imagen.</div> : null}
           </div>
 
           <div className="space-y-3">
@@ -438,7 +438,7 @@ export const RafflesAdminPanel = () => {
             <div>
               <p className="text-[11px] font-black uppercase tracking-[0.25em] text-emerald-200">Sorteos V2</p>
               <h2 className="text-xl font-black text-zinc-50">Campañas mensuales</h2>
-              <p className="mt-1 text-xs text-zinc-400">Fase 4B: 1 ticket por burger/combo y 2 tickets por amigo invitado.</p>
+              <p className="mt-1 text-xs text-zinc-400">Tickets por burger y referidos.</p>
             </div>
             <Button className="border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs" onClick={() => void reload()} disabled={loading}>Recargar</Button>
           </div>
@@ -446,7 +446,7 @@ export const RafflesAdminPanel = () => {
             <div className="mt-3 rounded-xl border border-emerald-400/30 bg-emerald-400/10 p-3">
               <p className="text-xs font-bold text-emerald-100">Activa ahora</p>
               <p className="font-black text-zinc-50">{activeCampaign.title}</p>
-              <p className="text-xs text-zinc-400">{activeCampaign.ticketPerBurger} ticket por burger · Referidos: fase 4B</p>
+              <p className="text-xs text-zinc-400">{activeCampaign.ticketPerBurger} ticket por burger · {activeCampaign.ticketPerReferral} por referido</p>
             </div>
           ) : <p className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/70 p-3 text-sm text-zinc-400">No hay sorteo activo; Public no mostrará banner.</p>}
         </Card>
@@ -535,8 +535,8 @@ export const RafflesAdminPanel = () => {
         </Card>
 
         <Card className="p-3 text-xs text-zinc-400">
-          <p className="font-bold text-zinc-200">Notas operativas Fase 4C</p>
-          <p className="mt-1">Delivered sí cuenta; cancelled no cuenta. Referidos pending/valid suman; invalid no suma. La imagen brandeada se genera solo en frontend, usa teléfono enmascarado y WhatsApp se abre únicamente con texto.</p>
+          <p className="font-bold text-zinc-200">Notas operativas</p>
+          <p className="mt-1">Delivered sí cuenta; cancelled no cuenta. Referidos pending/valid suman; invalid no suma. La imagen para compartir usa teléfono enmascarado. Descarga la imagen y adjúntala manualmente en WhatsApp.</p>
         </Card>
       </div>
       {shareImageData ? <RaffleShareImageModal data={shareImageData} onClose={() => setShareParticipant(null)} /> : null}
