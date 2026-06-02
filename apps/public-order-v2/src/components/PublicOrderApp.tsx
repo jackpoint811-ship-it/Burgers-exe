@@ -28,6 +28,7 @@ type CustomerDraft = {
   name: string;
   phone: string;
   notes: string;
+  referralCode: string;
   location: "" | "Torre GGA" | "Torre Valcob";
   paymentMethod: OrderV2PaymentMethod;
 };
@@ -42,6 +43,7 @@ type BuilderDraft = {
 type OrderConfirmation = NonNullable<CreateOrderV2Response["data"]>["order"] & {
   paymentMethod: OrderV2PaymentMethod;
   location: CustomerDraft["location"];
+  referralAccepted?: boolean;
 };
 type DraftSnapshot = { customer: CustomerDraft; items: CartEntry[] };
 
@@ -74,6 +76,7 @@ const createEmptyCustomer = (): CustomerDraft => ({
   name: "",
   phone: "",
   notes: "",
+  referralCode: "",
   location: "",
   paymentMethod: "unknown",
 });
@@ -124,6 +127,7 @@ const createDraftFingerprint = (snapshot: DraftSnapshot) =>
       name: snapshot.customer.name.trim(),
       phone: normalizePhoneDigits(snapshot.customer.phone),
       notes: snapshot.customer.notes.trim(),
+      referralCode: snapshot.customer.referralCode.trim().toUpperCase(),
       location: snapshot.customer.location,
       paymentMethod: snapshot.customer.paymentMethod,
     },
@@ -203,7 +207,7 @@ const RaffleBanner = ({ campaign }: { campaign: RaffleCampaignPublicV2 | null })
         <h2>{campaign.title}</h2>
         {campaign.description ? <p>{campaign.description}</p> : null}
         {campaign.rulesText ? <p className="raffle-rules">{campaign.rulesText}</p> : null}
-        <strong>{campaign.ticketPerBurger || 1} ticket por burger pedida.</strong>
+        <strong>{campaign.ticketPerBurger || 1} ticket por burger pedida · {campaign.ticketPerReferral || 2} tickets por amigo invitado.</strong>
       </div>
     </section>
   );
@@ -412,6 +416,7 @@ const Checkout = ({ cart, items, total, customer, setCustomer, onBack, onSubmit,
       <label className="field-label">Nombre<input value={customer.name} onChange={(event) => setCustomer({ ...customer, name: event.target.value })} placeholder="Tu nombre" /></label>
       <label className="field-label">Teléfono<input inputMode="tel" value={customer.phone} onChange={(event) => setCustomer({ ...customer, phone: event.target.value })} placeholder="55 0000 0000" /></label>
       <label className="field-label wide">Nota general opcional<textarea maxLength={500} value={customer.notes} onChange={(event) => setCustomer({ ...customer, notes: event.target.value })} placeholder="Nota general del pedido" /></label>
+      <label className="field-label wide">Código de invitado<input value={customer.referralCode} onChange={(event) => setCustomer({ ...customer, referralCode: event.target.value.toUpperCase() })} placeholder="CARLOS-BURGER-27" maxLength={32} /><small>Si alguien te invitó, escribe su código. No es obligatorio.</small></label>
       <div className="builder-block"><h4>Ubicación</h4><div className="chip-grid">{LOCATIONS.map((location) => <button type="button" key={location} className={customer.location === location ? "chip active" : "chip"} onClick={() => setCustomer({ ...customer, location })}>{location}</button>)}</div></div>
       <label className="field-label">Pago<select value={customer.paymentMethod} onChange={(event) => setCustomer({ ...customer, paymentMethod: event.target.value as OrderV2PaymentMethod })}><option value="unknown">Seleccionar</option><option value="cash">Efectivo</option><option value="transfer">Transferencia</option><option value="card">Tarjeta</option></select></label>
     </div>
@@ -430,6 +435,8 @@ const Success = ({ order, onCreateAnother }: { order: OrderConfirmation; onCreat
     <p>Total confirmado: {formatCurrency(order.total)}</p>
     <p>Ubicación: {order.location}</p>
     <p>Pago: {paymentMethodLabels[order.paymentMethod]}</p>
+    {order.referralAccepted === true ? <p className="success-note">Código de invitado aplicado.</p> : null}
+    {order.referralAccepted === false ? <p className="success-note muted">Pedido recibido. El código de invitado no aplicó.</p> : null}
     <QuestButton onClick={onCreateAnother}>NUEVA QUEST</QuestButton>
   </section>
 );
@@ -551,10 +558,11 @@ export function PublicOrderApp() {
     submittingRef.current = true;
     setSubmitting(true);
     try {
-      const response = await createOrderV2({ customer: { name: customer.name.trim(), phone: normalizePhoneDigits(customer.phone) }, orderMode: orderModeForBackend, paymentMethod: customer.paymentMethod, notes, items: payloadItems }, idempotencyKey);
+      const referralCode = customer.referralCode.trim().toUpperCase();
+      const response = await createOrderV2({ customer: { name: customer.name.trim(), phone: normalizePhoneDigits(customer.phone) }, orderMode: orderModeForBackend, paymentMethod: customer.paymentMethod, notes, items: payloadItems, ...(referralCode ? { referralCode } : {}) }, idempotencyKey);
       const order = response.data?.order;
       if (!order) throw new Error("El backend no devolvió folio de confirmación.");
-      setOrderConfirmation({ ...order, paymentMethod: customer.paymentMethod, location: customer.location });
+      setOrderConfirmation({ ...order, paymentMethod: customer.paymentMethod, location: customer.location, referralAccepted: response.data?.referralAccepted });
       setCart([]);
       setCustomer(createEmptyCustomer());
       clearDraftIdempotencyKey();
