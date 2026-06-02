@@ -676,3 +676,22 @@ No existe upload a R2, no existe tabla D1 de imágenes y no se persisten blobs g
 Los datos permitidos en la imagen son: nombre del participante, `customerPhoneMasked`, campaña, total tickets, burger tickets, referral tickets, código de invitado solo si existe un match seguro y único por nombre normalizado + teléfono enmascarado, último folio, último pedido y fecha/hora de generación. El teléfono completo no se devuelve ni se pinta en el canvas. Si el match no es seguro o es ambiguo, el canvas muestra el fallback “solicita tu código en Burgers.exe”.
 
 La validación final del sorteo sigue dependiendo de D1 y de las reglas operativas: órdenes canceladas no cuentan, `pending`/`valid` suman referidos e `invalid` no suma. La imagen incluye el aviso “Tickets sujetos a validación final.”
+
+## Fase 4D — Public order raffle reward response
+
+`CreateOrderV2Response.data` now remains backward-compatible and may include these optional fields only when there is an active raffle campaign:
+
+- `customerReferralCode`: the buyer's own shareable code for the active campaign. It never includes `owner_phone` or full phone data.
+- `activeRaffleTitle`: display title for the active raffle.
+- `earnedTickets`: `{ burgerTickets, referralUsedTickets, totalTickets }`, informational for the just-created order only.
+
+Operational rules:
+
+- `POST /api/orders-v2` first creates the real order and then performs raffle success enrichment.
+- If `raffle_referral_codes_v2` already has a row for `(campaign_id, owner_phone)`, the existing `code` is reused.
+- If no owner row exists, the endpoint attempts to insert a new active row with normalized `owner_name`, normalized `owner_phone`, safe burger word and number 1–100. Collisions on `code` are retried; a concurrent insert for the same owner returns the owner row when it appears.
+- Failures in customer code generation or earned-ticket calculation do not block order creation and do not change order totals or payment rules. Safe telemetry may be written to `order_events_v2`.
+- Burger tickets are calculated from `order_items_v2.snapshot_json.itemKind`; only `burger` and `combo` count. If `itemKind` is unavailable or unsafe, that line is not counted rather than inferred.
+- `referralCode` sent from Checkout is the inviter code used by the buyer. `customerReferralCode` returned in Success is the buyer's own code to share.
+- Referral tickets from a used checkout code belong to the owner of that code, not to the buyer; therefore `earnedTickets.referralUsedTickets` is 0 in this response.
+- No full phone, WhatsApp API, tokens, bearer auth, admin token envs, Sheets sync or legacy endpoints are involved.

@@ -1,6 +1,6 @@
-import type { OrderV2PaymentMethod, OrderV2Mode } from '../../packages/config/src';
+import type { OrderV2PaymentMethod, OrderV2Mode, OrderV2 } from '../../packages/config/src';
 import { errorResponse, fetchOrderBundle, generateFolio, generateId, json, normalizePhone, parseJsonObject } from './_orders-v2-utils';
-import { normalizeReferralCode, type RaffleCampaignRow, type ReferralCodeRow } from './raffles-v2-admin/_utils';
+import { buildReferralCodeText, normalizeReferralCode, REFERRAL_BURGER_WORDS, type RaffleCampaignRow, type ReferralCodeRow } from './raffles-v2-admin/_utils';
 
 type Env = { BOG_MENU_DB?: D1Database; ORDERS_V2_WRITE_ENABLED?: string };
 
@@ -214,6 +214,102 @@ const applyReferralCode = async (db: D1Database, params: { referralCode: string 
   }
 };
 
+
+type EarnedTickets = {
+  burgerTickets: number;
+  referralUsedTickets: number;
+  totalTickets: number;
+};
+
+const safeLogOrderEvent = async (db: D1Database, params: { orderId: string; type: string; detail: Record<string, unknown>; now: string }) => {
+  try {
+    await db.prepare(
+      `INSERT INTO order_events_v2 (id, order_id, type, previous_status, next_status, detail_json, actor, created_at)
+       VALUES (?, ?, ?, NULL, NULL, ?, 'public-v2', ?)`
+    ).bind(generateId('evt'), params.orderId, params.type, JSON.stringify(params.detail), params.now).run();
+  } catch {
+    // Raffle telemetry must never block a real order.
+  }
+};
+
+const calculateEarnedTicketsForOrder = (order: OrderV2, campaign: RaffleCampaignRow): EarnedTickets => {
+  const ticketPerBurger = Number(campaign.ticket_per_burger) || 1;
+  const burgerTickets = order.items.reduce((total, item) => {
+    const kind = typeof item.snapshot?.itemKind === 'string' ? item.snapshot.itemKind : null;
+    if (kind !== 'burger' && kind !== 'combo') return total;
+    return total + Math.max(0, Number(item.qty) || 0) * ticketPerBurger;
+  }, 0);
+  const referralUsedTickets = 0;
+  return { burgerTickets, referralUsedTickets, totalTickets: burgerTickets + referralUsedTickets };
+};
+
+const pickReferralNumber = (seed: string, attempt: number) => {
+  let hash = 0;
+  for (let index = 0; index < seed.length; index += 1) hash = (hash * 31 + seed.charCodeAt(index)) >>> 0;
+  return ((hash + attempt * 17) % 100) + 1;
+};
+
+const ensureCustomerReferralCode = async (db: D1Database, params: { campaign: RaffleCampaignRow; ownerName: string; ownerPhone: string; orderId: string; now: string }) => {
+  const ownerPhone = normalizePhone(params.ownerPhone);
+  if (!ownerPhone) return null;
+  const existingOwner = await db.prepare(
+    'SELECT * FROM raffle_referral_codes_v2 WHERE campaign_id = ? AND owner_phone = ? LIMIT 1'
+  ).bind(params.campaign.id, ownerPhone).first<ReferralCodeRow>();
+  if (existingOwner?.code) return existingOwner.code;
+
+  const seed = `${params.campaign.id}:${ownerPhone}:${params.ownerName}`;
+  for (let attempt = 0; attempt < 36; attempt += 1) {
+    const burgerWord = REFERRAL_BURGER_WORDS[attempt % REFERRAL_BURGER_WORDS.length];
+    const number = pickReferralNumber(seed, attempt);
+    const code = buildReferralCodeText(params.ownerName, burgerWord, number);
+    if (!code) continue;
+    const existingCode = await db.prepare(
+      'SELECT id FROM raffle_referral_codes_v2 WHERE campaign_id = ? AND code = ? LIMIT 1'
+    ).bind(params.campaign.id, code).first<{ id: string }>();
+    if (existingCode) continue;
+    try {
+      await db.prepare(
+        `INSERT INTO raffle_referral_codes_v2 (id, campaign_id, owner_phone, owner_name, code, label_text, is_active, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, NULL, 1, ?, ?)`
+      ).bind(generateId('refcode'), params.campaign.id, ownerPhone, params.ownerName, code, params.now, params.now).run();
+      return code;
+    } catch (error) {
+      const ownerAfterCollision = await db.prepare(
+        'SELECT * FROM raffle_referral_codes_v2 WHERE campaign_id = ? AND owner_phone = ? LIMIT 1'
+      ).bind(params.campaign.id, ownerPhone).first<ReferralCodeRow>();
+      if (ownerAfterCollision?.code) return ownerAfterCollision.code;
+      if (!(error instanceof Error && error.message.includes('UNIQUE'))) throw error;
+    }
+  }
+  throw new Error('Could not generate unique customer referral code');
+};
+
+const buildRaffleSuccessData = async (db: D1Database, params: { order: OrderV2; orderId: string; ownerName: string; ownerPhone: string; now: string }) => {
+  let campaign: RaffleCampaignRow | null = null;
+  try {
+    campaign = await loadActiveReferralCampaign(db);
+  } catch {
+    await safeLogOrderEvent(db, { orderId: params.orderId, type: 'RAFFLE_SUCCESS_DATA_SKIPPED', detail: { reason: 'active_campaign_lookup_failed' }, now: params.now });
+    return {};
+  }
+  if (!campaign) return {};
+  const data: { customerReferralCode?: string; activeRaffleTitle?: string; earnedTickets?: EarnedTickets } = {
+    activeRaffleTitle: campaign.title
+  };
+  try {
+    data.earnedTickets = calculateEarnedTicketsForOrder(params.order, campaign);
+  } catch {
+    await safeLogOrderEvent(db, { orderId: params.orderId, type: 'RAFFLE_TICKETS_SKIPPED', detail: { reason: 'earned_tickets_calculation_failed' }, now: params.now });
+  }
+  try {
+    const code = await ensureCustomerReferralCode(db, { campaign, ownerName: params.ownerName, ownerPhone: params.ownerPhone, orderId: params.orderId, now: params.now });
+    if (code) data.customerReferralCode = code;
+  } catch {
+    await safeLogOrderEvent(db, { orderId: params.orderId, type: 'RAFFLE_CUSTOMER_CODE_SKIPPED', detail: { reason: 'customer_referral_code_generation_failed' }, now: params.now });
+  }
+  return data;
+};
+
 export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
   if (!env.BOG_MENU_DB) return errorResponse(503, 'MISSING_DB', 'BOG_MENU_DB no está configurado.');
   if (env.ORDERS_V2_WRITE_ENABLED === 'false') return errorResponse(403, 'ORDERING_DISABLED', 'Órdenes V2 deshabilitadas temporalmente.');
@@ -229,7 +325,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
     if (existingRow?.id) {
       const existingOrder = await fetchOrderBundle(env.BOG_MENU_DB, existingRow.id);
       if (!existingOrder) return errorResponse(500, 'INTERNAL_ERROR', 'No se pudo recuperar la orden idempotente.');
-      return json(200, { ok: true, data: { order: buildOrderSummary(existingOrder, parsed.idempotencyKey), idempotent: true } });
+      const raffleData = await buildRaffleSuccessData(env.BOG_MENU_DB, { order: existingOrder, orderId: existingOrder.id, ownerName: existingOrder.customerName || parsed.customerName, ownerPhone: existingOrder.customerPhone || parsed.customerPhone, now: new Date().toISOString() });
+      return json(200, { ok: true, data: { order: buildOrderSummary(existingOrder, parsed.idempotencyKey), idempotent: true, ...raffleData } });
     }
 
     const primarySkus = parsed.items.map((item) => item.sku);
@@ -324,7 +421,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
 
     const createdOrder = await fetchOrderBundle(env.BOG_MENU_DB, orderId);
     if (!createdOrder) return errorResponse(500, 'INTERNAL_ERROR', 'No se pudo recuperar la orden creada.');
-    return json(201, { ok: true, data: { order: buildOrderSummary(createdOrder, parsed.idempotencyKey), ...(referralAccepted === undefined ? {} : { referralAccepted }) } });
+    const raffleData = await buildRaffleSuccessData(env.BOG_MENU_DB, { order: createdOrder, orderId, ownerName: parsed.customerName, ownerPhone: parsed.customerPhone, now });
+    return json(201, { ok: true, data: { order: buildOrderSummary(createdOrder, parsed.idempotencyKey), ...(referralAccepted === undefined ? {} : { referralAccepted }), ...raffleData } });
   } catch {
     return errorResponse(500, 'INTERNAL_ERROR', 'No se pudo crear la orden.');
   }
