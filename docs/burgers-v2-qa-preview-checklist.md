@@ -71,3 +71,23 @@ Checklist final para validar el pulido operativo de Public V2 y Chekeo V2. Esta 
 - [ ] `npm run build:internal`
 - [ ] `npm run build`
 - [ ] `git diff --check`
+
+
+## Official production smoke test
+
+- [ ] Public official opens the correct V2 experience.
+- [ ] Create a public order.
+- [ ] Success shows the folio.
+- [ ] Success shows tickets and referral code when an active campaign exists.
+- [ ] Chekeo official PIN login works.
+- [ ] The order appears in Chekeo.
+- [ ] Kitchen MOD/UPGRADE handling works.
+- [ ] Payment works.
+- [ ] Delivered works.
+- [ ] Closing works.
+- [ ] Raffles work.
+- [ ] Manual WhatsApp image works.
+- [ ] Logout works.
+- [ ] Preview backup is accessible.
+- [ ] Legacy was not touched.
+- [ ] Apps Script and Sheets are not used as the source of truth.
