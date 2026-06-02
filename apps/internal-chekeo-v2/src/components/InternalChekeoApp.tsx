@@ -632,7 +632,7 @@ const SourcePanel = ({
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-200">
           Sesión admin activa
         </p>
-        <p className="text-[11px] text-zinc-400">Órdenes live desde D1</p>
+        <p className="text-[11px] text-zinc-400">Órdenes operativas</p>
       </div>
       <div className="flex flex-col gap-2 md:flex-row">
         {runtime.lastUpdated ? (
@@ -651,7 +651,7 @@ const SourcePanel = ({
     </div>
     <div className="mt-3 flex flex-wrap items-center gap-2">
       <span className="chip">Sesión admin activa</span>
-      <span className="chip">Órdenes live desde D1</span>
+      <span className="chip">Órdenes operativas</span>
     </div>
     <OrdersExportControls
       sessionActive={runtime.sessionActive}
@@ -819,8 +819,8 @@ const DashboardHome = ({
         <h3 className="font-bold">Estado del turno</h3>
         <p className="muted">
           {source === "d1"
-            ? "Órdenes live desde D1"
-            : "Fallback mock para QA visual"}
+            ? "Órdenes operativas"
+            : "Vista operativa local"}
         </p>
       </Card>
     </section>
@@ -1241,7 +1241,7 @@ const OrdersBoard = ({
             <span>Método de pago: {o.paymentMethod}</span>
             <span>Payment status: {o.paymentState}</span>
             <span>Total: {formatCurrency(o.total)}</span>
-            <span>Source: {o.source ?? "mock"}</span>
+            <span>Origen: {o.source === "d1" ? "Operativo" : "Local"}</span>
             <span>Creado: {o.createdAt}</span>
           </div>
           <OrderItems order={o} />
@@ -1826,12 +1826,11 @@ const OperationalClosePanel = ({ sessionActive }: { sessionActive: boolean }) =>
         <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-200">
-              Cierre operativo preview
+              Cierre operativo
             </p>
             <h2 className="text-xl font-black">Cierre</h2>
             <p className="text-sm text-zinc-400">
-              D1 source of truth · Pagos declarados, no pagos reales · sin
-              conversión de timezone en esta fase.
+              Pagos declarados · Corte por rango operativo.
             </p>
           </div>
           <Button
@@ -2244,7 +2243,7 @@ const PaymentNotesPanel = ({
                   </p>
                   <p className="text-[11px] text-zinc-400">
                     {order.createdAt} · {order.channel} ·{" "}
-                    {order.source ?? "mock"}
+                    {order.source === "d1" ? "Operativo" : "Local"}
                   </p>
                   {order.customerPhone ? (
                     <p className="text-[11px] text-zinc-500">
@@ -2477,7 +2476,7 @@ const OrderDetailModal = ({
             Pago: {selected.paymentMethod}/{selected.paymentState}
           </p>
           <p>Total: {formatCurrency(selected.total)}</p>
-          <p>Source: {selected.source ?? "fallback mock"}</p>
+          <p>Origen: {selected.source === "d1" ? "Operativo" : "Local"}</p>
           <p>Estación: {selected.kitchenStation}</p>
         </div>
         <OrderItems order={selected} />
@@ -2742,8 +2741,8 @@ export function InternalChekeoApp() {
       });
       setOrdersNotice(
         s === "cancelled"
-          ? "Cancelación actualizada en fallback mock"
-          : "Estado actualizado en fallback mock",
+          ? "Cancelación actualizada localmente"
+          : "Estado actualizado localmente",
       );
       return;
     }
@@ -2797,7 +2796,7 @@ export function InternalChekeoApp() {
             : o,
         ),
       );
-      setOrdersNotice("Pago operativo actualizado en fallback mock");
+      setOrdersNotice("Pago operativo actualizado localmente");
       return;
     }
     setActionOrderId(id);
@@ -2858,7 +2857,7 @@ export function InternalChekeoApp() {
             : order,
         ),
       );
-      setOrdersNotice("Checklist visual actualizado en fallback mock");
+      setOrdersNotice("Checklist operativo actualizado localmente");
       return;
     }
 
