@@ -204,12 +204,22 @@ const LoadingOverlay = ({ loading }: { loading: boolean }) => loading ? (
   </div>
 ) : null;
 
-const AppHeader = ({ count, total }: { count: number; total: number }) => (
-  <header className="quest-header">
-    <strong>Burgers.exe</strong>
-    <span>Ticket: {count} item{count === 1 ? "" : "s"} · {formatCurrency(total)}</span>
-  </header>
-);
+const AppHeader = ({ section, count, total, builder }: { section: QuestSection; count: number; total: number; builder: BuilderDraft | null }) => {
+  const summary = section === "success"
+    ? "Pedido confirmado"
+    : count > 0
+      ? `Ticket: ${count} item${count === 1 ? "" : "s"} · ${formatCurrency(total)}`
+      : builder
+        ? `Personalizando: ${builder.item.name}`
+        : "Arma tu pedido";
+
+  return (
+    <header className="quest-header">
+      <strong>Burgers.exe</strong>
+      <span>{summary}</span>
+    </header>
+  );
+};
 
 const RaffleBanner = ({ campaign }: { campaign: RaffleCampaignPublicV2 | null }) => {
   if (!campaign) return null;
@@ -406,7 +416,7 @@ const UnitEditor = ({ unit, index, item, extras, garnishes, onChange }: { unit: 
 };
 
 const Workbench = ({ builder, extras, garnishes, onBack, onQuantity, onUnitChange }: { builder: BuilderDraft | null; extras: MenuItem[]; garnishes: MenuItem[]; onBack: () => void; onQuantity: (qty: number) => void; onUnitChange: (index: number, unit: CartEntry) => void }) => (
-  <section className="quest-panel">
+  <section className="quest-panel workbench-panel">
     <QuestButton className="ghost" onClick={onBack}>Regresar</QuestButton>
     <span className="eyebrow">Workbench</span>
     <h2>{builder ? builder.item.name : "Selecciona producto"}</h2>
@@ -416,11 +426,11 @@ const Workbench = ({ builder, extras, garnishes, onBack, onQuantity, onUnitChang
 );
 
 const SideQuest = ({ garnishes, selected, onQuantity, onBack, onSkip, reduce }: { garnishes: MenuItem[]; selected: Record<string, number>; onQuantity: (sku: string, quantity: number) => void; onBack: () => void; onSkip: () => void; reduce: boolean }) => (
-  <section className="quest-panel">
+  <section className="quest-panel side-quest-panel">
     <QuestButton className="ghost" onClick={onBack}>Regresar</QuestButton>
     <span className="eyebrow">Side Quest</span>
     <h2>Guarniciones extra opcionales</h2>
-    <p className="muted">Opcional. Si tu combo incluye guarnición, ya va incluida. Puedes agregar varias piezas de la misma guarnición.</p>
+    <p className="muted section-subcopy">Opcional. Puedes agregar varias piezas de la misma guarnición.</p>
     {garnishes.length ? <div className="kiosk-grid">{garnishes.map((item) => {
       const quantity = selected[item.sku] ?? 0;
       return <div className={quantity ? "side-card active" : "side-card"} key={item.sku}><ProductCard item={item} mode="select" onClick={() => onQuantity(item.sku, quantity + 1)} reduce={reduce} /><QuantityControl value={quantity} min={0} max={10} label={`Cantidad de ${item.name}`} onChange={(nextQty) => onQuantity(item.sku, nextQty)} /></div>;
@@ -435,7 +445,7 @@ const TicketList = ({ cart, items, onEdit, onDuplicate, onRemove }: { cart: Cart
       const price = items.find((item) => item.sku === entry.sku)?.price ?? 0;
       const extrasTotal = entry.extras.reduce((sum, extra) => sum + (extra.price ?? 0), 0);
       return <article className="ticket-item" key={entry.lineKey}>
-        <div><h3>{entry.name} #{entry.itemDisplayIndex}</h3><strong>{formatCurrency(price + extrasTotal)}</strong></div>
+        <div className="ticket-item-head"><h3>{entry.name} #{entry.itemDisplayIndex}</h3><strong>{formatCurrency(price + extrasTotal)}</strong></div>
         <ul>
           {entry.removedIngredients.map((ingredient) => <li key={ingredient}>MOD · Sin {ingredient}</li>)}
           {entry.extras.map((extra, extraIndex) => <li key={`${extra.sku ?? extra.name}-${extraIndex}`}>UPGRADE · {extra.name}{extra.price ? ` +${formatCurrency(extra.price)}` : ""}</li>)}
@@ -487,12 +497,19 @@ const Success = ({ order, onCreateAnother }: { order: OrderConfirmation; onCreat
     <section className="quest-panel success-panel" aria-live="polite">
       <span className="eyebrow">Success</span>
       <h2>Pedido recibido</h2>
-      <p className="muted section-subcopy">Pedido recibido.</p>
-      <p>Folio: <strong>{order.folio}</strong></p>
-      <p>Estado: {statusLabels[order.status] ?? order.status}</p>
-      <p>Total confirmado: {formatCurrency(order.total)}</p>
-      <p>Ubicación: {order.location}</p>
-      <p>Pago: {paymentMethodLabels[order.paymentMethod]}</p>
+      <p className="muted section-subcopy">Tu orden ya entró a cocina.</p>
+      <div className="success-folio-card">
+        <span>Folio</span>
+        <strong>{order.folio}</strong>
+      </div>
+      <dl className="success-details">
+        <div><dt>Total</dt><dd>{formatCurrency(order.total)}</dd></div>
+        <div><dt>Ubicación</dt><dd>{order.location}</dd></div>
+        <div><dt>Pago</dt><dd>{paymentMethodLabels[order.paymentMethod]}</dd></div>
+        <div><dt>Tiempo estimado</dt><dd>15–25 min</dd></div>
+      </dl>
+      <p className="success-whatsapp">Te avisaremos por WhatsApp cuando tu pedido esté listo.</p>
+      <p className="muted success-status">Estado: {statusLabels[order.status] ?? order.status}</p>
       {earnedTickets ? <article className="success-reward-card">
         <span className="eyebrow">Tickets ganados por esta orden</span>
         <strong className="success-ticket-total">+{earnedTickets.totalTickets} tickets</strong>
@@ -518,10 +535,12 @@ const Success = ({ order, onCreateAnother }: { order: OrderConfirmation; onCreat
   );
 };
 
-const PersistentCta = ({ section, count, total, disabled, submitting, onClick }: { section: QuestSection; count: number; total: number; disabled?: boolean; submitting?: boolean; onClick: () => void }) => {
-  if (section === "success" || (section === "checkout" && !count)) return null;
-  const label = section === "menu" ? "INICIAR QUEST" : section === "main" || section === "workbench" ? "CONTINUAR" : section === "side" ? "Ir a checkout" : "Confirmar pedido";
-  return <aside className="persistent-cta"><div><span>Ticket</span><strong>{count} item{count === 1 ? "" : "s"} · {formatCurrency(total)}</strong></div><QuestButton disabled={disabled || submitting} onClick={onClick}>{submitting && section === "checkout" ? "Enviando..." : label}</QuestButton></aside>;
+const PersistentCta = ({ section, count, total, disabled, submitting, onClick, builder }: { section: QuestSection; count: number; total: number; disabled?: boolean; submitting?: boolean; onClick: () => void; builder: BuilderDraft | null }) => {
+  if (section === "success" || section === "checkout") return null;
+  const label = section === "menu" ? "INICIAR QUEST" : section === "main" || section === "workbench" ? "CONTINUAR" : "Ir a checkout";
+  const title = count > 0 ? "Ticket" : builder ? "En edición" : "Quest";
+  const summary = count > 0 ? `${count} item${count === 1 ? "" : "s"} · ${formatCurrency(total)}` : builder ? builder.item.name : "Elige tu burger";
+  return <aside className="persistent-cta"><div><span>{title}</span><strong>{summary}</strong></div><QuestButton disabled={disabled || submitting} onClick={onClick}>{label}</QuestButton></aside>;
 };
 
 export function PublicOrderApp() {
@@ -653,6 +672,7 @@ export function PublicOrderApp() {
   };
   const handleCreateAnother = () => { setOrderConfirmation(null); setCheckoutError(null); setCart([]); setCustomer(createEmptyCustomer()); clearDraftIdempotencyKey(); setBuilder(null); setOrderChoice(null); setExtraGarnishQuantities({}); navigate("menu"); };
   const primaryDisabled = (section === "main" && !builder) || (section === "workbench" && !builder) || (section === "checkout" && (submitting || !cart.length));
+  const showPersistentCta = section !== "success" && section !== "checkout";
   const primaryAction = () => {
     if (section === "menu") beginQuest();
     else if (section === "main" && builder) navigate("workbench");
@@ -663,9 +683,9 @@ export function PublicOrderApp() {
   };
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell public-section-${section} ${showPersistentCta ? "has-persistent-cta" : ""}`}>
       <LoadingOverlay loading={showBoot || loadingMenu} />
-      <AppHeader count={count} total={total} />
+      <AppHeader section={section} count={count} total={total} builder={builder} />
       {section === "menu" ? <MenuSection menuData={menuData} raffleCampaign={raffleCampaign} onExplore={setInfoItem} onStart={beginQuest} reduce={reduce} /> : null}
       {section === "main" ? <MainQuest choice={orderChoice} availableBurgerItems={availableBurgerItems} availableComboItems={availableComboItems} builder={builder} onBack={() => navigate("menu")} onChoice={(choice) => { setOrderChoice(choice); setBuilder(null); }} onProduct={startBuilder} reduce={reduce} /> : null}
       {section === "workbench" ? <Workbench builder={builder} extras={extras} garnishes={garnishes} onBack={() => navigate("main")} onQuantity={updateBuilderQuantity} onUnitChange={updateBuilderUnit} /> : null}
@@ -673,7 +693,7 @@ export function PublicOrderApp() {
       {section === "checkout" && cart.length ? <Checkout cart={cart} items={menuData.items} total={total} customer={customer} setCustomer={setCustomer} onBack={() => navigate(cart.length ? "side" : "menu")} onSubmit={handleCheckout} submitting={submitting} error={checkoutError} onEdit={editLine} onDuplicate={duplicateLine} onRemove={removeLine} /> : null}
       {section === "success" && orderConfirmation ? <Success order={orderConfirmation} onCreateAnother={handleCreateAnother} /> : null}
       <MenuInfoDialog item={infoItem} onClose={() => setInfoItem(null)} />
-      <PersistentCta section={section} count={count} total={total} disabled={primaryDisabled} submitting={submitting} onClick={primaryAction} />
+      <PersistentCta section={section} count={count} total={total} disabled={primaryDisabled} submitting={submitting} onClick={primaryAction} builder={builder} />
     </main>
   );
 }
