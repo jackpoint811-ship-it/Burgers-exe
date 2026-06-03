@@ -21,7 +21,7 @@ export async function createOrderV2(payload: CreateOrderV2Payload, idempotencyKe
 
   if (!response.ok) {
     const message = envelope?.error?.message || `No se pudo crear el pedido (HTTP ${response.status}). Intenta de nuevo.`;
-    throw new Error(message);
+    throw new Error(envelope?.error?.code === 'ITEM_UNAVAILABLE' ? `ITEM_UNAVAILABLE: ${message}` : message);
   }
 
   if (!envelope?.ok || !envelope.data?.order) {

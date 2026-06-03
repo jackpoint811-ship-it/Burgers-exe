@@ -21,7 +21,7 @@ const fallbackPayload = (source: MenuV2Response['source']): MenuV2Response => ({
   source
 });
 
-const json = (payload: MenuV2Response, cacheControl = 'public, max-age=60, stale-while-revalidate=60') =>
+const json = (payload: MenuV2Response, cacheControl = 'no-store') =>
   new Response(JSON.stringify(payload), { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': cacheControl } });
 
 const optionalAll = async <T>(query: D1PreparedStatement): Promise<T[]> => {
