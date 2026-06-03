@@ -538,6 +538,132 @@ const TicketList = ({ cart, items, onEdit, onDuplicate, onRemove }: { cart: Cart
   </div>
 );
 
+
+const REFERRAL_SHARE_TEXT = "Usa mi código al pedir en Burgers.exe. Si compras al menos 1 burger, me das tickets extra.";
+
+type ShareActionStatus = "idle" | "copiedLink" | "copiedMessage" | "shared" | "downloaded" | "error";
+
+const buildReferralPublicLink = (code: string) => {
+  if (typeof window === "undefined") return "";
+  const url = new URL(window.location.href);
+  url.searchParams.set("ref", code);
+  url.hash = "";
+  return url.toString();
+};
+
+const buildReferralShareMessage = (code: string, link: string) => [`${REFERRAL_SHARE_TEXT}`, `Código: ${code}`, link].filter(Boolean).join("\n");
+
+const copyTextToClipboard = async (text: string) => {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand("copy");
+  document.body.removeChild(textarea);
+  if (!copied) throw new Error("Clipboard unavailable");
+};
+
+const drawWrappedCanvasText = (ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number) => {
+  const words = text.split(/\s+/).filter(Boolean);
+  let line = "";
+  let cursorY = y;
+  words.forEach((word, index) => {
+    const nextLine = line ? `${line} ${word}` : word;
+    if (ctx.measureText(nextLine).width > maxWidth && line) {
+      ctx.fillText(line, x, cursorY);
+      line = word;
+      cursorY += lineHeight;
+      return;
+    }
+    line = nextLine;
+    if (index === words.length - 1 && line) ctx.fillText(line, x, cursorY);
+  });
+  return cursorY + lineHeight;
+};
+
+const downloadReferralShareImage = async (params: { code: string; raffleTitle?: string; link: string }) => {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1080;
+  canvas.height = 1350;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas unavailable");
+
+  const gradient = ctx.createLinearGradient(0, 0, 1080, 1350);
+  gradient.addColorStop(0, "#05130a");
+  gradient.addColorStop(0.52, "#080b0f");
+  gradient.addColorStop(1, "#151002");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 1080, 1350);
+
+  ctx.strokeStyle = "rgba(57, 255, 136, 0.35)";
+  ctx.lineWidth = 6;
+  ctx.strokeRect(54, 54, 972, 1242);
+  ctx.strokeStyle = "rgba(255, 184, 77, 0.32)";
+  ctx.lineWidth = 2;
+  for (let y = 130; y < 1240; y += 72) {
+    ctx.beginPath();
+    ctx.moveTo(90, y);
+    ctx.lineTo(990, y);
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = "#39ff88";
+  ctx.font = "900 74px Inter, Arial, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("Burgers.exe", 540, 190);
+
+  if (params.raffleTitle) {
+    ctx.fillStyle = "#d1fae5";
+    ctx.font = "800 42px Inter, Arial, sans-serif";
+    drawWrappedCanvasText(ctx, params.raffleTitle, 540, 285, 820, 54);
+  }
+
+  ctx.fillStyle = "rgba(57, 255, 136, 0.12)";
+  ctx.strokeStyle = "rgba(57, 255, 136, 0.48)";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.roundRect(108, 450, 864, 305, 44);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = "#fff7d6";
+  ctx.font = "950 102px Inter, Arial, sans-serif";
+  drawWrappedCanvasText(ctx, params.code, 540, 590, 780, 112);
+
+  ctx.fillStyle = "#d1fae5";
+  ctx.font = "800 45px Inter, Arial, sans-serif";
+  drawWrappedCanvasText(ctx, "Pide tu burger y usa mi código", 540, 885, 820, 62);
+  ctx.fillStyle = "#fbbf24";
+  ctx.font = "800 34px Inter, Arial, sans-serif";
+  drawWrappedCanvasText(ctx, REFERRAL_SHARE_TEXT, 540, 1015, 830, 48);
+  ctx.fillStyle = "#8ef7b5";
+  ctx.font = "700 30px Inter, Arial, sans-serif";
+  drawWrappedCanvasText(ctx, params.link, 540, 1215, 850, 40);
+
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    if (!canvas.toBlob) {
+      reject(new Error("Canvas download unavailable"));
+      return;
+    }
+    canvas.toBlob((value) => value ? resolve(value) : reject(new Error("Could not render share image")), "image/png");
+  });
+  const blobUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = blobUrl;
+  anchor.download = `burgers-exe-${params.code}.png`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1200);
+};
+
 const Checkout = ({ cart, items, total, customer, setCustomer, onBack, onSubmit, submitting, error, onEdit, onDuplicate, onRemove }: { cart: CartEntry[]; items: MenuItem[]; total: number; customer: CustomerDraft; setCustomer: (customer: CustomerDraft) => void; onBack: () => void; onSubmit: () => void; submitting: boolean; error: string | null; onEdit: (lineKey: string) => void; onDuplicate: (lineKey: string) => void; onRemove: (lineKey: string) => void }) => (
   <section className="quest-panel checkout-panel">
     <QuestButton className="back-button" onClick={onBack}>← Volver a guarniciones</QuestButton>
@@ -559,15 +685,92 @@ const Checkout = ({ cart, items, total, customer, setCustomer, onBack, onSubmit,
   </section>
 );
 
+const ReferralShareModal = ({ code, raffleTitle, onClose }: { code: string; raffleTitle?: string; onClose: () => void }) => {
+  const [status, setStatus] = useState<ShareActionStatus>("idle");
+  const [error, setError] = useState<string | null>(null);
+  const link = useMemo(() => buildReferralPublicLink(code), [code]);
+  const message = useMemo(() => buildReferralShareMessage(code, link), [code, link]);
+  const shareData = useMemo(() => ({ title: raffleTitle ? `Burgers.exe · ${raffleTitle}` : "Burgers.exe", text: message, url: link }), [link, message, raffleTitle]);
+  const showError = (text: string) => { setError(text); setStatus("error"); };
+
+  const copyLink = async () => {
+    try {
+      await copyTextToClipboard(link);
+      setError(null);
+      setStatus("copiedLink");
+    } catch {
+      showError("No se pudo copiar el link automático. Puedes copiarlo manualmente desde aquí.");
+    }
+  };
+  const copyMessage = async () => {
+    try {
+      await copyTextToClipboard(message);
+      setError(null);
+      setStatus("copiedMessage");
+    } catch {
+      showError("No se pudo copiar el mensaje automático. Puedes seleccionarlo y copiarlo manualmente.");
+    }
+  };
+  const shareReferral = async () => {
+    if (!navigator.share) {
+      showError("Tu navegador no tiene share sheet nativo. Usa Copiar mensaje o Copiar link.");
+      return;
+    }
+    try {
+      await navigator.share(shareData);
+      setError(null);
+      setStatus("shared");
+    } catch {
+      showError("No se pudo abrir compartir. El link y mensaje siguen disponibles para copiar manualmente.");
+    }
+  };
+  const downloadImage = async () => {
+    try {
+      await downloadReferralShareImage({ code, raffleTitle, link });
+      setError(null);
+      setStatus("downloaded");
+    } catch {
+      showError("No se pudo descargar la imagen en este navegador. Puedes copiar el mensaje o link.");
+    }
+  };
+
+  return (
+    <div className="referral-modal-backdrop" role="presentation">
+      <section className="referral-modal" role="dialog" aria-modal="true" aria-labelledby="referral-share-title">
+        <button type="button" className="referral-modal-close" onClick={onClose} aria-label="Cerrar modal de compartir">×</button>
+        <span className="eyebrow">Compartir código</span>
+        <h3 id="referral-share-title">Invita a tu crew</h3>
+        {raffleTitle ? <p className="success-raffle-title">Sorteo: {raffleTitle}</p> : null}
+        <strong className="referral-modal-code">{code}</strong>
+        <p>{REFERRAL_SHARE_TEXT}</p>
+        <label className="referral-manual-copy">Link de la página pública<textarea readOnly value={link} rows={2} /></label>
+        <label className="referral-manual-copy">Mensaje<textarea readOnly value={message} rows={5} /></label>
+        <div className="referral-modal-actions">
+          <QuestButton className="ghost" onClick={copyLink}>Copiar link</QuestButton>
+          <QuestButton className="ghost" onClick={copyMessage}>Copiar mensaje</QuestButton>
+          <QuestButton className="ghost" onClick={shareReferral}>Compartir</QuestButton>
+          <QuestButton onClick={downloadImage}>Descargar imagen</QuestButton>
+        </div>
+        {status === "copiedLink" ? <p className="success-copy-status">Link copiado.</p> : null}
+        {status === "copiedMessage" ? <p className="success-copy-status">Mensaje copiado.</p> : null}
+        {status === "shared" ? <p className="success-copy-status">Share sheet abierto.</p> : null}
+        {status === "downloaded" ? <p className="success-copy-status">Imagen generada.</p> : null}
+        {error ? <p className="success-copy-status error">{error}</p> : null}
+      </section>
+    </div>
+  );
+};
+
 const Success = ({ order, campaign, onCreateAnother }: { order: OrderConfirmation; campaign: RaffleCampaignPublicV2 | null; onCreateAnother: () => void }) => {
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   const earnedTickets = order.earnedTickets;
   const raffleTitle = order.activeRaffleTitle ?? campaign?.title;
   const referralRewardCopy = campaign ? `${ticketLabel(campaign.ticketPerReferral)} extra` : "tickets extra";
   const copyReferralCode = async () => {
     if (!order.customerReferralCode) return;
     try {
-      await navigator.clipboard.writeText(order.customerReferralCode);
+      await copyTextToClipboard(order.customerReferralCode);
       setCopyStatus("copied");
     } catch {
       setCopyStatus("error");
@@ -606,10 +809,14 @@ const Success = ({ order, campaign, onCreateAnother }: { order: OrderConfirmatio
         <p className="success-referral-lead">Comparte este código. Si tu compa lo usa y ordena al menos 1 burger pagada, tú ganas {referralRewardCopy}.</p>
         <strong className="success-referral-code">{order.customerReferralCode}</strong>
         {raffleTitle ? <p>Sorteo activo: {raffleTitle}</p> : null}
-        <QuestButton className="ghost" onClick={copyReferralCode}>{copyStatus === "copied" ? "Código copiado ✅" : "Copiar código"}</QuestButton>
+        <div className="success-referral-actions">
+          <QuestButton className="ghost" onClick={copyReferralCode}>{copyStatus === "copied" ? "Código copiado ✅" : "Copiar código"}</QuestButton>
+          <QuestButton onClick={() => setShareModalOpen(true)}>Compartir mi código</QuestButton>
+        </div>
         {copyStatus === "idle" ? <p className="success-copy-status muted">Toca copiar y pégalo en WhatsApp, Discord o donde armen la raid.</p> : null}
         {copyStatus === "copied" ? <p className="success-copy-status">Copiado al portapapeles. GG.</p> : null}
         {copyStatus === "error" ? <p className="success-copy-status error">No se pudo copiar automático. Mantén presionado el código para copiarlo manualmente.</p> : null}
+        {shareModalOpen ? <ReferralShareModal code={order.customerReferralCode} raffleTitle={raffleTitle} onClose={() => setShareModalOpen(false)} /> : null}
       </article> : null}
       {order.referralAccepted === true && !earnedTickets ? <p className="success-note">Código de invitado aplicado.</p> : null}
       {order.referralAccepted === false ? <p className="success-note muted">Pedido recibido. El código de invitado no aplicó.</p> : null}
@@ -655,6 +862,13 @@ export function PublicOrderApp() {
   const extras = menuData.items.filter((item) => item.category === "extras" && inferItemKind(item) !== "combo" && item.isAvailable);
   const garnishes = menuData.items.filter((item) => item.category === "guarniciones" && item.isAvailable);
   const hasBurgerOrComboInCart = cart.some((entry) => entry.itemKind === "burger" || entry.itemKind === "combo");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const codeFromUrl = (new URLSearchParams(window.location.search).get("ref") ?? "").trim().toUpperCase().slice(0, 32);
+    if (!codeFromUrl) return;
+    setCustomer((current) => current.referralCode ? current : { ...current, referralCode: codeFromUrl });
+  }, []);
 
   useEffect(() => { sectionRef.current = section; }, [section]);
   useEffect(() => { infoItemRef.current = infoItem; }, [infoItem]);

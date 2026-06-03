@@ -2299,3 +2299,100 @@ p {
     height: 30px;
   }
 }
+
+/* Referral sharing modal (mobile-first). */
+.success-referral-actions,
+.referral-modal-actions {
+  width: 100%;
+  display: grid;
+  gap: 0.65rem;
+}
+.success-referral-actions .quest-button,
+.referral-modal-actions .quest-button {
+  width: 100%;
+}
+.referral-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: end center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(10px);
+}
+.referral-modal {
+  position: relative;
+  width: min(100%, 540px);
+  max-height: min(88vh, 820px);
+  overflow-y: auto;
+  display: grid;
+  gap: 0.85rem;
+  border: 1px solid rgba(57, 255, 136, 0.42);
+  border-radius: 28px 28px 20px 20px;
+  padding: 1.2rem;
+  background: radial-gradient(circle at 50% 0%, rgba(57, 255, 136, 0.18), rgba(2, 6, 4, 0.96) 58%);
+  box-shadow: 0 -24px 80px rgba(0, 0, 0, 0.55), 0 0 34px rgba(57, 255, 136, 0.18);
+}
+.referral-modal h3,
+.referral-modal p {
+  margin: 0;
+}
+.referral-modal-close {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(234, 255, 240, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #eafff0;
+  font-size: 1.5rem;
+  font-weight: 900;
+}
+.referral-modal-code {
+  justify-self: center;
+  max-width: 100%;
+  color: #fff7d6;
+  font-size: clamp(2rem, 11vw, 3.35rem);
+  letter-spacing: -0.06em;
+  line-height: 1;
+  text-align: center;
+  overflow-wrap: anywhere;
+  text-shadow: 0 0 26px rgba(251, 191, 36, 0.3);
+}
+.referral-manual-copy {
+  display: grid;
+  gap: 0.4rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.referral-manual-copy textarea {
+  width: 100%;
+  min-height: 52px;
+  resize: vertical;
+  border: 1px solid rgba(234, 255, 240, 0.18);
+  border-radius: 14px;
+  padding: 0.7rem;
+  background: rgba(255, 255, 255, 0.05);
+  color: #eafff0;
+  font: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+}
+@media (min-width: 560px) {
+  .success-referral-actions,
+  .referral-modal-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .referral-modal-backdrop {
+    place-items: center;
+  }
+  .referral-modal {
+    border-radius: 28px;
+  }
+}

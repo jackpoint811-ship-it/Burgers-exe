@@ -243,10 +243,23 @@ const calculateEarnedTicketsForOrder = (order: OrderV2, campaign: RaffleCampaign
   return { burgerTickets, referralUsedTickets, totalTickets: burgerTickets + referralUsedTickets };
 };
 
+const hashReferralSeed = (seed: string) => {
+  let hash = 2166136261;
+  for (let index = 0; index < seed.length; index += 1) {
+    hash ^= seed.charCodeAt(index);
+    hash = Math.imul(hash, 16777619) >>> 0;
+  }
+  return hash;
+};
+
+const pickReferralBurgerWord = (seed: string, attempt: number) => {
+  const hash = hashReferralSeed(`${seed}:word:${attempt}`);
+  return REFERRAL_BURGER_WORDS[hash % REFERRAL_BURGER_WORDS.length];
+};
+
 const pickReferralNumber = (seed: string, attempt: number) => {
-  let hash = 0;
-  for (let index = 0; index < seed.length; index += 1) hash = (hash * 31 + seed.charCodeAt(index)) >>> 0;
-  return ((hash + attempt * 17) % 100) + 1;
+  const hash = hashReferralSeed(`${seed}:number:${attempt}`);
+  return (hash % 99) + 1;
 };
 
 const ensureCustomerReferralCode = async (db: D1Database, params: { campaign: RaffleCampaignRow; ownerName: string; ownerPhone: string; orderId: string; now: string }) => {
@@ -257,9 +270,9 @@ const ensureCustomerReferralCode = async (db: D1Database, params: { campaign: Ra
   ).bind(params.campaign.id, ownerPhone).first<ReferralCodeRow>();
   if (existingOwner?.code) return existingOwner.code;
 
-  const seed = `${params.campaign.id}:${ownerPhone}:${params.ownerName}`;
-  for (let attempt = 0; attempt < 36; attempt += 1) {
-    const burgerWord = REFERRAL_BURGER_WORDS[attempt % REFERRAL_BURGER_WORDS.length];
+  const seed = `${params.campaign.id}:${params.orderId}:${ownerPhone}:${params.ownerName}`;
+  for (let attempt = 0; attempt < 72; attempt += 1) {
+    const burgerWord = pickReferralBurgerWord(seed, attempt);
     const number = pickReferralNumber(seed, attempt);
     const code = buildReferralCodeText(params.ownerName, burgerWord, number);
     if (!code) continue;

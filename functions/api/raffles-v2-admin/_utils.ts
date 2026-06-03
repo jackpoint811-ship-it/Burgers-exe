@@ -409,7 +409,7 @@ export type ReferralRow = {
   referred_order_folio?: string;
 };
 
-export const REFERRAL_BURGER_WORDS = ['BURGER', 'SMASH', 'BACON', 'PICKLES', 'CHEESE', 'FRIES'] as const;
+export const REFERRAL_BURGER_WORDS = ['BURGER', 'SMASH', 'BACON', 'PICKLES', 'PICKLE', 'CHEESE', 'FRIES', 'PAPAS', 'TOCINO', 'QUESO', 'CRUNCH', 'BBQ', 'COMBO', 'OG', 'CHEDDAR', 'KETCHUP', 'MOSTAZA'] as const;
 export const REFERRAL_STATUSES = ['pending', 'valid', 'invalid'] as const;
 
 export const maskNormalizedPhone = maskPhone;
