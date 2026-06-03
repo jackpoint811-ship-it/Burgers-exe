@@ -35,6 +35,8 @@
   var menuWarnings = [];
   var menuLoadStatus = 'loading';
   var menuLoadError = '';
+  var campaignConfig = null;
+  var campaignLoadStatus = 'idle';
   var WITHOUT = {
     OG: ['Sin Tocino', 'Sin Queso americano', 'Sin Queso manchego', 'Sin Jitomate', 'Sin Lechuga', 'Sin Pepinillos', 'Sin Catsup', 'Sin Mostaza', 'Sin Mayonesa'],
     BBQ: ['Sin Tocino', 'Sin Queso americano', 'Sin Queso manchego', 'Sin Aros de cebolla', 'Sin Pepinillos', 'Sin Salsa bbq']
@@ -57,7 +59,7 @@
       step: 0,
       burgerUnits: [],
       sidesQty: {},
-      customer: { customerName: '', phone: '', location: '', paymentMethod: 'Pago mismo dia', note: '' },
+      customer: { customerName: '', phone: '', location: '', paymentMethod: 'Pago mismo dia', note: '', referralCode: '' },
       ts: Date.now()
     };
   }
@@ -109,6 +111,30 @@
   // ---------------------------------------------------------------------------
   // Generic helpers
   // ---------------------------------------------------------------------------
+
+  function normalizeReferralCode(value) {
+    return String(value || '').toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 32);
+  }
+
+  function readReferralCodeFromUrl() {
+    try {
+      return normalizeReferralCode(new URLSearchParams(window.location.search).get('ref'));
+    } catch (_error) {
+      return '';
+    }
+  }
+
+  function ensureCustomerReferralField() {
+    state.customer = state.customer || {};
+    state.customer.referralCode = normalizeReferralCode(state.customer.referralCode || '');
+  }
+
+  function applyUrlReferralCode() {
+    var referralCode = readReferralCodeFromUrl();
+    if (!referralCode) return;
+    state.customer = state.customer || {};
+    state.customer.referralCode = referralCode;
+  }
 
   function normalizeExtrasQty(raw) {
     var out = {};
@@ -210,6 +236,48 @@
       }
       return MENU;
     })();
+  }
+
+
+  function normalizeCampaignConfig(payload) {
+    var source = payload && payload.data ? payload.data : payload;
+    if (!source || source.enabled !== true || source.ticketsPageEnabled !== true) return null;
+    return {
+      enabled: true,
+      name: String(source.name || 'Sorteo activo').trim() || 'Sorteo activo',
+      ticketsPageEnabled: true,
+      ticketsPageUrl: String(source.ticketsPageUrl || '/tickets').trim() || '/tickets',
+      menuCtaLabel: String(source.menuCtaLabel || '🎟️ Consulta tus tickets').trim() || '🎟️ Consulta tus tickets'
+    };
+  }
+
+  function fetchCampaignConfig() {
+    campaignLoadStatus = 'loading';
+    return (async function () {
+      try {
+        var response = await fetch('/api/campaign-config');
+        if (!response.ok) throw new Error('campaign status ' + response.status);
+        var payload = await response.json();
+        if (!payload || payload.ok !== true) throw new Error('invalid campaign payload');
+        campaignConfig = normalizeCampaignConfig(payload);
+        campaignLoadStatus = 'ready';
+      } catch (_error) {
+        campaignConfig = null;
+        campaignLoadStatus = 'error';
+      }
+      return campaignConfig;
+    })();
+  }
+
+  function renderCampaignMenuCard() {
+    if (campaignLoadStatus !== 'ready' || !campaignConfig || campaignConfig.enabled !== true || campaignConfig.ticketsPageEnabled !== true) return '';
+    var url = campaignConfig.ticketsPageUrl || '/tickets';
+    return '<section class="campaign-menu-card" aria-labelledby="campaignMenuTitle">' +
+      '<p class="campaign-menu-eyebrow">' + escapeHtml(campaignConfig.menuCtaLabel || '🎟️ Consulta tus tickets') + '</p>' +
+      '<h3 id="campaignMenuTitle">🎟️ Sorteo activo</h3>' +
+      '<p>Consulta tus tickets, copia tu código de referido y compártelo para sumar más oportunidades.</p>' +
+      '<a class="campaign-menu-cta" href="' + escapeHtml(url) + '">Consultar mis tickets</a>' +
+    '</section>';
   }
 
   function extraBySkuOrName(value) { return MENU.extras.find(function (x) { return x.sku === value || x.name === value; }); }
@@ -325,6 +393,7 @@
       state = draft;
       state.burgerUnits = (state.burgerUnits || []).map(normalizeBurgerUnit);
       state.sidesQty = state.sidesQty || {};
+      ensureCustomerReferralField();
       return;
     }
 
@@ -340,7 +409,8 @@
         phone: draft.payload.phone || '',
         location: draft.payload.location || '',
         paymentMethod: draft.payload.paymentMethod || 'Pago mismo dia',
-        note: draft.payload.note || ''
+        note: draft.payload.note || '',
+        referralCode: normalizeReferralCode(draft.payload.referral && draft.payload.referral.code)
       };
       state.step = 0;
     }
@@ -367,7 +437,7 @@
   }
 
   function hasDraftContent() {
-    return calcOrderItemCount() > 0 || Boolean(state.customer.customerName.trim() || state.customer.phone.trim() || state.customer.location || state.customer.note.trim());
+    return calcOrderItemCount() > 0 || Boolean(state.customer.customerName.trim() || state.customer.phone.trim() || state.customer.location || state.customer.note.trim() || state.customer.referralCode);
   }
 
   function buildPayload() {
@@ -404,6 +474,10 @@
       note: state.customer.note.trim(),
       order_items: orderItems,
       items: orderItems.map(function (line) { return { sku: line.menu_item_id, qty: line.quantity }; }),
+      referral: {
+        code: state.customer.referralCode || '',
+        source: 'url'
+      },
       personalizations: {
         burgers: state.burgerUnits.map(function (u, i) {
           return {
@@ -509,7 +583,7 @@
     if (menuLoadStatus === 'error') return '<h2>MENÚ</h2><div class="menu-state menu-state-error" role="alert"><strong>No se pudo cargar el menú.</strong><p>' + escapeHtml(menuLoadError || 'D1 no respondió.') + '</p><button type="button" class="secondary" id="retryMenuBtn">Reintentar</button></div>';
     if (!MENU.burgers.length && !MENU.sides.length && !MENU.extras.length) return '<h2>MENÚ</h2><div class="menu-state menu-state-empty"><strong>Menú vacío.</strong><p>Aplica el seed de MENU_LIVE en D1 para publicar productos.</p></div>';
     var d1Hint = '<p class="muted">Menú cargado desde D1' + (menuSource ? ' · ' + escapeHtml(menuSource) : '') + '</p>';
-    return '<h2>MENÚ</h2>' + d1Hint + '<h3>Burgers</h3><div class="menu-grid">' + renderMenuCards(MENU.burgers) + '</div>' +
+    return '<h2>MENÚ</h2>' + d1Hint + renderCampaignMenuCard() + '<h3>Burgers</h3><div class="menu-grid">' + renderMenuCards(MENU.burgers) + '</div>' +
       '<h3>Guarniciones</h3><div class="menu-grid">' + renderMenuCards(MENU.sides) + '</div>' +
       '<h3>Extras</h3><div class="menu-grid">' + renderMenuCards(MENU.extras) + '</div>' +
       '<button id="startBtn" class="primary"' + (!MENU.burgers.length ? ' disabled' : '') + '>INICIAR PEDIDO</button>';
@@ -581,8 +655,11 @@
     var paySameDaySelected = state.customer.paymentMethod === 'Pago mismo dia';
     var payBeforeSelected = state.customer.paymentMethod === 'Pagar Antes';
 
+    var referralNotice = state.customer.referralCode ? '<p class="referral-notice">Código de referido detectado: <strong>' + escapeHtml(state.customer.referralCode) + '</strong></p>' : '';
+
     return '<h2>DATOS</h2>' +
       '<p class="data-step-title">Datos para confirmar tu pedido</p>' +
+      referralNotice +
       '<p class="data-step-help">No necesitas iniciar sesión. Solo usamos estos datos para entregar y confirmar.</p>' +
       '<label class="field data-field ' + (dataStepErrors.name ? 'has-error' : '') + '" for="name"><span class="field-title">Nombre</span><span class="field-required-badge">Obligatorio</span><input id="name" autocomplete="name" placeholder="Ej. Jack R." aria-describedby="name-help' + (dataStepErrors.name ? ' name-error' : '') + '" aria-invalid="' + (dataStepErrors.name ? 'true' : 'false') + '" value="' + escapeHtml(state.customer.customerName) + '"><span class="field-help" id="name-help">Como aparece en recepción o con quien entregamos.</span></label>' +
       nameError +
@@ -629,7 +706,8 @@
       '<p>Nombre: ' + escapeHtml(state.customer.customerName || '(pendiente)') + '</p>' +
       '<p>Teléfono: ' + escapeHtml(state.customer.phone || '(pendiente)') + '</p>' +
       '<p>Ubicación: ' + escapeHtml(state.customer.location || '(pendiente)') + '</p>' +
-      '<p>Nota: ' + escapeHtml(state.customer.note || '(sin nota)') + '</p></section>' +
+      '<p>Nota: ' + escapeHtml(state.customer.note || '(sin nota)') + '</p>' +
+      (state.customer.referralCode ? '<p class="referral-notice">Código de referido detectado: <strong>' + escapeHtml(state.customer.referralCode) + '</strong></p>' : '') + '</section>' +
       '<section class="summary-section"><h3>Pago</h3><p>Forma de pago: ' + escapeHtml(state.customer.paymentMethod) + '</p><div id="paymentInfo"></div></section>' +
       '<section class="summary-section summary-total"><h3>Total del pedido</h3><p>' + money(calcTotal()) + '</p></section>' +
       (isSubmitting
@@ -1294,12 +1372,22 @@
   }
 
   restoreDraft(loadDraft());
+  ensureCustomerReferralField();
+  applyUrlReferralCode();
   redraw();
 
   fetchPublicMenu().then(function () {
     state.burgerUnits = (state.burgerUnits || []).map(normalizeBurgerUnit);
     redraw();
   }).catch(function () {
+    redraw();
+  });
+
+  fetchCampaignConfig().then(function () {
+    redraw();
+  }).catch(function () {
+    campaignConfig = null;
+    campaignLoadStatus = 'error';
     redraw();
   });
 

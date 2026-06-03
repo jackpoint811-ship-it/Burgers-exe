@@ -43,6 +43,15 @@ function toLegacyItems(orderItems) {
   return orderItems.map((item) => ({ sku: item.menu_item_id, qty: item.quantity }));
 }
 
+function normalizeReferral(raw) {
+  const source = raw && typeof raw === 'object' ? raw : {};
+  const code = String(source.code || '').toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 32);
+  return {
+    code,
+    source: code && source.source === 'url' ? 'url' : ''
+  };
+}
+
 
 async function fetchOrderGate(env) {
   const endpoint = env && env.APPS_SCRIPT_ORDER_GATE_ENDPOINT;
@@ -140,6 +149,7 @@ export async function onRequest(context) {
       unit_price_cents: item.unit_price_cents
     })),
     personalizations: normalizePersonalizations(payload.personalizations),
+    referral: normalizeReferral(payload.referral),
     timestamp: String(payload.timestamp || '')
   };
 

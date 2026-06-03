@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Consulta tus tickets · Burgers.exe</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="tickets-app" aria-labelledby="pageTitle">
+    <section class="hero-card terminal-card">
+      <p class="eyebrow">Burgers.exe campaign module</p>
+      <h1 id="pageTitle">🎟️ Consulta tus tickets</h1>
+      <p>Ingresa tu teléfono para ver cuántos tickets tienes, copiar tu código de referido y compartirlo con tus compas.</p>
+      <a class="back-link" href="/">← Volver al menú</a>
+    </section>
+
+    <section class="terminal-card lookup-card" aria-labelledby="lookupTitle">
+      <h2 id="lookupTitle">Buscar por teléfono</h2>
+      <form id="ticketForm" novalidate>
+        <label class="field" for="phoneInput">
+          <span>Teléfono</span>
+          <input id="phoneInput" name="phone" type="tel" inputmode="numeric" autocomplete="tel" placeholder="10 dígitos" aria-describedby="phoneHelp phoneError" required>
+        </label>
+        <p class="field-help" id="phoneHelp">Usa el mismo número con el que hiciste tu pedido.</p>
+        <p class="field-error" id="phoneError" role="alert"></p>
+        <button class="primary" id="submitButton" type="submit">Consultar tickets</button>
+      </form>
+      <p class="status-line" id="statusLine" aria-live="polite"></p>
+    </section>
+
+    <section class="terminal-card result-card hidden" id="resultCard" aria-labelledby="resultTitle" aria-live="polite">
+      <p class="eyebrow">Resultado encontrado</p>
+      <h2 id="resultTitle">Tus oportunidades</h2>
+      <div class="ticket-count" aria-label="Cantidad de tickets"><span id="ticketsCount">0</span><small>tickets</small></div>
+      <p class="tickets-copy" id="ticketsCopy">Tienes 0 tickets.</p>
+      <dl class="result-list">
+        <div>
+          <dt>Cliente</dt>
+          <dd id="customerName">—</dd>
+        </div>
+        <div>
+          <dt>Teléfono</dt>
+          <dd id="phoneMasked">—</dd>
+        </div>
+        <div>
+          <dt>Código de referido</dt>
+          <dd><code id="referralCode">—</code></dd>
+        </div>
+      </dl>
+      <label class="field" for="shareMessage">
+        <span>Copy listo para WhatsApp</span>
+        <textarea id="shareMessage" readonly></textarea>
+      </label>
+      <div class="actions-grid">
+        <button type="button" data-copy="code">Copiar código</button>
+        <button type="button" data-copy="link">Copiar link</button>
+        <button type="button" data-copy="message">Copiar mensaje</button>
+        <a class="whatsapp-button" id="whatsappLink" href="#" target="_blank" rel="noopener noreferrer">Compartir por WhatsApp</a>
+      </div>
+    </section>
+  </main>
+  <script src="./app.js" defer></script>
+</body>
+</html>
