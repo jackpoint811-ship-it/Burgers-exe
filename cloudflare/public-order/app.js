@@ -35,6 +35,8 @@
   var menuWarnings = [];
   var menuLoadStatus = 'loading';
   var menuLoadError = '';
+  var campaignConfig = null;
+  var campaignLoadStatus = 'idle';
   var WITHOUT = {
     OG: ['Sin Tocino', 'Sin Queso americano', 'Sin Queso manchego', 'Sin Jitomate', 'Sin Lechuga', 'Sin Pepinillos', 'Sin Catsup', 'Sin Mostaza', 'Sin Mayonesa'],
     BBQ: ['Sin Tocino', 'Sin Queso americano', 'Sin Queso manchego', 'Sin Aros de cebolla', 'Sin Pepinillos', 'Sin Salsa bbq']
@@ -210,6 +212,48 @@
       }
       return MENU;
     })();
+  }
+
+
+  function normalizeCampaignConfig(payload) {
+    var source = payload && payload.data ? payload.data : payload;
+    if (!source || source.enabled !== true || source.ticketsPageEnabled !== true) return null;
+    return {
+      enabled: true,
+      name: String(source.name || 'Sorteo activo').trim() || 'Sorteo activo',
+      ticketsPageEnabled: true,
+      ticketsPageUrl: String(source.ticketsPageUrl || '/tickets').trim() || '/tickets',
+      menuCtaLabel: String(source.menuCtaLabel || '🎟️ Consulta tus tickets').trim() || '🎟️ Consulta tus tickets'
+    };
+  }
+
+  function fetchCampaignConfig() {
+    campaignLoadStatus = 'loading';
+    return (async function () {
+      try {
+        var response = await fetch('/api/campaign-config');
+        if (!response.ok) throw new Error('campaign status ' + response.status);
+        var payload = await response.json();
+        if (!payload || payload.ok !== true) throw new Error('invalid campaign payload');
+        campaignConfig = normalizeCampaignConfig(payload);
+        campaignLoadStatus = 'ready';
+      } catch (_error) {
+        campaignConfig = null;
+        campaignLoadStatus = 'error';
+      }
+      return campaignConfig;
+    })();
+  }
+
+  function renderCampaignMenuCard() {
+    if (campaignLoadStatus !== 'ready' || !campaignConfig || campaignConfig.enabled !== true || campaignConfig.ticketsPageEnabled !== true) return '';
+    var url = campaignConfig.ticketsPageUrl || '/tickets';
+    return '<section class="campaign-menu-card" aria-labelledby="campaignMenuTitle">' +
+      '<p class="campaign-menu-eyebrow">' + escapeHtml(campaignConfig.menuCtaLabel || '🎟️ Consulta tus tickets') + '</p>' +
+      '<h3 id="campaignMenuTitle">🎟️ Sorteo activo</h3>' +
+      '<p>Consulta tus tickets, copia tu código de referido y compártelo para sumar más oportunidades.</p>' +
+      '<a class="campaign-menu-cta" href="' + escapeHtml(url) + '">Consultar mis tickets</a>' +
+    '</section>';
   }
 
   function extraBySkuOrName(value) { return MENU.extras.find(function (x) { return x.sku === value || x.name === value; }); }
@@ -509,7 +553,7 @@
     if (menuLoadStatus === 'error') return '<h2>MENÚ</h2><div class="menu-state menu-state-error" role="alert"><strong>No se pudo cargar el menú.</strong><p>' + escapeHtml(menuLoadError || 'D1 no respondió.') + '</p><button type="button" class="secondary" id="retryMenuBtn">Reintentar</button></div>';
     if (!MENU.burgers.length && !MENU.sides.length && !MENU.extras.length) return '<h2>MENÚ</h2><div class="menu-state menu-state-empty"><strong>Menú vacío.</strong><p>Aplica el seed de MENU_LIVE en D1 para publicar productos.</p></div>';
     var d1Hint = '<p class="muted">Menú cargado desde D1' + (menuSource ? ' · ' + escapeHtml(menuSource) : '') + '</p>';
-    return '<h2>MENÚ</h2>' + d1Hint + '<h3>Burgers</h3><div class="menu-grid">' + renderMenuCards(MENU.burgers) + '</div>' +
+    return '<h2>MENÚ</h2>' + d1Hint + renderCampaignMenuCard() + '<h3>Burgers</h3><div class="menu-grid">' + renderMenuCards(MENU.burgers) + '</div>' +
       '<h3>Guarniciones</h3><div class="menu-grid">' + renderMenuCards(MENU.sides) + '</div>' +
       '<h3>Extras</h3><div class="menu-grid">' + renderMenuCards(MENU.extras) + '</div>' +
       '<button id="startBtn" class="primary"' + (!MENU.burgers.length ? ' disabled' : '') + '>INICIAR PEDIDO</button>';
@@ -1300,6 +1344,14 @@
     state.burgerUnits = (state.burgerUnits || []).map(normalizeBurgerUnit);
     redraw();
   }).catch(function () {
+    redraw();
+  });
+
+  fetchCampaignConfig().then(function () {
+    redraw();
+  }).catch(function () {
+    campaignConfig = null;
+    campaignLoadStatus = 'error';
     redraw();
   });
 
