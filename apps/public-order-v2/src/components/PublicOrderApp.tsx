@@ -25,7 +25,7 @@ import { createOrderV2 } from "../lib/orders-v2";
 type QuestSection = "menu" | "main" | "workbench" | "side" | "checkout" | "success";
 type OrderChoice = "burger" | "combo";
 type MainAccordionSection = OrderChoice | "side";
-type SideQuestEntryMode = "builder" | "direct";
+type SideQuestEntryMode = "builder" | "direct" | "quickAdd";
 type CustomerDraft = {
   name: string;
   phone: string;
@@ -948,6 +948,7 @@ export function PublicOrderApp() {
   const sectionRef = useRef<QuestSection>("menu");
   const infoItemRef = useRef<MenuItem | null>(null);
   const sideQuestEntryModeRef = useRef<SideQuestEntryMode>("builder");
+  const builderRef = useRef<BuilderDraft | null>(null);
   const [extraGarnishQuantities, setExtraGarnishQuantities] = useState<Record<string, number>>({});
   const [menuData, setMenuData] = useState<MenuV2Response>(toFallbackMenuResponse("fallback"));
   const [raffleCampaign, setRaffleCampaign] = useState<RaffleCampaignPublicV2 | null>(null);
@@ -976,6 +977,7 @@ export function PublicOrderApp() {
   useEffect(() => { sectionRef.current = section; }, [section]);
   useEffect(() => { infoItemRef.current = infoItem; }, [infoItem]);
   useEffect(() => { sideQuestEntryModeRef.current = sideQuestEntryMode; }, [sideQuestEntryMode]);
+  useEffect(() => { builderRef.current = builder; }, [builder]);
   useEffect(() => { const frame = window.requestAnimationFrame(scrollToTop); return () => window.cancelAnimationFrame(frame); }, [section]);
   useEffect(() => {
     if (!quickAddFeedback) return;
@@ -1030,7 +1032,8 @@ export function PublicOrderApp() {
         return;
       }
       if (current === "menu") return;
-      const fallback: QuestSection = current === "checkout" ? "side" : current === "side" ? (sideQuestEntryModeRef.current === "direct" ? "main" : "workbench") : current === "workbench" ? "main" : "menu";
+      const sideBackTarget: QuestSection = sideQuestEntryModeRef.current === "builder" && builderRef.current ? "workbench" : "main";
+      const fallback: QuestSection = current === "checkout" ? "side" : current === "side" ? sideBackTarget : current === "workbench" ? "main" : "menu";
       navigate(fallback, { replace: true });
     };
     window.addEventListener("popstate", onPopState);
@@ -1147,8 +1150,8 @@ export function PublicOrderApp() {
   const showPersistentCta = section !== "success" && section !== "checkout";
   const primaryAction = () => {
     if (section === "menu") beginQuest();
-    else if (section === "main" && cart.length) { setSideQuestEntryMode("builder"); setSideQuestError(null); setQuickAddFeedback(null); navigate("side"); }
     else if (section === "main" && builder) navigate("workbench");
+    else if (section === "main" && cart.length) { setSideQuestEntryMode("quickAdd"); setSideQuestError(null); setQuickAddFeedback(null); navigate("side"); }
     else if (section === "workbench") confirmBuilder();
     else if (section === "side") addSideQuestAndCheckout();
     else if (section === "checkout") handleCheckout();
@@ -1162,7 +1165,7 @@ export function PublicOrderApp() {
       {section === "menu" ? <MenuSection menuData={menuData} raffleCampaign={raffleCampaign} onExplore={openInfoDialog} onStart={beginQuest} reduce={reduce} /> : null}
       {section === "main" ? <MainQuest choice={orderChoice} availableBurgerItems={availableBurgerItems} availableComboItems={availableComboItems} garnishes={garnishes} builder={builder} quickAddFeedback={quickAddFeedback} onBack={() => navigate("menu")} onChoice={(choice) => { setOrderChoice(choice); setBuilder(null); setQuickAddFeedback(null); }} onProduct={startBuilder} onQuickAdd={quickAddItem} onSideQuest={startDirectSideQuest} reduce={reduce} /> : null}
       {section === "workbench" ? <Workbench builder={builder} extras={extras} garnishes={garnishes} onBack={() => navigate("main")} onQuantity={updateBuilderQuantity} onUnitChange={updateBuilderUnit} /> : null}
-      {section === "side" ? <SideQuest garnishes={garnishes} selected={extraGarnishQuantities} onQuantity={(sku, quantity) => { setSideQuestError(null); setExtraGarnishQuantities((prev) => ({ ...prev, [sku]: Math.min(10, Math.max(0, quantity)) })); }} onBack={() => navigate(sideQuestEntryMode === "direct" ? "main" : "workbench")} onSkip={() => { setExtraGarnishQuantities({}); setSideQuestError(null); navigate("checkout"); }} canSkip={hasBurgerOrComboInCart} error={sideQuestError} reduce={reduce} /> : null}
+      {section === "side" ? <SideQuest garnishes={garnishes} selected={extraGarnishQuantities} onQuantity={(sku, quantity) => { setSideQuestError(null); setExtraGarnishQuantities((prev) => ({ ...prev, [sku]: Math.min(10, Math.max(0, quantity)) })); }} onBack={() => navigate(sideQuestEntryMode === "builder" && builder ? "workbench" : "main")} onSkip={() => { setExtraGarnishQuantities({}); setSideQuestError(null); navigate("checkout"); }} canSkip={hasBurgerOrComboInCart} error={sideQuestError} reduce={reduce} /> : null}
       {section === "checkout" && cart.length ? <Checkout cart={cart} items={menuData.items} total={total} customer={customer} setCustomer={setCustomer} onBack={() => navigate("side") } onSubmit={handleCheckout} submitting={submitting} error={checkoutError} onEdit={editLine} onDuplicate={duplicateLine} onRemove={removeLine} /> : null}
       {section === "success" && orderConfirmation ? <Success order={orderConfirmation} campaign={raffleCampaign} onCreateAnother={handleCreateAnother} /> : null}
       <MenuInfoDialog item={infoItem} onClose={() => setInfoItem(null)} />
