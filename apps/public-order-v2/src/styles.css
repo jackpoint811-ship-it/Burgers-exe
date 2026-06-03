@@ -1263,6 +1263,19 @@ p {
 .raffle-quest-grid p { color: #cbd5e1; font-size: 0.82rem; }
 .raffle-banner-copy .raffle-rules { color: #a1a1aa; font-size: 0.78rem; white-space: pre-line; }
 .raffle-rules strong { color: #bbf7d0; }
+.raffle-detail-image {
+  display: block;
+  width: 100%;
+  max-width: min(100%, 420px);
+  max-height: 38rem;
+  justify-self: center;
+  object-fit: contain;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  background: rgba(0, 0, 0, 0.22);
+  overflow: hidden;
+}
+
 
 @media (max-width: 640px) {
   .raffle-banner { grid-template-columns: 1fr; gap: 0; }

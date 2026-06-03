@@ -327,6 +327,8 @@ export type RaffleCampaignV2 = {
   rulesText?: string;
   bannerImageKey?: string;
   bannerImageUrl?: string;
+  detailImageKey?: string;
+  detailImageUrl?: string;
   startsAt?: string;
   endsAt?: string;
   isActive: boolean;
@@ -344,6 +346,8 @@ export type RaffleCampaignPublicV2 = Pick<
   | "rulesText"
   | "bannerImageKey"
   | "bannerImageUrl"
+  | "detailImageKey"
+  | "detailImageUrl"
   | "startsAt"
   | "endsAt"
   | "ticketPerBurger"
@@ -470,6 +474,8 @@ export type CreateRaffleCampaignPayload = {
   rulesText?: string;
   bannerImageKey?: string;
   bannerImageUrl?: string;
+  detailImageKey?: string;
+  detailImageUrl?: string;
   startsAt?: string;
   endsAt?: string;
   isActive?: boolean;
