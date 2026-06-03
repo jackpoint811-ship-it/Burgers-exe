@@ -226,6 +226,7 @@ const ticketLabel = (count: number) => `${count} ticket${count === 1 ? "" : "s"}
 const RaffleBanner = ({ campaign }: { campaign: RaffleCampaignPublicV2 | null }) => {
   if (!campaign) return null;
   const src = resolveAssetUrl(campaign.bannerImageUrl, campaign.bannerImageKey);
+  const detailSrc = resolveAssetUrl(campaign.detailImageUrl, campaign.detailImageKey);
   const burgerTickets = ticketLabel(campaign.ticketPerBurger);
   const referralTickets = ticketLabel(campaign.ticketPerReferral);
   return (
@@ -244,6 +245,8 @@ const RaffleBanner = ({ campaign }: { campaign: RaffleCampaignPublicV2 | null })
             <p>{campaign.description}</p>
           </div>
         ) : null}
+        {campaign.rulesText ? <p className="raffle-rules"><strong>Reglas del servidor:</strong> {campaign.rulesText}</p> : null}
+        {detailSrc ? <img className="raffle-detail-image" src={detailSrc} alt={`Detalles de ${campaign.title}`} loading="lazy" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : null}
         <div className="raffle-quest-grid" aria-label="Cómo ganar tickets">
           <article>
             <strong>01</strong>
@@ -267,7 +270,6 @@ const RaffleBanner = ({ campaign }: { campaign: RaffleCampaignPublicV2 | null })
             </div>
           </article>
         </div>
-        {campaign.rulesText ? <p className="raffle-rules"><strong>Reglas del servidor:</strong> {campaign.rulesText}</p> : null}
       </div>
     </section>
   );

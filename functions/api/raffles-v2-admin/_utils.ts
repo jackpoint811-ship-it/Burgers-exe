@@ -9,6 +9,8 @@ export type RaffleCampaignRow = {
   rules_text: string | null;
   banner_image_key: string | null;
   banner_image_url: string | null;
+  detail_image_key?: string | null;
+  detail_image_url?: string | null;
   starts_at: string | null;
   ends_at: string | null;
   is_active: number;
@@ -55,6 +57,8 @@ export const mapCampaign = (row: RaffleCampaignRow): RaffleCampaignV2 => ({
   rulesText: row.rules_text ?? undefined,
   bannerImageKey: row.banner_image_key ?? undefined,
   bannerImageUrl: row.banner_image_url ?? undefined,
+  detailImageKey: row.detail_image_key ?? undefined,
+  detailImageUrl: row.detail_image_url ?? undefined,
   startsAt: row.starts_at ?? undefined,
   endsAt: row.ends_at ?? undefined,
   isActive: Boolean(row.is_active),
@@ -109,6 +113,10 @@ export const validateCreatePayload = (body: Record<string, unknown>): CreateRaff
   if (bannerImageUrl instanceof Response) return bannerImageUrl;
   const bannerImageKey = asTrimmedOptionalString(body.bannerImageKey, MAX_ASSET_LENGTH, 'bannerImageKey');
   if (bannerImageKey instanceof Response) return bannerImageKey;
+  const detailImageUrl = asTrimmedOptionalString(body.detailImageUrl, MAX_ASSET_LENGTH, 'detailImageUrl');
+  if (detailImageUrl instanceof Response) return detailImageUrl;
+  const detailImageKey = asTrimmedOptionalString(body.detailImageKey, MAX_ASSET_LENGTH, 'detailImageKey');
+  if (detailImageKey instanceof Response) return detailImageKey;
   const startsAt = asOptionalDate(body.startsAt, 'startsAt');
   if (startsAt instanceof Response) return startsAt;
   const endsAt = asOptionalDate(body.endsAt, 'endsAt');
@@ -119,7 +127,7 @@ export const validateCreatePayload = (body: Record<string, unknown>): CreateRaff
   const ticketPerReferral = asTicketValue(body.ticketPerReferral, 2, 'ticketPerReferral');
   if (ticketPerReferral instanceof Response) return ticketPerReferral;
 
-  return { title, description: description ?? undefined, rulesText: rulesText ?? undefined, bannerImageUrl: bannerImageUrl ?? undefined, bannerImageKey: bannerImageKey ?? undefined, startsAt: startsAt ?? undefined, endsAt: endsAt ?? undefined, ticketPerBurger, ticketPerReferral, isActive: asBoolean(body.isActive, false) };
+  return { title, description: description ?? undefined, rulesText: rulesText ?? undefined, bannerImageUrl: bannerImageUrl ?? undefined, bannerImageKey: bannerImageKey ?? undefined, detailImageUrl: detailImageUrl ?? undefined, detailImageKey: detailImageKey ?? undefined, startsAt: startsAt ?? undefined, endsAt: endsAt ?? undefined, ticketPerBurger, ticketPerReferral, isActive: asBoolean(body.isActive, false) };
 };
 
 export const validateUpdatePayload = (body: Record<string, unknown>): UpdateRaffleCampaignPayload | Response => {
@@ -134,7 +142,9 @@ export const validateUpdatePayload = (body: Record<string, unknown>): UpdateRaff
     ['description', MAX_DESCRIPTION_LENGTH],
     ['rulesText', MAX_RULES_LENGTH],
     ['bannerImageUrl', MAX_ASSET_LENGTH],
-    ['bannerImageKey', MAX_ASSET_LENGTH]
+    ['bannerImageKey', MAX_ASSET_LENGTH],
+    ['detailImageUrl', MAX_ASSET_LENGTH],
+    ['detailImageKey', MAX_ASSET_LENGTH]
   ] as const;
   for (const [field, max] of stringFields) {
     if (field in body) {
@@ -178,9 +188,9 @@ export const createCampaign = async (db: D1Database, payload: CreateRaffleCampai
   const statements = [];
   if (isActive) statements.push(db.prepare('UPDATE raffle_campaigns_v2 SET is_active = 0, updated_at = ? WHERE is_active = 1').bind(now));
   statements.push(db.prepare(
-    `INSERT INTO raffle_campaigns_v2 (id, title, description, rules_text, banner_image_key, banner_image_url, starts_at, ends_at, is_active, ticket_per_burger, ticket_per_referral, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).bind(id, payload.title, payload.description ?? null, payload.rulesText ?? null, payload.bannerImageKey ?? null, payload.bannerImageUrl ?? null, payload.startsAt ?? null, payload.endsAt ?? null, isActive, payload.ticketPerBurger ?? 1, payload.ticketPerReferral ?? 2, now, now));
+    `INSERT INTO raffle_campaigns_v2 (id, title, description, rules_text, banner_image_key, banner_image_url, detail_image_key, detail_image_url, starts_at, ends_at, is_active, ticket_per_burger, ticket_per_referral, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(id, payload.title, payload.description ?? null, payload.rulesText ?? null, payload.bannerImageKey ?? null, payload.bannerImageUrl ?? null, payload.detailImageKey ?? null, payload.detailImageUrl ?? null, payload.startsAt ?? null, payload.endsAt ?? null, isActive, payload.ticketPerBurger ?? 1, payload.ticketPerReferral ?? 2, now, now));
   await db.batch(statements);
   const row = await db.prepare('SELECT * FROM raffle_campaigns_v2 WHERE id = ? LIMIT 1').bind(id).first<RaffleCampaignRow>();
   if (!row) throw new Error('Campaign insert failed');
@@ -199,6 +209,8 @@ export const updateCampaign = async (db: D1Database, id: string, payload: Update
   if ('rulesText' in payload) add('rules_text', payload.rulesText ?? null);
   if ('bannerImageUrl' in payload) add('banner_image_url', payload.bannerImageUrl ?? null);
   if ('bannerImageKey' in payload) add('banner_image_key', payload.bannerImageKey ?? null);
+  if ('detailImageUrl' in payload) add('detail_image_url', payload.detailImageUrl ?? null);
+  if ('detailImageKey' in payload) add('detail_image_key', payload.detailImageKey ?? null);
   if ('startsAt' in payload) add('starts_at', payload.startsAt ?? null);
   if ('endsAt' in payload) add('ends_at', payload.endsAt ?? null);
   if ('ticketPerBurger' in payload) add('ticket_per_burger', payload.ticketPerBurger ?? 1);

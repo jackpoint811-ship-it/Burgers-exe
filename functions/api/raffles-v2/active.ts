@@ -10,6 +10,8 @@ type RaffleCampaignRow = {
   rules_text: string | null;
   banner_image_key: string | null;
   banner_image_url: string | null;
+  detail_image_key?: string | null;
+  detail_image_url?: string | null;
   starts_at: string | null;
   ends_at: string | null;
   is_active: number;
@@ -26,6 +28,8 @@ const mapCampaign = (row: RaffleCampaignRow): RaffleCampaignV2 => ({
   rulesText: row.rules_text ?? undefined,
   bannerImageKey: row.banner_image_key ?? undefined,
   bannerImageUrl: row.banner_image_url ?? undefined,
+  detailImageKey: row.detail_image_key ?? undefined,
+  detailImageUrl: row.detail_image_url ?? undefined,
   startsAt: row.starts_at ?? undefined,
   endsAt: row.ends_at ?? undefined,
   isActive: Boolean(row.is_active),
@@ -46,6 +50,8 @@ const safePayload = (campaign: RaffleCampaignV2 | null): RaffleActiveResponse =>
           rulesText: campaign.rulesText,
           bannerImageUrl: campaign.bannerImageUrl,
           bannerImageKey: campaign.bannerImageKey,
+          detailImageUrl: campaign.detailImageUrl,
+          detailImageKey: campaign.detailImageKey,
           startsAt: campaign.startsAt,
           endsAt: campaign.endsAt,
           ticketPerBurger: campaign.ticketPerBurger,

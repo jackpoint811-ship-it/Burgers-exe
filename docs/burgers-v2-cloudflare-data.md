@@ -779,6 +779,8 @@ La migración `migrations/0004_v2_raffles_schema.sql` crea `raffle_campaigns_v2`
 - `rules_text TEXT`
 - `banner_image_key TEXT`
 - `banner_image_url TEXT`
+- `detail_image_key TEXT` (agregada por `migrations/0008_v2_raffle_detail_images.sql`)
+- `detail_image_url TEXT` (agregada por `migrations/0008_v2_raffle_detail_images.sql`)
 - `starts_at TEXT`
 - `ends_at TEXT`
 - `is_active INTEGER NOT NULL DEFAULT 0`
@@ -792,6 +794,29 @@ La migración `migrations/0004_v2_raffles_schema.sql` crea `raffle_campaigns_v2`
 - `idx_raffle_campaigns_dates`
 
 Puede haber campañas históricas, pero Public V2 usa solo una campaña activa. Cuando Chekeo activa una campaña, las demás se desactivan en la misma operación. No existe tabla de tickets todavía: el resumen se calcula desde `orders_v2` y `order_items_v2`.
+
+
+### Imágenes de Sorteos V2 desde Chekeo
+
+Internal Chekeo V2 permite administrar las imágenes del sorteo sin comandos manuales de R2/D1 desde `Chekeo > Sorteos > Imágenes del sorteo`:
+
+- **Banner horizontal**: `POST /api/raffles-v2-admin/campaigns/:id/banner-image` con `multipart/form-data` y exactamente un campo `file`. Recomendado: **1600x900 px**. Se guarda en R2 bajo `raffles/banners/<campaign-id-normalizado>-<timestamp>.<ext>`.
+- **Imagen vertical de detalles/reglas**: `POST /api/raffles-v2-admin/campaigns/:id/detail-image` con `multipart/form-data` y exactamente un campo `file`. Recomendado: **1080x1350 px**. Se guarda en R2 bajo `raffles/details/<campaign-id-normalizado>-<timestamp>.<ext>`.
+- Ambos uploads requieren sesión interna con cookie HttpOnly `bog_internal_session`, `BOG_MENU_DB` y `BOG_MENU_ASSETS`; aceptan JPG, PNG, WebP o AVIF de hasta 5 MB. No se aceptan SVG, GIF, data URLs ni nombres con path traversal.
+- Para quitar imágenes, Chekeo llama `DELETE /api/raffles-v2-admin/campaigns/:id/banner-image` o `DELETE /api/raffles-v2-admin/campaigns/:id/detail-image`. El backend limpia D1 y solo intenta borrar R2 cuando la key previa empieza con el folder esperado (`raffles/banners/` o `raffles/details/`).
+- Public Order V2 usa el banner horizontal como imagen principal si existe y renderiza la imagen vertical dentro del copy del sorteo, después de descripción/reglas y antes de los pasos para ganar tickets. Si no hay imágenes, el sorteo continúa funcionando solo con texto.
+
+Troubleshooting:
+
+- Si Chekeo responde `ASSETS_NOT_CONFIGURED` o “BOG_MENU_ASSETS no está configurado”, revisar el binding R2 del worker Pages (`BOG_MENU_ASSETS`) en el ambiente activo. `POST` necesita R2; `DELETE` puede limpiar D1 aunque R2 no esté disponible.
+- Si el upload falla con 415, confirmar MIME/extensión real: `.jpg/.jpeg`, `.png`, `.webp` o `.avif`.
+- Si Public no muestra una imagen recién subida, verificar que `/api/assets-v2/<key>` responda 200 y que la key guardada en D1 no tenga `..`, doble slash ni backslash.
+
+Migración remote/live para columnas de imagen vertical:
+
+```bash
+npx wrangler d1 execute burgers-exe-menu-live --remote --config cloudflare/public-order/wrangler.toml --file=./migrations/0008_v2_raffle_detail_images.sql
+```
 
 ### Cálculo de tickets desde D1
 

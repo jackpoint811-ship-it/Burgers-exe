@@ -60,6 +60,33 @@ export const updateRaffleCampaignV2 = async (id: string, payload: UpdateRaffleCa
   return envelope.data.campaign;
 };
 
+
+export type RaffleImageKind = "banner" | "detail";
+export type RaffleImageMutationResult = { campaign: import("@config/index").RaffleCampaignV2; imageKey?: string | null; assetUrl?: string | null; warning?: string };
+
+const raffleImagePathByKind: Record<RaffleImageKind, string> = {
+  banner: "banner-image",
+  detail: "detail-image",
+};
+
+const parseRaffleImageEnvelope = async (res: Response): Promise<RaffleImageMutationResult> => {
+  const envelope = await parseJsonEnvelope<RaffleCampaignMutationResponse & { imageKey?: string | null; assetUrl?: string | null; warning?: string }>(res);
+  if (!envelope.data?.campaign) throw new Error("Backend V2 no devolvió sorteo actualizado");
+  return { campaign: envelope.data.campaign, imageKey: envelope.imageKey, assetUrl: envelope.assetUrl, warning: envelope.warning };
+};
+
+export const uploadRaffleCampaignImageV2 = async (id: string, kind: RaffleImageKind, file: File): Promise<RaffleImageMutationResult> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch(`/api/raffles-v2-admin/campaigns/${encodeURIComponent(id)}/${raffleImagePathByKind[kind]}`, buildSessionFetchInit({ method: "POST", body: formData }));
+  return parseRaffleImageEnvelope(res);
+};
+
+export const deleteRaffleCampaignImageV2 = async (id: string, kind: RaffleImageKind): Promise<RaffleImageMutationResult> => {
+  const res = await fetch(`/api/raffles-v2-admin/campaigns/${encodeURIComponent(id)}/${raffleImagePathByKind[kind]}`, buildSessionFetchInit({ method: "DELETE" }));
+  return parseRaffleImageEnvelope(res);
+};
+
 export const fetchRaffleSummaryV2 = async (options: { campaignId?: string; q?: string } = {}) => {
   const params = new URLSearchParams();
   if (options.campaignId) params.set("campaignId", options.campaignId);

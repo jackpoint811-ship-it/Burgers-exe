@@ -1,7 +1,7 @@
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from "react";
 import type { CreateRaffleCampaignPayload, RaffleCampaignV2, RaffleParticipantSummary, RaffleReferralCodeV2, RaffleReferralStatus, RaffleReferralV2, RaffleSummaryResponse } from "@config/index";
 import { Button, Card, StatusPill } from "@ui/index";
-import { createRaffleCampaignV2, createRaffleReferralCodeV2, fetchRaffleCampaignsV2, fetchRaffleReferralCodesV2, fetchRaffleReferralsV2, fetchRaffleSummaryV2, updateRaffleCampaignV2, updateRaffleReferralCodeV2, updateRaffleReferralV2 } from "../lib/raffles-v2-admin";
+import { createRaffleCampaignV2, createRaffleReferralCodeV2, fetchRaffleCampaignsV2, fetchRaffleReferralCodesV2, fetchRaffleReferralsV2, fetchRaffleSummaryV2, deleteRaffleCampaignImageV2, updateRaffleCampaignV2, updateRaffleReferralCodeV2, updateRaffleReferralV2, uploadRaffleCampaignImageV2, type RaffleImageKind } from "../lib/raffles-v2-admin";
 import { RAFFLE_SHARE_FALLBACK_CODE, buildRaffleShareText, buildWhatsAppUrl, downloadBlob, generateRaffleTicketImage, shareBlobIfSupported, type RaffleShareImageData } from "../lib/raffle-share-image";
 
 type RaffleSummary = NonNullable<RaffleSummaryResponse["data"]>;
@@ -12,6 +12,8 @@ type RaffleForm = {
   rulesText: string;
   bannerImageUrl: string;
   bannerImageKey: string;
+  detailImageUrl: string;
+  detailImageKey: string;
   startsAt: string;
   endsAt: string;
   ticketPerBurger: string;
@@ -20,6 +22,9 @@ type RaffleForm = {
 };
 
 const BURGER_WORDS = ["BURGER", "SMASH", "BACON", "PICKLES", "CHEESE", "FRIES"] as const;
+const MAX_RAFFLE_IMAGE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_RAFFLE_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
+const SAFE_IMAGE_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._/-]*$/;
 
 type ReferralCodeForm = { ownerName: string; ownerPhone: string; burgerWord: typeof BURGER_WORDS[number]; number: string };
 const emptyReferralCodeForm = (): ReferralCodeForm => ({ ownerName: "", ownerPhone: "", burgerWord: "BURGER", number: "27" });
@@ -30,6 +35,8 @@ const emptyForm = (): RaffleForm => ({
   rulesText: "",
   bannerImageUrl: "",
   bannerImageKey: "",
+  detailImageUrl: "",
+  detailImageKey: "",
   startsAt: "",
   endsAt: "",
   ticketPerBurger: "1",
@@ -44,6 +51,8 @@ const toForm = (campaign: RaffleCampaignV2): RaffleForm => ({
   rulesText: campaign.rulesText ?? "",
   bannerImageUrl: campaign.bannerImageUrl ?? "",
   bannerImageKey: campaign.bannerImageKey ?? "",
+  detailImageUrl: campaign.detailImageUrl ?? "",
+  detailImageKey: campaign.detailImageKey ?? "",
   startsAt: campaign.startsAt ?? "",
   endsAt: campaign.endsAt ?? "",
   ticketPerBurger: String(campaign.ticketPerBurger ?? 1),
@@ -71,6 +80,39 @@ const resolveReferralCodeForParticipant = (participant: RaffleParticipantSummary
   ));
   if (strongMatches.length === 1) return strongMatches[0]?.code ?? RAFFLE_SHARE_FALLBACK_CODE;
   return RAFFLE_SHARE_FALLBACK_CODE;
+};
+
+
+const isSafeSameOriginPath = (value: string) => value.startsWith("/") && !value.startsWith("//") && !value.includes("\\") && !value.includes("..");
+const isSafeHttpsImageUrl = (value: string) => {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && !url.username && !url.password;
+  } catch {
+    return false;
+  }
+};
+const isSafeAssetKey = (value: string) => {
+  const key = value.trim().replace(/^\/+/, "");
+  if (!key || !SAFE_IMAGE_KEY_PATTERN.test(key) || key.includes("..") || key.includes("\\") || key.includes("//")) return false;
+  return key.split("/").every((segment) => segment && segment !== "." && segment !== "..");
+};
+const resolveAssetUrl = (imageUrl?: string, imageKey?: string): string | undefined => {
+  const trimmedKey = imageKey?.trim().replace(/^\/+/, "");
+  if (trimmedKey && isSafeAssetKey(trimmedKey)) return `/api/assets-v2/${trimmedKey.split("/").map((segment) => encodeURIComponent(segment)).join("/")}`;
+
+  const trimmedUrl = imageUrl?.trim();
+  if (trimmedUrl && (isSafeSameOriginPath(trimmedUrl) || isSafeHttpsImageUrl(trimmedUrl))) return trimmedUrl;
+  return undefined;
+};
+
+type ImageUploadState = { file: File | null; uploading: boolean; error: string | null; message: string | null };
+const emptyImageUploadState = (): ImageUploadState => ({ file: null, uploading: false, error: null, message: null });
+
+const validateImageFile = (file: File): string | null => {
+  if (!ALLOWED_RAFFLE_IMAGE_TYPES.has(file.type)) return "Usa JPG, PNG, WebP o AVIF.";
+  if (file.size > MAX_RAFFLE_IMAGE_BYTES) return "La imagen debe pesar 5 MB o menos.";
+  return null;
 };
 
 const makeShareFilename = (data: RaffleShareImageData) => {
@@ -245,9 +287,65 @@ export const RafflesAdminPanel = () => {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [shareParticipant, setShareParticipant] = useState<RaffleParticipantSummary | null>(null);
+  const [bannerUpload, setBannerUpload] = useState<ImageUploadState>(() => emptyImageUploadState());
+  const [detailUpload, setDetailUpload] = useState<ImageUploadState>(() => emptyImageUploadState());
 
   const activeCampaign = useMemo(() => campaigns.find((campaign) => campaign.isActive) ?? null, [campaigns]);
   const selectedCampaign = useMemo(() => campaigns.find((campaign) => campaign.id === selectedCampaignId) ?? activeCampaign, [activeCampaign, campaigns, selectedCampaignId]);
+  const currentBannerPreview = resolveAssetUrl(form.bannerImageUrl, form.bannerImageKey);
+  const currentDetailPreview = resolveAssetUrl(form.detailImageUrl, form.detailImageKey);
+
+  const imageStateForKind = (kind: RaffleImageKind) => (kind === "banner" ? bannerUpload : detailUpload);
+  const setImageStateForKind = (kind: RaffleImageKind, updater: (current: ImageUploadState) => ImageUploadState) => {
+    if (kind === "banner") setBannerUpload(updater);
+    else setDetailUpload(updater);
+  };
+
+  const applyUpdatedCampaign = async (campaign: RaffleCampaignV2) => {
+    setForm(toForm(campaign));
+    setSelectedCampaignId(campaign.id);
+    setCampaigns(await fetchRaffleCampaignsV2());
+    setSummary(await fetchRaffleSummaryV2({ campaignId: campaign.id, q: debouncedSearch }));
+  };
+
+  const handleImageFileChange = (kind: RaffleImageKind, event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    const validationError = file ? validateImageFile(file) : null;
+    setImageStateForKind(kind, () => ({ file: validationError ? null : file, uploading: false, error: validationError, message: null }));
+  };
+
+  const uploadImage = async (kind: RaffleImageKind) => {
+    if (!form.id) {
+      setImageStateForKind(kind, (current) => ({ ...current, error: "Guarda o selecciona un sorteo antes de subir imágenes.", message: null }));
+      return;
+    }
+    const current = imageStateForKind(kind);
+    if (!current.file) {
+      setImageStateForKind(kind, (state) => ({ ...state, error: "Selecciona una imagen válida.", message: null }));
+      return;
+    }
+    setImageStateForKind(kind, (state) => ({ ...state, uploading: true, error: null, message: null }));
+    try {
+      const result = await uploadRaffleCampaignImageV2(form.id, kind, current.file);
+      await applyUpdatedCampaign(result.campaign);
+      setImageStateForKind(kind, () => ({ file: null, uploading: false, error: null, message: result.warning || "Imagen subida y conectada al sorteo." }));
+    } catch (uploadError) {
+      setImageStateForKind(kind, (state) => ({ ...state, uploading: false, error: uploadError instanceof Error ? uploadError.message : "No se pudo subir la imagen.", message: null }));
+    }
+  };
+
+  const removeImage = async (kind: RaffleImageKind) => {
+    if (!form.id) return;
+    setImageStateForKind(kind, (state) => ({ ...state, uploading: true, error: null, message: null }));
+    try {
+      const result = await deleteRaffleCampaignImageV2(form.id, kind);
+      await applyUpdatedCampaign(result.campaign);
+      setImageStateForKind(kind, () => ({ file: null, uploading: false, error: null, message: result.warning || "Imagen quitada del sorteo." }));
+    } catch (removeError) {
+      setImageStateForKind(kind, (state) => ({ ...state, uploading: false, error: removeError instanceof Error ? removeError.message : "No se pudo quitar la imagen.", message: null }));
+    }
+  };
+
   const shareImageData = useMemo<RaffleShareImageData | null>(() => {
     if (!shareParticipant) return null;
     const campaign = summary?.campaign ?? selectedCampaign ?? activeCampaign;
@@ -334,6 +432,8 @@ export const RafflesAdminPanel = () => {
       rulesText: form.rulesText.trim() || undefined,
       bannerImageUrl: form.bannerImageUrl.trim() || undefined,
       bannerImageKey: form.bannerImageKey.trim() || undefined,
+      detailImageUrl: form.detailImageUrl.trim() || undefined,
+      detailImageKey: form.detailImageKey.trim() || undefined,
       startsAt: form.startsAt.trim() || undefined,
       endsAt: form.endsAt.trim() || undefined,
       ticketPerBurger,
@@ -430,6 +530,36 @@ export const RafflesAdminPanel = () => {
     }
   };
 
+  const renderImageBlock = (options: { kind: RaffleImageKind; title: string; recommendation: string; preview?: string; currentKey: string; state: ImageUploadState }) => (
+    <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-3">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h4 className="font-black text-zinc-100">{options.title}</h4>
+          <p className="text-xs text-zinc-500">Recomendado: {options.recommendation}. JPG, PNG, WebP o AVIF hasta 5 MB.</p>
+        </div>
+        {options.currentKey ? <span className="break-all rounded-lg bg-zinc-900 px-2 py-1 text-[10px] text-zinc-400">{options.currentKey}</span> : null}
+      </div>
+      <div className="mt-3 overflow-hidden rounded-xl border border-zinc-800 bg-black/40">
+        {options.preview ? (
+          <img src={options.preview} alt={options.title} className={`w-full ${options.kind === "banner" ? "aspect-video object-cover" : "max-h-[420px] object-contain"}`} onError={(event) => { event.currentTarget.style.display = "none"; }} />
+        ) : (
+          <div className="grid min-h-32 place-items-center px-4 py-8 text-center text-sm text-zinc-500">Sin imagen cargada.</div>
+        )}
+      </div>
+      <div className="mt-3 grid gap-2">
+        <input className="input" type="file" accept="image/jpeg,image/png,image/webp,image/avif" onChange={(event) => handleImageFileChange(options.kind, event)} disabled={options.state.uploading || !form.id} />
+        {options.state.file ? <p className="text-xs text-zinc-400">Listo para subir: {options.state.file.name}</p> : null}
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Button type="button" className="bg-emerald-400 px-4 py-3 font-black text-emerald-950 disabled:opacity-50" disabled={!form.id || !options.state.file || options.state.uploading} onClick={() => void uploadImage(options.kind)}>{options.state.uploading ? "Subiendo…" : "Subir"}</Button>
+          <Button type="button" className="border border-rose-500/40 bg-rose-500/10 px-4 py-3 font-black text-rose-100 disabled:opacity-50" disabled={!form.id || !options.preview || options.state.uploading} onClick={() => void removeImage(options.kind)}>Quitar</Button>
+        </div>
+        {!form.id ? <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-100">Primero guarda o selecciona un sorteo para habilitar uploads.</p> : null}
+        {options.state.error ? <p className="rounded-lg bg-rose-500/10 px-3 py-2 text-sm text-rose-100">{options.state.error}</p> : null}
+        {options.state.message ? <p className="rounded-lg bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">{options.state.message}</p> : null}
+      </div>
+    </div>
+  );
+
   return (
     <section className="grid gap-3 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.25fr)]">
       <div className="space-y-3">
@@ -491,6 +621,17 @@ export const RafflesAdminPanel = () => {
               {form.id && selectedCampaign ? <Button type="button" className="border border-zinc-700 bg-zinc-900 px-4 py-3 font-black disabled:opacity-50" disabled={saving} onClick={() => void activate(selectedCampaign, !selectedCampaign.isActive)}>{selectedCampaign.isActive ? "Desactivar" : "Activar"}</Button> : null}
             </div>
           </form>
+        </Card>
+
+        <Card className="p-3">
+          <div className="mb-3">
+            <h3 className="font-black text-zinc-100">Imágenes del sorteo</h3>
+            <p className="mt-1 text-xs text-zinc-400">Uploads protegidos con sesión interna. Se guardan en R2 y se publican vía assets V2.</p>
+          </div>
+          <div className="grid gap-3">
+            {renderImageBlock({ kind: "banner", title: "Banner horizontal", recommendation: "1600x900 px", preview: currentBannerPreview, currentKey: form.bannerImageKey, state: bannerUpload })}
+            {renderImageBlock({ kind: "detail", title: "Imagen vertical de detalles", recommendation: "1080x1350 px", preview: currentDetailPreview, currentKey: form.detailImageKey, state: detailUpload })}
+          </div>
         </Card>
 
         <Card className="p-3">
