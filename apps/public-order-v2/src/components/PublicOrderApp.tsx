@@ -591,13 +591,23 @@ const UnitEditor = ({ unit, index, item, extras, garnishes, onChange }: { unit: 
   );
 };
 
-const Workbench = ({ builder, extras, garnishes, onBack, onQuantity, onUnitChange }: { builder: BuilderDraft | null; extras: MenuItem[]; garnishes: MenuItem[]; onBack: () => void; onQuantity: (qty: number) => void; onUnitChange: (index: number, unit: CartEntry) => void }) => (
+type WorkbenchProps = {
+  builder: BuilderDraft | null;
+  extras: MenuItem[];
+  garnishes: MenuItem[];
+  onBack: () => void;
+  onQuantity: (qty: number) => void;
+  onUnitChange: (index: number, unit: CartEntry) => void;
+  onSaveAndContinueChoosing: () => void;
+};
+
+const Workbench = ({ builder, extras, garnishes, onBack, onQuantity, onUnitChange, onSaveAndContinueChoosing }: WorkbenchProps) => (
   <section className="quest-panel workbench-panel">
     <QuestButton className="back-button" onClick={onBack}>← Volver a elegir</QuestButton>
     <span className="eyebrow">Workbench</span>
     <h2>{builder ? builder.item.name : "Selecciona producto"}</h2>
     <p className="muted section-subcopy">Ajusta ingredientes y agrega extras por burger.</p>
-    {builder ? <><QuantityControl value={builder.quantity} onChange={onQuantity} /><div className="unit-stack">{builder.units.map((unit, index) => <UnitEditor key={unit.lineKey} unit={unit} index={index} item={builder.item} extras={extras} garnishes={garnishes} onChange={(next) => onUnitChange(index, next)} />)}</div>{builder.error ? <p className="inline-error" role="alert">{builder.error}</p> : null}</> : <EmptyState title="Sin producto activo" description="Regresa a Main Quest y elige una hamburguesa o combo." />}
+    {builder ? <><QuantityControl value={builder.quantity} onChange={onQuantity} /><div className="unit-stack">{builder.units.map((unit, index) => <UnitEditor key={unit.lineKey} unit={unit} index={index} item={builder.item} extras={extras} garnishes={garnishes} onChange={(next) => onUnitChange(index, next)} />)}</div>{builder.error ? <p className="inline-error" role="alert">{builder.error}</p> : null}{!builder.editLineKey ? <QuestButton className="ghost secondary-action" onClick={onSaveAndContinueChoosing}>Guardar y seguir eligiendo</QuestButton> : null}</> : <EmptyState title="Sin producto activo" description="Regresa a Main Quest y elige una hamburguesa o combo." />}
   </section>
 );
 
@@ -1073,7 +1083,7 @@ export function PublicOrderApp() {
   };
   const updateBuilderQuantity = (quantity: number) => setBuilder((draft) => draft ? { ...draft, quantity: Math.min(3, Math.max(1, quantity)) as 1 | 2 | 3, units: Array.from({ length: Math.min(3, Math.max(1, quantity)) }, (_, index) => makeUnit(draft.item, draft.itemKind, index + 1, draft.units[index])), error: null } : draft);
   const updateBuilderUnit = (index: number, unit: CartEntry) => setBuilder((draft) => draft ? { ...draft, units: draft.units.map((entry, entryIndex) => entryIndex === index ? unit : entry), error: null } : draft);
-  const confirmBuilder = () => {
+  const saveBuilderToCart = () => {
     if (!builder) return false;
     if (builder.itemKind === "combo" && builder.units.some((unit) => !unit.garnish)) {
       setBuilder({ ...builder, error: garnishes.length ? "El combo requiere elegir guarnición incluida." : "No hay guarniciones disponibles para confirmar este combo." });
@@ -1086,7 +1096,19 @@ export function PublicOrderApp() {
     });
     setCheckoutError(null);
     setOrderConfirmation(null);
-    if (builder.editLineKey) { setBuilder(null); navigate("checkout"); } else { setSideQuestEntryMode("builder"); setSideQuestError(null); navigate("side"); }
+    return true;
+  };
+  const confirmBuilder = () => {
+    if (!saveBuilderToCart()) return false;
+    if (builder?.editLineKey) { setBuilder(null); navigate("checkout"); } else { setSideQuestEntryMode("builder"); setSideQuestError(null); navigate("side"); }
+    return true;
+  };
+  const saveBuilderAndContinueChoosing = () => {
+    if (!builder || builder.editLineKey || !saveBuilderToCart()) return false;
+    setBuilder(null);
+    setSideQuestError(null);
+    setQuickAddFeedback(`${builder.item.name} guardada en el ticket. Sigue eligiendo.`);
+    navigate("main");
     return true;
   };
   const addSideQuestAndCheckout = () => {
@@ -1164,7 +1186,7 @@ export function PublicOrderApp() {
       <AppHeader section={section} count={count} total={total} builder={builder} />
       {section === "menu" ? <MenuSection menuData={menuData} raffleCampaign={raffleCampaign} onExplore={openInfoDialog} onStart={beginQuest} reduce={reduce} /> : null}
       {section === "main" ? <MainQuest choice={orderChoice} availableBurgerItems={availableBurgerItems} availableComboItems={availableComboItems} garnishes={garnishes} builder={builder} quickAddFeedback={quickAddFeedback} onBack={() => navigate("menu")} onChoice={(choice) => { setOrderChoice(choice); setBuilder(null); setQuickAddFeedback(null); }} onProduct={startBuilder} onQuickAdd={quickAddItem} onSideQuest={startDirectSideQuest} reduce={reduce} /> : null}
-      {section === "workbench" ? <Workbench builder={builder} extras={extras} garnishes={garnishes} onBack={() => navigate("main")} onQuantity={updateBuilderQuantity} onUnitChange={updateBuilderUnit} /> : null}
+      {section === "workbench" ? <Workbench builder={builder} extras={extras} garnishes={garnishes} onBack={() => navigate("main")} onQuantity={updateBuilderQuantity} onUnitChange={updateBuilderUnit} onSaveAndContinueChoosing={saveBuilderAndContinueChoosing} /> : null}
       {section === "side" ? <SideQuest garnishes={garnishes} selected={extraGarnishQuantities} onQuantity={(sku, quantity) => { setSideQuestError(null); setExtraGarnishQuantities((prev) => ({ ...prev, [sku]: Math.min(10, Math.max(0, quantity)) })); }} onBack={() => navigate(sideQuestEntryMode === "builder" && builder ? "workbench" : "main")} onSkip={() => { setExtraGarnishQuantities({}); setSideQuestError(null); navigate("checkout"); }} canSkip={hasBurgerOrComboInCart} error={sideQuestError} reduce={reduce} /> : null}
       {section === "checkout" && cart.length ? <Checkout cart={cart} items={menuData.items} total={total} customer={customer} setCustomer={setCustomer} onBack={() => navigate("side") } onSubmit={handleCheckout} submitting={submitting} error={checkoutError} onEdit={editLine} onDuplicate={duplicateLine} onRemove={removeLine} /> : null}
       {section === "success" && orderConfirmation ? <Success order={orderConfirmation} campaign={raffleCampaign} onCreateAnother={handleCreateAnother} /> : null}
