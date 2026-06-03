@@ -765,8 +765,12 @@ const Success = ({ order, campaign, onCreateAnother }: { order: OrderConfirmatio
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const earnedTickets = order.earnedTickets;
+  const hasEarnedTickets = (earnedTickets?.totalTickets ?? 0) > 0;
   const raffleTitle = order.activeRaffleTitle ?? campaign?.title;
   const referralRewardCopy = campaign ? `${ticketLabel(campaign.ticketPerReferral)} extra` : "tickets extra";
+  const referralLeadCopy = hasEarnedTickets
+    ? `Comparte este código. Si tu compa lo usa y ordena al menos 1 burger pagada, tú ganas ${referralRewardCopy}.`
+    : "Este pedido no sumó tickets porque no incluye burger, pero puedes compartir tu código para ganar tickets cuando tus invitados pidan burger.";
   const copyReferralCode = async () => {
     if (!order.customerReferralCode) return;
     try {
@@ -794,7 +798,7 @@ const Success = ({ order, campaign, onCreateAnother }: { order: OrderConfirmatio
       </dl>
       <p className="success-whatsapp">Te avisaremos por WhatsApp cuando tu pedido esté listo.</p>
       <p className="muted success-status">Estado: {statusLabels[order.status] ?? order.status}</p>
-      {earnedTickets ? <article className="success-reward-card">
+      {hasEarnedTickets && earnedTickets ? <article className="success-reward-card">
         <span className="eyebrow">Loot desbloqueado</span>
         <strong className="success-ticket-total">+{earnedTickets.totalTickets} tickets</strong>
         {raffleTitle ? <p className="success-raffle-title">Van para: {raffleTitle}</p> : null}
@@ -806,7 +810,7 @@ const Success = ({ order, campaign, onCreateAnother }: { order: OrderConfirmatio
       </article> : null}
       {order.customerReferralCode ? <article className="success-referral-card">
         <span className="eyebrow">Power-up de invitado</span>
-        <p className="success-referral-lead">Comparte este código. Si tu compa lo usa y ordena al menos 1 burger pagada, tú ganas {referralRewardCopy}.</p>
+        <p className="success-referral-lead">{referralLeadCopy}</p>
         <strong className="success-referral-code">{order.customerReferralCode}</strong>
         {raffleTitle ? <p>Sorteo activo: {raffleTitle}</p> : null}
         <div className="success-referral-actions">
