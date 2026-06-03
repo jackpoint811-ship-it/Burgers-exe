@@ -2159,3 +2159,143 @@ p {
   .success-reward-card,
   .success-referral-card { width: 100%; padding: 0.78rem; }
 }
+
+/* Public Order V2 selection/navigation refinements. */
+.back-button {
+  width: fit-content;
+  min-height: 44px;
+  border-color: rgba(57, 255, 136, 0.55) !important;
+  background: linear-gradient(135deg, rgba(57, 255, 136, 0.2), rgba(255, 184, 77, 0.13)) !important;
+  color: #f4fff7 !important;
+  box-shadow: 0 0 0 1px rgba(57, 255, 136, 0.16), 0 12px 28px rgba(0, 0, 0, 0.25) !important;
+}
+
+.back-button:focus-visible,
+.back-button:hover {
+  border-color: rgba(255, 184, 77, 0.78) !important;
+  box-shadow: 0 0 0 3px rgba(57, 255, 136, 0.18), 0 16px 34px rgba(0, 0, 0, 0.32) !important;
+}
+
+.main-quest-panel {
+  gap: 12px;
+}
+
+.main-accordion {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+}
+
+.accordion-item {
+  overflow: hidden;
+  border: 1px solid rgba(234, 255, 240, 0.12);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.accordion-item.active {
+  border-color: rgba(57, 255, 136, 0.45);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.22), inset 0 0 24px rgba(57, 255, 136, 0.055);
+}
+
+.accordion-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  padding: 14px;
+  text-align: left;
+}
+
+.accordion-trigger span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.accordion-trigger strong {
+  font-size: clamp(1rem, 4vw, 1.18rem);
+  line-height: 1.1;
+}
+
+.accordion-trigger em {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-style: normal;
+  line-height: 1.25;
+}
+
+.accordion-trigger b {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(57, 255, 136, 0.28);
+  border-radius: 999px;
+  color: var(--neon);
+  font-size: 1.2rem;
+}
+
+.accordion-panel {
+  display: grid;
+  gap: 12px;
+  padding: 0 10px 12px;
+}
+
+.side-direct-card,
+.compact-empty {
+  border: 1px dashed rgba(234, 255, 240, 0.16);
+  border-radius: 18px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.side-direct-card {
+  display: grid;
+  gap: 12px;
+}
+
+.side-direct-card p {
+  margin: 0;
+  color: #f6fff8;
+  line-height: 1.35;
+}
+
+.side-direct-card .quest-button,
+.secondary-action {
+  width: 100%;
+}
+
+.compact-empty .empty-state,
+.compact-empty [class*="empty"] {
+  margin: 0;
+  padding: 0;
+}
+
+.upgrade-controls {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (max-width: 360px) {
+  .back-button,
+  .accordion-trigger,
+  .side-direct-card .quest-button,
+  .secondary-action {
+    width: 100%;
+  }
+
+  .accordion-trigger {
+    align-items: flex-start;
+    padding: 12px;
+  }
+
+  .accordion-trigger b {
+    width: 30px;
+    height: 30px;
+  }
+}
