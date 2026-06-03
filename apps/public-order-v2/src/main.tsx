@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { PublicOrderApp } from './components/PublicOrderApp';
 import { TicketsLookupPage } from './components/TicketsLookupPage';
 import './styles.css';
+import './tickets.css';
 
 const normalizedPath = window.location.pathname.replace(/\/+$/, '') || '/';
 
