@@ -1651,53 +1651,246 @@ p {
   margin-top: 2px;
 }
 
-/* Workbench: denser MOD/UPGRADE sections with touchable but shorter controls. */
+/* Workbench: clearer burger customization with gamer neon cards. */
+.workbench-panel {
+  overflow-x: hidden;
+}
+.workbench-panel .section-subcopy {
+  color: #d9ffe4;
+}
 .workbench-panel .unit-stack {
-  gap: 10px;
+  gap: 16px;
 }
-.workbench-panel .unit-editor,
-.workbench-panel .builder-block {
-  border-radius: 18px;
-  padding: 12px;
+.workbench-panel .unit-editor {
+  position: relative;
+  display: grid;
+  gap: 14px;
+  border: 1px solid rgba(57, 255, 136, 0.2);
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at 14% 0%, rgba(57, 255, 136, 0.16), transparent 34%),
+    linear-gradient(180deg, rgba(8, 18, 12, 0.92), rgba(1, 4, 3, 0.82));
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  padding: clamp(14px, 3vw, 18px);
 }
-.workbench-panel .unit-editor header h3 {
-  font-size: 1.05rem;
+.workbench-panel .unit-editor::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(57, 255, 136, 0.1), transparent 34%, rgba(255, 209, 102, 0.06));
 }
-.workbench-panel .builder-block {
+.unit-editor-header {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.unit-editor-header > div {
+  display: grid;
   gap: 8px;
-  margin-top: 10px;
+  min-width: 0;
+}
+.unit-editor-header h3 {
+  color: #fff;
+  font-size: clamp(1.18rem, 5vw, 1.5rem);
+  letter-spacing: -0.03em;
+}
+.product-chip,
+.status-badge {
+  width: fit-content;
+  max-width: 100%;
+  border-radius: 999px;
+  padding: 0.42rem 0.72rem;
+  font-size: 0.75rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.product-chip {
+  border: 1px solid rgba(255, 209, 102, 0.34);
+  background: rgba(255, 209, 102, 0.1);
+  color: var(--amber) !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.status-badge {
+  border: 1px solid rgba(57, 255, 136, 0.38);
+  background: rgba(57, 255, 136, 0.13);
+  color: var(--neon);
+  box-shadow: 0 0 22px rgba(57, 255, 136, 0.12);
+}
+.workbench-panel .builder-block {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  margin-top: 0;
+  border: 1px solid rgba(234, 255, 240, 0.1);
+  border-radius: 22px;
+  background: rgba(0, 0, 0, 0.22);
+  padding: clamp(12px, 3vw, 16px);
+}
+.workbench-panel .mod-block {
+  border-color: rgba(57, 255, 136, 0.18);
+}
+.workbench-panel .upgrade-block {
+  border-color: rgba(255, 209, 102, 0.2);
+  background: linear-gradient(180deg, rgba(255, 209, 102, 0.075), rgba(0, 0, 0, 0.22));
+}
+.builder-block-head {
+  display: grid;
+  gap: 4px;
 }
 .workbench-panel .builder-block h4 {
-  font-size: 0.9rem;
+  margin: 0;
+  color: #ffffff;
+  font-size: 0.84rem;
+  font-weight: 950;
+  letter-spacing: 0.14em;
 }
 .workbench-panel .builder-hint {
-  margin: -4px 0 0;
-  font-size: 0.78rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.38;
 }
-.workbench-panel .chip-grid {
+.mod-chip-grid,
+.upgrade-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 138px), 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+.workbench-panel .chip {
+  min-width: 0;
+  min-height: 44px;
+  justify-content: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.15;
+  text-align: center;
+}
+.mod-chip.active {
+  border-color: rgba(57, 255, 136, 0.8);
+  background: linear-gradient(180deg, rgba(57, 255, 136, 0.26), rgba(57, 255, 136, 0.12));
+  color: #ffffff;
+  box-shadow: 0 0 0 1px rgba(57, 255, 136, 0.18), 0 0 24px rgba(57, 255, 136, 0.18);
+}
+.upgrade-card {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid rgba(234, 255, 240, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.025);
+  padding: 8px;
+}
+.upgrade-card.active {
+  border-color: rgba(255, 209, 102, 0.44);
+  background: rgba(255, 209, 102, 0.09);
+  box-shadow: 0 0 24px rgba(255, 209, 102, 0.1);
+}
+.upgrade-chip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
   gap: 6px;
+  width: 100%;
+  border-radius: 16px;
 }
-.workbench-panel .chip,
-.workbench-panel .side-card .chip {
-  min-height: 38px;
-  padding: 0.52rem 0.68rem;
-  font-size: 0.82rem;
+.upgrade-chip span,
+.upgrade-chip strong {
+  min-width: 0;
 }
+.upgrade-chip strong {
+  color: var(--amber);
+  white-space: nowrap;
+}
+.upgrade-chip em {
+  grid-column: 1 / -1;
+  width: fit-content;
+  justify-self: center;
+  border-radius: 999px;
+  padding: 0.18rem 0.52rem;
+  background: var(--neon);
+  color: #001b0a;
+  font-style: normal;
+  font-weight: 950;
+}
+.upgrade-chip.active strong {
+  color: #fff;
+}
+.upgrade-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+.upgrade-controls .qty-control {
+  width: 100%;
+  grid-template-columns: 36px minmax(44px, 1fr) 36px;
+  gap: 5px;
+  margin: 0;
+}
+.upgrade-controls .qty-control button,
+.upgrade-controls .qty-control strong {
+  min-height: 36px;
+  border-radius: 12px;
+  font-size: 0.92rem;
+}
+.remove-extra-button {
+  min-height: 36px;
+  border: 1px solid rgba(255, 90, 54, 0.34);
+  border-radius: 12px;
+  background: rgba(255, 90, 54, 0.11);
+  color: #ffd4c9;
+  padding: 0 0.62rem;
+  font-size: 0.75rem;
+  font-weight: 900;
+}
+.unavailable-mod-copy {
+  margin: 0;
+  border: 1px dashed rgba(234, 255, 240, 0.16);
+  border-radius: 16px;
+  padding: 0.8rem;
+  background: rgba(255, 255, 255, 0.025);
+}
+.burger-note-label {
+  position: relative;
+  margin-top: 0;
+}
+@media (max-width: 430px) {
+  .workbench-panel .unit-editor {
+    border-radius: 22px;
+    padding: 12px;
+  }
+  .unit-editor-header {
+    gap: 10px;
+  }
+  .status-badge,
+  .product-chip {
+    padding: 0.36rem 0.6rem;
+    font-size: 0.68rem;
+  }
+  .mod-chip-grid,
+  .upgrade-grid {
+    grid-template-columns: 1fr;
+  }
+  .upgrade-controls {
+    grid-template-columns: 1fr;
+  }
+  .remove-extra-button {
+    width: 100%;
+  }
+}
+
 .workbench-panel textarea,
 .checkout-panel textarea {
   min-height: 76px;
-}
-.workbench-panel .side-card {
-  display: grid;
-  gap: 6px;
-  align-items: start;
-  border: 1px solid rgba(234, 255, 240, 0.1);
-  border-radius: 16px;
-  padding: 8px;
-  background: rgba(0, 0, 0, 0.16);
-}
-.workbench-panel .side-card .qty-control {
-  margin: 0;
 }
 
 /* Side Quest: compact product rows with controls directly under the product. */
