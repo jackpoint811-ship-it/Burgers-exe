@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import * as Tabs from "@radix-ui/react-tabs";
@@ -88,12 +89,17 @@ type InternalOrder = Omit<
 };
 
 type StatusAction = { status: OrderStatus; label: string; tone?: "danger" };
+type NewOrderNotice = {
+  message: string;
+  orderFolios: string[];
+} | null;
 type OrdersRuntime = {
   source: OrdersSource;
   loading: boolean;
   actionOrderId: string | null;
   error: string | null;
   notice: string | null;
+  highlightedOrderIds: Set<string>;
   sessionActive: boolean;
   onSessionExpired: () => void;
   reload: (includeTerminal?: boolean) => void;
@@ -180,6 +186,17 @@ const asInternalOrders = (orders: MockOrder[]): InternalOrder[] =>
     ...order,
     items: order.items.map(normalizeMockOrderItem),
   }));
+const AUTO_REFRESH_INTERVAL_MS = 25_000;
+const NEW_ORDER_HIGHLIGHT_MS = 12_000;
+const formatOrderRefreshTime = (reason?: "manual" | "auto" | "session") => {
+  const time = new Date().toLocaleTimeString("es-MX", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return reason === "auto" ? `${time} · auto-refresh` : time;
+};
+const getOrderKey = (order: Pick<InternalOrder, "id" | "folio">) =>
+  `${order.id}::${order.folio}`;
 const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
 const todayDateInput = () => new Date().toISOString().slice(0, 10);
 const formatDuration = (seconds: number | null) => {
@@ -618,6 +635,36 @@ const OrdersExportControls = ({
     </div>
   );
 };
+
+const NewOrderBanner = ({
+  notice,
+  onDismiss,
+}: {
+  notice: NewOrderNotice;
+  onDismiss: () => void;
+}) =>
+  notice ? (
+    <section
+      className="mb-3 rounded-2xl border border-cyan-300/40 bg-cyan-400/15 p-3 text-cyan-50 shadow-lg shadow-cyan-950/20"
+      role="status"
+      aria-live="polite"
+    >
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-sm font-black">{notice.message}</p>
+          <p className="mt-1 break-words text-[11px] text-cyan-100/80">
+            Folios: {notice.orderFolios.join(", ")}
+          </p>
+        </div>
+        <Button
+          className="w-full shrink-0 border border-cyan-200/40 bg-cyan-950/50 px-3 py-1.5 text-xs text-cyan-50 sm:w-auto"
+          onClick={onDismiss}
+        >
+          Entendido
+        </Button>
+      </div>
+    </section>
+  ) : null;
 
 const SourcePanel = ({
   runtime,
@@ -1233,29 +1280,35 @@ const OrdersBoard = ({
       />
     ) : null}
     <div className="grid gap-2">
-      {orders.map((o) => (
-        <Card key={o.id} className="p-3">
-          <CompactRow order={o} onOpen={() => setSelected(o)} />
-          <div className="mt-2 grid gap-1 text-xs text-zinc-300 md:grid-cols-2">
-            <span>Modo entrega: {o.channel}</span>
-            <span>Método de pago: {o.paymentMethod}</span>
-            <span>Payment status: {o.paymentState}</span>
-            <span>Total: {formatCurrency(o.total)}</span>
-            <span>Origen: {o.source === "d1" ? "Operativo" : "Local"}</span>
-            <span>Creado: {o.createdAt}</span>
-          </div>
-          <OrderItems order={o} />
-          <div className="mt-2">
-            <ActionButtons
-              order={o}
-              actions={getPedidoActions(o.status)}
-              onMove={move}
-              onCancel={(order) => requestCancellation(order, "pedidos")}
-              actionOrderId={runtime.actionOrderId}
-            />
-          </div>
-        </Card>
-      ))}
+      {orders.map((o) => {
+        const highlighted = runtime.highlightedOrderIds.has(o.id);
+        return (
+          <Card
+            key={o.id}
+            className={`p-3 transition-colors ${highlighted ? "border-cyan-300/70 bg-cyan-400/10 shadow-lg shadow-cyan-950/30" : ""}`}
+          >
+            <CompactRow order={o} onOpen={() => setSelected(o)} />
+            <div className="mt-2 grid gap-1 text-xs text-zinc-300 md:grid-cols-2">
+              <span>Modo entrega: {o.channel}</span>
+              <span>Método de pago: {o.paymentMethod}</span>
+              <span>Payment status: {o.paymentState}</span>
+              <span>Total: {formatCurrency(o.total)}</span>
+              <span>Origen: {o.source === "d1" ? "Operativo" : "Local"}</span>
+              <span>Creado: {o.createdAt}</span>
+            </div>
+            <OrderItems order={o} />
+            <div className="mt-2">
+              <ActionButtons
+                order={o}
+                actions={getPedidoActions(o.status)}
+                onMove={move}
+                onCancel={(order) => requestCancellation(order, "pedidos")}
+                actionOrderId={runtime.actionOrderId}
+              />
+            </div>
+          </Card>
+        );
+      })}
     </div>
   </section>
 );
@@ -1394,13 +1447,17 @@ const KitchenBurgerCard = ({
 const KitchenOrderShell = ({
   order,
   children,
+  highlighted = false,
 }: {
   order: InternalOrder;
   children: ReactNode;
+  highlighted?: boolean;
 }) => {
   const generalNote = stripLocationFromNotes(order.note);
   return (
-    <Card className="overflow-hidden border-zinc-700 bg-zinc-950/70 p-0">
+    <Card
+      className={`overflow-hidden border-zinc-700 bg-zinc-950/70 p-0 transition-colors ${highlighted ? "border-cyan-300/70 bg-cyan-400/10 shadow-lg shadow-cyan-950/30" : ""}`}
+    >
       <div className="border-b border-zinc-800 bg-zinc-900/80 p-4">
         <p className="text-3xl font-black text-zinc-50">{order.folio}</p>
         <p className="mt-1 text-xl font-extrabold text-zinc-100">
@@ -1424,11 +1481,13 @@ const KitchenBurgerOrder = ({
   order,
   items,
   busyLineKey,
+  highlighted = false,
   onToggleKitchenItem,
 }: {
   order: InternalOrder;
   items: InternalOrderItem[];
   busyLineKey: string | null;
+  highlighted?: boolean;
   onToggleKitchenItem: ToggleKitchenItemDone;
 }) => {
   const pendingIndex = items.findIndex((item) => !item.kitchenDone);
@@ -1444,7 +1503,7 @@ const KitchenBurgerOrder = ({
 
   const allDone = items.every((item) => item.kitchenDone);
   return (
-    <KitchenOrderShell order={order}>
+    <KitchenOrderShell order={order} highlighted={highlighted}>
       {allDone ? (
         <p className="rounded-xl bg-emerald-400/10 px-3 py-2 text-center text-sm font-black text-emerald-200">
           Burgers listas
@@ -1618,6 +1677,7 @@ const KitchenQueue = ({
                     order={order}
                     items={items}
                     busyLineKey={busyLineKey}
+                    highlighted={runtime.highlightedOrderIds.has(order.id)}
                     onToggleKitchenItem={toggleKitchenItem}
                   />
                 ))
@@ -1637,6 +1697,7 @@ const KitchenQueue = ({
                   order={order}
                   items={items}
                   busyLineKey={busyLineKey}
+                  highlighted={runtime.highlightedOrderIds.has(order.id)}
                   onToggleKitchenItem={toggleKitchenItem}
                 />
               ))}
@@ -1656,7 +1717,11 @@ const KitchenQueue = ({
             <div className="space-y-3">
               {pendingGarnishOrders.length ? (
                 pendingGarnishOrders.map(({ order, items }) => (
-                  <KitchenOrderShell key={order.id} order={order}>
+                  <KitchenOrderShell
+                    key={order.id}
+                    order={order}
+                    highlighted={runtime.highlightedOrderIds.has(order.id)}
+                  >
                     {items.map((item, index) => (
                       <SideQuestItemCard
                         key={getKitchenLineKey(order, item, index)}
@@ -1689,6 +1754,7 @@ const KitchenQueue = ({
                 <KitchenOrderShell
                   key={`done-garnish-${order.id}`}
                   order={order}
+                  highlighted={runtime.highlightedOrderIds.has(order.id)}
                 >
                   {items.map((item, index) => (
                     <SideQuestItemCard
@@ -2613,9 +2679,39 @@ export function InternalChekeoApp() {
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [ordersError, setOrdersError] = useState<string | null>(null);
   const [ordersNotice, setOrdersNotice] = useState<string | null>(null);
+  const [newOrderNotice, setNewOrderNotice] = useState<NewOrderNotice>(null);
+  const [highlightedOrderIds, setHighlightedOrderIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [actionOrderId, setActionOrderId] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const reduce = useReducedMotion();
+  const orderKeysRef = useRef<Set<string> | null>(null);
+  const loggedRef = useRef(logged);
+  const actionOrderIdRef = useRef(actionOrderId);
+  const cancellationRequestRef = useRef(cancellationRequest);
+  const loadingOrdersRef = useRef(loadingOrders);
+  const checkingSessionRef = useRef(checkingSession);
+
+  useEffect(() => {
+    loggedRef.current = logged;
+  }, [logged]);
+
+  useEffect(() => {
+    actionOrderIdRef.current = actionOrderId;
+  }, [actionOrderId]);
+
+  useEffect(() => {
+    cancellationRequestRef.current = cancellationRequest;
+  }, [cancellationRequest]);
+
+  useEffect(() => {
+    loadingOrdersRef.current = loadingOrders;
+  }, [loadingOrders]);
+
+  useEffect(() => {
+    checkingSessionRef.current = checkingSession;
+  }, [checkingSession]);
 
   const expireSession = useCallback(() => {
     setLogged(false);
@@ -2623,11 +2719,76 @@ export function InternalChekeoApp() {
     setOrdersSource("mock");
     setOrdersError("Sesión expirada. Vuelve a iniciar sesión.");
     setSelected(null);
+    cancellationRequestRef.current = null;
     setCancellationRequest(null);
+    setNewOrderNotice(null);
+    setHighlightedOrderIds(new Set());
+    orderKeysRef.current = null;
   }, []);
 
+  const isRefreshBlocked = useCallback(
+    () =>
+      Boolean(
+        actionOrderIdRef.current ||
+          cancellationRequestRef.current ||
+          checkingSessionRef.current ||
+          !loggedRef.current,
+      ),
+    [],
+  );
+
+  const registerLoadedOrders = useCallback(
+    (mappedOrders: InternalOrder[]) => {
+      const nextKeys = new Set(mappedOrders.map(getOrderKey));
+      const previousKeys = orderKeysRef.current;
+      orderKeysRef.current = nextKeys;
+
+      if (!previousKeys) return;
+
+      const newOrders = mappedOrders.filter(
+        (order) => !previousKeys.has(getOrderKey(order)),
+      );
+      if (!newOrders.length) return;
+
+      const newIds = new Set(newOrders.map((order) => order.id));
+      setHighlightedOrderIds((current) => new Set([...current, ...newIds]));
+      setNewOrderNotice({
+        message:
+          newOrders.length === 1
+            ? "Entró 1 orden nueva"
+            : `Entraron ${newOrders.length} órdenes nuevas`,
+        orderFolios: newOrders.map((order) => order.folio),
+      });
+      setOrdersNotice(
+        `${newOrders.length === 1 ? "Nueva orden" : "Nuevas órdenes"}: ${newOrders
+          .map((order) => order.folio)
+          .join(", ")}`,
+      );
+      window.setTimeout(() => {
+        setHighlightedOrderIds((current) => {
+          const next = new Set(current);
+          newIds.forEach((id) => next.delete(id));
+          return next;
+        });
+      }, NEW_ORDER_HIGHLIGHT_MS);
+    },
+    [],
+  );
+
   const loadLiveOrders = useCallback(
-    async (includeTerminal = tab === "historial" || tab === "pagos") => {
+    async (
+      includeTerminal = tab === "historial" || tab === "pagos",
+      reason: "manual" | "auto" | "session" = "manual",
+    ) => {
+      const isAutoRefresh = reason === "auto";
+      if (isAutoRefresh) {
+        const hidden =
+          typeof document !== "undefined" &&
+          document.visibilityState !== "visible";
+        if (hidden || loadingOrdersRef.current || isRefreshBlocked()) return;
+      }
+
+      loadingOrdersRef.current = true;
       setLoadingOrders(true);
       setOrdersError(null);
       try {
@@ -2635,15 +2796,22 @@ export function InternalChekeoApp() {
           includeTerminal,
           limit: includeTerminal ? 50 : 25,
         });
-        setOrders(liveOrders.map(mapOrderV2ToInternalOrder));
+        if (isAutoRefresh && isRefreshBlocked()) return;
+
+        const mappedOrders = liveOrders.map(mapOrderV2ToInternalOrder);
+        setOrders(mappedOrders);
+        setSelected((current) => {
+          if (!current) return current;
+          return (
+            mappedOrders.find((order) => order.id === current.id) ?? current
+          );
+        });
         setOrdersSource("d1");
-        setLastUpdated(
-          new Date().toLocaleTimeString("es-MX", {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-        );
-        setOrdersNotice("Órdenes live actualizadas desde Backend V2");
+        setLastUpdated(formatOrderRefreshTime(reason));
+        registerLoadedOrders(mappedOrders);
+        if (reason !== "auto") {
+          setOrdersNotice("Órdenes live actualizadas desde Backend V2");
+        }
       } catch (error) {
         const message =
           error instanceof Error
@@ -2653,14 +2821,19 @@ export function InternalChekeoApp() {
           expireSession();
           return;
         }
+        if (isAutoRefresh) {
+          setOrdersError(message);
+          return;
+        }
         setOrders(asInternalOrders(mockOrders));
         setOrdersSource("fallback");
         setOrdersError(message);
       } finally {
+        loadingOrdersRef.current = false;
         setLoadingOrders(false);
       }
     },
-    [expireSession, tab],
+    [expireSession, isRefreshBlocked, registerLoadedOrders, tab],
   );
 
   useEffect(() => {
@@ -2689,6 +2862,26 @@ export function InternalChekeoApp() {
     if (logged && tab !== "catalogo" && tab !== "cierre")
       void loadLiveOrders(tab === "historial" || tab === "pagos");
   }, [logged, tab, loadLiveOrders]);
+
+  useEffect(() => {
+    if (!logged || tab === "catalogo" || tab === "cierre") return;
+
+    const refresh = () => {
+      void loadLiveOrders(tab === "historial" || tab === "pagos", "auto");
+    };
+    const interval = window.setInterval(refresh, AUTO_REFRESH_INTERVAL_MS);
+
+    return () => window.clearInterval(interval);
+  }, [logged, loadLiveOrders, tab]);
+
+  useEffect(() => {
+    if (!newOrderNotice) return;
+    const timeout = window.setTimeout(
+      () => setNewOrderNotice(null),
+      NEW_ORDER_HIGHLIGHT_MS,
+    );
+    return () => window.clearTimeout(timeout);
+  }, [newOrderNotice]);
 
   const move: MoveOrderStatus = async (id, s, reason) => {
     if (ordersSource !== "d1") {
@@ -2746,6 +2939,7 @@ export function InternalChekeoApp() {
       );
       return;
     }
+    actionOrderIdRef.current = id;
     setActionOrderId(id);
     setOrdersError(null);
     try {
@@ -2774,6 +2968,7 @@ export function InternalChekeoApp() {
       if (/UNAUTHORIZED|401/i.test(message)) expireSession();
       throw error instanceof Error ? error : new Error(message);
     } finally {
+      actionOrderIdRef.current = null;
       setActionOrderId(null);
     }
   };
@@ -2799,6 +2994,7 @@ export function InternalChekeoApp() {
       setOrdersNotice("Pago operativo actualizado localmente");
       return;
     }
+    actionOrderIdRef.current = id;
     setActionOrderId(id);
     setOrdersError(null);
     try {
@@ -2820,6 +3016,7 @@ export function InternalChekeoApp() {
       if (/UNAUTHORIZED|401/i.test(message)) expireSession();
       throw error instanceof Error ? error : new Error(message);
     } finally {
+      actionOrderIdRef.current = null;
       setActionOrderId(null);
     }
   };
@@ -2828,8 +3025,10 @@ export function InternalChekeoApp() {
     order: InternalOrder,
     origin: "pedidos" | "detalle",
   ) => {
+    const nextRequest = { order, origin };
     setOrdersError(null);
-    setCancellationRequest({ order, origin });
+    cancellationRequestRef.current = nextRequest;
+    setCancellationRequest(nextRequest);
   };
 
   const confirmCancellation = async (order: InternalOrder, reason: string) => {
@@ -2861,6 +3060,8 @@ export function InternalChekeoApp() {
       return;
     }
 
+    actionOrderIdRef.current = orderId;
+    setActionOrderId(orderId);
     setOrdersError(null);
     try {
       const updated = await updateKitchenItemV2(orderId, {
@@ -2884,6 +3085,9 @@ export function InternalChekeoApp() {
       setOrdersError(message);
       if (/UNAUTHORIZED|401/i.test(message)) expireSession();
       throw error instanceof Error ? error : new Error(message);
+    } finally {
+      actionOrderIdRef.current = null;
+      setActionOrderId(null);
     }
   };
 
@@ -2893,6 +3097,7 @@ export function InternalChekeoApp() {
     actionOrderId,
     error: ordersError,
     notice: ordersNotice,
+    highlightedOrderIds,
     sessionActive: logged,
     onSessionExpired: expireSession,
     reload: (includeTerminal?: boolean) => {
@@ -2936,7 +3141,17 @@ export function InternalChekeoApp() {
       })[tab],
     [orders, ordersSource, tab, runtime, toggleKitchenItemDone],
   );
-  if (!logged) return <InternalLogin checkingSession={checkingSession} onLogin={() => { setLogged(true); void loadLiveOrders(tab === "historial" || tab === "pagos"); }} />;
+  if (!logged)
+    return (
+      <InternalLogin
+        checkingSession={checkingSession}
+        onLogin={() => {
+          loggedRef.current = true;
+          setLogged(true);
+          void loadLiveOrders(tab === "historial" || tab === "pagos");
+        }}
+      />
+    );
   return (
     <main className="shell">
       <OperatorHeader
@@ -2944,12 +3159,21 @@ export function InternalChekeoApp() {
         source={ordersSource}
         onLogout={() => {
           void logoutInternal();
+          loggedRef.current = false;
           setLogged(false);
           setOrdersSource("mock");
           setOrders(asInternalOrders(mockOrders));
           setSelected(null);
+          cancellationRequestRef.current = null;
           setCancellationRequest(null);
+          setNewOrderNotice(null);
+          setHighlightedOrderIds(new Set());
+          orderKeysRef.current = null;
         }}
+      />
+      <NewOrderBanner
+        notice={newOrderNotice}
+        onDismiss={() => setNewOrderNotice(null)}
       />
       <OperatorTabs
         tab={tab}
@@ -2979,7 +3203,10 @@ export function InternalChekeoApp() {
       <CancellationReasonDialog
         request={cancellationRequest}
         runtime={runtime}
-        onClose={() => setCancellationRequest(null)}
+        onClose={() => {
+          cancellationRequestRef.current = null;
+          setCancellationRequest(null);
+        }}
         onConfirm={confirmCancellation}
       />
     </main>
