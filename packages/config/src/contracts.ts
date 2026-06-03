@@ -364,7 +364,7 @@ export type RaffleParticipantSummary = {
   lastOrderAt: string;
 };
 
-export type RaffleReferralBurgerWord = "BURGER" | "SMASH" | "BACON" | "PICKLES" | "CHEESE" | "FRIES";
+export type RaffleReferralBurgerWord = "BURGER" | "SMASH" | "BACON" | "PICKLES" | "PICKLE" | "CHEESE" | "FRIES" | "PAPAS" | "TOCINO" | "QUESO" | "CRUNCH" | "BBQ" | "COMBO" | "OG" | "CHEDDAR" | "KETCHUP" | "MOSTAZA";
 export type RaffleReferralStatus = "pending" | "valid" | "invalid";
 
 export type RaffleReferralCodeV2 = {

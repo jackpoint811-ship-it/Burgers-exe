@@ -21,7 +21,7 @@ type RaffleForm = {
   isActive: boolean;
 };
 
-const BURGER_WORDS = ["BURGER", "SMASH", "BACON", "PICKLES", "CHEESE", "FRIES"] as const;
+const BURGER_WORDS = ["BURGER", "SMASH", "BACON", "PICKLES", "PICKLE", "CHEESE", "FRIES", "PAPAS", "TOCINO", "QUESO", "CRUNCH", "BBQ", "COMBO", "OG", "CHEDDAR", "KETCHUP", "MOSTAZA"] as const;
 const MAX_RAFFLE_IMAGE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_RAFFLE_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
 const SAFE_IMAGE_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._/-]*$/;

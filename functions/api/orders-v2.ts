@@ -180,8 +180,16 @@ const loadActiveReferralCampaign = async (db: D1Database) => {
   return row ?? null;
 };
 
-const applyReferralCode = async (db: D1Database, params: { referralCode: string | null; orderId: string; customerPhone: string; customerName: string; now: string }) => {
+const orderHasReferralEligibleItem = (items: NormalizedPayload['items']) => items.some((item) =>
+  (item.itemKind === 'burger' || item.itemKind === 'combo') && Math.max(0, Number(item.qty) || 0) > 0
+);
+
+const applyReferralCode = async (db: D1Database, params: { referralCode: string | null; orderId: string; customerPhone: string; customerName: string; eligibleForReferral: boolean; now: string }) => {
   if (!params.referralCode) return undefined;
+  if (!params.eligibleForReferral) {
+    await safeLogOrderEvent(db, { orderId: params.orderId, type: 'RAFFLE_REFERRAL_SKIPPED', detail: { referralCode: params.referralCode, referralAccepted: false, reason: 'no_paid_burger_or_combo' }, now: params.now });
+    return false;
+  }
   try {
     const campaign = await loadActiveReferralCampaign(db);
     if (!campaign) return false;
@@ -243,10 +251,23 @@ const calculateEarnedTicketsForOrder = (order: OrderV2, campaign: RaffleCampaign
   return { burgerTickets, referralUsedTickets, totalTickets: burgerTickets + referralUsedTickets };
 };
 
+const hashReferralSeed = (seed: string) => {
+  let hash = 2166136261;
+  for (let index = 0; index < seed.length; index += 1) {
+    hash ^= seed.charCodeAt(index);
+    hash = Math.imul(hash, 16777619) >>> 0;
+  }
+  return hash;
+};
+
+const pickReferralBurgerWord = (seed: string, attempt: number) => {
+  const hash = hashReferralSeed(`${seed}:word:${attempt}`);
+  return REFERRAL_BURGER_WORDS[hash % REFERRAL_BURGER_WORDS.length];
+};
+
 const pickReferralNumber = (seed: string, attempt: number) => {
-  let hash = 0;
-  for (let index = 0; index < seed.length; index += 1) hash = (hash * 31 + seed.charCodeAt(index)) >>> 0;
-  return ((hash + attempt * 17) % 100) + 1;
+  const hash = hashReferralSeed(`${seed}:number:${attempt}`);
+  return (hash % 99) + 1;
 };
 
 const ensureCustomerReferralCode = async (db: D1Database, params: { campaign: RaffleCampaignRow; ownerName: string; ownerPhone: string; orderId: string; now: string }) => {
@@ -257,9 +278,9 @@ const ensureCustomerReferralCode = async (db: D1Database, params: { campaign: Ra
   ).bind(params.campaign.id, ownerPhone).first<ReferralCodeRow>();
   if (existingOwner?.code) return existingOwner.code;
 
-  const seed = `${params.campaign.id}:${ownerPhone}:${params.ownerName}`;
-  for (let attempt = 0; attempt < 36; attempt += 1) {
-    const burgerWord = REFERRAL_BURGER_WORDS[attempt % REFERRAL_BURGER_WORDS.length];
+  const seed = `${params.campaign.id}:${params.orderId}:${ownerPhone}:${params.ownerName}`;
+  for (let attempt = 0; attempt < 72; attempt += 1) {
+    const burgerWord = pickReferralBurgerWord(seed, attempt);
     const number = pickReferralNumber(seed, attempt);
     const code = buildReferralCodeText(params.ownerName, burgerWord, number);
     if (!code) continue;
@@ -417,7 +438,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
     const batchResult = await env.BOG_MENU_DB.batch(statements);
     if (!batchResult.every((entry) => entry.success)) return errorResponse(500, 'INTERNAL_ERROR', 'No se pudo crear la orden.');
 
-    const referralAccepted = await applyReferralCode(env.BOG_MENU_DB, { referralCode: parsed.referralCode, orderId, customerPhone: parsed.customerPhone, customerName: parsed.customerName, now });
+    const referralAccepted = await applyReferralCode(env.BOG_MENU_DB, { referralCode: parsed.referralCode, orderId, customerPhone: parsed.customerPhone, customerName: parsed.customerName, eligibleForReferral: orderHasReferralEligibleItem(parsed.items), now });
 
     const createdOrder = await fetchOrderBundle(env.BOG_MENU_DB, orderId);
     if (!createdOrder) return errorResponse(500, 'INTERNAL_ERROR', 'No se pudo recuperar la orden creada.');
