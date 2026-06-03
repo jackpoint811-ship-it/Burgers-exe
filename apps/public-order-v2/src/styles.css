@@ -1001,13 +1001,15 @@ p {
   gap: 0.45rem;
   max-width: 100%;
 }
-.hero-brand-title {
+.hero-copy-block .hero-brand-title {
   position: relative;
   display: inline-flex;
   width: fit-content;
   max-width: 100%;
   align-items: baseline;
   overflow: hidden;
+  font-size: clamp(2.25rem, 12vw, 7.5rem);
+  letter-spacing: -0.045em;
   animation:
     hero-brand-boot 1.05s steps(14, end) both,
     hero-brand-glitch 6.5s 1.8s infinite;
@@ -1015,7 +1017,7 @@ p {
   isolation: isolate;
   overflow-wrap: normal;
 }
-.hero-brand-title::before {
+.hero-copy-block .hero-brand-title::before {
   content: attr(data-text);
   position: absolute;
   inset: 0;
@@ -1034,7 +1036,8 @@ p {
 }
 .hero-brand-exe {
   color: var(--neon);
-  letter-spacing: -0.07em;
+  margin-left: 0.04em;
+  letter-spacing: 0;
   text-shadow:
     0 0 14px rgba(57, 255, 136, 0.52),
     0 0 34px rgba(57, 255, 136, 0.28);
@@ -1043,7 +1046,7 @@ p {
   display: inline-block;
   width: 0.13em;
   height: 0.72em;
-  margin-left: 0.1em;
+  margin-left: 0.08em;
   border-radius: 0.04em;
   background: linear-gradient(180deg, #d7ffe6, var(--neon));
   box-shadow: 0 0 14px rgba(57, 255, 136, 0.62);
