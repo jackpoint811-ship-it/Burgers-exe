@@ -386,6 +386,41 @@ const ProductCard = ({ item, mode, onClick, reduce, descriptionMode = "paragraph
   );
 };
 
+
+const ProductChoiceCard = ({ item, onQuickAdd, onCustomize, reduce }: { item: MenuItem; onQuickAdd: (item: MenuItem) => void; onCustomize: (item: MenuItem) => void; reduce: boolean }) => {
+  const src = resolveAssetUrl(item.imageUrl, item.imageKey);
+  const [imageFailed, setImageFailed] = useState(false);
+  const showImage = Boolean(src) && !imageFailed;
+  const kind = inferItemKind(item);
+  const ingredientBullets = getProductIngredientBullets(item);
+  const canQuickAdd = item.isAvailable && kind === "burger";
+  return (
+    <motion.article className={item.isAvailable ? "product-choice-card" : "product-choice-card unavailable"} whileTap={reduce ? undefined : { scale: 0.99 }}>
+      <div className={showImage ? "kiosk-visual" : "kiosk-visual no-image"}>
+        {showImage && src ? <img src={src} alt="" loading="lazy" onError={() => setImageFailed(true)} /> : <span>{item.name}</span>}
+      </div>
+      <div className="kiosk-body product-choice-body">
+        <span>{kind === "combo" ? "Combo" : item.category}</span>
+        <h3>{item.name}</h3>
+        {ingredientBullets.length ? (
+          <ul className="kiosk-ingredients-list">
+            {ingredientBullets.map((ingredient) => <li key={ingredient}>{ingredient}</li>)}
+          </ul>
+        ) : <p>{item.description}</p>}
+        {kind === "combo" ? <p className="combo-garnish-copy">El combo requiere elegir guarnición.</p> : null}
+        <footer>
+          <strong>{formatCurrency(item.price)}</strong>
+          <em>{item.isAvailable ? "Disponible" : "Agotado"}</em>
+        </footer>
+        <div className="product-choice-actions">
+          {canQuickAdd ? <QuestButton onClick={() => onQuickAdd(item)}>Agregar</QuestButton> : null}
+          <QuestButton className={canQuickAdd ? "ghost" : ""} disabled={!item.isAvailable} onClick={() => onCustomize(item)}>Personalizar</QuestButton>
+        </div>
+      </div>
+    </motion.article>
+  );
+};
+
 const MenuSection = ({ menuData, raffleCampaign, onExplore, onStart, reduce }: { menuData: MenuV2Response; raffleCampaign: RaffleCampaignPublicV2 | null; onExplore: (item: MenuItem) => void; onStart: () => void; reduce: boolean }) => {
   const visibleItems = menuData.items.filter((item) => item.category !== "extras");
   const comboItems = menuData.items.filter((item) => inferItemKind(item) === "combo");
@@ -449,11 +484,11 @@ const MenuInfoDialog = ({ item, onClose }: { item: MenuItem | null; onClose: () 
   );
 };
 
-const MainQuest = ({ choice, availableBurgerItems, availableComboItems, garnishes, builder, onBack, onChoice, onProduct, onSideQuest, reduce }: { choice: OrderChoice | null; availableBurgerItems: MenuItem[]; availableComboItems: MenuItem[]; garnishes: MenuItem[]; builder: BuilderDraft | null; onBack: () => void; onChoice: (choice: OrderChoice) => void; onProduct: (item: MenuItem) => void; onSideQuest: () => void; reduce: boolean }) => {
+const MainQuest = ({ choice, availableBurgerItems, availableComboItems, garnishes, builder, quickAddFeedback, onBack, onChoice, onProduct, onQuickAdd, onSideQuest, reduce }: { choice: OrderChoice | null; availableBurgerItems: MenuItem[]; availableComboItems: MenuItem[]; garnishes: MenuItem[]; builder: BuilderDraft | null; quickAddFeedback: string | null; onBack: () => void; onChoice: (choice: OrderChoice) => void; onProduct: (item: MenuItem) => void; onQuickAdd: (item: MenuItem) => void; onSideQuest: () => void; reduce: boolean }) => {
   const [openSection, setOpenSection] = useState<MainAccordionSection | null>(choice);
   useEffect(() => { if (choice) setOpenSection(choice); }, [choice]);
   const renderProductList = (items: MenuItem[], emptyTitle: string, emptyDescription: string) => (
-    items.length ? <div className="kiosk-grid">{items.map((item) => <ProductCard key={item.sku} item={item} mode="select" onClick={onProduct} reduce={reduce} descriptionMode="ingredients" />)}</div> : <div className="compact-empty"><EmptyState title={emptyTitle} description={emptyDescription} /></div>
+    items.length ? <div className="kiosk-grid">{items.map((item) => <ProductChoiceCard key={item.sku} item={item} onQuickAdd={onQuickAdd} onCustomize={onProduct} reduce={reduce} />)}</div> : <div className="compact-empty"><EmptyState title={emptyTitle} description={emptyDescription} /></div>
   );
   const accordionItems: Array<{ key: MainAccordionSection; title: string; description: string; content: JSX.Element }> = [
     {
@@ -484,7 +519,7 @@ const MainQuest = ({ choice, availableBurgerItems, availableComboItems, garnishe
       <QuestButton className="back-button" onClick={onBack}>← Volver al menú</QuestButton>
       <span className="eyebrow">Main Quest</span>
       <h2>¿Qué vas a ordenar?</h2>
-      <p className="muted section-subcopy">Abre una opción para elegir burger, combo o entrar directo por guarniciones.</p>
+      <p className="muted section-subcopy">Agrega directo o personaliza tu burger. También puedes abrir combos o entrar directo por guarniciones.</p>
       <div className="main-accordion" role="list">
         {accordionItems.map((item) => {
           const isOpen = openSection === item.key;
@@ -506,6 +541,7 @@ const MainQuest = ({ choice, availableBurgerItems, availableComboItems, garnishe
           );
         })}
       </div>
+      {quickAddFeedback ? <p className="selection-pulse" role="status" aria-live="polite">{quickAddFeedback}</p> : null}
       {builder ? <p className="selection-pulse">Seleccionado: {builder.item.name}</p> : null}
     </section>
   );
@@ -921,6 +957,7 @@ export function PublicOrderApp() {
   const [submitting, setSubmitting] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [orderConfirmation, setOrderConfirmation] = useState<OrderConfirmation | null>(null);
+  const [quickAddFeedback, setQuickAddFeedback] = useState<string | null>(null);
   const total = useMemo(() => getCartTotal(cart, menuData.items), [cart, menuData.items]);
   const count = getCartCount(cart);
   const availableBurgerItems = useMemo(() => menuData.items.filter((item) => inferItemKind(item) === "burger" && item.isAvailable), [menuData.items]);
@@ -940,6 +977,11 @@ export function PublicOrderApp() {
   useEffect(() => { infoItemRef.current = infoItem; }, [infoItem]);
   useEffect(() => { sideQuestEntryModeRef.current = sideQuestEntryMode; }, [sideQuestEntryMode]);
   useEffect(() => { const frame = window.requestAnimationFrame(scrollToTop); return () => window.cancelAnimationFrame(frame); }, [section]);
+  useEffect(() => {
+    if (!quickAddFeedback) return;
+    const timeout = window.setTimeout(() => setQuickAddFeedback(null), 3200);
+    return () => window.clearTimeout(timeout);
+  }, [quickAddFeedback]);
   useEffect(() => {
     if (orderChoice === "combo" && availableComboItems.length === 0) {
       setOrderChoice(null);
@@ -998,15 +1040,33 @@ export function PublicOrderApp() {
     const seen = new Map<string, number>();
     return entries.map((entry) => { const next = (seen.get(entry.sku) ?? 0) + 1; seen.set(entry.sku, next); return { ...entry, itemDisplayIndex: next }; });
   };
-  const beginQuest = () => { setOrderChoice(null); setBuilder(null); setExtraGarnishQuantities({}); setSideQuestError(null); setSideQuestEntryMode("builder"); setCheckoutError(null); setOrderConfirmation(null); navigate("main"); };
-  const startDirectSideQuest = () => { setBuilder(null); setOrderChoice(null); setExtraGarnishQuantities({}); setSideQuestError(null); setSideQuestEntryMode("direct"); navigate("side"); };
+  const beginQuest = () => { setOrderChoice(null); setBuilder(null); setQuickAddFeedback(null); setExtraGarnishQuantities({}); setSideQuestError(null); setSideQuestEntryMode("builder"); setCheckoutError(null); setOrderConfirmation(null); navigate("main"); };
+  const startDirectSideQuest = () => { setBuilder(null); setOrderChoice(null); setQuickAddFeedback(null); setExtraGarnishQuantities({}); setSideQuestError(null); setSideQuestEntryMode("direct"); navigate("side"); };
   const startBuilder = (item: MenuItem, source?: CartEntry) => {
     if (!item.isAvailable) return;
     const itemKind = inferItemKind(item);
     if (itemKind !== "burger" && itemKind !== "combo") return;
     setOrderChoice(itemKind);
+    setQuickAddFeedback(null);
     setBuilder({ item, itemKind, quantity: 1, units: [makeUnit(item, itemKind, 1, source)], error: null, editLineKey: source?.lineKey });
     navigate("workbench");
+  };
+  const quickAddItem = (item: MenuItem) => {
+    if (!item.isAvailable) return;
+    const itemKind = inferItemKind(item);
+    if (itemKind !== "burger" && itemKind !== "combo") return;
+    if (itemKind === "combo") return;
+    setCart((prev) => {
+      const nextIndex = prev.filter((entry) => entry.sku === item.sku).length + 1;
+      const unit = makeUnit(item, itemKind, nextIndex);
+      return reindex([...prev, unit]);
+    });
+    setBuilder(null);
+    setOrderChoice(itemKind);
+    setSideQuestError(null);
+    setCheckoutError(null);
+    setOrderConfirmation(null);
+    setQuickAddFeedback(`${item.name} agregada al ticket.`);
   };
   const updateBuilderQuantity = (quantity: number) => setBuilder((draft) => draft ? { ...draft, quantity: Math.min(3, Math.max(1, quantity)) as 1 | 2 | 3, units: Array.from({ length: Math.min(3, Math.max(1, quantity)) }, (_, index) => makeUnit(draft.item, draft.itemKind, index + 1, draft.units[index])), error: null } : draft);
   const updateBuilderUnit = (index: number, unit: CartEntry) => setBuilder((draft) => draft ? { ...draft, units: draft.units.map((entry, entryIndex) => entryIndex === index ? unit : entry), error: null } : draft);
@@ -1078,15 +1138,16 @@ export function PublicOrderApp() {
       setSubmitting(false);
     }
   };
-  const handleCreateAnother = () => { setOrderConfirmation(null); setCheckoutError(null); setCart([]); setCustomer(createEmptyCustomer()); clearDraftIdempotencyKey(); setBuilder(null); setOrderChoice(null); setExtraGarnishQuantities({}); setSideQuestError(null); setSideQuestEntryMode("builder"); navigate("menu"); };
+  const handleCreateAnother = () => { setOrderConfirmation(null); setCheckoutError(null); setCart([]); setCustomer(createEmptyCustomer()); clearDraftIdempotencyKey(); setBuilder(null); setOrderChoice(null); setQuickAddFeedback(null); setExtraGarnishQuantities({}); setSideQuestError(null); setSideQuestEntryMode("builder"); navigate("menu"); };
   const openInfoDialog = (item: MenuItem) => {
     setInfoItem(item);
     window.history.pushState({ burgersExePublicSection: sectionRef.current, modal: "menu-info" }, "", `${window.location.pathname}${window.location.search}#${sectionRef.current}-info`);
   };
-  const primaryDisabled = (section === "main" && !builder) || (section === "workbench" && !builder) || (section === "checkout" && (submitting || !cart.length));
+  const primaryDisabled = (section === "main" && !builder && !cart.length) || (section === "workbench" && !builder) || (section === "checkout" && (submitting || !cart.length));
   const showPersistentCta = section !== "success" && section !== "checkout";
   const primaryAction = () => {
     if (section === "menu") beginQuest();
+    else if (section === "main" && cart.length) { setSideQuestEntryMode("builder"); setSideQuestError(null); setQuickAddFeedback(null); navigate("side"); }
     else if (section === "main" && builder) navigate("workbench");
     else if (section === "workbench") confirmBuilder();
     else if (section === "side") addSideQuestAndCheckout();
@@ -1099,7 +1160,7 @@ export function PublicOrderApp() {
       <LoadingOverlay loading={showBoot || loadingMenu} />
       <AppHeader section={section} count={count} total={total} builder={builder} />
       {section === "menu" ? <MenuSection menuData={menuData} raffleCampaign={raffleCampaign} onExplore={openInfoDialog} onStart={beginQuest} reduce={reduce} /> : null}
-      {section === "main" ? <MainQuest choice={orderChoice} availableBurgerItems={availableBurgerItems} availableComboItems={availableComboItems} garnishes={garnishes} builder={builder} onBack={() => navigate("menu")} onChoice={(choice) => { setOrderChoice(choice); setBuilder(null); }} onProduct={startBuilder} onSideQuest={startDirectSideQuest} reduce={reduce} /> : null}
+      {section === "main" ? <MainQuest choice={orderChoice} availableBurgerItems={availableBurgerItems} availableComboItems={availableComboItems} garnishes={garnishes} builder={builder} quickAddFeedback={quickAddFeedback} onBack={() => navigate("menu")} onChoice={(choice) => { setOrderChoice(choice); setBuilder(null); setQuickAddFeedback(null); }} onProduct={startBuilder} onQuickAdd={quickAddItem} onSideQuest={startDirectSideQuest} reduce={reduce} /> : null}
       {section === "workbench" ? <Workbench builder={builder} extras={extras} garnishes={garnishes} onBack={() => navigate("main")} onQuantity={updateBuilderQuantity} onUnitChange={updateBuilderUnit} /> : null}
       {section === "side" ? <SideQuest garnishes={garnishes} selected={extraGarnishQuantities} onQuantity={(sku, quantity) => { setSideQuestError(null); setExtraGarnishQuantities((prev) => ({ ...prev, [sku]: Math.min(10, Math.max(0, quantity)) })); }} onBack={() => navigate(sideQuestEntryMode === "direct" ? "main" : "workbench")} onSkip={() => { setExtraGarnishQuantities({}); setSideQuestError(null); navigate("checkout"); }} canSkip={hasBurgerOrComboInCart} error={sideQuestError} reduce={reduce} /> : null}
       {section === "checkout" && cart.length ? <Checkout cart={cart} items={menuData.items} total={total} customer={customer} setCustomer={setCustomer} onBack={() => navigate("side") } onSubmit={handleCheckout} submitting={submitting} error={checkoutError} onEdit={editLine} onDuplicate={duplicateLine} onRemove={removeLine} /> : null}
