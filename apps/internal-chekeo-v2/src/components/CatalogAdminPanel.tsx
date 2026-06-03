@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { MenuItem, MenuV2Response, PromoCard as PromoCardType } from '@config/index';
+import type { MenuCategory, MenuItem, MenuV2Response, PromoCard as PromoCardType } from '@config/index';
 import { Button, Card } from '@ui/index';
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
@@ -10,6 +10,18 @@ type EditForm = { name: string; description: string; price: string; isAvailable:
 type PromoEditForm = { title: string; description: string; badge: string; promoLabel: string; isAvailable: boolean; isFeatured: boolean; sortOrder: string; imageUrl: string; imageKey: string };
 type ItemImageMutationResponse = { ok?: boolean; error?: string; warning?: string; item?: MenuItem; imageKey?: string; assetUrl?: string; removed?: boolean };
 type PromoMutationResponse = { ok?: boolean; error?: string; warning?: string; promo?: PromoCardType; imageKey?: string; assetUrl?: string; removed?: boolean };
+type ItemAvailabilityMutationResponse = { ok?: boolean; error?: string; item?: MenuItem };
+
+const ITEM_CATEGORY_ORDER: MenuCategory['key'][] = ['burgers', 'guarniciones', 'extras', 'drinks'];
+const ITEM_CATEGORY_LABELS: Record<MenuCategory['key'], string> = {
+  burgers: 'burgers',
+  guarniciones: 'guarniciones',
+  extras: 'extras',
+  drinks: 'drinks'
+};
+
+const isItemCategoryKey = (value: string): value is MenuCategory['key'] =>
+  ITEM_CATEGORY_ORDER.includes(value as MenuCategory['key']);
 
 const getAssetUrl = (imageUrl?: string, imageKey?: string): string | undefined => {
   const trimmedUrl = imageUrl?.trim();
@@ -51,6 +63,7 @@ export function CatalogAdminPanel() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [availabilitySavingSku, setAvailabilitySavingSku] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [removingImage, setRemovingImage] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -68,7 +81,7 @@ export function CatalogAdminPanel() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/menu-v2');
+      const res = await fetch('/api/menu-v2', { cache: 'no-store', headers: { accept: 'application/json' } });
       const data = (await res.json()) as MenuV2Response;
       setMenu(data);
     } catch {
@@ -91,6 +104,18 @@ export function CatalogAdminPanel() {
       return textOk && catOk && availabilityOk;
     });
   }, [menu, query, category, availability]);
+
+  const groupedFilteredItems = useMemo(() => {
+    const existingCategories = new Set((menu?.items ?? []).map((item) => item.category));
+    const selectedCategory = isItemCategoryKey(category) ? category : null;
+    return ITEM_CATEGORY_ORDER
+      .filter((key) => selectedCategory ? key === selectedCategory : existingCategories.has(key))
+      .map((key) => ({
+        key,
+        label: ITEM_CATEGORY_LABELS[key],
+        items: filtered.filter((item) => item.category === key).sort((a, b) => a.sortOrder - b.sortOrder)
+      }));
+  }, [category, filtered, menu?.items]);
 
   const filteredPromos = useMemo(() => {
     const q = promoQuery.toLowerCase();
@@ -279,6 +304,35 @@ export function CatalogAdminPanel() {
     }
   };
 
+
+  const setItemAvailability = async (item: MenuItem, isAvailable: boolean) => {
+    if (!canEdit || availabilitySavingSku) return;
+    setAvailabilitySavingSku(item.sku);
+    setNotice(null);
+    setError(null);
+    try {
+      const res = await fetch(`/api/menu-v2-admin/items/${encodeURIComponent(item.sku)}/availability`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ isAvailable })
+      });
+      const data = (await res.json()) as ItemAvailabilityMutationResponse;
+      if (!res.ok || !data.ok || !data.item) throw new Error(data.error ?? 'Error al actualizar disponibilidad');
+      const updatedItem = data.item;
+      setMenu((current) => current ? { ...current, items: current.items.map((entry) => (entry.sku === updatedItem.sku ? updatedItem : entry)), updatedAt: updatedItem.updatedAt ?? current.updatedAt } : current);
+      if (editing?.sku === updatedItem.sku) {
+        setEditing(updatedItem);
+        setForm((current) => current ? { ...current, isAvailable: updatedItem.isAvailable } : current);
+      }
+      setNotice(`${updatedItem.sku} marcado como ${updatedItem.isAvailable ? 'Disponible' : 'Agotado'}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error al actualizar disponibilidad');
+    } finally {
+      setAvailabilitySavingSku(null);
+    }
+  };
+
   const onSave = async () => {
     if (!editing || !form || validationError) return;
     setSaving(true);
@@ -353,7 +407,18 @@ export function CatalogAdminPanel() {
     {loading ? <Card>Cargando catálogo…</Card> : null}
     {error ? <Card className='text-rose-300'>{error}</Card> : null}
 
-    {!loading && !error && catalogTab === 'items' ? <div className='grid gap-2'>{filtered.map((item) => <Card key={item.sku} className='p-3'><div className='flex flex-wrap items-start justify-between gap-2'><div><p className='font-semibold'>{item.name} <span className='muted'>({item.sku})</span></p><p className='text-xs text-zinc-400'>{item.description}</p><p className='text-xs'>${item.price} · {item.category} · {item.isAvailable ? 'Disponible' : 'Agotado'} · Orden {item.sortOrder}</p>{item.imageKey || item.imageUrl ? <p className='break-all text-xs text-cyan-200'>Asset: {item.imageKey ?? item.imageUrl}</p> : <p className='text-xs text-zinc-500'>Asset: placeholder</p>}</div><Button disabled={!canEdit} className='border border-zinc-700 bg-zinc-900 disabled:opacity-40' onClick={() => beginEdit(item)}>Editar</Button></div></Card>)}</div> : null}
+    {!loading && !error && catalogTab === 'items' ? <div className='grid gap-3'>{groupedFilteredItems.map((group) => (
+      <section key={group.key} className='space-y-2'>
+        <div className='flex items-center justify-between gap-2 px-1'>
+          <h4 className='text-sm font-bold uppercase tracking-widest text-zinc-300'>{group.label}</h4>
+          <span className='text-xs text-zinc-500'>{group.items.length} producto{group.items.length === 1 ? '' : 's'}</span>
+        </div>
+        {group.items.length ? <div className='grid gap-2'>{group.items.map((item) => {
+          const availabilityBusy = availabilitySavingSku === item.sku;
+          return <Card key={item.sku} className={`p-3 ${item.isAvailable ? '' : 'border-rose-500/40 bg-rose-950/20'}`}><div className='grid gap-3 md:grid-cols-[1fr_auto] md:items-start'><div className='min-w-0'><div className='flex flex-wrap items-center gap-2'><p className='font-semibold'>{item.name} <span className='muted'>({item.sku})</span></p><span className={`rounded-full px-2 py-1 text-[11px] font-bold uppercase tracking-wide ${item.isAvailable ? 'bg-emerald-500/15 text-emerald-200' : 'bg-rose-500/20 text-rose-200'}`}>{item.isAvailable ? 'Disponible' : 'Agotado'}</span></div><p className='text-xs text-zinc-400'>{item.description}</p><p className='text-xs'>${item.price} · {item.category} · Orden {item.sortOrder}</p>{item.imageKey || item.imageUrl ? <p className='break-all text-xs text-cyan-200'>Asset: {item.imageKey ?? item.imageUrl}</p> : <p className='text-xs text-zinc-500'>Asset: placeholder</p>}</div><div className='grid min-w-[min(100%,18rem)] gap-2'><div className='grid grid-cols-2 gap-2' role='group' aria-label={`Disponibilidad de ${item.name}`}><Button disabled={!canEdit || availabilityBusy || item.isAvailable} className={`min-h-12 border text-sm disabled:opacity-40 ${item.isAvailable ? 'border-emerald-500 bg-emerald-400 text-black' : 'border-zinc-700 bg-zinc-900 text-zinc-200'}`} onClick={() => void setItemAvailability(item, true)}>{availabilityBusy ? 'Guardando…' : 'Disponible'}</Button><Button disabled={!canEdit || availabilityBusy || !item.isAvailable} className={`min-h-12 border text-sm disabled:opacity-40 ${!item.isAvailable ? 'border-rose-500 bg-rose-500 text-white' : 'border-zinc-700 bg-zinc-900 text-zinc-200'}`} onClick={() => void setItemAvailability(item, false)}>{availabilityBusy ? 'Guardando…' : 'Agotado'}</Button></div><Button disabled={!canEdit || availabilityBusy} className='min-h-11 border border-zinc-700 bg-zinc-900 disabled:opacity-40' onClick={() => beginEdit(item)}>Editar detalle</Button></div></div></Card>;
+        })}</div> : <Card className='border-dashed border-zinc-800 bg-zinc-950/50 p-3 text-sm text-zinc-500'>Sin productos en {group.label} para los filtros actuales.</Card>}
+      </section>
+    ))}</div> : null}
 
     {!loading && !error && catalogTab === 'promos' ? <div className='grid gap-2'>{filteredPromos.map((promo) => <Card key={promo.id} className='p-3'><div className='flex flex-wrap items-start justify-between gap-2'><div className='min-w-0'><p className='font-semibold'>{promo.title} <span className='muted'>({promo.id})</span></p><p className='text-xs text-zinc-400'>{promo.description}</p><p className='text-xs'>{promo.isAvailable ? 'Disponible' : 'Oculta'} · {promo.isFeatured ? 'Destacada' : 'No destacada'} · Orden {promo.sortOrder}</p><p className='text-xs text-zinc-300'>Badge: {promo.badge || '—'} · Promo label: {promo.promoLabel || '—'}</p>{promo.asset.imageKey || promo.asset.imageUrl ? <p className='break-all text-xs text-cyan-200'>Asset: {promo.asset.imageKey ?? promo.asset.imageUrl}</p> : <p className='text-xs text-zinc-500'>Asset: placeholder</p>}</div><Button disabled={!canEdit} className='border border-zinc-700 bg-zinc-900 disabled:opacity-40' onClick={() => beginPromoEdit(promo)}>Editar</Button></div></Card>)}</div> : null}
 
