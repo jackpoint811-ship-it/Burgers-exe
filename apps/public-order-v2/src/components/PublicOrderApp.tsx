@@ -80,6 +80,7 @@ const TRANSFER_BANK_DETAILS = {
   name: "Yolitzin Ameyali Zarate Otero",
   account: "012180015645465369",
 } as const;
+const CHECKOUT_NOTES_MAX_LENGTH = 500;
 const statusLabels: Record<string, string> = {
   new: "Nuevo",
   preparing: "En preparación",
@@ -270,6 +271,13 @@ const clearDraftIdempotencyKey = () => {
   sessionStorage.removeItem(IDEMPOTENCY_DRAFT_STORAGE);
   sessionStorage.removeItem(IDEMPOTENCY_KEY_STORAGE);
 };
+const buildCheckoutNotes = (customer: CustomerDraft): string => {
+  const paymentNotes = [
+    `Pago: ${paymentMethodLabels[customer.paymentMethod]}`,
+    customer.paymentMethod === "transfer" && customer.paymentTiming ? `Momento de pago: ${paymentTimingLabels[customer.paymentTiming]}` : "",
+  ].filter(Boolean);
+  return [`Ubicación: ${customer.location}`, ...paymentNotes, customer.notes.trim()].filter(Boolean).join("\n");
+};
 const validateCheckout = (customer: CustomerDraft, cart: CartEntry[], items: MenuItem[]) => {
   if (cart.length === 0) return "Agrega al menos un producto al ticket.";
   if (customer.name.trim().length < 2) return "Escribe tu nombre con al menos dos caracteres.";
@@ -277,7 +285,7 @@ const validateCheckout = (customer: CustomerDraft, cart: CartEntry[], items: Men
   if (!customer.location) return "Elige Torre GGA o Torre Valcob.";
   if (!PAYMENT_METHODS.has(customer.paymentMethod)) return "Elige un método de pago.";
   if (customer.paymentMethod === "transfer" && !customer.paymentTiming) return "Elige si pagarás antes o después.";
-  if (customer.notes.trim().length > 500) return "La nota general no puede superar quinientos caracteres.";
+  if (buildCheckoutNotes(customer).length > CHECKOUT_NOTES_MAX_LENGTH) return "La nota general es demasiado larga. Deja espacio para los datos de pago.";
   const unavailable = cart.find((entry) => !items.find((item) => item.sku === entry.sku && item.isAvailable));
   if (unavailable) return "Uno de los productos ya no está disponible. Actualiza el ticket antes de enviar.";
   return null;
@@ -1222,8 +1230,7 @@ export function PublicOrderApp() {
     const validationError = validateCheckout(customer, cart, menuData.items);
     if (validationError) { setCheckoutError(validationError); return; }
     const payloadItems = cart.map((entry) => ({ sku: entry.sku, name: entry.name, qty: 1, lineKey: entry.lineKey, itemDisplayIndex: entry.itemDisplayIndex, itemKind: entry.itemKind, removedIngredients: entry.removedIngredients, extras: entry.extras, burgerNote: entry.burgerNote?.trim() || undefined, garnish: entry.garnish ?? null }));
-    const paymentNotes = [`Pago: ${paymentMethodLabels[customer.paymentMethod]}`, customer.paymentMethod === "transfer" && customer.paymentTiming ? `Momento de pago: ${paymentTimingLabels[customer.paymentTiming]}` : ""].filter(Boolean);
-    const notes = [`Ubicación: ${customer.location}`, ...paymentNotes, customer.notes.trim()].filter(Boolean).join("\n");
+    const notes = buildCheckoutNotes(customer);
     const idempotencyKey = getDraftIdempotencyKey({ customer, items: cart });
     submittingRef.current = true;
     setSubmitting(true);
