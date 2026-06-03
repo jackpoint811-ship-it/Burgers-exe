@@ -144,6 +144,27 @@ const BBQ_REMOVABLE_INGREDIENTS = [
   "Pepinillos",
   "Salsa BBQ",
 ] as const;
+const OG_PRODUCT_INGREDIENTS = [
+  "Carne Especial 250g aprox",
+  "Tocino",
+  "Queso americano",
+  "Queso manchego",
+  "Jitomate",
+  "Lechuga",
+  "Pepinillos",
+  "Catsup",
+  "Mostaza",
+  "Mayonesa",
+] as const;
+const BBQ_PRODUCT_INGREDIENTS = [
+  "Carne Especial 250g aprox",
+  "Tocino",
+  "Queso americano",
+  "Queso manchego",
+  "Aros de cebolla",
+  "Pepinillos",
+  "Salsa BBQ",
+] as const;
 const REMOVABLE_INGREDIENTS_BY_SKU: Record<string, readonly string[]> = {
   "BRG-OG": OG_REMOVABLE_INGREDIENTS,
   "BURGER-OG": OG_REMOVABLE_INGREDIENTS,
@@ -165,6 +186,29 @@ const getRemovableIngredients = (item: MenuItem): string[] => {
   if (/^(?:BURGER-|HAMBURGUESA-|COMBO-)?OG$/.test(nameKey)) return [...OG_REMOVABLE_INGREDIENTS];
   if (/^(?:BURGER-|HAMBURGUESA-|COMBO-)?BBQ$/.test(nameKey)) return [...BBQ_REMOVABLE_INGREDIENTS];
   return [];
+};
+const getKnownProductIngredients = (item: MenuItem): readonly string[] | null => {
+  if (inferItemKind(item) === "combo") return null;
+
+  const skuKey = normalizeCatalogKey(item.sku);
+  const nameKey = normalizeCatalogKey(item.name);
+  if (/(^|-)OG($|-)/.test(skuKey) || /^(?:BURGER-|HAMBURGUESA-)?OG$/.test(nameKey)) return OG_PRODUCT_INGREDIENTS;
+  if (/(^|-)BBQ($|-)/.test(skuKey) || /^(?:BURGER-|HAMBURGUESA-)?BBQ$/.test(nameKey)) return BBQ_PRODUCT_INGREDIENTS;
+  return null;
+};
+const getProductIngredientBullets = (item: MenuItem): string[] => {
+  const knownIngredients = getKnownProductIngredients(item);
+  if (knownIngredients) return [...knownIngredients].slice(0, 8);
+
+  const description = item.description.trim();
+  if (!description) return [];
+
+  const parts = description
+    .split(/\s*(?:,|\s+y\s+)\s*/i)
+    .map((part) => part.trim().replace(/[.;]+$/g, ""))
+    .filter((part) => part.length > 0);
+  const uniqueParts = parts.filter((part, index) => parts.findIndex((candidate) => candidate.toLocaleLowerCase("es-MX") === part.toLocaleLowerCase("es-MX")) === index);
+  return uniqueParts.length > 1 ? uniqueParts.slice(0, 8) : [];
 };
 const makeUnit = (item: MenuItem, itemKind: TicketItemKind, index: number, source?: Partial<CartEntry>): CartEntry => ({
   sku: item.sku,
@@ -307,11 +351,12 @@ const PromoRail = ({ promos }: { promos: PromoCard[] }) => {
   );
 };
 
-const ProductCard = ({ item, mode, onClick, reduce }: { item: MenuItem; mode: "info" | "select"; onClick: (item: MenuItem) => void; reduce: boolean }) => {
+const ProductCard = ({ item, mode, onClick, reduce, descriptionMode = "paragraph" }: { item: MenuItem; mode: "info" | "select"; onClick: (item: MenuItem) => void; reduce: boolean; descriptionMode?: "paragraph" | "ingredients" }) => {
   const src = resolveAssetUrl(item.imageUrl, item.imageKey);
   const [imageFailed, setImageFailed] = useState(false);
   const showImage = Boolean(src) && !imageFailed;
   const kind = inferItemKind(item);
+  const ingredientBullets = descriptionMode === "ingredients" ? getProductIngredientBullets(item) : [];
   return (
     <motion.button
       type="button"
@@ -327,7 +372,11 @@ const ProductCard = ({ item, mode, onClick, reduce }: { item: MenuItem; mode: "i
       <div className="kiosk-body">
         <span>{kind === "combo" ? "Combo" : item.category}</span>
         <h3>{item.name}</h3>
-        <p>{item.description}</p>
+        {ingredientBullets.length ? (
+          <ul className="kiosk-ingredients-list">
+            {ingredientBullets.map((ingredient) => <li key={ingredient}>{ingredient}</li>)}
+          </ul>
+        ) : <p>{item.description}</p>}
         <footer>
           <strong>{formatCurrency(item.price)}</strong>
           <em>{item.isAvailable ? "Disponible" : "Agotado"}</em>
@@ -394,11 +443,10 @@ const MenuInfoDialog = ({ item, onClose }: { item: MenuItem | null; onClose: () 
 };
 
 const MainQuest = ({ choice, availableBurgerItems, availableComboItems, garnishes, builder, onBack, onChoice, onProduct, onSideQuest, reduce }: { choice: OrderChoice | null; availableBurgerItems: MenuItem[]; availableComboItems: MenuItem[]; garnishes: MenuItem[]; builder: BuilderDraft | null; onBack: () => void; onChoice: (choice: OrderChoice) => void; onProduct: (item: MenuItem) => void; onSideQuest: () => void; reduce: boolean }) => {
-  const initialSection: MainAccordionSection = choice ?? "burger";
-  const [openSection, setOpenSection] = useState<MainAccordionSection>(initialSection);
+  const [openSection, setOpenSection] = useState<MainAccordionSection | null>(choice);
   useEffect(() => { if (choice) setOpenSection(choice); }, [choice]);
   const renderProductList = (items: MenuItem[], emptyTitle: string, emptyDescription: string) => (
-    items.length ? <div className="kiosk-grid">{items.map((item) => <ProductCard key={item.sku} item={item} mode="select" onClick={onProduct} reduce={reduce} />)}</div> : <div className="compact-empty"><EmptyState title={emptyTitle} description={emptyDescription} /></div>
+    items.length ? <div className="kiosk-grid">{items.map((item) => <ProductCard key={item.sku} item={item} mode="select" onClick={onProduct} reduce={reduce} descriptionMode="ingredients" />)}</div> : <div className="compact-empty"><EmptyState title={emptyTitle} description={emptyDescription} /></div>
   );
   const accordionItems: Array<{ key: MainAccordionSection; title: string; description: string; content: JSX.Element }> = [
     {
@@ -435,7 +483,14 @@ const MainQuest = ({ choice, availableBurgerItems, availableComboItems, garnishe
           const isOpen = openSection === item.key;
           return (
             <article className={isOpen ? "accordion-item active" : "accordion-item"} key={item.key} role="listitem">
-              <button type="button" className="accordion-trigger" aria-expanded={isOpen} onClick={() => { setOpenSection(item.key); if (item.key === "burger" || item.key === "combo") onChoice(item.key); }}>
+              <button type="button" className="accordion-trigger" aria-expanded={isOpen} onClick={() => {
+                if (isOpen) {
+                  setOpenSection(null);
+                  return;
+                }
+                setOpenSection(item.key);
+                if (item.key === "burger" || item.key === "combo") onChoice(item.key);
+              }}>
                 <span><strong>{item.title}</strong><em>{item.description}</em></span>
                 <b aria-hidden="true">{isOpen ? "−" : "+"}</b>
               </button>
