@@ -1237,30 +1237,6 @@ p {
   padding: 0.75rem;
 }
 .raffle-prize-card p { color: #fef3c7; font-weight: 850; }
-.raffle-quest-grid { display: grid; gap: 0.55rem; }
-.raffle-quest-grid article {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 0.65rem;
-  align-items: start;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 1rem;
-  background: rgba(255, 255, 255, 0.045);
-  padding: 0.68rem;
-}
-.raffle-quest-grid article > strong {
-  display: inline-grid;
-  place-items: center;
-  width: 2rem;
-  height: 2rem;
-  color: #022c22;
-  background: #34d399;
-  border-radius: 0.8rem;
-  font-size: 0.75rem;
-  font-weight: 950;
-}
-.raffle-quest-grid h3 { margin: 0 0 0.12rem; color: #f8fafc; font-size: 0.95rem; }
-.raffle-quest-grid p { color: #cbd5e1; font-size: 0.82rem; }
 .raffle-banner-copy .raffle-rules { color: #a1a1aa; font-size: 0.78rem; white-space: pre-line; }
 .raffle-rules strong { color: #bbf7d0; }
 .raffle-detail-image {
@@ -1895,10 +1871,7 @@ p {
 }
 @media (max-width: 360px) {
   .raffle-banner-copy { padding: 0.85rem; }
-  .raffle-prize-card,
-  .raffle-quest-grid article { padding: 0.62rem; }
-  .raffle-quest-grid article { gap: 0.5rem; }
-  .raffle-quest-grid article > strong { width: 1.8rem; height: 1.8rem; border-radius: 0.68rem; }
+  .raffle-prize-card { padding: 0.62rem; }
   .success-reward-card,
   .success-referral-card { width: 100%; padding: 0.78rem; }
 }

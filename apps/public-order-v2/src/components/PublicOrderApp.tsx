@@ -227,8 +227,6 @@ const RaffleBanner = ({ campaign }: { campaign: RaffleCampaignPublicV2 | null })
   if (!campaign) return null;
   const src = resolveAssetUrl(campaign.bannerImageUrl, campaign.bannerImageKey);
   const detailSrc = resolveAssetUrl(campaign.detailImageUrl, campaign.detailImageKey);
-  const burgerTickets = ticketLabel(campaign.ticketPerBurger);
-  const referralTickets = ticketLabel(campaign.ticketPerReferral);
   return (
     <section className={`raffle-banner ${src ? "" : "raffle-banner-no-media"}`} aria-label="Sorteo activo">
       {src ? (
@@ -247,29 +245,6 @@ const RaffleBanner = ({ campaign }: { campaign: RaffleCampaignPublicV2 | null })
         ) : null}
         {campaign.rulesText ? <p className="raffle-rules"><strong>Reglas del servidor:</strong> {campaign.rulesText}</p> : null}
         {detailSrc ? <img className="raffle-detail-image" src={detailSrc} alt={`Detalles de ${campaign.title}`} loading="lazy" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : null}
-        <div className="raffle-quest-grid" aria-label="Cómo ganar tickets">
-          <article>
-            <strong>01</strong>
-            <div>
-              <h3>Pide una burger</h3>
-              <p>Cada burger pagada suma {burgerTickets} a tu inventario del sorteo.</p>
-            </div>
-          </article>
-          <article>
-            <strong>02</strong>
-            <div>
-              <h3>Comparte tu código</h3>
-              <p>Después de ordenar desbloqueas tu código gamer para invitar compas.</p>
-            </div>
-          </article>
-          <article>
-            <strong>03</strong>
-            <div>
-              <h3>Referidos válidos</h3>
-              <p>Si usan tu código y ordenan al menos 1 burger pagada, ganas {referralTickets}.</p>
-            </div>
-          </article>
-        </div>
       </div>
     </section>
   );
