@@ -394,7 +394,14 @@ const MenuSection = ({ menuData, raffleCampaign, onExplore, onStart, reduce }: {
     <section className="quest-panel hero-panel">
       <div className="hero-copy-block">
         <span className="eyebrow">Menu</span>
-        <h1>Burgers.exe</h1>
+        <div className="hero-brand-lockup">
+          <h1 className="hero-brand-title" data-text="Burgers.exe" aria-label="Burgers.exe">
+            <span className="hero-brand-name" aria-hidden="true">Burgers</span>
+            <span className="hero-brand-exe" aria-hidden="true">.exe</span>
+            <span className="hero-brand-cursor" aria-hidden="true" />
+          </h1>
+          <p className="hero-brand-status">&gt; order system online</p>
+        </div>
         <p>Elige tu burger, personalízala y confirma tu pedido.</p>
         <QuestButton onClick={onStart}>INICIAR QUEST</QuestButton>
       </div>
