@@ -814,3 +814,14 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   outline-offset: 3px;
   box-shadow: 0 0 0 3px rgba(7, 9, 15, 0.95), 0 0 0 5px var(--glow-strong);
 }
+.referral-notice {
+  margin: var(--space-2) 0 var(--space-3);
+  padding: 8px 10px;
+  border: 1px dashed var(--line-soft);
+  border-radius: var(--radius-sm);
+  background: rgba(18, 53, 30, 0.22);
+  color: #d9ffe6;
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+.referral-notice strong { color: var(--line); }

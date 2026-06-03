@@ -6,6 +6,7 @@
   var submitButton = document.getElementById('submitButton');
   var resultCard = document.getElementById('resultCard');
   var ticketsCount = document.getElementById('ticketsCount');
+  var ticketsCopy = document.getElementById('ticketsCopy');
   var customerName = document.getElementById('customerName');
   var phoneMasked = document.getElementById('phoneMasked');
   var referralCode = document.getElementById('referralCode');
@@ -40,7 +41,9 @@
   }
   function renderResult(data) {
     currentResult = data;
-    ticketsCount.textContent = String(data.ticketsCount || 0);
+    var count = Number(data.ticketsCount || 0);
+    ticketsCount.textContent = String(count);
+    ticketsCopy.textContent = 'Tienes ' + count + ' tickets.';
     customerName.textContent = data.customerName || 'Cliente Burgers.exe';
     phoneMasked.textContent = data.phoneMasked || 'Teléfono confirmado';
     referralCode.textContent = data.referralCode || '—';

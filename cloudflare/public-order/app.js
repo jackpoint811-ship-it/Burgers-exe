@@ -59,7 +59,7 @@
       step: 0,
       burgerUnits: [],
       sidesQty: {},
-      customer: { customerName: '', phone: '', location: '', paymentMethod: 'Pago mismo dia', note: '' },
+      customer: { customerName: '', phone: '', location: '', paymentMethod: 'Pago mismo dia', note: '', referralCode: '' },
       ts: Date.now()
     };
   }
@@ -111,6 +111,30 @@
   // ---------------------------------------------------------------------------
   // Generic helpers
   // ---------------------------------------------------------------------------
+
+  function normalizeReferralCode(value) {
+    return String(value || '').toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 32);
+  }
+
+  function readReferralCodeFromUrl() {
+    try {
+      return normalizeReferralCode(new URLSearchParams(window.location.search).get('ref'));
+    } catch (_error) {
+      return '';
+    }
+  }
+
+  function ensureCustomerReferralField() {
+    state.customer = state.customer || {};
+    state.customer.referralCode = normalizeReferralCode(state.customer.referralCode || '');
+  }
+
+  function applyUrlReferralCode() {
+    var referralCode = readReferralCodeFromUrl();
+    if (!referralCode) return;
+    state.customer = state.customer || {};
+    state.customer.referralCode = referralCode;
+  }
 
   function normalizeExtrasQty(raw) {
     var out = {};
@@ -369,6 +393,7 @@
       state = draft;
       state.burgerUnits = (state.burgerUnits || []).map(normalizeBurgerUnit);
       state.sidesQty = state.sidesQty || {};
+      ensureCustomerReferralField();
       return;
     }
 
@@ -384,7 +409,8 @@
         phone: draft.payload.phone || '',
         location: draft.payload.location || '',
         paymentMethod: draft.payload.paymentMethod || 'Pago mismo dia',
-        note: draft.payload.note || ''
+        note: draft.payload.note || '',
+        referralCode: normalizeReferralCode(draft.payload.referral && draft.payload.referral.code)
       };
       state.step = 0;
     }
@@ -411,7 +437,7 @@
   }
 
   function hasDraftContent() {
-    return calcOrderItemCount() > 0 || Boolean(state.customer.customerName.trim() || state.customer.phone.trim() || state.customer.location || state.customer.note.trim());
+    return calcOrderItemCount() > 0 || Boolean(state.customer.customerName.trim() || state.customer.phone.trim() || state.customer.location || state.customer.note.trim() || state.customer.referralCode);
   }
 
   function buildPayload() {
@@ -448,6 +474,10 @@
       note: state.customer.note.trim(),
       order_items: orderItems,
       items: orderItems.map(function (line) { return { sku: line.menu_item_id, qty: line.quantity }; }),
+      referral: {
+        code: state.customer.referralCode || '',
+        source: 'url'
+      },
       personalizations: {
         burgers: state.burgerUnits.map(function (u, i) {
           return {
@@ -625,8 +655,11 @@
     var paySameDaySelected = state.customer.paymentMethod === 'Pago mismo dia';
     var payBeforeSelected = state.customer.paymentMethod === 'Pagar Antes';
 
+    var referralNotice = state.customer.referralCode ? '<p class="referral-notice">Código de referido detectado: <strong>' + escapeHtml(state.customer.referralCode) + '</strong></p>' : '';
+
     return '<h2>DATOS</h2>' +
       '<p class="data-step-title">Datos para confirmar tu pedido</p>' +
+      referralNotice +
       '<p class="data-step-help">No necesitas iniciar sesión. Solo usamos estos datos para entregar y confirmar.</p>' +
       '<label class="field data-field ' + (dataStepErrors.name ? 'has-error' : '') + '" for="name"><span class="field-title">Nombre</span><span class="field-required-badge">Obligatorio</span><input id="name" autocomplete="name" placeholder="Ej. Jack R." aria-describedby="name-help' + (dataStepErrors.name ? ' name-error' : '') + '" aria-invalid="' + (dataStepErrors.name ? 'true' : 'false') + '" value="' + escapeHtml(state.customer.customerName) + '"><span class="field-help" id="name-help">Como aparece en recepción o con quien entregamos.</span></label>' +
       nameError +
@@ -673,7 +706,8 @@
       '<p>Nombre: ' + escapeHtml(state.customer.customerName || '(pendiente)') + '</p>' +
       '<p>Teléfono: ' + escapeHtml(state.customer.phone || '(pendiente)') + '</p>' +
       '<p>Ubicación: ' + escapeHtml(state.customer.location || '(pendiente)') + '</p>' +
-      '<p>Nota: ' + escapeHtml(state.customer.note || '(sin nota)') + '</p></section>' +
+      '<p>Nota: ' + escapeHtml(state.customer.note || '(sin nota)') + '</p>' +
+      (state.customer.referralCode ? '<p class="referral-notice">Código de referido detectado: <strong>' + escapeHtml(state.customer.referralCode) + '</strong></p>' : '') + '</section>' +
       '<section class="summary-section"><h3>Pago</h3><p>Forma de pago: ' + escapeHtml(state.customer.paymentMethod) + '</p><div id="paymentInfo"></div></section>' +
       '<section class="summary-section summary-total"><h3>Total del pedido</h3><p>' + money(calcTotal()) + '</p></section>' +
       (isSubmitting
@@ -1338,6 +1372,8 @@
   }
 
   restoreDraft(loadDraft());
+  ensureCustomerReferralField();
+  applyUrlReferralCode();
   redraw();
 
   fetchPublicMenu().then(function () {
