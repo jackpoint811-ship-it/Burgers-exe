@@ -426,16 +426,21 @@ export const RafflesAdminPanel = () => {
       setError("Los tickets deben ser enteros no negativos.");
       return null;
     }
+    const optionalValue = (value: string) => {
+      const trimmed = value.trim();
+      return form.id ? trimmed : trimmed || undefined;
+    };
+
     return {
       title,
-      description: form.description.trim() || undefined,
-      rulesText: form.rulesText.trim() || undefined,
-      bannerImageUrl: form.bannerImageUrl.trim() || undefined,
-      bannerImageKey: form.bannerImageKey.trim() || undefined,
-      detailImageUrl: form.detailImageUrl.trim() || undefined,
-      detailImageKey: form.detailImageKey.trim() || undefined,
-      startsAt: form.startsAt.trim() || undefined,
-      endsAt: form.endsAt.trim() || undefined,
+      description: optionalValue(form.description),
+      rulesText: optionalValue(form.rulesText),
+      bannerImageUrl: optionalValue(form.bannerImageUrl),
+      bannerImageKey: optionalValue(form.bannerImageKey),
+      detailImageUrl: optionalValue(form.detailImageUrl),
+      detailImageKey: optionalValue(form.detailImageKey),
+      startsAt: optionalValue(form.startsAt),
+      endsAt: optionalValue(form.endsAt),
       ticketPerBurger,
       ticketPerReferral,
       isActive: form.isActive,
