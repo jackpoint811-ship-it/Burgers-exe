@@ -1132,6 +1132,30 @@ p {
   -webkit-line-clamp: 2;
   overflow-wrap: anywhere;
 }
+.kiosk-ingredients-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.32rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.kiosk-ingredients-list li {
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(57, 255, 136, 0.18);
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(57, 255, 136, 0.1), rgba(255, 209, 102, 0.06));
+  color: #d9fff0;
+  padding: 0.18rem 0.42rem;
+  font-size: clamp(0.68rem, 3.4vw, 0.76rem);
+  font-weight: 800;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .kiosk-body footer, .ticket-item > div, .unit-editor header, .checkout-total { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .kiosk-body footer {
   flex-wrap: wrap;
