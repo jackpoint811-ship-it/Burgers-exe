@@ -1216,23 +1216,58 @@ p {
 
 .raffle-banner-media { min-height: 8.5rem; background: rgba(5, 150, 105, 0.08); }
 .raffle-banner-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.raffle-banner-copy { padding: 1rem 1rem 1rem 0; }
-.raffle-banner-copy span {
+.raffle-banner-no-media { grid-template-columns: 1fr; }
+.raffle-banner-copy { display: grid; gap: 0.8rem; padding: 1rem 1rem 1rem 0; }
+.raffle-banner-copy .raffle-kicker,
+.raffle-prize-card span {
   color: #6ee7b7;
   font-size: 0.68rem;
   font-weight: 900;
   letter-spacing: 0.22em;
   text-transform: uppercase;
 }
-.raffle-banner-copy h2 { margin: 0.25rem 0; color: #f8fafc; font-size: clamp(1.15rem, 5vw, 1.8rem); font-weight: 950; }
-.raffle-banner-copy p { margin: 0.3rem 0 0; color: #d4d4d8; font-size: 0.9rem; line-height: 1.45; }
+.raffle-banner-copy h2 { margin: 0; color: #f8fafc; font-size: clamp(1.35rem, 6vw, 2.15rem); font-weight: 950; letter-spacing: -0.04em; line-height: 0.98; }
+.raffle-banner-copy p { margin: 0; color: #d4d4d8; font-size: 0.9rem; line-height: 1.45; }
+.raffle-prize-card {
+  display: grid;
+  gap: 0.3rem;
+  border: 1px solid rgba(251, 191, 36, 0.28);
+  border-radius: 1rem;
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.14), rgba(52, 211, 153, 0.08));
+  padding: 0.75rem;
+}
+.raffle-prize-card p { color: #fef3c7; font-weight: 850; }
+.raffle-quest-grid { display: grid; gap: 0.55rem; }
+.raffle-quest-grid article {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: start;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 0.68rem;
+}
+.raffle-quest-grid article > strong {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  color: #022c22;
+  background: #34d399;
+  border-radius: 0.8rem;
+  font-size: 0.75rem;
+  font-weight: 950;
+}
+.raffle-quest-grid h3 { margin: 0 0 0.12rem; color: #f8fafc; font-size: 0.95rem; }
+.raffle-quest-grid p { color: #cbd5e1; font-size: 0.82rem; }
 .raffle-banner-copy .raffle-rules { color: #a1a1aa; font-size: 0.78rem; white-space: pre-line; }
-.raffle-banner-copy strong { display: inline-flex; margin-top: 0.65rem; color: #022c22; background: #34d399; border-radius: 999px; padding: 0.45rem 0.7rem; font-size: 0.82rem; font-weight: 950; }
+.raffle-rules strong { color: #bbf7d0; }
 
 @media (max-width: 640px) {
-  .raffle-banner { grid-template-columns: 1fr; }
+  .raffle-banner { grid-template-columns: 1fr; gap: 0; }
   .raffle-banner-media { min-height: 7rem; max-height: 9rem; }
-  .raffle-banner-copy { padding: 0 1rem 1rem; }
+  .raffle-banner-copy { padding: 1rem; }
 }
 .field-label small { color: var(--muted); font-size: 0.78rem; font-weight: 650; }
 .success-note { border: 1px solid rgba(52, 211, 153, 0.38); border-radius: 14px; background: rgba(52, 211, 153, 0.1); color: #bbf7d0 !important; padding: 10px 12px; }
@@ -1825,4 +1860,32 @@ p {
   .success-details dd {
     text-align: left;
   }
+}
+
+
+/* Raffle + success clarity refinements (mobile-first, no horizontal body overflow). */
+.success-raffle-title,
+.success-referral-lead {
+  margin: 0;
+  color: #d1fae5;
+  font-weight: 850;
+}
+.success-copy-status.muted { color: var(--muted) !important; }
+.success-referral-code {
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow-x: visible;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.08;
+}
+@media (max-width: 360px) {
+  .raffle-banner-copy { padding: 0.85rem; }
+  .raffle-prize-card,
+  .raffle-quest-grid article { padding: 0.62rem; }
+  .raffle-quest-grid article { gap: 0.5rem; }
+  .raffle-quest-grid article > strong { width: 1.8rem; height: 1.8rem; border-radius: 0.68rem; }
+  .success-reward-card,
+  .success-referral-card { width: 100%; padding: 0.78rem; }
 }

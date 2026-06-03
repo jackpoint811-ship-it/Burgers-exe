@@ -221,22 +221,53 @@ const AppHeader = ({ section, count, total, builder }: { section: QuestSection; 
   );
 };
 
+const ticketLabel = (count: number) => `${count} ticket${count === 1 ? "" : "s"}`;
+
 const RaffleBanner = ({ campaign }: { campaign: RaffleCampaignPublicV2 | null }) => {
   if (!campaign) return null;
   const src = resolveAssetUrl(campaign.bannerImageUrl, campaign.bannerImageKey);
+  const burgerTickets = ticketLabel(campaign.ticketPerBurger);
+  const referralTickets = ticketLabel(campaign.ticketPerReferral);
   return (
-    <section className="raffle-banner" aria-label="Sorteo activo">
+    <section className={`raffle-banner ${src ? "" : "raffle-banner-no-media"}`} aria-label="Sorteo activo">
       {src ? (
         <div className="raffle-banner-media">
           <img src={src} alt={campaign.title} loading="lazy" onError={(event) => { event.currentTarget.style.display = "none"; }} />
         </div>
       ) : null}
       <div className="raffle-banner-copy">
-        <span>Sorteo activo</span>
+        <span className="raffle-kicker">Sorteo activo · loot disponible</span>
         <h2>{campaign.title}</h2>
-        {campaign.description ? <p>{campaign.description}</p> : null}
-        {campaign.rulesText ? <p className="raffle-rules">{campaign.rulesText}</p> : null}
-        <strong>{campaign.ticketPerBurger || 1} ticket por burger pedida · {campaign.ticketPerReferral || 2} tickets por amigo invitado.</strong>
+        {campaign.description ? (
+          <div className="raffle-prize-card">
+            <span>Qué puedes ganar</span>
+            <p>{campaign.description}</p>
+          </div>
+        ) : null}
+        <div className="raffle-quest-grid" aria-label="Cómo ganar tickets">
+          <article>
+            <strong>01</strong>
+            <div>
+              <h3>Pide una burger</h3>
+              <p>Cada burger pagada suma {burgerTickets} a tu inventario del sorteo.</p>
+            </div>
+          </article>
+          <article>
+            <strong>02</strong>
+            <div>
+              <h3>Comparte tu código</h3>
+              <p>Después de ordenar desbloqueas tu código gamer para invitar compas.</p>
+            </div>
+          </article>
+          <article>
+            <strong>03</strong>
+            <div>
+              <h3>Referidos válidos</h3>
+              <p>Si usan tu código y ordenan al menos 1 burger pagada, ganas {referralTickets}.</p>
+            </div>
+          </article>
+        </div>
+        {campaign.rulesText ? <p className="raffle-rules"><strong>Reglas del servidor:</strong> {campaign.rulesText}</p> : null}
       </div>
     </section>
   );
@@ -470,7 +501,7 @@ const Checkout = ({ cart, items, total, customer, setCustomer, onBack, onSubmit,
       <label className="field-label">Nombre<input value={customer.name} onChange={(event) => setCustomer({ ...customer, name: event.target.value })} placeholder="Tu nombre" /></label>
       <label className="field-label">Teléfono<input inputMode="tel" value={customer.phone} onChange={(event) => setCustomer({ ...customer, phone: event.target.value })} placeholder="55 0000 0000" /></label>
       <label className="field-label wide">Nota general opcional<textarea maxLength={500} value={customer.notes} onChange={(event) => setCustomer({ ...customer, notes: event.target.value })} placeholder="Nota general del pedido" /></label>
-      <label className="field-label wide">Código de invitado<input value={customer.referralCode} onChange={(event) => setCustomer({ ...customer, referralCode: event.target.value.toUpperCase() })} placeholder="CARLOS-BURGER-27" maxLength={32} /><small>Si alguien te invitó, escribe su código. No es obligatorio.</small></label>
+      <label className="field-label wide">Código de invitado<input value={customer.referralCode} onChange={(event) => setCustomer({ ...customer, referralCode: event.target.value.toUpperCase() })} placeholder="CARLOS-BURGER-27" maxLength={32} /><small>Si alguien te invitó, escribe su código. Solo ayuda a tu compa si este pedido incluye al menos 1 burger pagada.</small></label>
       <div className="builder-block"><h4>Ubicación</h4><div className="chip-grid">{LOCATIONS.map((location) => <button type="button" key={location} className={customer.location === location ? "chip active" : "chip"} onClick={() => setCustomer({ ...customer, location })}>{location}</button>)}</div></div>
       <label className="field-label">Pago<select value={customer.paymentMethod} onChange={(event) => setCustomer({ ...customer, paymentMethod: event.target.value as OrderV2PaymentMethod })}><option value="unknown">Seleccionar</option><option value="cash">Efectivo</option><option value="transfer">Transferencia</option><option value="card">Tarjeta</option></select></label>
     </div>
@@ -480,9 +511,11 @@ const Checkout = ({ cart, items, total, customer, setCustomer, onBack, onSubmit,
   </section>
 );
 
-const Success = ({ order, onCreateAnother }: { order: OrderConfirmation; onCreateAnother: () => void }) => {
+const Success = ({ order, campaign, onCreateAnother }: { order: OrderConfirmation; campaign: RaffleCampaignPublicV2 | null; onCreateAnother: () => void }) => {
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
   const earnedTickets = order.earnedTickets;
+  const raffleTitle = order.activeRaffleTitle ?? campaign?.title;
+  const referralRewardCopy = campaign ? `${ticketLabel(campaign.ticketPerReferral)} extra` : "tickets extra";
   const copyReferralCode = async () => {
     if (!order.customerReferralCode) return;
     try {
@@ -511,21 +544,23 @@ const Success = ({ order, onCreateAnother }: { order: OrderConfirmation; onCreat
       <p className="success-whatsapp">Te avisaremos por WhatsApp cuando tu pedido esté listo.</p>
       <p className="muted success-status">Estado: {statusLabels[order.status] ?? order.status}</p>
       {earnedTickets ? <article className="success-reward-card">
-        <span className="eyebrow">Tickets ganados por esta orden</span>
+        <span className="eyebrow">Loot desbloqueado</span>
         <strong className="success-ticket-total">+{earnedTickets.totalTickets} tickets</strong>
+        {raffleTitle ? <p className="success-raffle-title">Van para: {raffleTitle}</p> : null}
         <ul>
-          <li>Burgers/combos: +{earnedTickets.burgerTickets}</li>
-          {earnedTickets.referralUsedTickets > 0 ? <li>Código aplicado: +{earnedTickets.referralUsedTickets}</li> : null}
+          <li>Burgers/combos de tu pedido: +{earnedTickets.burgerTickets}</li>
+          {earnedTickets.referralUsedTickets > 0 ? <li>Código de invitado aplicado: +{earnedTickets.referralUsedTickets}</li> : null}
         </ul>
-        {order.referralAccepted === true && earnedTickets.referralUsedTickets === 0 ? <p>Código aplicado. Los tickets de referido se asignan a quien te invitó.</p> : null}
+        {order.referralAccepted === true && earnedTickets.referralUsedTickets === 0 ? <p>Tu código invitado quedó aplicado. Los tickets de referido se asignan a quien te compartió el código.</p> : null}
       </article> : null}
       {order.customerReferralCode ? <article className="success-referral-card">
-        <span className="eyebrow">Tu código para invitar</span>
+        <span className="eyebrow">Power-up de invitado</span>
+        <p className="success-referral-lead">Comparte este código. Si tu compa lo usa y ordena al menos 1 burger pagada, tú ganas {referralRewardCopy}.</p>
         <strong className="success-referral-code">{order.customerReferralCode}</strong>
-        {order.activeRaffleTitle ? <p>Sorteo activo: {order.activeRaffleTitle}</p> : null}
-        <p>Comparte tu código. Por cada amigo que haga pedido con tu código ganas 2 tickets.</p>
-        <QuestButton className="ghost" onClick={copyReferralCode}>Copiar código</QuestButton>
-        {copyStatus === "copied" ? <p className="success-copy-status">Código copiado.</p> : null}
+        {raffleTitle ? <p>Sorteo activo: {raffleTitle}</p> : null}
+        <QuestButton className="ghost" onClick={copyReferralCode}>{copyStatus === "copied" ? "Código copiado ✅" : "Copiar código"}</QuestButton>
+        {copyStatus === "idle" ? <p className="success-copy-status muted">Toca copiar y pégalo en WhatsApp, Discord o donde armen la raid.</p> : null}
+        {copyStatus === "copied" ? <p className="success-copy-status">Copiado al portapapeles. GG.</p> : null}
         {copyStatus === "error" ? <p className="success-copy-status error">No se pudo copiar automático. Mantén presionado el código para copiarlo manualmente.</p> : null}
       </article> : null}
       {order.referralAccepted === true && !earnedTickets ? <p className="success-note">Código de invitado aplicado.</p> : null}
@@ -691,7 +726,7 @@ export function PublicOrderApp() {
       {section === "workbench" ? <Workbench builder={builder} extras={extras} garnishes={garnishes} onBack={() => navigate("main")} onQuantity={updateBuilderQuantity} onUnitChange={updateBuilderUnit} /> : null}
       {section === "side" ? <SideQuest garnishes={garnishes} selected={extraGarnishQuantities} onQuantity={(sku, quantity) => setExtraGarnishQuantities((prev) => ({ ...prev, [sku]: Math.min(10, Math.max(0, quantity)) }))} onBack={() => navigate("workbench")} onSkip={() => { setExtraGarnishQuantities({}); navigate("checkout"); }} reduce={reduce} /> : null}
       {section === "checkout" && cart.length ? <Checkout cart={cart} items={menuData.items} total={total} customer={customer} setCustomer={setCustomer} onBack={() => navigate(cart.length ? "side" : "menu")} onSubmit={handleCheckout} submitting={submitting} error={checkoutError} onEdit={editLine} onDuplicate={duplicateLine} onRemove={removeLine} /> : null}
-      {section === "success" && orderConfirmation ? <Success order={orderConfirmation} onCreateAnother={handleCreateAnother} /> : null}
+      {section === "success" && orderConfirmation ? <Success order={orderConfirmation} campaign={raffleCampaign} onCreateAnother={handleCreateAnother} /> : null}
       <MenuInfoDialog item={infoItem} onClose={() => setInfoItem(null)} />
       <PersistentCta section={section} count={count} total={total} disabled={primaryDisabled} submitting={submitting} onClick={primaryAction} builder={builder} />
     </main>
