@@ -123,13 +123,46 @@ const inferItemKind = (item: MenuItem): TicketItemKind => {
   if (item.category === "drinks") return "drink";
   return "other";
 };
-const inferIngredients = (item: MenuItem) => {
-  const stop = new Set(["burger", "burgers", "smash", "signature", "spicy", "combo", "hot", "best seller"]);
-  return item.description
-    .replace(/[.]/g, "")
-    .split(/,|\+| y | con /i)
-    .map((part) => part.trim())
-    .filter((part) => part.length > 2 && !/\bpan\b/i.test(part) && !stop.has(part.toLowerCase()));
+const OG_REMOVABLE_INGREDIENTS = [
+  "Tocino",
+  "Queso americano",
+  "Queso manchego",
+  "Jitomate",
+  "Lechuga",
+  "Pepinillos",
+  "Catsup",
+  "Mostaza",
+  "Mayonesa",
+] as const;
+const BBQ_REMOVABLE_INGREDIENTS = [
+  "Tocino",
+  "Queso americano",
+  "Queso manchego",
+  "Aros de cebolla",
+  "Pepinillos",
+  "Salsa BBQ",
+] as const;
+const REMOVABLE_INGREDIENTS_BY_SKU: Record<string, readonly string[]> = {
+  "BRG-OG": OG_REMOVABLE_INGREDIENTS,
+  "BURGER-OG": OG_REMOVABLE_INGREDIENTS,
+  "COMBO-OG": OG_REMOVABLE_INGREDIENTS,
+  "PROMO-COMBO-OG": OG_REMOVABLE_INGREDIENTS,
+  OG: OG_REMOVABLE_INGREDIENTS,
+  "BRG-BBQ": BBQ_REMOVABLE_INGREDIENTS,
+  "BURGER-BBQ": BBQ_REMOVABLE_INGREDIENTS,
+  "COMBO-BBQ": BBQ_REMOVABLE_INGREDIENTS,
+  "PROMO-COMBO-BBQ": BBQ_REMOVABLE_INGREDIENTS,
+  BBQ: BBQ_REMOVABLE_INGREDIENTS,
+};
+const normalizeCatalogKey = (value: string) => value.trim().toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-|-$/g, "");
+const getRemovableIngredients = (item: MenuItem): string[] => {
+  const skuIngredients = REMOVABLE_INGREDIENTS_BY_SKU[normalizeCatalogKey(item.sku)];
+  if (skuIngredients) return [...skuIngredients];
+
+  const nameKey = normalizeCatalogKey(item.name);
+  if (/^(?:BURGER-|HAMBURGUESA-|COMBO-)?OG$/.test(nameKey)) return [...OG_REMOVABLE_INGREDIENTS];
+  if (/^(?:BURGER-|HAMBURGUESA-|COMBO-)?BBQ$/.test(nameKey)) return [...BBQ_REMOVABLE_INGREDIENTS];
+  return [];
 };
 const makeUnit = (item: MenuItem, itemKind: TicketItemKind, index: number, source?: Partial<CartEntry>): CartEntry => ({
   sku: item.sku,
@@ -138,7 +171,7 @@ const makeUnit = (item: MenuItem, itemKind: TicketItemKind, index: number, sourc
   lineKey: source?.lineKey ?? createId("line"),
   itemDisplayIndex: index,
   itemKind,
-  removedIngredients: [...(source?.removedIngredients ?? [])],
+  removedIngredients: (source?.removedIngredients ?? []).filter((ingredient) => getRemovableIngredients(item).includes(ingredient)),
   extras: [...(source?.extras ?? [])],
   burgerNote: source?.burgerNote ?? "",
   garnish: itemKind === "burger" ? null : (source?.garnish ?? null),
@@ -386,17 +419,22 @@ const QuantityControl = ({ value, onChange, min = 1, max = 3, label = "Cantidad 
 );
 
 const UnitEditor = ({ unit, index, item, extras, garnishes, onChange }: { unit: CartEntry; index: number; item: MenuItem; extras: MenuItem[]; garnishes: MenuItem[]; onChange: (unit: CartEntry) => void }) => {
-  const ingredients = inferIngredients(item);
+  const ingredients = getRemovableIngredients(item);
   const isBurgerLike = unit.itemKind === "burger" || unit.itemKind === "combo";
   return (
     <article className="unit-editor">
-      <header><h3>{unit.name} #{index + 1}</h3><span>{unit.itemKind === "combo" ? "Combo" : "Burger"}</span></header>
-      {isBurgerLike ? <p className="muted">Pan incluido · no editable</p> : null}
-      {isBurgerLike ? <div className="builder-block"><h4>MOD</h4><p className="builder-hint">Quita ingredientes.</p>{ingredients.length ? <div className="chip-grid">{ingredients.map((ingredient) => {
+      <header className="unit-editor-header">
+        <div>
+          <h3>Burger #{index + 1}</h3>
+          <span className="product-chip">{unit.name}</span>
+        </div>
+        <strong className="status-badge">Personalizando</strong>
+      </header>
+      {isBurgerLike ? <div className="builder-block mod-block"><div className="builder-block-head"><h4>MOD</h4><p className="builder-hint">Quita ingredientes incluidos en esta burger.</p></div>{ingredients.length ? <div className="chip-grid mod-chip-grid">{ingredients.map((ingredient) => {
         const active = unit.removedIngredients.includes(ingredient);
-        return <button type="button" key={ingredient} className={active ? "chip active" : "chip"} onClick={() => onChange({ ...unit, removedIngredients: active ? unit.removedIngredients.filter((entry) => entry !== ingredient) : [...unit.removedIngredients, ingredient] })}>Sin {ingredient}</button>;
-      })}</div> : <p className="muted">Sin ingredientes editables para esta burger.</p>}</div> : null}
-      {isBurgerLike ? <div className="builder-block"><h4>UPGRADE</h4><p className="builder-hint">Agrega extras. Puedes sumar múltiples piezas del mismo extra.</p>{extras.length ? <div className="chip-grid">{extras.map((extra) => {
+        return <button type="button" key={ingredient} className={active ? "chip mod-chip active" : "chip mod-chip"} aria-pressed={active} onClick={() => onChange({ ...unit, removedIngredients: active ? unit.removedIngredients.filter((entry) => entry !== ingredient) : [...unit.removedIngredients, ingredient] })}>Sin {ingredient}</button>;
+      })}</div> : <p className="muted unavailable-mod-copy">Esta burger no tiene MOD disponible por ahora.</p>}</div> : null}
+      {isBurgerLike ? <div className="builder-block upgrade-block"><div className="builder-block-head"><h4>UPGRADE</h4><p className="builder-hint">Agrega extras por pieza. Puedes sumar más de uno.</p></div>{extras.length ? <div className="upgrade-grid">{extras.map((extra) => {
         const quantity = unit.extras.filter((entry) => entry.sku === extra.sku).length;
         const removeOne = () => {
           let removed = false;
@@ -405,7 +443,7 @@ const UnitEditor = ({ unit, index, item, extras, garnishes, onChange }: { unit: 
             return true;
           }) });
         };
-        return <div className={quantity ? "side-card active" : "side-card"} key={extra.sku}><button type="button" className={quantity ? "chip active" : "chip"} onClick={() => onChange({ ...unit, extras: [...unit.extras, { sku: extra.sku, name: extra.name, price: extra.price }] })}>{extra.name} +{formatCurrency(extra.price)}</button>{quantity ? <QuantityControl value={quantity} min={0} max={10} label={`Cantidad de ${extra.name}`} onChange={(nextQty) => {
+        return <div className={quantity ? "upgrade-card active" : "upgrade-card"} key={extra.sku}><button type="button" className={quantity ? "chip upgrade-chip active" : "chip upgrade-chip"} aria-pressed={quantity > 0} onClick={() => onChange({ ...unit, extras: [...unit.extras, { sku: extra.sku, name: extra.name, price: extra.price }] })}><span>{extra.name}</span><strong>+{formatCurrency(extra.price)}</strong>{quantity ? <em>{quantity}</em> : null}</button>{quantity ? <div className="upgrade-controls"><QuantityControl value={quantity} min={0} max={10} label={`Cantidad de ${extra.name}`} onChange={(nextQty) => {
           if (nextQty > quantity) onChange({ ...unit, extras: [...unit.extras, ...Array.from({ length: nextQty - quantity }, () => ({ sku: extra.sku, name: extra.name, price: extra.price }))] });
           else if (nextQty < quantity) {
             const remainingToRemove = quantity - nextQty;
@@ -415,10 +453,10 @@ const UnitEditor = ({ unit, index, item, extras, garnishes, onChange }: { unit: 
               return true;
             }) });
           }
-        }} /> : null}{quantity ? <button type="button" className="chip" onClick={removeOne}>Quitar uno</button> : null}</div>;
+        }} /><button type="button" className="remove-extra-button" onClick={removeOne}>Quitar uno</button></div> : null}</div>;
       })}</div> : <p className="muted">Sin extras disponibles.</p>}</div> : null}
-      {unit.itemKind === "combo" ? <div className="builder-block"><h4>Guarnición incluida</h4>{garnishes.length ? <div className="chip-grid">{garnishes.map((garnish) => <button type="button" key={garnish.sku} className={unit.garnish?.sku === garnish.sku ? "chip active" : "chip"} onClick={() => onChange({ ...unit, garnish: { sku: garnish.sku, name: garnish.name } })}>{garnish.name}</button>)}</div> : <p className="inline-error">No hay guarniciones disponibles para confirmar este combo.</p>}</div> : null}
-      {isBurgerLike ? <label className="field-label">Nota por burger opcional<textarea maxLength={220} value={unit.burgerNote ?? ""} onChange={(event) => onChange({ ...unit, burgerNote: event.target.value })} placeholder="Ej. bien cocida" /></label> : null}
+      {unit.itemKind === "combo" ? <div className="builder-block"><div className="builder-block-head"><h4>Guarnición incluida</h4></div>{garnishes.length ? <div className="chip-grid">{garnishes.map((garnish) => <button type="button" key={garnish.sku} className={unit.garnish?.sku === garnish.sku ? "chip active" : "chip"} onClick={() => onChange({ ...unit, garnish: { sku: garnish.sku, name: garnish.name } })}>{garnish.name}</button>)}</div> : <p className="inline-error">No hay guarniciones disponibles para confirmar este combo.</p>}</div> : null}
+      {isBurgerLike ? <label className="field-label burger-note-label">Nota por burger opcional<textarea maxLength={220} value={unit.burgerNote ?? ""} onChange={(event) => onChange({ ...unit, burgerNote: event.target.value })} placeholder="Ej. bien cocida" /></label> : null}
     </article>
   );
 };
@@ -428,7 +466,7 @@ const Workbench = ({ builder, extras, garnishes, onBack, onQuantity, onUnitChang
     <QuestButton className="ghost" onClick={onBack}>Regresar</QuestButton>
     <span className="eyebrow">Workbench</span>
     <h2>{builder ? builder.item.name : "Selecciona producto"}</h2>
-    <p className="muted section-subcopy">Personaliza cada burger.</p>
+    <p className="muted section-subcopy">Ajusta ingredientes y agrega extras por burger.</p>
     {builder ? <><QuantityControl value={builder.quantity} onChange={onQuantity} /><div className="unit-stack">{builder.units.map((unit, index) => <UnitEditor key={unit.lineKey} unit={unit} index={index} item={builder.item} extras={extras} garnishes={garnishes} onChange={(next) => onUnitChange(index, next)} />)}</div>{builder.error ? <p className="inline-error" role="alert">{builder.error}</p> : null}</> : <EmptyState title="Sin producto activo" description="Regresa a Main Quest y elige una hamburguesa o combo." />}
   </section>
 );
