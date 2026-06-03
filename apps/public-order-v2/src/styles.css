@@ -1048,28 +1048,114 @@ p {
 .menu-cluster h2, .quest-panel > h2 { margin: 8px 0 4px; font-size: clamp(1.7rem, 8vw, 3.5rem); letter-spacing: -0.06em; }
 .kiosk-grid { display: grid; gap: 14px; }
 .kiosk-card {
+  min-width: 0;
   min-height: 100%;
   overflow: hidden;
   display: grid;
-  grid-template-rows: 190px 1fr;
+  grid-template-rows: auto 1fr;
   padding: 0;
   text-align: left;
   border: 1px solid rgba(234, 255, 240, 0.12);
   border-radius: 26px;
-  background: rgba(4, 10, 8, 0.82);
+  background:
+    linear-gradient(180deg, rgba(9, 18, 15, 0.94), rgba(3, 7, 6, 0.9)),
+    rgba(4, 10, 8, 0.82);
   color: var(--text);
   box-shadow: 0 18px 52px rgba(0, 0, 0, 0.34);
 }
 .kiosk-card:disabled { opacity: 0.5; }
-.kiosk-visual { display: grid; place-items: center; min-height: 190px; background: radial-gradient(circle, rgba(57, 255, 136, 0.18), rgba(255, 255, 255, 0.03) 58%, rgba(0, 0, 0, 0.18)); color: var(--neon); font-weight: 950; text-align: center; padding: 18px; }
-.kiosk-visual img { width: 100%; height: 100%; object-fit: cover; }
-.kiosk-body { display: grid; gap: 8px; padding: 16px; }
-.kiosk-body span { color: var(--neon); font-size: 0.72rem; font-weight: 950; text-transform: uppercase; letter-spacing: 0.12em; }
+.kiosk-visual {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  min-height: unset;
+  overflow: hidden;
+  border-bottom: 1px solid rgba(57, 255, 136, 0.12);
+  background:
+    radial-gradient(circle at 50% 42%, rgba(57, 255, 136, 0.2), transparent 54%),
+    radial-gradient(circle at 20% 16%, rgba(255, 209, 102, 0.12), transparent 30%),
+    linear-gradient(135deg, rgba(7, 14, 12, 0.98), rgba(2, 5, 4, 0.9));
+  color: var(--neon);
+  font-weight: 950;
+  text-align: center;
+  padding: 0.35rem;
+}
+.kiosk-visual img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 20px;
+  object-fit: contain;
+  object-position: center;
+  filter: drop-shadow(0 18px 22px rgba(0, 0, 0, 0.42));
+}
+.kiosk-body {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 0.35rem;
+  padding: 0.85rem;
+}
+.kiosk-body span {
+  width: fit-content;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--neon);
+  border: 1px solid rgba(57, 255, 136, 0.24);
+  border-radius: 999px;
+  background: rgba(57, 255, 136, 0.08);
+  padding: 0.18rem 0.48rem;
+  font-size: 0.66rem;
+  font-weight: 950;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+}
 .kiosk-body h3, .kiosk-body p { margin: 0; }
-.kiosk-body p { color: var(--muted); }
+.kiosk-body h3 {
+  color: #fff;
+  font-size: clamp(1.08rem, 5vw, 1.35rem);
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+.kiosk-body p {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
+}
 .kiosk-body footer, .ticket-item > div, .unit-editor header, .checkout-total { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.kiosk-body footer {
+  flex-wrap: wrap;
+  gap: 0.45rem 0.75rem;
+  margin-top: auto;
+  padding-top: 0.15rem;
+}
 .kiosk-body strong, .checkout-total strong, .ticket-item strong { color: var(--amber); font-size: 1.18rem; }
-.kiosk-body em { color: var(--neon); font-style: normal; font-weight: 800; }
+.kiosk-body strong { line-height: 1; }
+.kiosk-body em {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border: 1px solid rgba(57, 255, 136, 0.26);
+  border-radius: 999px;
+  background: rgba(57, 255, 136, 0.09);
+  color: var(--neon);
+  padding: 0.22rem 0.55rem;
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
 .dialog-backdrop {
   position: fixed;
   inset: 0;
@@ -1325,12 +1411,14 @@ p {
   min-height: 0;
 }
 .kiosk-visual {
-  min-height: 0;
-  height: 150px;
+  min-height: unset;
+  height: auto;
+  aspect-ratio: 1 / 1;
 }
 .kiosk-visual.no-image {
   height: auto;
   min-height: 58px;
+  aspect-ratio: auto;
   place-items: start;
   padding: 12px 14px;
   background:
@@ -1440,7 +1528,8 @@ p {
     gap: 10px;
   }
   .kiosk-visual {
-    height: 122px;
+    height: auto;
+    aspect-ratio: 1 / 1;
   }
   .kiosk-visual.no-image {
     min-height: 52px;
@@ -1547,7 +1636,8 @@ p {
   border-radius: 20px;
 }
 .kiosk-visual {
-  height: 118px;
+  height: auto;
+  aspect-ratio: 1 / 1;
 }
 .kiosk-body {
   gap: 5px;
@@ -1821,7 +1911,8 @@ p {
     min-height: 68px;
   }
   .kiosk-visual {
-    height: 104px;
+    height: auto;
+    aspect-ratio: 1 / 1;
   }
   .side-quest-panel .side-card .kiosk-card {
     grid-template-columns: 78px minmax(0, 1fr);
