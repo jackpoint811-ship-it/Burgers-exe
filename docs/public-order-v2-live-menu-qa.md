@@ -80,3 +80,11 @@ curl -i -X POST "$PUBLIC_ORDER_ORIGIN/api/orders-v2" \
 ```
 
 Expected response: HTTP `201` and an order summary only when `ORDERS_V2_WRITE_ENABLED=true`. Do not enable this flag in Cloudflare during routine live-menu, R2, or visual QA.
+
+## Chekeo V2 auto-refresh QA
+
+- Con sesión admin activa, Chekeo V2 refresca órdenes live automáticamente cada 25 segundos mientras la pestaña del navegador está visible.
+- El auto-refresh se pausa si hay una acción operativa en curso (cambio de estado, pago o checklist de cocina), si está abierto el modal de cancelación o si la sesión admin expiró.
+- Cuando entra una orden nueva desde Public Order V2, Chekeo muestra un banner visual dentro de la app, actualiza “Última actualización” y resalta temporalmente la orden en Pedidos y Cocina.
+- Validación manual recomendada: abrir Chekeo en Pedidos, crear una orden en Public Order V2, esperar menos de 30 segundos sin recargar, confirmar banner/resaltado, cambiar a Cocina y verificar que la orden también aparece resaltada.
+- En viewport mobile de 320px, el banner debe permanecer en flujo normal de la página, con botón apilado, sin `alert()` ni overlays que tapen acciones críticas.
