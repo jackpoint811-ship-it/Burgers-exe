@@ -2569,3 +2569,120 @@ p {
     border-radius: 28px;
   }
 }
+
+/* Public checkout V2 payment flow. */
+.payment-block {
+  grid-column: 1 / -1;
+}
+.payment-chip-grid .chip {
+  flex: 1 1 138px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.payment-timing-panel {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+  border: 1px solid rgba(57, 255, 136, 0.16);
+  border-radius: 20px;
+  background: rgba(57, 255, 136, 0.055);
+  padding: 0.85rem;
+}
+.payment-timing-panel h5 {
+  margin: 0;
+  color: #fff7d6;
+  font-size: 0.82rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.transfer-details-button {
+  width: 100%;
+}
+.transfer-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: end center;
+  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.74);
+  backdrop-filter: blur(10px);
+}
+.transfer-modal {
+  width: min(100%, 520px);
+  max-height: min(88vh, 760px);
+  overflow-y: auto;
+  display: grid;
+  gap: 0.85rem;
+  border: 1px solid rgba(57, 255, 136, 0.42);
+  border-radius: 26px 26px 18px 18px;
+  padding: 1rem;
+  background: radial-gradient(circle at 50% 0%, rgba(57, 255, 136, 0.18), rgba(2, 6, 4, 0.97) 58%);
+  box-shadow: 0 -24px 80px rgba(0, 0, 0, 0.58), 0 0 34px rgba(57, 255, 136, 0.18);
+}
+.transfer-modal h3,
+.transfer-modal p,
+.transfer-modal small,
+.transfer-detail-list {
+  margin: 0;
+}
+.transfer-modal h3 {
+  color: #fff7d6;
+  font-size: clamp(1.45rem, 8vw, 2.2rem);
+  line-height: 1;
+}
+.transfer-modal p,
+.transfer-modal small {
+  color: var(--muted);
+  line-height: 1.45;
+}
+.transfer-detail-list {
+  display: grid;
+  gap: 0.6rem;
+}
+.transfer-detail-list div {
+  min-width: 0;
+  display: grid;
+  gap: 0.28rem;
+  border: 1px solid rgba(234, 255, 240, 0.12);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 0.72rem;
+}
+.transfer-detail-list dt {
+  color: var(--neon);
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.transfer-detail-list dd {
+  margin: 0;
+  color: #eafff0;
+  font-weight: 850;
+  overflow-wrap: anywhere;
+}
+.transfer-modal-actions {
+  display: grid;
+  gap: 0.65rem;
+}
+.transfer-modal-actions .quest-button {
+  width: 100%;
+}
+.success-copy-status.error {
+  color: #ffd0c4;
+}
+@media (min-width: 560px) {
+  .transfer-modal-backdrop {
+    place-items: center;
+    padding: 1rem;
+  }
+  .transfer-modal {
+    border-radius: 28px;
+    padding: 1.2rem;
+  }
+  .transfer-modal-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

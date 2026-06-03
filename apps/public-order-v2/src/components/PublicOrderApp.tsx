@@ -26,6 +26,7 @@ type QuestSection = "menu" | "main" | "workbench" | "side" | "checkout" | "succe
 type OrderChoice = "burger" | "combo";
 type MainAccordionSection = OrderChoice | "side";
 type SideQuestEntryMode = "builder" | "direct" | "quickAdd";
+type PaymentTiming = "" | "before" | "after";
 type CustomerDraft = {
   name: string;
   phone: string;
@@ -33,6 +34,7 @@ type CustomerDraft = {
   referralCode: string;
   location: "" | "Torre GGA" | "Torre Valcob";
   paymentMethod: OrderV2PaymentMethod;
+  paymentTiming: PaymentTiming;
 };
 type BuilderDraft = {
   item: MenuItem;
@@ -55,7 +57,7 @@ type DraftSnapshot = { customer: CustomerDraft; items: CartEntry[] };
 const IDEMPOTENCY_KEY_STORAGE = "burgers-v2-order-draft-idempotency-key";
 const IDEMPOTENCY_DRAFT_STORAGE = "burgers-v2-order-draft-idempotency-fingerprint";
 const LOCATIONS = ["Torre GGA", "Torre Valcob"] as const;
-const PAYMENT_METHODS = new Set<OrderV2PaymentMethod>(["cash", "transfer", "card", "unknown"]);
+const PAYMENT_METHODS = new Set<OrderV2PaymentMethod>(["cash", "transfer", "unknown"]);
 const orderModeForBackend: OrderV2Mode = "pickup";
 const MENU_GROUPS: Array<{ key: MenuCategory["key"] | "combos"; label: string }> = [
   { key: "burgers", label: "Hamburguesas" },
@@ -66,9 +68,19 @@ const MENU_GROUPS: Array<{ key: MenuCategory["key"] | "combos"; label: string }>
 const paymentMethodLabels: Record<OrderV2PaymentMethod, string> = {
   cash: "Efectivo",
   transfer: "Transferencia",
-  card: "Tarjeta",
+  card: "No disponible",
   unknown: "Por confirmar",
 };
+const paymentTimingLabels: Record<Exclude<PaymentTiming, "">, string> = {
+  before: "Pagar antes",
+  after: "Pagar después",
+};
+const TRANSFER_BANK_DETAILS = {
+  bank: "BBVA",
+  name: "Yolitzin Ameyali Zarate Otero",
+  account: "012180015645465369",
+} as const;
+const CHECKOUT_NOTES_MAX_LENGTH = 500;
 const statusLabels: Record<string, string> = {
   new: "Nuevo",
   preparing: "En preparación",
@@ -84,6 +96,7 @@ const createEmptyCustomer = (): CustomerDraft => ({
   referralCode: "",
   location: "",
   paymentMethod: "unknown",
+  paymentTiming: "",
 });
 const normalizePhoneDigits = (phone: string) => phone.replace(/\D/g, "");
 const scrollToTop = () => window.scrollTo({ top: 0, behavior: "auto" });
@@ -231,6 +244,7 @@ const createDraftFingerprint = (snapshot: DraftSnapshot) =>
       referralCode: snapshot.customer.referralCode.trim().toUpperCase(),
       location: snapshot.customer.location,
       paymentMethod: snapshot.customer.paymentMethod,
+      paymentTiming: snapshot.customer.paymentTiming,
     },
     items: snapshot.items.map(({ lineKey, sku, itemDisplayIndex, itemKind, removedIngredients, extras, burgerNote, garnish }) => ({
       lineKey,
@@ -257,13 +271,21 @@ const clearDraftIdempotencyKey = () => {
   sessionStorage.removeItem(IDEMPOTENCY_DRAFT_STORAGE);
   sessionStorage.removeItem(IDEMPOTENCY_KEY_STORAGE);
 };
+const buildCheckoutNotes = (customer: CustomerDraft): string => {
+  const paymentNotes = [
+    `Pago: ${paymentMethodLabels[customer.paymentMethod]}`,
+    customer.paymentMethod === "transfer" && customer.paymentTiming ? `Momento de pago: ${paymentTimingLabels[customer.paymentTiming]}` : "",
+  ].filter(Boolean);
+  return [`Ubicación: ${customer.location}`, ...paymentNotes, customer.notes.trim()].filter(Boolean).join("\n");
+};
 const validateCheckout = (customer: CustomerDraft, cart: CartEntry[], items: MenuItem[]) => {
   if (cart.length === 0) return "Agrega al menos un producto al ticket.";
   if (customer.name.trim().length < 2) return "Escribe tu nombre con al menos dos caracteres.";
   if (normalizePhoneDigits(customer.phone).length < 10) return "Escribe un teléfono válido con al menos diez dígitos.";
   if (!customer.location) return "Elige Torre GGA o Torre Valcob.";
-  if (!PAYMENT_METHODS.has(customer.paymentMethod) || customer.paymentMethod === "unknown") return "Elige un método de pago.";
-  if (customer.notes.trim().length > 500) return "La nota general no puede superar quinientos caracteres.";
+  if (!PAYMENT_METHODS.has(customer.paymentMethod)) return "Elige un método de pago.";
+  if (customer.paymentMethod === "transfer" && !customer.paymentTiming) return "Elige si pagarás antes o después.";
+  if (buildCheckoutNotes(customer).length > CHECKOUT_NOTES_MAX_LENGTH) return "La nota general es demasiado larga. Deja espacio para los datos de pago.";
   const unavailable = cart.find((entry) => !items.find((item) => item.sku === entry.sku && item.isAvailable));
   if (unavailable) return "Uno de los productos ya no está disponible. Actualiza el ticket antes de enviar.";
   return null;
@@ -772,26 +794,92 @@ const downloadReferralShareImage = async (params: { code: string; raffleTitle?: 
   window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1200);
 };
 
-const Checkout = ({ cart, items, total, customer, setCustomer, onBack, onSubmit, submitting, error, onEdit, onDuplicate, onRemove }: { cart: CartEntry[]; items: MenuItem[]; total: number; customer: CustomerDraft; setCustomer: (customer: CustomerDraft) => void; onBack: () => void; onSubmit: () => void; submitting: boolean; error: string | null; onEdit: (lineKey: string) => void; onDuplicate: (lineKey: string) => void; onRemove: (lineKey: string) => void }) => (
-  <section className="quest-panel checkout-panel">
-    <QuestButton className="back-button" onClick={onBack}>← Volver a guarniciones</QuestButton>
-    <span className="eyebrow">Loadout final</span>
-    <h2>Revisa tu ticket</h2>
-    <p className="muted section-subcopy">Revisa tu ticket y confirma.</p>
-    <TicketList cart={cart} items={items} onEdit={onEdit} onDuplicate={onDuplicate} onRemove={onRemove} />
-    <div className="checkout-grid">
-      <label className="field-label">Nombre<input value={customer.name} onChange={(event) => setCustomer({ ...customer, name: event.target.value })} placeholder="Tu nombre" /></label>
-      <label className="field-label">Teléfono<input inputMode="tel" value={customer.phone} onChange={(event) => setCustomer({ ...customer, phone: event.target.value })} placeholder="55 0000 0000" /></label>
-      <label className="field-label wide">Nota general opcional<textarea maxLength={500} value={customer.notes} onChange={(event) => setCustomer({ ...customer, notes: event.target.value })} placeholder="Nota general del pedido" /></label>
-      <label className="field-label wide">Código de invitado<input value={customer.referralCode} onChange={(event) => setCustomer({ ...customer, referralCode: event.target.value.toUpperCase() })} placeholder="CARLOS-BURGER-27" maxLength={32} /><small>Si alguien te invitó, escribe su código. Solo ayuda a tu compa si este pedido incluye al menos 1 burger pagada.</small></label>
-      <div className="builder-block"><h4>Ubicación</h4><div className="chip-grid">{LOCATIONS.map((location) => <button type="button" key={location} className={customer.location === location ? "chip active" : "chip"} onClick={() => setCustomer({ ...customer, location })}>{location}</button>)}</div></div>
-      <label className="field-label">Pago<select value={customer.paymentMethod} onChange={(event) => setCustomer({ ...customer, paymentMethod: event.target.value as OrderV2PaymentMethod })}><option value="unknown">Seleccionar</option><option value="cash">Efectivo</option><option value="transfer">Transferencia</option><option value="card">Tarjeta</option></select></label>
+type CopyTransferStatus = "idle" | "copiedName" | "copiedAccount" | "error";
+
+const TransferDetailsModal = ({ onClose }: { onClose: () => void }) => {
+  const [status, setStatus] = useState<CopyTransferStatus>("idle");
+  const [error, setError] = useState<string | null>(null);
+  const copyDetail = async (value: string, nextStatus: Exclude<CopyTransferStatus, "idle" | "error">) => {
+    try {
+      await copyTextToClipboard(value);
+      setError(null);
+      setStatus(nextStatus);
+    } catch {
+      setError("No se pudo copiar automáticamente. Selecciona el dato y cópialo manualmente.");
+      setStatus("error");
+    }
+  };
+
+  return (
+    <div className="transfer-modal-backdrop" role="presentation">
+      <section className="transfer-modal" role="dialog" aria-modal="true" aria-labelledby="transfer-modal-title">
+        <span className="eyebrow">Transferencia</span>
+        <h3 id="transfer-modal-title">Datos para transferencia</h3>
+        <p>Copia el nombre y la cuenta para hacer tu transferencia. Después guarda tu comprobante.</p>
+        <dl className="transfer-detail-list">
+          <div><dt>Banco</dt><dd>{TRANSFER_BANK_DETAILS.bank}</dd></div>
+          <div><dt>Nombre</dt><dd>{TRANSFER_BANK_DETAILS.name}</dd></div>
+          <div><dt>Cuenta</dt><dd>{TRANSFER_BANK_DETAILS.account}</dd></div>
+        </dl>
+        <small>Si pagas antes, puedes enviar tu comprobante por WhatsApp.</small>
+        <div className="transfer-modal-actions">
+          <QuestButton className="ghost" onClick={() => copyDetail(TRANSFER_BANK_DETAILS.name, "copiedName")}>Copiar nombre</QuestButton>
+          <QuestButton className="ghost" onClick={() => copyDetail(TRANSFER_BANK_DETAILS.account, "copiedAccount")}>Copiar cuenta</QuestButton>
+          <QuestButton onClick={onClose}>Cerrar</QuestButton>
+        </div>
+        {status === "copiedName" ? <p className="success-copy-status">Nombre copiado.</p> : null}
+        {status === "copiedAccount" ? <p className="success-copy-status">Cuenta copiada.</p> : null}
+        {error ? <p className="success-copy-status error">{error}</p> : null}
+      </section>
     </div>
-    <div className="checkout-total"><span>Total</span><strong>{formatCurrency(total)}</strong></div>
-    <QuestButton onClick={onSubmit} disabled={submitting || !cart.length}>{submitting ? "Enviando pedido..." : "Confirmar pedido"}</QuestButton>
-    {error ? <p className="inline-error" role="alert">{error}</p> : null}
-  </section>
-);
+  );
+};
+
+const Checkout = ({ cart, items, total, customer, setCustomer, onBack, onSubmit, submitting, error, onEdit, onDuplicate, onRemove }: { cart: CartEntry[]; items: MenuItem[]; total: number; customer: CustomerDraft; setCustomer: (customer: CustomerDraft) => void; onBack: () => void; onSubmit: () => void; submitting: boolean; error: string | null; onEdit: (lineKey: string) => void; onDuplicate: (lineKey: string) => void; onRemove: (lineKey: string) => void }) => {
+  const [transferModalOpen, setTransferModalOpen] = useState(false);
+  const updatePaymentMethod = (paymentMethod: OrderV2PaymentMethod) => {
+    setCustomer({ ...customer, paymentMethod, paymentTiming: paymentMethod === "transfer" ? customer.paymentTiming : "" });
+  };
+
+  return (
+    <section className="quest-panel checkout-panel">
+      <QuestButton className="back-button" onClick={onBack}>← Volver a guarniciones</QuestButton>
+      <span className="eyebrow">Loadout final</span>
+      <h2>Revisa tu ticket</h2>
+      <p className="muted section-subcopy">Revisa tu ticket y confirma.</p>
+      <TicketList cart={cart} items={items} onEdit={onEdit} onDuplicate={onDuplicate} onRemove={onRemove} />
+      <div className="checkout-grid">
+        <label className="field-label">Nombre<input value={customer.name} onChange={(event) => setCustomer({ ...customer, name: event.target.value })} placeholder="Tu nombre" /></label>
+        <label className="field-label">Teléfono<input inputMode="tel" value={customer.phone} onChange={(event) => setCustomer({ ...customer, phone: event.target.value })} placeholder="55 0000 0000" /></label>
+        <label className="field-label wide">Nota general opcional<textarea maxLength={500} value={customer.notes} onChange={(event) => setCustomer({ ...customer, notes: event.target.value })} placeholder="Nota general del pedido" /></label>
+        <label className="field-label wide">Código de invitado<input value={customer.referralCode} onChange={(event) => setCustomer({ ...customer, referralCode: event.target.value.toUpperCase() })} placeholder="CARLOS-BURGER-27" maxLength={32} /><small>Si alguien te invitó, escribe su código. Solo ayuda a tu compa si este pedido incluye al menos 1 burger pagada.</small></label>
+        <div className="builder-block"><h4>Ubicación</h4><div className="chip-grid">{LOCATIONS.map((location) => <button type="button" key={location} className={customer.location === location ? "chip active" : "chip"} onClick={() => setCustomer({ ...customer, location })}>{location}</button>)}</div></div>
+        <div className="builder-block payment-block">
+          <h4>Método de pago</h4>
+          <div className="chip-grid payment-chip-grid">
+            <button type="button" className={customer.paymentMethod === "unknown" ? "chip active" : "chip"} onClick={() => updatePaymentMethod("unknown")}>Por confirmar</button>
+            <button type="button" className={customer.paymentMethod === "cash" ? "chip active" : "chip"} onClick={() => updatePaymentMethod("cash")}>Efectivo</button>
+            <button type="button" className={customer.paymentMethod === "transfer" ? "chip active" : "chip"} onClick={() => updatePaymentMethod("transfer")}>Transferencia</button>
+          </div>
+          {customer.paymentMethod === "transfer" ? (
+            <div className="payment-timing-panel">
+              <h5>Momento de pago</h5>
+              <div className="chip-grid payment-chip-grid">
+                <button type="button" className={customer.paymentTiming === "before" ? "chip active" : "chip"} onClick={() => setCustomer({ ...customer, paymentTiming: "before" })}>Pagar antes</button>
+                <button type="button" className={customer.paymentTiming === "after" ? "chip active" : "chip"} onClick={() => setCustomer({ ...customer, paymentTiming: "after" })}>Pagar después</button>
+              </div>
+              {customer.paymentTiming === "before" ? <QuestButton className="ghost transfer-details-button" onClick={() => setTransferModalOpen(true)}>Ver datos de transferencia</QuestButton> : null}
+            </div>
+          ) : null}
+        </div>
+      </div>
+      <div className="checkout-total"><span>Total</span><strong>{formatCurrency(total)}</strong></div>
+      <QuestButton onClick={onSubmit} disabled={submitting || !cart.length}>{submitting ? "Enviando pedido..." : "Confirmar pedido"}</QuestButton>
+      {error ? <p className="inline-error" role="alert">{error}</p> : null}
+      {transferModalOpen ? <TransferDetailsModal onClose={() => setTransferModalOpen(false)} /> : null}
+    </section>
+  );
+};
 
 const ReferralShareModal = ({ code, raffleTitle, onClose }: { code: string; raffleTitle?: string; onClose: () => void }) => {
   const [status, setStatus] = useState<ShareActionStatus>("idle");
@@ -1142,7 +1230,7 @@ export function PublicOrderApp() {
     const validationError = validateCheckout(customer, cart, menuData.items);
     if (validationError) { setCheckoutError(validationError); return; }
     const payloadItems = cart.map((entry) => ({ sku: entry.sku, name: entry.name, qty: 1, lineKey: entry.lineKey, itemDisplayIndex: entry.itemDisplayIndex, itemKind: entry.itemKind, removedIngredients: entry.removedIngredients, extras: entry.extras, burgerNote: entry.burgerNote?.trim() || undefined, garnish: entry.garnish ?? null }));
-    const notes = [`Ubicación: ${customer.location}`, customer.notes.trim()].filter(Boolean).join("\n");
+    const notes = buildCheckoutNotes(customer);
     const idempotencyKey = getDraftIdempotencyKey({ customer, items: cart });
     submittingRef.current = true;
     setSubmitting(true);
