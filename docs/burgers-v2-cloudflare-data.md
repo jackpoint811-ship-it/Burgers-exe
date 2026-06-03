@@ -705,6 +705,70 @@ No-touch V2-12:
 - La cookie `bog_internal_session` es `HttpOnly`, `SameSite=Lax`, `Path=/`, dura 12 horas y usa `Secure` en HTTPS; por diseño el frontend no puede leerla ni copiar credenciales a storage.
 - No guardar ni commitear valores reales de `BOG_INTERNAL_PIN` en el repo. Para rotar acceso, cambiar `BOG_INTERNAL_PIN` y redeploy.
 
+## Sorteos V2 / Raffles migrations
+
+Este bloque es el checklist operativo para no omitir las migraciones de Sorteos V2 al preparar o reparar el D1 de `burgers-exe-menu-live` desde Codespace. Usa siempre `cloudflare/public-order/wrangler.toml`; no cambies `BOG_ACTIVE_ENV` para ejecutar estas migraciones.
+
+Prerequisitos de schema en el mismo D1:
+
+- `migrations/0003_v2_orders_schema.sql` debe estar aplicado antes de calcular resúmenes, porque Sorteos V2 lee `orders_v2` y `order_items_v2`.
+- `migrations/0004_v2_raffles_schema.sql` crea `raffle_campaigns_v2`.
+- `migrations/0005_v2_raffles_referrals_schema.sql` crea `raffle_referral_codes_v2` y `raffle_referrals_v2`.
+
+Aplicar Sorteos V2 local:
+
+```bash
+npm run public-order:d1:raffles:migrate:local
+```
+
+Aplicar Sorteos V2 remote/live:
+
+```bash
+npm run public-order:d1:raffles:migrate:remote
+```
+
+Si necesitas ejecutar una migración puntual en vez del bloque completo:
+
+```bash
+npm run public-order:d1:raffles:schema:migrate:local
+npm run public-order:d1:raffles:referrals:migrate:local
+npm run public-order:d1:raffles:schema:migrate:remote
+npm run public-order:d1:raffles:referrals:migrate:remote
+```
+
+Validación de tablas críticas después de migrar local:
+
+```bash
+npx wrangler d1 execute burgers-exe-menu-live --local --config cloudflare/public-order/wrangler.toml --command "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('orders_v2','order_items_v2','raffle_campaigns_v2','raffle_referral_codes_v2','raffle_referrals_v2');"
+```
+
+Validación de tablas críticas después de migrar remote/live:
+
+```bash
+npx wrangler d1 execute burgers-exe-menu-live --remote --config cloudflare/public-order/wrangler.toml --command "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('orders_v2','order_items_v2','raffle_campaigns_v2','raffle_referral_codes_v2','raffle_referrals_v2');"
+```
+
+SQL de validación, para copiarlo en consola D1 si no se usa Wrangler:
+
+```sql
+SELECT name FROM sqlite_master
+WHERE type='table'
+AND name IN (
+'orders_v2',
+'order_items_v2',
+'raffle_campaigns_v2',
+'raffle_referral_codes_v2',
+'raffle_referrals_v2'
+);
+```
+
+El resultado esperado incluye estas cinco tablas: `orders_v2`, `order_items_v2`, `raffle_campaigns_v2`, `raffle_referral_codes_v2` y `raffle_referrals_v2`. Si falta alguna, aplica la migración correspondiente antes de validar Chekeo V2.
+
+Troubleshooting operativo:
+
+- Si Internal Chekeo V2 muestra “No se pudieron cargar los sorteos”, revisar que exista `raffle_campaigns_v2` en el D1 conectado por `BOG_MENU_DB` y que la migración `migrations/0004_v2_raffles_schema.sql` se haya aplicado en el ambiente correcto.
+- Si Internal Chekeo V2 muestra “No se pudo calcular el resumen del sorteo”, revisar que existan `raffle_referral_codes_v2`, `raffle_referrals_v2`, `orders_v2` y `order_items_v2`; el resumen depende de referidos y de las órdenes reales para calcular tickets.
+
 ## Fase 4A — D1 raffle_campaigns_v2
 
 La migración `migrations/0004_v2_raffles_schema.sql` crea `raffle_campaigns_v2`:
