@@ -180,8 +180,16 @@ const loadActiveReferralCampaign = async (db: D1Database) => {
   return row ?? null;
 };
 
-const applyReferralCode = async (db: D1Database, params: { referralCode: string | null; orderId: string; customerPhone: string; customerName: string; now: string }) => {
+const orderHasReferralEligibleItem = (items: NormalizedPayload['items']) => items.some((item) =>
+  (item.itemKind === 'burger' || item.itemKind === 'combo') && Math.max(0, Number(item.qty) || 0) > 0
+);
+
+const applyReferralCode = async (db: D1Database, params: { referralCode: string | null; orderId: string; customerPhone: string; customerName: string; eligibleForReferral: boolean; now: string }) => {
   if (!params.referralCode) return undefined;
+  if (!params.eligibleForReferral) {
+    await safeLogOrderEvent(db, { orderId: params.orderId, type: 'RAFFLE_REFERRAL_SKIPPED', detail: { referralCode: params.referralCode, referralAccepted: false, reason: 'no_paid_burger_or_combo' }, now: params.now });
+    return false;
+  }
   try {
     const campaign = await loadActiveReferralCampaign(db);
     if (!campaign) return false;
@@ -430,7 +438,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
     const batchResult = await env.BOG_MENU_DB.batch(statements);
     if (!batchResult.every((entry) => entry.success)) return errorResponse(500, 'INTERNAL_ERROR', 'No se pudo crear la orden.');
 
-    const referralAccepted = await applyReferralCode(env.BOG_MENU_DB, { referralCode: parsed.referralCode, orderId, customerPhone: parsed.customerPhone, customerName: parsed.customerName, now });
+    const referralAccepted = await applyReferralCode(env.BOG_MENU_DB, { referralCode: parsed.referralCode, orderId, customerPhone: parsed.customerPhone, customerName: parsed.customerName, eligibleForReferral: orderHasReferralEligibleItem(parsed.items), now });
 
     const createdOrder = await fetchOrderBundle(env.BOG_MENU_DB, orderId);
     if (!createdOrder) return errorResponse(500, 'INTERNAL_ERROR', 'No se pudo recuperar la orden creada.');
