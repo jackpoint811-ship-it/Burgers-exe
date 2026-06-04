@@ -60,6 +60,7 @@
       burgerUnits: [],
       sidesQty: {},
       customer: { customerName: '', phone: '', location: '', paymentMethod: 'Pago mismo dia', note: '', referralCode: '' },
+      checkoutStep: 0,
       ts: Date.now()
     };
   }
@@ -69,6 +70,7 @@
   var clearConfirmUntil = 0;
   var isSubmitting = false;
   var accordionOpenState = { CUSTOM: {}, EXTRAS: {} };
+  var CHECKOUT_STEPS = ['Resumen', 'Datos', 'Pago'];
 
   var DEFAULT_ORDER_GATE_CONFIG = {
     closed: false,
@@ -386,6 +388,7 @@
     isSubmitting = false;
     setSubmitLoading(false);
     state.step = 0;
+    state.checkoutStep = 0;
     redraw();
     setStatus('Listo. Volviste al menú.');
     scrollToCurrentStep();
@@ -416,6 +419,11 @@
       state.burgerUnits = (state.burgerUnits || []).map(normalizeBurgerUnit);
       state.sidesQty = state.sidesQty || {};
       ensureCustomerReferralField();
+      state.checkoutStep = Math.max(0, Math.min(CHECKOUT_STEPS.length - 1, Number(state.checkoutStep || 0)));
+      if (state.step === 5) {
+        state.step = 6;
+        state.checkoutStep = 1;
+      }
       return;
     }
 
@@ -435,6 +443,7 @@
         referralCode: normalizeReferralCode(draft.payload.referral && draft.payload.referral.code)
       };
       state.step = 0;
+      state.checkoutStep = 0;
     }
   }
 
@@ -538,7 +547,7 @@
 
   function validate(stepOnly) {
     if (!countBurgers() && state.step >= 1 && stepOnly !== 'submit') return 'Agrega al menos 1 burger.';
-    if (state.step === 5 || stepOnly === 'submit') {
+    if (state.step === 5 || state.step === 6 || stepOnly === 'submit') {
       var dataErrors = getDataStepErrors();
       if (Object.keys(dataErrors).length) return 'Completa datos requeridos.';
     }
@@ -693,18 +702,13 @@
     return '<h2>GUARNICIONES</h2><p class="muted">Agrega varias guarniciones con cantidades independientes.</p><div class="menu-grid">' + renderMenuCards(MENU.sides, state.sidesQty) + '</div>';
   }
 
-  function renderDataStep() {
+  function renderDataFields() {
     var nameError = dataStepErrors.name ? '<p class="field-error" id="name-error">' + dataStepErrors.name + '</p>' : '';
     var phoneError = dataStepErrors.phone ? '<p class="field-error" id="phone-error">' + dataStepErrors.phone + '</p>' : '';
     var locationError = dataStepErrors.location ? '<p class="field-error" id="location-error">' + dataStepErrors.location + '</p>' : '';
-    var payError = dataStepErrors.pay ? '<p class="field-error" id="pay-error">' + dataStepErrors.pay + '</p>' : '';
-    var paySameDaySelected = state.customer.paymentMethod === 'Pago mismo dia';
-    var payBeforeSelected = state.customer.paymentMethod === 'Pagar Antes';
-
     var referralNotice = state.customer.referralCode ? '<p class="referral-notice">Código de referido detectado: <strong>' + escapeHtml(state.customer.referralCode) + '</strong></p>' : '';
 
-    return '<h2>DATOS</h2>' +
-      '<p class="data-step-title">Datos para confirmar tu pedido</p>' +
+    return '<p class="data-step-title">Datos para confirmar tu pedido</p>' +
       referralNotice +
       '<p class="data-step-help">No necesitas iniciar sesión. Solo usamos estos datos para entregar y confirmar.</p>' +
       '<label class="field data-field ' + (dataStepErrors.name ? 'has-error' : '') + '" for="name"><span class="field-title">Nombre</span><span class="field-required-badge">Obligatorio</span><input id="name" autocomplete="name" placeholder="Ej. Jack R." aria-describedby="name-help' + (dataStepErrors.name ? ' name-error' : '') + '" aria-invalid="' + (dataStepErrors.name ? 'true' : 'false') + '" value="' + escapeHtml(state.customer.customerName) + '"><span class="field-help" id="name-help">Como aparece en recepción o con quien entregamos.</span></label>' +
@@ -713,26 +717,49 @@
       phoneError +
       '<label class="field data-field ' + (dataStepErrors.location ? 'has-error' : '') + '" for="location"><span class="field-title">Ubicación</span><span class="field-required-badge">Obligatorio</span><select id="location" aria-describedby="location-help' + (dataStepErrors.location ? ' location-error' : '') + '" aria-invalid="' + (dataStepErrors.location ? 'true' : 'false') + '"><option value="">Selecciona</option><option ' + (state.customer.location === 'Torre GGA' ? 'selected' : '') + '>Torre GGA</option><option ' + (state.customer.location === 'Torre Valcob' ? 'selected' : '') + '>Torre Valcob</option></select><span class="field-help" id="location-help">Selecciona dónde entregamos tu pedido.</span></label>' +
       locationError +
-      '<fieldset id="paymentMethodGroup" class="pay-group ' + (dataStepErrors.pay ? 'has-error' : '') + '" aria-describedby="pay-help' + (dataStepErrors.pay ? ' pay-error' : '') + '" aria-invalid="' + (dataStepErrors.pay ? 'true' : 'false') + '">' +
-      '<legend><span class="field-title">Forma de pago</span><span class="field-required-badge">Obligatorio</span></legend>' +
-      '<p class="field-help" id="pay-help">Elige cómo quieres liquidar tu pedido.</p>' +
+      '<label class="field data-field" for="note"><span class="field-title">Notas para entrega o preparación</span><span class="field-optional-badge">Opcional</span><textarea id="note" aria-describedby="note-help" placeholder="Ej. Estoy en lobby / sin cambios extra / entregar en recepción">' + escapeHtml(state.customer.note) + '</textarea><span class="field-help" id="note-help">Puedes dejar indicaciones de acceso o referencia.</span></label>';
+  }
+
+  function renderPaymentFields() {
+    var payError = dataStepErrors.pay ? '<p class="field-error" id="pay-error">' + dataStepErrors.pay + '</p>' : '';
+    var paySameDaySelected = state.customer.paymentMethod === 'Pago mismo dia';
+    var payBeforeSelected = state.customer.paymentMethod === 'Pagar Antes';
+
+    return '<fieldset id="paymentMethodGroup" class="pay-group ' + (dataStepErrors.pay ? 'has-error' : '') + '" aria-describedby="pay-help' + (dataStepErrors.pay ? ' pay-error' : '') + '" aria-invalid="' + (dataStepErrors.pay ? 'true' : 'false') + '">' +
+      '<legend><span class="field-title">Método de pago</span><span class="field-required-badge">Obligatorio</span></legend>' +
+      '<p class="field-help" id="pay-help">Elige el momento de pago sin cambiar el valor interno del pedido.</p>' +
       '<div class="pay-options">' +
       '<label class="pay-option-card ' + (paySameDaySelected ? 'is-selected' : '') + '">' +
       '<input class="pay-option-input" type="radio" name="pay" value="Pago mismo dia" ' + (paySameDaySelected ? 'checked' : '') + '>' +
-      '<span class="pay-option-main"><span class="pay-option-title">Pago mismo día</span><span class="pay-option-desc">Efectivo o transferencia el día de entrega.</span></span>' +
+      '<span class="pay-option-main"><span class="pay-option-title">Pago mismo día</span><span class="pay-option-desc">Efectivo o transferencia cuando recibas tu pedido.</span></span>' +
       '<span class="pay-option-state">' + (paySameDaySelected ? 'Seleccionado' : 'No seleccionado') + '</span>' +
       '</label>' +
       '<label class="pay-option-card ' + (payBeforeSelected ? 'is-selected' : '') + '">' +
       '<input class="pay-option-input" type="radio" name="pay" value="Pagar Antes" ' + (payBeforeSelected ? 'checked' : '') + '>' +
-      '<span class="pay-option-main"><span class="pay-option-title">Pagar antes</span><span class="pay-option-desc">Te mostramos los datos bancarios en el resumen.</span></span>' +
+      '<span class="pay-option-main"><span class="pay-option-title">Pagar antes</span><span class="pay-option-desc">Mostramos datos bancarios para liquidar antes de entrega.</span></span>' +
       '<span class="pay-option-state">' + (payBeforeSelected ? 'Seleccionado' : 'No seleccionado') + '</span>' +
       '</label>' +
       '</div></fieldset>' +
-      payError +
-      '<label class="field data-field" for="note"><span class="field-title">Notas para entrega o preparación</span><span class="field-optional-badge">Opcional</span><textarea id="note" aria-describedby="note-help" placeholder="Ej. Estoy en lobby / sin cambios extra / entregar en recepción">' + escapeHtml(state.customer.note) + '</textarea><span class="field-help" id="note-help">Puedes dejar indicaciones de acceso o referencia.</span></label>';
+      payError;
   }
 
-  function renderSummaryStep() {
+  function renderDataStep() {
+    return '<h2>DATOS</h2>' + renderDataFields();
+  }
+
+  function renderCheckoutProgress() {
+    var stepName = CHECKOUT_STEPS[state.checkoutStep] || CHECKOUT_STEPS[0];
+    return '<div class="checkout-progress" aria-live="polite"><span>Checkout ' + (state.checkoutStep + 1) + ' de 3 · ' + escapeHtml(stepName) + '</span></div>';
+  }
+
+  function renderCheckoutActions(backLabel, nextLabel, nextAction, primaryId) {
+    return '<div class="checkout-actions">' +
+      '<button type="button" class="secondary" data-checkout-action="back">' + escapeHtml(backLabel || 'Volver') + '</button>' +
+      '<button type="button" class="primary" ' + (primaryId ? 'id="' + primaryId + '"' : 'data-checkout-action="' + escapeHtml(nextAction) + '"') + '>' + escapeHtml(nextLabel) + '</button>' +
+      '</div>';
+  }
+
+  function renderOrderSummarySections() {
     var lines = state.burgerUnits.map(function (u) {
       var ex = MENU.extras.map(function (x) { var qty = getExtraQty(u, x.sku); return qty ? escapeHtml(x.name) + ' x' + qty + ' +' + money(qty * x.price) : ''; }).filter(Boolean).join(', ') || 'Sin extras';
       return '<div class="ticket-line"><strong>' + escapeHtml(u.label) + ' — ' + money(burgerPrice(u.sku)) + '</strong><p>Quitar: ' + escapeHtml((u.without || []).join(', ') || 'Sin cambios') + '</p><p>Extras: ' + ex + '</p><p>Subtotal burger: ' + money(burgerPrice(u.sku) + extrasLineTotal(u)) + '</p></div>';
@@ -743,22 +770,40 @@
       return qty ? '<div class="summary-row"><span>' + escapeHtml(s.name) + ' x' + qty + '</span><strong>' + money(qty * s.price) + '</strong></div>' : '';
     }).join('') || '<p class="muted">Sin guarniciones</p>';
 
-    return '<h2>RESUMEN</h2>' +
-      '<p class="summary-intro">Revisa tu pedido antes de enviarlo.</p>' +
-      '<p class="summary-intro muted">Puedes regresar para editar cualquier paso.</p>' +
-      '<section class="summary-section"><div class="summary-head"><h3>Burgers, custom y extras</h3><button type="button" class="summary-edit-btn" data-edit-step="1" aria-label="Editar burgers, personalizaciones y extras">Editar</button></div>' + (lines || '<p class="muted">Sin burgers.</p>') + '</section>' +
+    return '<section class="summary-section"><div class="summary-head"><h3>Productos · burgers</h3><button type="button" class="summary-edit-btn" data-edit-step="1" aria-label="Editar burgers">Editar</button></div>' + (lines || '<p class="muted">Sin burgers.</p>') + '</section>' +
       '<section class="summary-section"><div class="summary-head"><h3>Guarniciones</h3><button type="button" class="summary-edit-btn" data-edit-step="4" aria-label="Editar guarniciones">Editar</button></div>' + sides + '</section>' +
-      '<section class="summary-section"><div class="summary-head"><h3>Datos del cliente</h3><button type="button" class="summary-edit-btn" data-edit-step="5" aria-label="Editar datos del cliente">Editar</button></div>' +
-      '<p>Nombre: ' + escapeHtml(state.customer.customerName || '(pendiente)') + '</p>' +
-      '<p>Teléfono: ' + escapeHtml(state.customer.phone || '(pendiente)') + '</p>' +
-      '<p>Ubicación: ' + escapeHtml(state.customer.location || '(pendiente)') + '</p>' +
-      '<p>Nota: ' + escapeHtml(state.customer.note || '(sin nota)') + '</p>' +
-      (state.customer.referralCode ? '<p class="referral-notice">Código de referido detectado: <strong>' + escapeHtml(state.customer.referralCode) + '</strong></p>' : '') + '</section>' +
-      '<section class="summary-section"><h3>Pago</h3><p>Forma de pago: ' + escapeHtml(state.customer.paymentMethod) + '</p><div id="paymentInfo"></div></section>' +
-      '<section class="summary-section summary-total"><h3>Total del pedido</h3><p>' + money(calcTotal()) + '</p></section>' +
+      '<section class="summary-section"><div class="summary-head"><h3>Extras</h3><button type="button" class="summary-edit-btn" data-edit-step="3" aria-label="Editar extras">Editar</button></div><p class="muted">Los extras están detallados por burger para mantener tu ticket legible.</p></section>' +
+      '<section class="summary-section summary-total"><h3>Total del pedido</h3><p>' + money(calcTotal()) + '</p></section>';
+  }
+
+  function renderSummaryStep() {
+    state.checkoutStep = Math.max(0, Math.min(CHECKOUT_STEPS.length - 1, Number(state.checkoutStep || 0)));
+    var shell = '<h2>CHECKOUT</h2>' + renderCheckoutProgress();
+
+    if (state.checkoutStep === 0) {
+      return shell +
+        '<p class="summary-intro">Revisa productos, burgers, guarniciones, extras y total antes de continuar.</p>' +
+        renderOrderSummarySections() +
+        renderCheckoutActions('Volver', 'Continuar a datos', 'next');
+    }
+
+    if (state.checkoutStep === 1) {
+      return shell +
+        '<section class="summary-section checkout-panel" aria-labelledby="checkoutDataTitle"><h3 id="checkoutDataTitle">Datos de entrega</h3>' + renderDataFields() + '</section>' +
+        renderCheckoutActions('Volver', 'Continuar a pago', 'next');
+    }
+
+    return shell +
+      '<section class="summary-section checkout-panel" aria-labelledby="checkoutPaymentTitle"><h3 id="checkoutPaymentTitle">Pago</h3>' +
+      renderPaymentFields() +
+      '<div id="paymentInfo"></div></section>' +
+      '<section class="summary-section summary-total"><h3>Total visible</h3><p>' + money(calcTotal()) + '</p></section>' +
+      '<div class="checkout-actions checkout-actions-final">' +
+      '<button type="button" class="secondary" data-checkout-action="back">Volver</button>' +
       (isSubmitting
         ? '<button id="submitBtn" class="primary" disabled aria-busy="true"><span class="submit-spinner" aria-hidden="true"></span><span>Loading order...</span></button>'
-        : '<button id="submitBtn" class="primary">Enviar pedido</button>');
+        : '<button id="submitBtn" class="primary">Confirmar pedido</button>') +
+      '</div>';
   }
 
   function setSubmitLoading(isLoading) {
@@ -768,7 +813,7 @@
     button.setAttribute('aria-busy', isLoading ? 'true' : 'false');
     button.innerHTML = isLoading
       ? '<span class="submit-spinner" aria-hidden="true"></span><span>Loading order...</span>'
-      : '<span>Enviar pedido</span>';
+      : '<span>Confirmar pedido</span>';
   }
 
   function setSubmitSuccess() {
@@ -818,7 +863,7 @@
     container.classList.remove('step-enter');
     container.innerHTML = renderFn ? renderFn() : '';
 
-    if (stepName === 'RESUMEN') renderPaymentInfo();
+    if (stepName === 'RESUMEN' && state.checkoutStep === 2) renderPaymentInfo();
 
     toggleNav();
     window.requestAnimationFrame(function () {
@@ -841,7 +886,7 @@
 
   function toggleNav() {
     document.getElementById('backBtn').disabled = state.step === 0;
-    document.getElementById('nextBtn').style.display = state.step >= STEPS.length - 1 ? 'none' : 'inline-flex';
+    document.getElementById('nextBtn').style.display = state.step >= STEPS.length - 2 ? 'none' : 'inline-flex';
   }
 
   async function renderPaymentInfo() {
@@ -1022,7 +1067,14 @@
   function moveStep(targetStep) {
     var nextStep = Math.max(0, Math.min(STEPS.length - 1, targetStep));
     if (nextStep > state.step) return;
+    if (nextStep === 5 && state.step === 6) {
+      state.step = 6;
+      state.checkoutStep = 1;
+      redrawAndFocusCurrentStep();
+      return;
+    }
     state.step = nextStep;
+    if (state.step !== 6) state.checkoutStep = 0;
     redrawAndFocusCurrentStep();
   }
 
@@ -1054,6 +1106,16 @@
     if (button.id === 'startBtn') {
       state.step = 1;
       redrawAndFocusCurrentStep();
+      return;
+    }
+
+    var checkoutAction = button.getAttribute('data-checkout-action');
+    if (checkoutAction === 'next') {
+      advanceCheckoutStep();
+      return;
+    }
+    if (checkoutAction === 'back') {
+      retreatCheckoutStep();
       return;
     }
 
@@ -1143,6 +1205,7 @@
     if (target.name === 'pay') {
       state.customer.paymentMethod = target.value;
       syncPayCardStates();
+      if (state.step === 6 && state.checkoutStep === 2) renderPaymentInfo();
     }
     if (target.id === 'location') state.customer.location = target.value;
 
@@ -1172,7 +1235,7 @@
     }
 
     renderMiniSummary();
-    if (state.step === 5) refreshDataErrorsIfNeeded();
+    if (state.step === 5 || (state.step === 6 && state.checkoutStep === 1)) refreshDataErrorsIfNeeded();
     saveDraft();
 
     if (optionChanged) {
@@ -1290,8 +1353,34 @@
     if (target.id === 'name') state.customer.customerName = target.value;
     if (target.id === 'phone') state.customer.phone = target.value;
     if (target.id === 'note') state.customer.note = target.value;
-    if (state.step === 5) refreshDataErrorsIfNeeded();
+    if (state.step === 5 || (state.step === 6 && state.checkoutStep === 1)) refreshDataErrorsIfNeeded();
     saveDraft();
+  }
+
+  function advanceCheckoutStep() {
+    if (state.checkoutStep === 1) {
+      dataStepErrors = getDataStepErrors();
+      delete dataStepErrors.pay;
+      if (Object.keys(dataStepErrors).length) {
+        redraw();
+        setStatus('Completa datos requeridos.');
+        focusFirstDataError();
+        return;
+      }
+      dataStepErrors = {};
+    }
+    state.checkoutStep = Math.min(CHECKOUT_STEPS.length - 1, Number(state.checkoutStep || 0) + 1);
+    redrawAndFocusCurrentStep();
+  }
+
+  function retreatCheckoutStep() {
+    if (state.checkoutStep > 0) {
+      state.checkoutStep = Math.max(0, Number(state.checkoutStep || 0) - 1);
+      redrawAndFocusCurrentStep();
+      return;
+    }
+    state.step = 4;
+    redrawAndFocusCurrentStep();
   }
 
   function onNextClick() {
@@ -1307,12 +1396,22 @@
 
     var err = validate();
     if (err) return setStatus(err);
-    state.step = Math.min(STEPS.length - 1, state.step + 1);
+    if (state.step === 4) {
+      state.step = 6;
+      state.checkoutStep = 0;
+    } else {
+      state.step = Math.min(STEPS.length - 1, state.step + 1);
+    }
     redrawAndFocusCurrentStep();
   }
 
   function onBackClick() {
-    state.step = Math.max(0, state.step - 1);
+    if (state.step === 6 && state.checkoutStep > 0) {
+      retreatCheckoutStep();
+      return;
+    }
+    state.step = state.step === 6 ? 4 : Math.max(0, state.step - 1);
+    if (state.step !== 6) state.checkoutStep = 0;
     redrawAndFocusCurrentStep();
   }
 
@@ -1356,6 +1455,16 @@
     if (isSubmitting) return;
     if (isOrderingClosed()) return setStatus('Pedidos cerrados temporalmente.');
     hideSuccessPanel();
+    var submitDataErrors = getDataStepErrors();
+    if (Object.keys(submitDataErrors).length) {
+      dataStepErrors = submitDataErrors;
+      if (state.step === 6) state.checkoutStep = 1;
+      redraw();
+      setStatus('Validación fallida: Completa datos requeridos.');
+      focusFirstDataError();
+      return;
+    }
+
     var err = validate('submit');
     if (err) return setStatus('Validación fallida: ' + err);
 
