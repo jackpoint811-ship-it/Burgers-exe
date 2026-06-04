@@ -363,24 +363,118 @@
     panel.innerHTML = '';
   }
 
+  function firstPresentValue(values) {
+    for (var i = 0; i < values.length; i += 1) {
+      var value = values[i];
+      if (value == null) continue;
+      if (typeof value === 'string' && value.trim()) return value.trim();
+      if (typeof value === 'number' && Number.isFinite(value)) return value;
+    }
+    return null;
+  }
+
+  function readOrderResponseData(data) {
+    var root = data && typeof data === 'object' ? data : {};
+    var payload = root.data && typeof root.data === 'object' ? root.data : {};
+    var upstream = payload.upstream && typeof payload.upstream === 'object' ? payload.upstream : {};
+    return { payload: payload, upstream: upstream };
+  }
+
+  function getSuccessFolio(data) {
+    var responseData = readOrderResponseData(data);
+    return firstPresentValue([
+      responseData.upstream.folio,
+      responseData.upstream.orderFolio,
+      responseData.payload.folio,
+      responseData.payload.orderFolio
+    ]);
+  }
+
+  function getSuccessTicketCount(data) {
+    var responseData = readOrderResponseData(data);
+    var rawValue = firstPresentValue([
+      responseData.upstream.ticketsCount,
+      responseData.upstream.ticketsAwarded,
+      responseData.upstream.tickets,
+      responseData.upstream.raffleTickets,
+      responseData.payload.ticketsCount,
+      responseData.payload.ticketsAwarded,
+      responseData.payload.tickets,
+      responseData.payload.raffleTickets
+    ]);
+    var count = Number(rawValue);
+    return Number.isFinite(count) && count >= 0 ? Math.floor(count) : null;
+  }
+
+  function getSuccessReferralCode(data) {
+    var responseData = readOrderResponseData(data);
+    return normalizeReferralCode(firstPresentValue([
+      responseData.upstream.referralCode,
+      responseData.upstream.referral_code,
+      responseData.upstream.referral && responseData.upstream.referral.code,
+      responseData.payload.referralCode,
+      responseData.payload.referral_code,
+      responseData.payload.referral && responseData.payload.referral.code,
+      state.customer.referralCode
+    ]));
+  }
+
+  function hasActiveTicketsCampaign() {
+    return campaignLoadStatus === 'ready' && campaignConfig && campaignConfig.enabled === true && campaignConfig.ticketsPageEnabled === true;
+  }
+
+  function renderSuccessBonusBlock(data) {
+    var ticketCount = getSuccessTicketCount(data);
+    var referralCode = getSuccessReferralCode(data);
+    var hasTicketData = ticketCount != null;
+    var hasReferralData = Boolean(referralCode);
+    var ticketsUrl = hasActiveTicketsCampaign() ? (campaignConfig.ticketsPageUrl || '/tickets') : '';
+    var bonusRows = '';
+
+    if (hasTicketData) {
+      bonusRows += '<p><span class="success-bonus-label">Tickets</span><strong>' + ticketCount + '</strong></p>';
+    }
+    if (hasReferralData) {
+      bonusRows += '<p><span class="success-bonus-label">Referido</span><code>' + escapeHtml(referralCode) + '</code></p>';
+    }
+    if (!bonusRows) {
+      bonusRows = '<p class="success-bonus-empty">Tus tickets/referidos se podrán consultar cuando el sistema los confirme.</p>';
+    }
+
+    return '<section class="success-block success-bonus" aria-labelledby="successBonusTitle">' +
+      '<p class="success-eyebrow">Bonus secundario</p>' +
+      '<h3 id="successBonusTitle">Tickets / referido</h3>' +
+      '<div class="success-bonus-list">' + bonusRows + '</div>' +
+      (ticketsUrl ? '<a class="success-ticket-cta" href="' + escapeHtml(ticketsUrl) + '">Consultar tickets</a>' : '') +
+      '</section>';
+  }
+
   function showSuccessPanel(data) {
     var panel = document.getElementById('successPanel');
     if (!panel) return;
-    var total = Number((data && data.data && data.data.total) || calcTotal());
-    var itemCount = Number((data && data.data && data.data.upstream && data.data.upstream.itemCount) || calcOrderItemCount());
+    var responseData = readOrderResponseData(data);
+    var total = Number(firstPresentValue([responseData.payload.total, responseData.upstream.total, calcTotal()]));
+    var itemCount = Number(firstPresentValue([responseData.upstream.itemCount, responseData.payload.itemCount, calcOrderItemCount()]));
+    var folio = getSuccessFolio(data);
 
     panel.innerHTML =
-      '<h2>PEDIDO RECIBIDO ✅</h2>' +
-      '<p>Tu pedido ya entró al sistema.</p>' +
-      '<div class="success-metrics" aria-label="Resumen de confirmación">' +
-      '<p><strong>Total:</strong> ' + money(total) + '</p>' +
-      '<p><strong>Items:</strong> ' + itemCount + '</p>' +
+      '<section class="success-block success-order" aria-labelledby="successOrderTitle">' +
+      '<p class="success-eyebrow">Confirmación operativa</p>' +
+      '<h2 id="successOrderTitle">Pedido recibido</h2>' +
+      (folio ? '<p class="success-folio"><strong>Folio:</strong> <span>' + escapeHtml(folio) + '</span></p>' : '') +
+      '<div class="success-metrics" aria-label="Resumen del pedido recibido">' +
+      '<p><strong>Total:</strong> ' + money(Number.isFinite(total) ? total : calcTotal()) + '</p>' +
+      '<p><strong>Items:</strong> ' + (Number.isFinite(itemCount) ? itemCount : calcOrderItemCount()) + '</p>' +
+      '<p><strong>Estado:</strong> <span class="success-state-chip">Recibido / pendiente de confirmación</span></p>' +
       '</div>' +
-      '<p class="muted">Te contactaremos para confirmar detalles si hace falta.</p>' +
-      '<button id="backToMenuBtn" class="success-secondary-cta" type="button">Volver al menú</button>';
+      '<p class="success-operational-copy">Tu pedido ya entró al sistema. Te contactaremos para confirmar detalles si hace falta.</p>' +
+      '<button id="backToMenuBtn" class="success-primary-cta" type="button">Nuevo pedido</button>' +
+      '</section>' +
+      renderSuccessBonusBlock(data);
     panel.classList.remove('hidden');
     panel.setAttribute('tabindex', '-1');
     panel.focus({ preventScroll: true });
+    panel.scrollIntoView({ behavior: getScrollBehavior(), block: 'start' });
   }
 
   function goBackToMenuAfterSuccess() {
