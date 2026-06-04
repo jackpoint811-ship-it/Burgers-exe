@@ -55,6 +55,7 @@ type OrderConfirmation = NonNullable<CreateOrderV2Response["data"]>["order"] & {
 type DraftSnapshot = { customer: CustomerDraft; items: CartEntry[] };
 type CheckoutField = "name" | "phone" | "location" | "paymentMethod" | "paymentTiming" | "notes" | "cart";
 type CheckoutErrors = Partial<Record<CheckoutField, string>>;
+type CheckoutStepIndex = 0 | 1 | 2;
 
 const IDEMPOTENCY_KEY_STORAGE = "burgers-v2-order-draft-idempotency-key";
 const IDEMPOTENCY_DRAFT_STORAGE = "burgers-v2-order-draft-idempotency-fingerprint";
@@ -294,7 +295,19 @@ const validateCheckout = (customer: CustomerDraft, cart: CartEntry[], items: Men
   const firstError = checkoutErrorOrder.map((field) => fields[field]).find(Boolean) ?? null;
   return { global: firstError, fields };
 };
-const checkoutErrorOrder: CheckoutField[] = ["cart", "name", "phone", "location", "paymentMethod", "paymentTiming", "notes"];
+const validateCheckoutDataStep = (customer: CustomerDraft): CheckoutErrors => {
+  const fields: CheckoutErrors = {};
+  if (customer.name.trim().length < 2) fields.name = "Escribe tu nombre con al menos dos caracteres.";
+  if (normalizePhoneDigits(customer.phone).length < 10) fields.phone = "Escribe un teléfono válido con al menos diez dígitos.";
+  if (!customer.location) fields.location = "Elige Torre GGA o Torre Valcob.";
+  return fields;
+};
+const checkoutStepForErrors = (fields: CheckoutErrors): CheckoutStepIndex => {
+  if (fields.cart) return 0;
+  if (fields.name || fields.phone || fields.location || fields.notes) return 1;
+  return 2;
+};
+const checkoutErrorOrder: CheckoutField[] = ["cart", "name", "phone", "location", "notes", "paymentMethod", "paymentTiming"];
 const checkoutFieldTargetIds: Record<CheckoutField, string> = {
   cart: "checkoutCartSummary",
   name: "checkoutName",
@@ -873,17 +886,22 @@ const TransferDetailsModal = ({ onClose }: { onClose: () => void }) => {
 };
 
 const checkoutSteps = ["Resumen", "Datos", "Pago"] as const;
-type CheckoutStepIndex = 0 | 1 | 2;
 
-const Checkout = ({ cart, items, total, customer, setCustomer, onBack, onSubmit, submitting, error, fieldErrors, clearFieldError, onEdit, onDuplicate, onRemove }: { cart: CartEntry[]; items: MenuItem[]; total: number; customer: CustomerDraft; setCustomer: (customer: CustomerDraft) => void; onBack: () => void; onSubmit: () => void; submitting: boolean; error: string | null; fieldErrors: CheckoutErrors; clearFieldError: (field: CheckoutField) => void; onEdit: (lineKey: string) => void; onDuplicate: (lineKey: string) => void; onRemove: (lineKey: string) => void }) => {
+const Checkout = ({ cart, items, total, customer, setCustomer, checkoutStep, setCheckoutStep, onDataStepBlocked, onBack, onSubmit, submitting, error, fieldErrors, clearFieldError, onEdit, onDuplicate, onRemove }: { cart: CartEntry[]; items: MenuItem[]; total: number; customer: CustomerDraft; setCustomer: (customer: CustomerDraft) => void; checkoutStep: CheckoutStepIndex; setCheckoutStep: (step: CheckoutStepIndex) => void; onDataStepBlocked: (fields: CheckoutErrors) => void; onBack: () => void; onSubmit: () => void; submitting: boolean; error: string | null; fieldErrors: CheckoutErrors; clearFieldError: (field: CheckoutField) => void; onEdit: (lineKey: string) => void; onDuplicate: (lineKey: string) => void; onRemove: (lineKey: string) => void }) => {
   const [transferModalOpen, setTransferModalOpen] = useState(false);
-  const [checkoutStep, setCheckoutStep] = useState<CheckoutStepIndex>(0);
   const updatePaymentMethod = (paymentMethod: OrderV2PaymentMethod) => {
     clearFieldError("paymentMethod");
     if (paymentMethod !== "transfer") clearFieldError("paymentTiming");
     setCustomer({ ...customer, paymentMethod, paymentTiming: paymentMethod === "transfer" ? customer.paymentTiming : "" });
   };
   const goToStep = (step: CheckoutStepIndex) => {
+    if (step === 2 && checkoutStep !== 2) {
+      const dataFields = validateCheckoutDataStep(customer);
+      if (Object.keys(dataFields).length) {
+        onDataStepBlocked(dataFields);
+        return;
+      }
+    }
     setCheckoutStep(step);
     window.requestAnimationFrame(() => document.getElementById("checkoutWizard")?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
@@ -1140,6 +1158,7 @@ export function PublicOrderApp() {
   const [submitting, setSubmitting] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [checkoutFieldErrors, setCheckoutFieldErrors] = useState<CheckoutErrors>({});
+  const [checkoutStep, setCheckoutStep] = useState<CheckoutStepIndex>(0);
   const [orderConfirmation, setOrderConfirmation] = useState<OrderConfirmation | null>(null);
   const [quickAddFeedback, setQuickAddFeedback] = useState<string | null>(null);
   const total = useMemo(() => getCartTotal(cart, menuData.items), [cart, menuData.items]);
@@ -1156,6 +1175,15 @@ export function PublicOrderApp() {
     delete next[field];
     return next;
   });
+  const focusCheckoutErrorsOnStep = (fields: CheckoutErrors, step: CheckoutStepIndex) => {
+    setCheckoutStep(step);
+    window.requestAnimationFrame(() => focusFirstCheckoutError(fields));
+  };
+  const blockCheckoutDataStep = (fields: CheckoutErrors) => {
+    setCheckoutError(checkoutErrorOrder.map((field) => fields[field]).find(Boolean) ?? null);
+    setCheckoutFieldErrors((current) => ({ ...current, ...fields }));
+    focusCheckoutErrorsOnStep(fields, 1);
+  };
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1280,7 +1308,7 @@ export function PublicOrderApp() {
   };
   const confirmBuilder = () => {
     if (!saveBuilderToCart()) return false;
-    if (builder?.editLineKey) { setBuilder(null); navigate("checkout"); } else { setSideQuestEntryMode("builder"); setSideQuestError(null); navigate("side"); }
+    if (builder?.editLineKey) { setBuilder(null); setCheckoutStep(0); navigate("checkout"); } else { setSideQuestEntryMode("builder"); setSideQuestError(null); navigate("side"); }
     return true;
   };
   const saveBuilderAndContinueChoosing = () => {
@@ -1303,6 +1331,7 @@ export function PublicOrderApp() {
     }
     setExtraGarnishQuantities({});
     setBuilder(null);
+    setCheckoutStep(0);
     navigate("checkout");
   };
   const duplicateLine = (lineKey: string) => setCart((prev) => { const found = prev.find((entry) => entry.lineKey === lineKey); return found ? reindex([...prev, { ...found, lineKey: createId("line") }]) : prev; });
@@ -1322,9 +1351,10 @@ export function PublicOrderApp() {
     setCheckoutFieldErrors({});
     const validation = validateCheckout(customer, cart, menuData.items);
     if (validation.global) {
+      const targetStep = checkoutStepForErrors(validation.fields);
       setCheckoutError(validation.global);
       setCheckoutFieldErrors(validation.fields);
-      focusFirstCheckoutError(validation.fields);
+      focusCheckoutErrorsOnStep(validation.fields, targetStep);
       return;
     }
     const payloadItems = cart.map((entry) => ({ sku: entry.sku, name: entry.name, qty: 1, lineKey: entry.lineKey, itemDisplayIndex: entry.itemDisplayIndex, itemKind: entry.itemKind, removedIngredients: entry.removedIngredients, extras: entry.extras, burgerNote: entry.burgerNote?.trim() || undefined, garnish: entry.garnish ?? null }));
@@ -1349,7 +1379,7 @@ export function PublicOrderApp() {
       setSubmitting(false);
     }
   };
-  const handleCreateAnother = () => { setOrderConfirmation(null); setCheckoutError(null); setCart([]); setCustomer(createEmptyCustomer()); clearDraftIdempotencyKey(); setBuilder(null); setOrderChoice(null); setQuickAddFeedback(null); setExtraGarnishQuantities({}); setSideQuestError(null); setSideQuestEntryMode("builder"); navigate("menu"); };
+  const handleCreateAnother = () => { setOrderConfirmation(null); setCheckoutError(null); setCheckoutFieldErrors({}); setCheckoutStep(0); setCart([]); setCustomer(createEmptyCustomer()); clearDraftIdempotencyKey(); setBuilder(null); setOrderChoice(null); setQuickAddFeedback(null); setExtraGarnishQuantities({}); setSideQuestError(null); setSideQuestEntryMode("builder"); navigate("menu"); };
   const openInfoDialog = (item: MenuItem) => {
     setInfoItem(item);
     window.history.pushState({ burgersExePublicSection: sectionRef.current, modal: "menu-info" }, "", `${window.location.pathname}${window.location.search}#${sectionRef.current}-info`);
@@ -1374,7 +1404,7 @@ export function PublicOrderApp() {
       {section === "main" ? <MainQuest choice={orderChoice} availableBurgerItems={availableBurgerItems} availableComboItems={availableComboItems} garnishes={garnishes} builder={builder} quickAddFeedback={quickAddFeedback} onBack={() => navigate("menu")} onChoice={(choice) => { setOrderChoice(choice); setBuilder(null); setQuickAddFeedback(null); }} onProduct={startBuilder} onQuickAdd={quickAddItem} onSideQuest={startDirectSideQuest} reduce={reduce} /> : null}
       {section === "workbench" ? <Workbench builder={builder} extras={extras} garnishes={garnishes} onBack={() => navigate("main")} onQuantity={updateBuilderQuantity} onUnitChange={updateBuilderUnit} onSaveAndContinueChoosing={saveBuilderAndContinueChoosing} /> : null}
       {section === "side" ? <SideQuest garnishes={garnishes} selected={extraGarnishQuantities} onQuantity={(sku, quantity) => { setSideQuestError(null); setExtraGarnishQuantities((prev) => ({ ...prev, [sku]: Math.min(10, Math.max(0, quantity)) })); }} onBack={() => navigate(sideQuestEntryMode === "builder" && builder ? "workbench" : "main")} canSkip={hasBurgerOrComboInCart} error={sideQuestError} reduce={reduce} /> : null}
-      {section === "checkout" && cart.length ? <Checkout cart={cart} items={menuData.items} total={total} customer={customer} setCustomer={setCustomer} onBack={() => navigate("side") } onSubmit={handleCheckout} submitting={submitting} error={checkoutError} fieldErrors={checkoutFieldErrors} clearFieldError={clearCheckoutFieldError} onEdit={editLine} onDuplicate={duplicateLine} onRemove={removeLine} /> : null}
+      {section === "checkout" && cart.length ? <Checkout cart={cart} items={menuData.items} total={total} customer={customer} setCustomer={setCustomer} checkoutStep={checkoutStep} setCheckoutStep={setCheckoutStep} onDataStepBlocked={blockCheckoutDataStep} onBack={() => navigate("side") } onSubmit={handleCheckout} submitting={submitting} error={checkoutError} fieldErrors={checkoutFieldErrors} clearFieldError={clearCheckoutFieldError} onEdit={editLine} onDuplicate={duplicateLine} onRemove={removeLine} /> : null}
       {section === "success" && orderConfirmation ? <Success order={orderConfirmation} campaign={raffleCampaign} onCreateAnother={handleCreateAnother} /> : null}
       <MenuInfoDialog item={infoItem} onClose={() => setInfoItem(null)} />
       <PersistentCta section={section} count={count} total={total} disabled={primaryDisabled} submitting={submitting} onClick={primaryAction} builder={builder} sideHasSelection={sideHasSelection} hasBurgerOrCombo={hasBurgerOrComboInCart} />
