@@ -401,6 +401,24 @@ export type RaffleActiveResponse = {
   error?: OrderV2Error;
 };
 
+export type RaffleTicketsLookupResult = {
+  found: boolean;
+  campaign: Pick<RaffleCampaignPublicV2, "id" | "title" | "ticketPerBurger" | "ticketPerReferral"> | null;
+  participant: RaffleParticipantSummary | null;
+  referralCode?: {
+    code: string;
+    ownerName: string;
+    ownerPhoneMasked: string;
+    isActive: boolean;
+  } | null;
+};
+
+export type RaffleTicketsLookupResponse = {
+  ok: boolean;
+  data?: RaffleTicketsLookupResult;
+  error?: OrderV2Error;
+};
+
 export type RaffleCampaignsAdminResponse = {
   ok: boolean;
   data?: { campaigns: RaffleCampaignV2[] };
