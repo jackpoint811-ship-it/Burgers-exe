@@ -485,8 +485,6 @@ const MenuSection = ({ menuData, raffleCampaign, onExplore, onStart, reduce }: {
         <p>Elige tu burger, personalízala y confirma tu pedido.</p>
         <QuestButton onClick={onStart}>INICIAR QUEST</QuestButton>
       </div>
-      <RaffleBanner campaign={raffleCampaign} />
-      <PromoRail promos={menuData.promos} />
       {MENU_GROUPS.map(({ key, label }) => {
         const list = byGroup(key).sort((a, b) => a.sortOrder - b.sortOrder);
         return (
@@ -496,6 +494,11 @@ const MenuSection = ({ menuData, raffleCampaign, onExplore, onStart, reduce }: {
           </section>
         );
       })}
+      <aside className="menu-bonus-zone" aria-label="Bonus de tickets y referidos">
+        <span className="eyebrow">Bonus secundario</span>
+        <RaffleBanner campaign={raffleCampaign} />
+        <PromoRail promos={menuData.promos} />
+      </aside>
     </section>
   );
 };
@@ -603,6 +606,18 @@ const QuantityControl = ({ value, onChange, min = 1, max = 3, label = "Cantidad 
 const UnitEditor = ({ unit, index, item, extras, garnishes, onChange }: { unit: CartEntry; index: number; item: MenuItem; extras: MenuItem[]; garnishes: MenuItem[]; onChange: (unit: CartEntry) => void }) => {
   const ingredients = getRemovableIngredients(item);
   const isBurgerLike = unit.itemKind === "burger" || unit.itemKind === "combo";
+  const [openPanels, setOpenPanels] = useState({ mod: true, upgrades: false, combo: true });
+  const removedSummary = unit.removedIngredients.length ? `Sin ${unit.removedIngredients.join(", ")}` : "Sin cambios";
+  const extrasSummary = unit.extras.length
+    ? unit.extras.reduce<Record<string, { name: string; quantity: number }>>((acc, extra) => {
+      const key = extra.sku ?? extra.name;
+      acc[key] = { name: extra.name, quantity: (acc[key]?.quantity ?? 0) + 1 };
+      return acc;
+    }, {})
+    : null;
+  const extrasSummaryText = extrasSummary ? Object.values(extrasSummary).map((entry) => `${entry.name} x${entry.quantity}`).join(", ") : "Sin extras";
+  const togglePanel = (panel: keyof typeof openPanels) => setOpenPanels((current) => ({ ...current, [panel]: !current[panel] }));
+
   return (
     <article className="unit-editor">
       <header className="unit-editor-header">
@@ -612,11 +627,11 @@ const UnitEditor = ({ unit, index, item, extras, garnishes, onChange }: { unit: 
         </div>
         <strong className="status-badge">Personalizando</strong>
       </header>
-      {isBurgerLike ? <div className="builder-block mod-block"><div className="builder-block-head"><h4>MOD</h4><p className="builder-hint">Quita ingredientes incluidos en esta burger.</p></div>{ingredients.length ? <div className="chip-grid mod-chip-grid">{ingredients.map((ingredient) => {
+      {isBurgerLike ? <section className="builder-block mod-block custom-accordion-block"><button type="button" className="custom-accordion-trigger" aria-expanded={openPanels.mod} onClick={() => togglePanel("mod")}><span><strong>Quitar ingredientes</strong><em>{removedSummary}</em></span><b aria-hidden="true">{openPanels.mod ? "−" : "+"}</b></button>{openPanels.mod ? <div className="custom-accordion-panel"><p className="builder-hint">Activa lo que NO quieres en tu burger.</p>{ingredients.length ? <div className="chip-grid mod-chip-grid">{ingredients.map((ingredient) => {
         const active = unit.removedIngredients.includes(ingredient);
         return <button type="button" key={ingredient} className={active ? "chip mod-chip active" : "chip mod-chip"} aria-pressed={active} onClick={() => onChange({ ...unit, removedIngredients: active ? unit.removedIngredients.filter((entry) => entry !== ingredient) : [...unit.removedIngredients, ingredient] })}>Sin {ingredient}</button>;
-      })}</div> : <p className="muted unavailable-mod-copy">Esta burger no tiene MOD disponible por ahora.</p>}</div> : null}
-      {isBurgerLike ? <div className="builder-block upgrade-block"><div className="builder-block-head"><h4>UPGRADE</h4><p className="builder-hint">Agrega extras por pieza. Puedes sumar más de uno.</p></div>{extras.length ? <div className="upgrade-grid">{extras.map((extra) => {
+      })}</div> : <p className="muted unavailable-mod-copy">Esta burger no tiene MOD disponible por ahora.</p>}</div> : null}</section> : null}
+      {isBurgerLike ? <section className="builder-block upgrade-block custom-accordion-block"><button type="button" className="custom-accordion-trigger" aria-expanded={openPanels.upgrades} onClick={() => togglePanel("upgrades")}><span><strong>Extras</strong><em>{extrasSummaryText}</em></span><b aria-hidden="true">{openPanels.upgrades ? "−" : "+"}</b></button>{openPanels.upgrades ? <div className="custom-accordion-panel"><p className="builder-hint">Agrega extras por pieza. Puedes sumar más de uno.</p>{extras.length ? <div className="upgrade-grid">{extras.map((extra) => {
         const quantity = unit.extras.filter((entry) => entry.sku === extra.sku).length;
         return <div className={quantity ? "upgrade-card active" : "upgrade-card"} key={extra.sku}><button type="button" className={quantity ? "chip upgrade-chip active" : "chip upgrade-chip"} aria-pressed={quantity > 0} onClick={() => onChange({ ...unit, extras: [...unit.extras, { sku: extra.sku, name: extra.name, price: extra.price }] })}><span>{extra.name}</span><strong>+{formatCurrency(extra.price)}</strong>{quantity ? <em>{quantity}</em> : null}</button>{quantity ? <div className="upgrade-controls"><QuantityControl value={quantity} min={0} max={10} label={`Cantidad de ${extra.name}`} onChange={(nextQty) => {
           if (nextQty > quantity) onChange({ ...unit, extras: [...unit.extras, ...Array.from({ length: nextQty - quantity }, () => ({ sku: extra.sku, name: extra.name, price: extra.price }))] });
@@ -629,8 +644,8 @@ const UnitEditor = ({ unit, index, item, extras, garnishes, onChange }: { unit: 
             }) });
           }
         }} /></div> : null}</div>;
-      })}</div> : <p className="muted">Sin extras disponibles.</p>}</div> : null}
-      {unit.itemKind === "combo" ? <div className="builder-block"><div className="builder-block-head"><h4>Guarnición incluida</h4></div>{garnishes.length ? <div className="chip-grid">{garnishes.map((garnish) => <button type="button" key={garnish.sku} className={unit.garnish?.sku === garnish.sku ? "chip active" : "chip"} onClick={() => onChange({ ...unit, garnish: { sku: garnish.sku, name: garnish.name } })}>{garnish.name}</button>)}</div> : <p className="inline-error">No hay guarniciones disponibles para confirmar este combo.</p>}</div> : null}
+      })}</div> : <p className="muted">Sin extras disponibles.</p>}</div> : null}</section> : null}
+      {unit.itemKind === "combo" ? <section className="builder-block custom-accordion-block"><button type="button" className="custom-accordion-trigger" aria-expanded={openPanels.combo} onClick={() => togglePanel("combo")}><span><strong>Guarnición incluida</strong><em>{unit.garnish?.name ?? "Elige una guarnición"}</em></span><b aria-hidden="true">{openPanels.combo ? "−" : "+"}</b></button>{openPanels.combo ? <div className="custom-accordion-panel">{garnishes.length ? <div className="chip-grid">{garnishes.map((garnish) => <button type="button" key={garnish.sku} className={unit.garnish?.sku === garnish.sku ? "chip active" : "chip"} onClick={() => onChange({ ...unit, garnish: { sku: garnish.sku, name: garnish.name } })}>{garnish.name}</button>)}</div> : <p className="inline-error">No hay guarniciones disponibles para confirmar este combo.</p>}</div> : null}</section> : null}
       {isBurgerLike ? <label className="field-label burger-note-label">Nota por burger opcional<textarea maxLength={220} value={unit.burgerNote ?? ""} onChange={(event) => onChange({ ...unit, burgerNote: event.target.value })} placeholder="Ej. bien cocida" /></label> : null}
     </article>
   );
@@ -857,30 +872,55 @@ const TransferDetailsModal = ({ onClose }: { onClose: () => void }) => {
   );
 };
 
+const checkoutSteps = ["Resumen", "Datos", "Pago"] as const;
+type CheckoutStepIndex = 0 | 1 | 2;
+
 const Checkout = ({ cart, items, total, customer, setCustomer, onBack, onSubmit, submitting, error, fieldErrors, clearFieldError, onEdit, onDuplicate, onRemove }: { cart: CartEntry[]; items: MenuItem[]; total: number; customer: CustomerDraft; setCustomer: (customer: CustomerDraft) => void; onBack: () => void; onSubmit: () => void; submitting: boolean; error: string | null; fieldErrors: CheckoutErrors; clearFieldError: (field: CheckoutField) => void; onEdit: (lineKey: string) => void; onDuplicate: (lineKey: string) => void; onRemove: (lineKey: string) => void }) => {
   const [transferModalOpen, setTransferModalOpen] = useState(false);
+  const [checkoutStep, setCheckoutStep] = useState<CheckoutStepIndex>(0);
   const updatePaymentMethod = (paymentMethod: OrderV2PaymentMethod) => {
     clearFieldError("paymentMethod");
     if (paymentMethod !== "transfer") clearFieldError("paymentTiming");
     setCustomer({ ...customer, paymentMethod, paymentTiming: paymentMethod === "transfer" ? customer.paymentTiming : "" });
   };
+  const goToStep = (step: CheckoutStepIndex) => {
+    setCheckoutStep(step);
+    window.requestAnimationFrame(() => document.getElementById("checkoutWizard")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
+  const nextStep = () => goToStep(Math.min(2, checkoutStep + 1) as CheckoutStepIndex);
+  const prevStep = () => checkoutStep === 0 ? onBack() : goToStep(Math.max(0, checkoutStep - 1) as CheckoutStepIndex);
 
   return (
-    <section className="quest-panel checkout-panel">
-      <QuestButton className="back-button" onClick={onBack}>← Volver a guarniciones</QuestButton>
-      <span className="eyebrow">Loadout final</span>
-      <h2>Revisa tu ticket</h2>
-      <p className="muted section-subcopy">Revisa tu ticket y confirma.</p>
-      <div id="checkoutCartSummary" tabIndex={-1}>
-        <TicketList cart={cart} items={items} onEdit={onEdit} onDuplicate={onDuplicate} onRemove={onRemove} />
-      </div>
-      {fieldErrors.cart ? <p className="inline-error" role="alert">{fieldErrors.cart}</p> : null}
-      <div className="checkout-grid">
-        <label className="field-label">Nombre<input id="checkoutName" value={customer.name} onChange={(event) => { clearFieldError("name"); setCustomer({ ...customer, name: event.target.value }); }} placeholder="Tu nombre" aria-invalid={fieldErrors.name ? "true" : "false"} aria-describedby={fieldErrors.name ? "checkoutNameError" : undefined} />{fieldErrors.name ? <span className="inline-error" id="checkoutNameError" role="alert">{fieldErrors.name}</span> : null}</label>
-        <label className="field-label">Teléfono<input id="checkoutPhone" inputMode="tel" value={customer.phone} onChange={(event) => { clearFieldError("phone"); setCustomer({ ...customer, phone: event.target.value }); }} placeholder="55 0000 0000" aria-invalid={fieldErrors.phone ? "true" : "false"} aria-describedby={fieldErrors.phone ? "checkoutPhoneError" : undefined} />{fieldErrors.phone ? <span className="inline-error" id="checkoutPhoneError" role="alert">{fieldErrors.phone}</span> : null}</label>
-        <label className="field-label wide">Nota general opcional<textarea id="checkoutNotes" maxLength={500} value={customer.notes} onChange={(event) => { clearFieldError("notes"); setCustomer({ ...customer, notes: event.target.value }); }} placeholder="Nota general del pedido" aria-invalid={fieldErrors.notes ? "true" : "false"} aria-describedby={fieldErrors.notes ? "checkoutNotesError" : undefined} />{fieldErrors.notes ? <span className="inline-error" id="checkoutNotesError" role="alert">{fieldErrors.notes}</span> : null}</label>
-        <label className="field-label wide">Código de invitado<input value={customer.referralCode} onChange={(event) => setCustomer({ ...customer, referralCode: event.target.value.toUpperCase() })} placeholder="CARLOS-BURGER-27" maxLength={32} /><small>Si alguien te invitó, escribe su código. Solo ayuda a tu compa si este pedido incluye al menos 1 burger pagada.</small></label>
-        <div className="builder-block" id="checkoutLocation" tabIndex={-1}><h4>Ubicación</h4><div className="chip-grid">{LOCATIONS.map((location) => <button type="button" key={location} className={customer.location === location ? "chip active" : "chip"} onClick={() => { clearFieldError("location"); setCustomer({ ...customer, location }); }} aria-pressed={customer.location === location}>{location}</button>)}</div>{fieldErrors.location ? <p className="inline-error" id="checkoutLocationError" role="alert">{fieldErrors.location}</p> : null}</div>
+    <section className="quest-panel checkout-panel" id="checkoutWizard">
+      <QuestButton className="back-button" onClick={prevStep}>{checkoutStep === 0 ? "← Volver a guarniciones" : "← Paso anterior"}</QuestButton>
+      <span className="eyebrow">Checkout</span>
+      <h2>{checkoutSteps[checkoutStep]}</h2>
+      <p className="muted section-subcopy">Checkout 3 pasos: revisa, deja tus datos y confirma pago sin cambiar tu pedido.</p>
+      <nav className="checkout-progress" aria-label="Progreso de checkout">
+        {checkoutSteps.map((label, index) => <button key={label} type="button" className={checkoutStep === index ? "active" : ""} aria-current={checkoutStep === index ? "step" : undefined} onClick={() => goToStep(index as CheckoutStepIndex)}><span>{index + 1}</span>{label}</button>)}
+      </nav>
+      {checkoutStep === 0 ? <section className="checkout-step-panel" aria-labelledby="checkoutSummaryTitle">
+        <div className="checkout-step-heading"><span>01</span><h3 id="checkoutSummaryTitle">Resumen del ticket</h3></div>
+        <div id="checkoutCartSummary" tabIndex={-1}>
+          <TicketList cart={cart} items={items} onEdit={onEdit} onDuplicate={onDuplicate} onRemove={onRemove} />
+        </div>
+        {fieldErrors.cart ? <p className="inline-error" role="alert">{fieldErrors.cart}</p> : null}
+        <div className="checkout-total"><span>Total</span><strong>{formatCurrency(total)}</strong></div>
+        <QuestButton onClick={nextStep} disabled={!cart.length}>Continuar a datos</QuestButton>
+      </section> : null}
+      {checkoutStep === 1 ? <section className="checkout-step-panel" aria-labelledby="checkoutDataTitle">
+        <div className="checkout-step-heading"><span>02</span><h3 id="checkoutDataTitle">Datos del pedido</h3></div>
+        <div className="checkout-grid">
+          <label className="field-label">Nombre<input id="checkoutName" value={customer.name} onChange={(event) => { clearFieldError("name"); setCustomer({ ...customer, name: event.target.value }); }} placeholder="Tu nombre" aria-invalid={fieldErrors.name ? "true" : "false"} aria-describedby={fieldErrors.name ? "checkoutNameError" : undefined} />{fieldErrors.name ? <span className="inline-error" id="checkoutNameError" role="alert">{fieldErrors.name}</span> : null}</label>
+          <label className="field-label">Teléfono<input id="checkoutPhone" inputMode="tel" value={customer.phone} onChange={(event) => { clearFieldError("phone"); setCustomer({ ...customer, phone: event.target.value }); }} placeholder="55 0000 0000" aria-invalid={fieldErrors.phone ? "true" : "false"} aria-describedby={fieldErrors.phone ? "checkoutPhoneError" : undefined} />{fieldErrors.phone ? <span className="inline-error" id="checkoutPhoneError" role="alert">{fieldErrors.phone}</span> : null}</label>
+          <label className="field-label wide">Nota general opcional<textarea id="checkoutNotes" maxLength={500} value={customer.notes} onChange={(event) => { clearFieldError("notes"); setCustomer({ ...customer, notes: event.target.value }); }} placeholder="Nota general del pedido" aria-invalid={fieldErrors.notes ? "true" : "false"} aria-describedby={fieldErrors.notes ? "checkoutNotesError" : undefined} />{fieldErrors.notes ? <span className="inline-error" id="checkoutNotesError" role="alert">{fieldErrors.notes}</span> : null}</label>
+          <label className="field-label wide">Código de invitado<input value={customer.referralCode} onChange={(event) => setCustomer({ ...customer, referralCode: event.target.value.toUpperCase() })} placeholder="CARLOS-BURGER-27" maxLength={32} /><small>Bonus secundario: si alguien te invitó, escribe su código.</small></label>
+          <div className="builder-block" id="checkoutLocation" tabIndex={-1}><h4>Ubicación</h4><div className="chip-grid">{LOCATIONS.map((location) => <button type="button" key={location} className={customer.location === location ? "chip active" : "chip"} onClick={() => { clearFieldError("location"); setCustomer({ ...customer, location }); }} aria-pressed={customer.location === location}>{location}</button>)}</div>{fieldErrors.location ? <p className="inline-error" id="checkoutLocationError" role="alert">{fieldErrors.location}</p> : null}</div>
+        </div>
+        <QuestButton onClick={nextStep}>Continuar a pago</QuestButton>
+      </section> : null}
+      {checkoutStep === 2 ? <section className="checkout-step-panel" aria-labelledby="checkoutPaymentTitle">
+        <div className="checkout-step-heading"><span>03</span><h3 id="checkoutPaymentTitle">Pago</h3></div>
         <div className="builder-block payment-block" id="checkoutPaymentMethod" tabIndex={-1}>
           <h4>Método de pago</h4>
           <div className="chip-grid payment-chip-grid">
@@ -901,10 +941,10 @@ const Checkout = ({ cart, items, total, customer, setCustomer, onBack, onSubmit,
             </div>
           ) : null}
         </div>
-      </div>
-      <div className="checkout-total"><span>Total</span><strong>{formatCurrency(total)}</strong></div>
-      <QuestButton onClick={onSubmit} disabled={submitting || !cart.length}>{submitting ? "Enviando pedido..." : "Confirmar pedido"}</QuestButton>
-      {error ? <p className="inline-error" role="alert">{error}</p> : null}
+        <div className="checkout-total"><span>Total</span><strong>{formatCurrency(total)}</strong></div>
+        <QuestButton onClick={onSubmit} disabled={submitting || !cart.length}>{submitting ? "Enviando pedido..." : "Confirmar pedido"}</QuestButton>
+        {error ? <p className="inline-error" role="alert">{error}</p> : null}
+      </section> : null}
       {transferModalOpen ? <TransferDetailsModal onClose={() => setTransferModalOpen(false)} /> : null}
     </section>
   );
@@ -1008,21 +1048,26 @@ const Success = ({ order, campaign, onCreateAnother }: { order: OrderConfirmatio
 
   return (
     <section className="quest-panel success-panel" aria-live="polite">
-      <span className="eyebrow">Success</span>
-      <h2>Pedido recibido</h2>
-      <p className="muted section-subcopy">Tu orden ya entró a cocina.</p>
-      <div className="success-folio-card">
-        <span>Folio</span>
-        <strong>{order.folio}</strong>
-      </div>
-      <dl className="success-details">
-        <div><dt>Total</dt><dd>{formatCurrency(order.total)}</dd></div>
-        <div><dt>Ubicación</dt><dd>{order.location}</dd></div>
-        <div><dt>Pago</dt><dd>{paymentMethodLabels[order.paymentMethod]}</dd></div>
-        <div><dt>Tiempo estimado</dt><dd>15–25 min</dd></div>
-      </dl>
-      <p className="success-whatsapp">Te avisaremos por WhatsApp cuando tu pedido esté listo.</p>
-      <p className="muted success-status">Estado: {statusLabels[order.status] ?? order.status}</p>
+      <section className="success-operational-block" aria-labelledby="successOrderTitle">
+        <span className="eyebrow">Confirmación operativa</span>
+        <h2 id="successOrderTitle">Pedido recibido</h2>
+        <p className="muted section-subcopy">Tu orden ya entró a cocina.</p>
+        <div className="success-folio-card">
+          <span>Folio</span>
+          <strong>{order.folio}</strong>
+        </div>
+        <dl className="success-details">
+          <div><dt>Total</dt><dd>{formatCurrency(order.total)}</dd></div>
+          <div><dt>Ubicación</dt><dd>{order.location}</dd></div>
+          <div><dt>Pago</dt><dd>{paymentMethodLabels[order.paymentMethod]}</dd></div>
+          <div><dt>Estado</dt><dd>{statusLabels[order.status] ?? order.status}</dd></div>
+          <div><dt>Tiempo estimado</dt><dd>15–25 min</dd></div>
+        </dl>
+        <p className="success-whatsapp">Te avisaremos por WhatsApp cuando tu pedido esté listo.</p>
+      </section>
+      <section className="success-bonus-block" aria-labelledby="successBonusTitle">
+        <span className="eyebrow">Bonus secundario</span>
+        <h3 id="successBonusTitle">Tickets / referido</h3>
       {hasEarnedTickets && earnedTickets ? <article className="success-reward-card">
         <span className="eyebrow">Loot desbloqueado</span>
         <strong className="success-ticket-total">+{earnedTickets.totalTickets} tickets</strong>
@@ -1049,6 +1094,8 @@ const Success = ({ order, campaign, onCreateAnother }: { order: OrderConfirmatio
       </article> : null}
       {order.referralAccepted === true && !earnedTickets ? <p className="success-note">Código de invitado aplicado.</p> : null}
       {order.referralAccepted === false ? <p className="success-note muted">Pedido recibido. El código de invitado no aplicó.</p> : null}
+        {!hasEarnedTickets && !order.customerReferralCode ? <p className="success-note muted">Tickets y referido quedan como bonus secundario cuando el sistema los confirme.</p> : null}
+      </section>
       <QuestButton onClick={onCreateAnother}>Nuevo pedido</QuestButton>
     </section>
   );
