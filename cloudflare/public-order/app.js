@@ -68,6 +68,7 @@
   var dataStepErrors = {};
   var clearConfirmUntil = 0;
   var isSubmitting = false;
+  var accordionOpenState = { CUSTOM: {}, EXTRAS: {} };
 
   var DEFAULT_ORDER_GATE_CONFIG = {
     closed: false,
@@ -291,12 +292,33 @@
     var labels = [];
     MENU.extras.forEach(function (x) {
       var qty = getExtraQty(unit, x.sku);
-      if (qty > 0) labels.push(qty + ' ' + x.name);
+      if (qty > 0) labels.push(x.name + ' x' + qty);
     });
     return labels.join(', ') || 'Sin extras';
   }
   function extrasLineTotal(unit) {
     return MENU.extras.reduce(function (sum, x) { return sum + getExtraQty(unit, x.sku) * x.price; }, 0);
+  }
+
+  function getWithoutSummary(unit) {
+    return (unit.without || []).map(function (opt) { return opt.replace(/^Sin\s+/i, ''); }).join(', ') || 'Sin cambios';
+  }
+
+  function getAccordionKey(stepName, unit) {
+    return stepName + ':' + (unit && unit.id ? unit.id : 'unit');
+  }
+
+  function isAccordionOpen(stepName, unit, index) {
+    var key = getAccordionKey(stepName, unit);
+    if (Object.prototype.hasOwnProperty.call(accordionOpenState[stepName], key)) {
+      return accordionOpenState[stepName][key];
+    }
+    return index === 0;
+  }
+
+  function setAccordionOpen(stepName, unitId, isOpen) {
+    if (!accordionOpenState[stepName]) return;
+    accordionOpenState[stepName][stepName + ':' + unitId] = isOpen;
   }
 
   function bySku(list, sku) { return list.find(function (x) { return x.sku === sku; }); }
@@ -600,22 +622,30 @@
   function renderCustomStep() {
     if (!state.burgerUnits.length) return '<h2>CUSTOM</h2><p class="muted">No hay burgers.</p>';
     return '<h2>CUSTOM</h2>' + state.burgerUnits.map(function (u, i) {
-      var removedSummary = (u.without || []).map(function (opt) { return opt.replace(/^Sin\s+/i, ''); }).join(', ') || 'Sin cambios';
-      return '<div class="custom-card custom-card-edit" data-unit-card="' + escapeHtml(u.id) + '">' +
-        '<p class="custom-context">Personalizando: ' + escapeHtml(u.label) + '</p>' +
-        '<h4>Quitar ingredientes</h4>' +
-        '<p class="custom-help">Activa lo que NO quieres en tu burger.</p>' +
-        '<p class="custom-summary">Quitaste: ' + escapeHtml(removedSummary) + '</p>' +
-        '<div class="choice-list">' + ((WITHOUT[u.sku] || []).map(function (opt) {
-          var isChecked = u.without.indexOf(opt) >= 0;
-          return '<label class="choice-row choice-row-without" data-choice-row="without">' +
-            '<input class="choice-input" type="checkbox" data-kind="without" data-i="' + i + '" value="' + opt + '" ' + (isChecked ? 'checked' : '') + '>' +
-            '<span class="choice-main">' +
-              '<span class="choice-text">' + escapeHtml(opt) + '</span>' +
-              '<span class="choice-state">' + (isChecked ? 'Quitado' : 'Disponible') + '</span>' +
-            '</span>' +
-          '</label>';
-        }).join('')) + '</div>' +
+      var removedSummary = getWithoutSummary(u);
+      var isOpen = isAccordionOpen('CUSTOM', u, i);
+      var panelId = 'custom-panel-' + i + '-' + escapeHtml(u.id);
+      return '<div class="custom-card custom-card-edit custom-accordion" data-unit-card="' + escapeHtml(u.id) + '">' +
+        '<button type="button" class="custom-accordion-trigger" data-accordion-step="CUSTOM" data-accordion-unit="' + escapeHtml(u.id) + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '" aria-controls="' + panelId + '">' +
+          '<span class="custom-accordion-title">' +
+            '<span class="custom-context">Personalizando: ' + escapeHtml(u.label) + '</span>' +
+            '<span class="custom-accordion-heading">Quitar ingredientes</span>' +
+          '</span>' +
+          '<span class="custom-accordion-summary custom-summary">' + (removedSummary === 'Sin cambios' ? 'Sin cambios' : 'Quitaste: ' + escapeHtml(removedSummary)) + '</span>' +
+        '</button>' +
+        '<div class="custom-accordion-panel" id="' + panelId + '"' + (isOpen ? '' : ' hidden') + '>' +
+          '<p class="custom-help">Activa lo que NO quieres en tu burger.</p>' +
+          '<div class="choice-list">' + ((WITHOUT[u.sku] || []).map(function (opt) {
+            var isChecked = u.without.indexOf(opt) >= 0;
+            return '<label class="choice-row choice-row-without" data-choice-row="without">' +
+              '<input class="choice-input" type="checkbox" data-kind="without" data-i="' + i + '" value="' + opt + '" ' + (isChecked ? 'checked' : '') + '>' +
+              '<span class="choice-main">' +
+                '<span class="choice-text">' + escapeHtml(opt) + '</span>' +
+                '<span class="choice-state">' + (isChecked ? 'Quitado' : 'Disponible') + '</span>' +
+              '</span>' +
+            '</label>';
+          }).join('')) + '</div>' +
+        '</div>' +
       '</div>';
     }).join('');
   }
@@ -624,27 +654,36 @@
     if (!state.burgerUnits.length) return '<h2>EXTRAS</h2><p class="muted">No hay burgers.</p>';
     if (!MENU.extras.length) return '<h2>EXTRAS</h2><p class="muted">No hay extras activos en D1.</p>';
     return '<h2>EXTRAS</h2>' + state.burgerUnits.map(function (u, i) {
-      return '<div class="custom-card custom-card-edit" data-unit-card="' + escapeHtml(u.id) + '">' +
-        '<p class="custom-context">Extras para: ' + escapeHtml(u.label) + '</p>' +
-        '<h4>Agrega cantidades independientes</h4>' +
-        '<p class="custom-help">Puedes agregar más de una porción del mismo extra.</p>' +
-        '<p class="custom-summary">Extras: ' + escapeHtml(extrasQtyLabel(u)) + '</p>' +
-        '<div class="menu-grid compact-grid">' + MENU.extras.map(function (x) {
-          var qty = getExtraQty(u, x.sku);
-          var imageSrc = x.image_url ? escapeHtml(x.image_url) : (SKU_ICONS[x.sku] || '');
-          var icon = imageSrc ? '<img class="menu-icon" src="' + imageSrc + '" alt="Icono de ' + escapeHtml(x.name) + '" loading="lazy">' : '';
-          return '<article class="menu-item' + (qty > 0 ? ' is-selected' : '') + '" data-sku-card="extra-' + i + '-' + x.sku + '">' +
-            '<div class="menu-item-head">' + icon + '</div>' +
-            '<h3>' + escapeHtml(x.name) + '</h3>' +
-            '<p class="menu-price">+' + money(x.price) + '</p>' +
-            '<small class="menu-description">' + escapeHtml(x.description) + '</small>' +
-            '<div class="qty">' +
-              '<button class="qty-btn qty-btn-minus" data-op="minus" data-extra-sku="' + x.sku + '" data-unit-index="' + i + '" aria-label="Quitar ' + escapeHtml(x.name) + '" ' + (qty === 0 ? 'disabled' : '') + '>-</button>' +
-              '<span class="qty-count" aria-live="polite">' + qty + '</span>' +
-              '<button class="qty-btn qty-btn-plus" data-op="plus" data-extra-sku="' + x.sku + '" data-unit-index="' + i + '" aria-label="Agregar ' + escapeHtml(x.name) + '">+</button>' +
-            '</div>' +
-          '</article>';
-        }).join('') + '</div>' +
+      var extrasSummary = extrasQtyLabel(u);
+      var isOpen = isAccordionOpen('EXTRAS', u, i);
+      var panelId = 'extras-panel-' + i + '-' + escapeHtml(u.id);
+      return '<div class="custom-card custom-card-edit custom-accordion" data-unit-card="' + escapeHtml(u.id) + '">' +
+        '<button type="button" class="custom-accordion-trigger" data-accordion-step="EXTRAS" data-accordion-unit="' + escapeHtml(u.id) + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '" aria-controls="' + panelId + '">' +
+          '<span class="custom-accordion-title">' +
+            '<span class="custom-context">Extras para: ' + escapeHtml(u.label) + '</span>' +
+            '<span class="custom-accordion-heading">Agrega cantidades independientes</span>' +
+          '</span>' +
+          '<span class="custom-accordion-summary custom-summary">' + (extrasSummary === 'Sin extras' ? 'Sin extras' : 'Extras: ' + escapeHtml(extrasSummary)) + '</span>' +
+        '</button>' +
+        '<div class="custom-accordion-panel" id="' + panelId + '"' + (isOpen ? '' : ' hidden') + '>' +
+          '<p class="custom-help">Puedes agregar más de una porción del mismo extra.</p>' +
+          '<div class="menu-grid compact-grid">' + MENU.extras.map(function (x) {
+            var qty = getExtraQty(u, x.sku);
+            var imageSrc = x.image_url ? escapeHtml(x.image_url) : (SKU_ICONS[x.sku] || '');
+            var icon = imageSrc ? '<img class="menu-icon" src="' + imageSrc + '" alt="Icono de ' + escapeHtml(x.name) + '" loading="lazy">' : '';
+            return '<article class="menu-item' + (qty > 0 ? ' is-selected' : '') + '" data-sku-card="extra-' + i + '-' + x.sku + '">' +
+              '<div class="menu-item-head">' + icon + '</div>' +
+              '<h3>' + escapeHtml(x.name) + '</h3>' +
+              '<p class="menu-price">+' + money(x.price) + '</p>' +
+              '<small class="menu-description">' + escapeHtml(x.description) + '</small>' +
+              '<div class="qty">' +
+                '<button class="qty-btn qty-btn-minus" data-op="minus" data-extra-sku="' + x.sku + '" data-unit-index="' + i + '" aria-label="Quitar ' + escapeHtml(x.name) + '" ' + (qty === 0 ? 'disabled' : '') + '>-</button>' +
+                '<span class="qty-count" aria-live="polite">' + qty + '</span>' +
+                '<button class="qty-btn qty-btn-plus" data-op="plus" data-extra-sku="' + x.sku + '" data-unit-index="' + i + '" aria-label="Agregar ' + escapeHtml(x.name) + '">+</button>' +
+              '</div>' +
+            '</article>';
+          }).join('') + '</div>' +
+        '</div>' +
       '</div>';
     }).join('');
   }
@@ -1029,6 +1068,17 @@
       return;
     }
 
+    if (button.classList.contains('custom-accordion-trigger')) {
+      var accordionStep = button.getAttribute('data-accordion-step');
+      var accordionUnit = button.getAttribute('data-accordion-unit');
+      var panel = document.getElementById(button.getAttribute('aria-controls'));
+      var nextOpen = button.getAttribute('aria-expanded') !== 'true';
+      button.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+      if (panel) panel.hidden = !nextOpen;
+      setAccordionOpen(accordionStep, accordionUnit, nextOpen);
+      return;
+    }
+
     var op = button.getAttribute('data-op');
     var extraSku = button.getAttribute('data-extra-sku');
     if (extraSku) {
@@ -1103,7 +1153,7 @@
       var summaryNode = customCard ? customCard.querySelector('.custom-summary') : null;
       var unit = state.burgerUnits[index] || { without: [], extras: [] };
       var isWithout = target.getAttribute('data-kind') === 'without';
-      var withoutSummary = (unit.without || []).map(function (opt) { return opt.replace(/^Sin\s+/i, ''); }).join(', ') || 'Sin cambios';
+      var withoutSummary = getWithoutSummary(unit);
       var extrasSummary = extrasQtyLabel(unit);
 
       if (choiceState) {
@@ -1115,7 +1165,9 @@
       }
 
       if (summaryNode) {
-        summaryNode.textContent = isWithout ? ('Quitaste: ' + withoutSummary) : ('Extras: ' + extrasSummary);
+        summaryNode.textContent = isWithout
+          ? (withoutSummary === 'Sin cambios' ? 'Sin cambios' : 'Quitaste: ' + withoutSummary)
+          : (extrasSummary === 'Sin extras' ? 'Sin extras' : 'Extras: ' + extrasSummary);
       }
     }
 
