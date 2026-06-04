@@ -53,6 +53,8 @@ type OrderConfirmation = NonNullable<CreateOrderV2Response["data"]>["order"] & {
   earnedTickets?: NonNullable<CreateOrderV2Response["data"]>["earnedTickets"];
 };
 type DraftSnapshot = { customer: CustomerDraft; items: CartEntry[] };
+type CheckoutField = "name" | "phone" | "location" | "paymentMethod" | "paymentTiming" | "notes" | "cart";
+type CheckoutErrors = Partial<Record<CheckoutField, string>>;
 
 const IDEMPOTENCY_KEY_STORAGE = "burgers-v2-order-draft-idempotency-key";
 const IDEMPOTENCY_DRAFT_STORAGE = "burgers-v2-order-draft-idempotency-fingerprint";
@@ -278,17 +280,38 @@ const buildCheckoutNotes = (customer: CustomerDraft): string => {
   ].filter(Boolean);
   return [`Ubicación: ${customer.location}`, ...paymentNotes, customer.notes.trim()].filter(Boolean).join("\n");
 };
-const validateCheckout = (customer: CustomerDraft, cart: CartEntry[], items: MenuItem[]) => {
-  if (cart.length === 0) return "Agrega al menos un producto al ticket.";
-  if (customer.name.trim().length < 2) return "Escribe tu nombre con al menos dos caracteres.";
-  if (normalizePhoneDigits(customer.phone).length < 10) return "Escribe un teléfono válido con al menos diez dígitos.";
-  if (!customer.location) return "Elige Torre GGA o Torre Valcob.";
-  if (!PAYMENT_METHODS.has(customer.paymentMethod)) return "Elige un método de pago.";
-  if (customer.paymentMethod === "transfer" && !customer.paymentTiming) return "Elige si pagarás antes o después.";
-  if (buildCheckoutNotes(customer).length > CHECKOUT_NOTES_MAX_LENGTH) return "La nota general es demasiado larga. Deja espacio para los datos de pago.";
+const validateCheckout = (customer: CustomerDraft, cart: CartEntry[], items: MenuItem[]): { global: string | null; fields: CheckoutErrors } => {
+  const fields: CheckoutErrors = {};
+  if (cart.length === 0) fields.cart = "Agrega al menos un producto al ticket.";
+  if (customer.name.trim().length < 2) fields.name = "Escribe tu nombre con al menos dos caracteres.";
+  if (normalizePhoneDigits(customer.phone).length < 10) fields.phone = "Escribe un teléfono válido con al menos diez dígitos.";
+  if (!customer.location) fields.location = "Elige Torre GGA o Torre Valcob.";
+  if (!PAYMENT_METHODS.has(customer.paymentMethod)) fields.paymentMethod = "Elige un método de pago.";
+  if (customer.paymentMethod === "transfer" && !customer.paymentTiming) fields.paymentTiming = "Elige si pagarás antes o después.";
+  if (buildCheckoutNotes(customer).length > CHECKOUT_NOTES_MAX_LENGTH) fields.notes = "La nota general es demasiado larga. Deja espacio para los datos de pago.";
   const unavailable = cart.find((entry) => !items.find((item) => item.sku === entry.sku && item.isAvailable));
-  if (unavailable) return "Uno de los productos ya no está disponible. Actualiza el ticket antes de enviar.";
-  return null;
+  if (unavailable) fields.cart = "Uno de los productos ya no está disponible. Actualiza el ticket antes de enviar.";
+  const firstError = checkoutErrorOrder.map((field) => fields[field]).find(Boolean) ?? null;
+  return { global: firstError, fields };
+};
+const checkoutErrorOrder: CheckoutField[] = ["cart", "name", "phone", "location", "paymentMethod", "paymentTiming", "notes"];
+const checkoutFieldTargetIds: Record<CheckoutField, string> = {
+  cart: "checkoutCartSummary",
+  name: "checkoutName",
+  phone: "checkoutPhone",
+  location: "checkoutLocation",
+  paymentMethod: "checkoutPaymentMethod",
+  paymentTiming: "checkoutPaymentTiming",
+  notes: "checkoutNotes",
+};
+const focusFirstCheckoutError = (fields: CheckoutErrors) => {
+  const firstField = checkoutErrorOrder.find((field) => fields[field]);
+  if (!firstField) return;
+  window.requestAnimationFrame(() => {
+    const target = document.getElementById(checkoutFieldTargetIds[firstField]);
+    target?.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (target instanceof HTMLElement) target.focus({ preventScroll: true });
+  });
 };
 
 const QuestButton = ({ children, className = "", ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
@@ -633,7 +656,7 @@ const Workbench = ({ builder, extras, garnishes, onBack, onQuantity, onUnitChang
   </section>
 );
 
-const SideQuest = ({ garnishes, selected, onQuantity, onBack, onSkip, canSkip, error, reduce }: { garnishes: MenuItem[]; selected: Record<string, number>; onQuantity: (sku: string, quantity: number) => void; onBack: () => void; onSkip: () => void; canSkip: boolean; error: string | null; reduce: boolean }) => (
+const SideQuest = ({ garnishes, selected, onQuantity, onBack, canSkip, error, reduce }: { garnishes: MenuItem[]; selected: Record<string, number>; onQuantity: (sku: string, quantity: number) => void; onBack: () => void; canSkip: boolean; error: string | null; reduce: boolean }) => (
   <section className="quest-panel side-quest-panel">
     <QuestButton className="back-button" onClick={onBack}>← Volver a personalizar</QuestButton>
     <span className="eyebrow">Side Quest</span>
@@ -644,7 +667,6 @@ const SideQuest = ({ garnishes, selected, onQuantity, onBack, onSkip, canSkip, e
       return <div className={quantity ? "side-card active" : "side-card"} key={item.sku}><ProductCard item={item} mode="select" onClick={() => onQuantity(item.sku, quantity + 1)} reduce={reduce} /><QuantityControl value={quantity} min={0} max={10} label={`Cantidad de ${item.name}`} onChange={(nextQty) => onQuantity(item.sku, nextQty)} /></div>;
     })}</div> : <div className="compact-empty"><EmptyState title="Sin guarniciones disponibles" description={canSkip ? "Puedes continuar sin guarnición extra." : "Vuelve a elegir otra opción del menú."} /></div>}
     {error ? <p className="inline-error" role="alert">{error}</p> : null}
-    {canSkip ? <QuestButton className="secondary-action" onClick={onSkip}>Continuar sin guarnición</QuestButton> : null}
   </section>
 );
 
@@ -835,9 +857,11 @@ const TransferDetailsModal = ({ onClose }: { onClose: () => void }) => {
   );
 };
 
-const Checkout = ({ cart, items, total, customer, setCustomer, onBack, onSubmit, submitting, error, onEdit, onDuplicate, onRemove }: { cart: CartEntry[]; items: MenuItem[]; total: number; customer: CustomerDraft; setCustomer: (customer: CustomerDraft) => void; onBack: () => void; onSubmit: () => void; submitting: boolean; error: string | null; onEdit: (lineKey: string) => void; onDuplicate: (lineKey: string) => void; onRemove: (lineKey: string) => void }) => {
+const Checkout = ({ cart, items, total, customer, setCustomer, onBack, onSubmit, submitting, error, fieldErrors, clearFieldError, onEdit, onDuplicate, onRemove }: { cart: CartEntry[]; items: MenuItem[]; total: number; customer: CustomerDraft; setCustomer: (customer: CustomerDraft) => void; onBack: () => void; onSubmit: () => void; submitting: boolean; error: string | null; fieldErrors: CheckoutErrors; clearFieldError: (field: CheckoutField) => void; onEdit: (lineKey: string) => void; onDuplicate: (lineKey: string) => void; onRemove: (lineKey: string) => void }) => {
   const [transferModalOpen, setTransferModalOpen] = useState(false);
   const updatePaymentMethod = (paymentMethod: OrderV2PaymentMethod) => {
+    clearFieldError("paymentMethod");
+    if (paymentMethod !== "transfer") clearFieldError("paymentTiming");
     setCustomer({ ...customer, paymentMethod, paymentTiming: paymentMethod === "transfer" ? customer.paymentTiming : "" });
   };
 
@@ -847,27 +871,32 @@ const Checkout = ({ cart, items, total, customer, setCustomer, onBack, onSubmit,
       <span className="eyebrow">Loadout final</span>
       <h2>Revisa tu ticket</h2>
       <p className="muted section-subcopy">Revisa tu ticket y confirma.</p>
-      <TicketList cart={cart} items={items} onEdit={onEdit} onDuplicate={onDuplicate} onRemove={onRemove} />
+      <div id="checkoutCartSummary" tabIndex={-1}>
+        <TicketList cart={cart} items={items} onEdit={onEdit} onDuplicate={onDuplicate} onRemove={onRemove} />
+      </div>
+      {fieldErrors.cart ? <p className="inline-error" role="alert">{fieldErrors.cart}</p> : null}
       <div className="checkout-grid">
-        <label className="field-label">Nombre<input value={customer.name} onChange={(event) => setCustomer({ ...customer, name: event.target.value })} placeholder="Tu nombre" /></label>
-        <label className="field-label">Teléfono<input inputMode="tel" value={customer.phone} onChange={(event) => setCustomer({ ...customer, phone: event.target.value })} placeholder="55 0000 0000" /></label>
-        <label className="field-label wide">Nota general opcional<textarea maxLength={500} value={customer.notes} onChange={(event) => setCustomer({ ...customer, notes: event.target.value })} placeholder="Nota general del pedido" /></label>
+        <label className="field-label">Nombre<input id="checkoutName" value={customer.name} onChange={(event) => { clearFieldError("name"); setCustomer({ ...customer, name: event.target.value }); }} placeholder="Tu nombre" aria-invalid={fieldErrors.name ? "true" : "false"} aria-describedby={fieldErrors.name ? "checkoutNameError" : undefined} />{fieldErrors.name ? <span className="inline-error" id="checkoutNameError" role="alert">{fieldErrors.name}</span> : null}</label>
+        <label className="field-label">Teléfono<input id="checkoutPhone" inputMode="tel" value={customer.phone} onChange={(event) => { clearFieldError("phone"); setCustomer({ ...customer, phone: event.target.value }); }} placeholder="55 0000 0000" aria-invalid={fieldErrors.phone ? "true" : "false"} aria-describedby={fieldErrors.phone ? "checkoutPhoneError" : undefined} />{fieldErrors.phone ? <span className="inline-error" id="checkoutPhoneError" role="alert">{fieldErrors.phone}</span> : null}</label>
+        <label className="field-label wide">Nota general opcional<textarea id="checkoutNotes" maxLength={500} value={customer.notes} onChange={(event) => { clearFieldError("notes"); setCustomer({ ...customer, notes: event.target.value }); }} placeholder="Nota general del pedido" aria-invalid={fieldErrors.notes ? "true" : "false"} aria-describedby={fieldErrors.notes ? "checkoutNotesError" : undefined} />{fieldErrors.notes ? <span className="inline-error" id="checkoutNotesError" role="alert">{fieldErrors.notes}</span> : null}</label>
         <label className="field-label wide">Código de invitado<input value={customer.referralCode} onChange={(event) => setCustomer({ ...customer, referralCode: event.target.value.toUpperCase() })} placeholder="CARLOS-BURGER-27" maxLength={32} /><small>Si alguien te invitó, escribe su código. Solo ayuda a tu compa si este pedido incluye al menos 1 burger pagada.</small></label>
-        <div className="builder-block"><h4>Ubicación</h4><div className="chip-grid">{LOCATIONS.map((location) => <button type="button" key={location} className={customer.location === location ? "chip active" : "chip"} onClick={() => setCustomer({ ...customer, location })}>{location}</button>)}</div></div>
-        <div className="builder-block payment-block">
+        <div className="builder-block" id="checkoutLocation" tabIndex={-1}><h4>Ubicación</h4><div className="chip-grid">{LOCATIONS.map((location) => <button type="button" key={location} className={customer.location === location ? "chip active" : "chip"} onClick={() => { clearFieldError("location"); setCustomer({ ...customer, location }); }} aria-pressed={customer.location === location}>{location}</button>)}</div>{fieldErrors.location ? <p className="inline-error" id="checkoutLocationError" role="alert">{fieldErrors.location}</p> : null}</div>
+        <div className="builder-block payment-block" id="checkoutPaymentMethod" tabIndex={-1}>
           <h4>Método de pago</h4>
           <div className="chip-grid payment-chip-grid">
             <button type="button" className={customer.paymentMethod === "unknown" ? "chip active" : "chip"} onClick={() => updatePaymentMethod("unknown")}>Por confirmar</button>
             <button type="button" className={customer.paymentMethod === "cash" ? "chip active" : "chip"} onClick={() => updatePaymentMethod("cash")}>Efectivo</button>
             <button type="button" className={customer.paymentMethod === "transfer" ? "chip active" : "chip"} onClick={() => updatePaymentMethod("transfer")}>Transferencia</button>
           </div>
+          {fieldErrors.paymentMethod ? <p className="inline-error" id="checkoutPaymentMethodError" role="alert">{fieldErrors.paymentMethod}</p> : null}
           {customer.paymentMethod === "transfer" ? (
-            <div className="payment-timing-panel">
+            <div className="payment-timing-panel" id="checkoutPaymentTiming" tabIndex={-1}>
               <h5>Momento de pago</h5>
               <div className="chip-grid payment-chip-grid">
-                <button type="button" className={customer.paymentTiming === "before" ? "chip active" : "chip"} onClick={() => setCustomer({ ...customer, paymentTiming: "before" })}>Pagar antes</button>
-                <button type="button" className={customer.paymentTiming === "after" ? "chip active" : "chip"} onClick={() => setCustomer({ ...customer, paymentTiming: "after" })}>Pagar después</button>
+                <button type="button" className={customer.paymentTiming === "before" ? "chip active" : "chip"} onClick={() => { clearFieldError("paymentTiming"); setCustomer({ ...customer, paymentTiming: "before" }); }} aria-pressed={customer.paymentTiming === "before"}>Pagar antes</button>
+                <button type="button" className={customer.paymentTiming === "after" ? "chip active" : "chip"} onClick={() => { clearFieldError("paymentTiming"); setCustomer({ ...customer, paymentTiming: "after" }); }} aria-pressed={customer.paymentTiming === "after"}>Pagar después</button>
               </div>
+              {fieldErrors.paymentTiming ? <p className="inline-error" id="checkoutPaymentTimingError" role="alert">{fieldErrors.paymentTiming}</p> : null}
               {customer.paymentTiming === "before" ? <QuestButton className="ghost transfer-details-button" onClick={() => setTransferModalOpen(true)}>Ver datos de transferencia</QuestButton> : null}
             </div>
           ) : null}
@@ -1025,9 +1054,17 @@ const Success = ({ order, campaign, onCreateAnother }: { order: OrderConfirmatio
   );
 };
 
-const PersistentCta = ({ section, count, total, disabled, submitting, onClick, builder }: { section: QuestSection; count: number; total: number; disabled?: boolean; submitting?: boolean; onClick: () => void; builder: BuilderDraft | null }) => {
+const PersistentCta = ({ section, count, total, disabled, submitting, onClick, builder, sideHasSelection, hasBurgerOrCombo }: { section: QuestSection; count: number; total: number; disabled?: boolean; submitting?: boolean; onClick: () => void; builder: BuilderDraft | null; sideHasSelection: boolean; hasBurgerOrCombo: boolean }) => {
   if (section === "success" || section === "checkout") return null;
-  const label = section === "menu" ? "INICIAR QUEST" : section === "main" || section === "workbench" ? "CONTINUAR" : "Ir a checkout";
+  const label = section === "menu"
+    ? "Iniciar quest"
+    : section === "main"
+      ? count > 0 ? "Continuar a guarniciones" : "Elige tu burger"
+      : section === "workbench"
+        ? "Guardar y continuar"
+        : section === "side" && hasBurgerOrCombo && !sideHasSelection
+          ? "Continuar sin guarnición"
+          : "Ir a checkout";
   const title = count > 0 ? "Ticket" : builder ? "En edición" : "Quest";
   const summary = count > 0 ? `${count} item${count === 1 ? "" : "s"} · ${formatCurrency(total)}` : builder ? builder.item.name : "Elige tu burger";
   return <aside className="persistent-cta"><div><span>{title}</span><strong>{summary}</strong></div><QuestButton disabled={disabled || submitting} onClick={onClick}>{label}</QuestButton></aside>;
@@ -1055,6 +1092,7 @@ export function PublicOrderApp() {
   const [customer, setCustomer] = useState<CustomerDraft>(() => createEmptyCustomer());
   const [submitting, setSubmitting] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [checkoutFieldErrors, setCheckoutFieldErrors] = useState<CheckoutErrors>({});
   const [orderConfirmation, setOrderConfirmation] = useState<OrderConfirmation | null>(null);
   const [quickAddFeedback, setQuickAddFeedback] = useState<string | null>(null);
   const total = useMemo(() => getCartTotal(cart, menuData.items), [cart, menuData.items]);
@@ -1064,6 +1102,13 @@ export function PublicOrderApp() {
   const extras = menuData.items.filter((item) => item.category === "extras" && inferItemKind(item) !== "combo" && item.isAvailable);
   const garnishes = menuData.items.filter((item) => item.category === "guarniciones" && item.isAvailable);
   const hasBurgerOrComboInCart = cart.some((entry) => entry.itemKind === "burger" || entry.itemKind === "combo");
+  const sideHasSelection = Object.values(extraGarnishQuantities).some((quantity) => quantity > 0);
+  const clearCheckoutFieldError = (field: CheckoutField) => setCheckoutFieldErrors((prev) => {
+    if (!prev[field]) return prev;
+    const next = { ...prev };
+    delete next[field];
+    return next;
+  });
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1227,8 +1272,14 @@ export function PublicOrderApp() {
   const handleCheckout = async () => {
     if (submittingRef.current) return;
     setCheckoutError(null);
-    const validationError = validateCheckout(customer, cart, menuData.items);
-    if (validationError) { setCheckoutError(validationError); return; }
+    setCheckoutFieldErrors({});
+    const validation = validateCheckout(customer, cart, menuData.items);
+    if (validation.global) {
+      setCheckoutError(validation.global);
+      setCheckoutFieldErrors(validation.fields);
+      focusFirstCheckoutError(validation.fields);
+      return;
+    }
     const payloadItems = cart.map((entry) => ({ sku: entry.sku, name: entry.name, qty: 1, lineKey: entry.lineKey, itemDisplayIndex: entry.itemDisplayIndex, itemKind: entry.itemKind, removedIngredients: entry.removedIngredients, extras: entry.extras, burgerNote: entry.burgerNote?.trim() || undefined, garnish: entry.garnish ?? null }));
     const notes = buildCheckoutNotes(customer);
     const idempotencyKey = getDraftIdempotencyKey({ customer, items: cart });
@@ -1275,11 +1326,11 @@ export function PublicOrderApp() {
       {section === "menu" ? <MenuSection menuData={menuData} raffleCampaign={raffleCampaign} onExplore={openInfoDialog} onStart={beginQuest} reduce={reduce} /> : null}
       {section === "main" ? <MainQuest choice={orderChoice} availableBurgerItems={availableBurgerItems} availableComboItems={availableComboItems} garnishes={garnishes} builder={builder} quickAddFeedback={quickAddFeedback} onBack={() => navigate("menu")} onChoice={(choice) => { setOrderChoice(choice); setBuilder(null); setQuickAddFeedback(null); }} onProduct={startBuilder} onQuickAdd={quickAddItem} onSideQuest={startDirectSideQuest} reduce={reduce} /> : null}
       {section === "workbench" ? <Workbench builder={builder} extras={extras} garnishes={garnishes} onBack={() => navigate("main")} onQuantity={updateBuilderQuantity} onUnitChange={updateBuilderUnit} onSaveAndContinueChoosing={saveBuilderAndContinueChoosing} /> : null}
-      {section === "side" ? <SideQuest garnishes={garnishes} selected={extraGarnishQuantities} onQuantity={(sku, quantity) => { setSideQuestError(null); setExtraGarnishQuantities((prev) => ({ ...prev, [sku]: Math.min(10, Math.max(0, quantity)) })); }} onBack={() => navigate(sideQuestEntryMode === "builder" && builder ? "workbench" : "main")} onSkip={() => { setExtraGarnishQuantities({}); setSideQuestError(null); navigate("checkout"); }} canSkip={hasBurgerOrComboInCart} error={sideQuestError} reduce={reduce} /> : null}
-      {section === "checkout" && cart.length ? <Checkout cart={cart} items={menuData.items} total={total} customer={customer} setCustomer={setCustomer} onBack={() => navigate("side") } onSubmit={handleCheckout} submitting={submitting} error={checkoutError} onEdit={editLine} onDuplicate={duplicateLine} onRemove={removeLine} /> : null}
+      {section === "side" ? <SideQuest garnishes={garnishes} selected={extraGarnishQuantities} onQuantity={(sku, quantity) => { setSideQuestError(null); setExtraGarnishQuantities((prev) => ({ ...prev, [sku]: Math.min(10, Math.max(0, quantity)) })); }} onBack={() => navigate(sideQuestEntryMode === "builder" && builder ? "workbench" : "main")} canSkip={hasBurgerOrComboInCart} error={sideQuestError} reduce={reduce} /> : null}
+      {section === "checkout" && cart.length ? <Checkout cart={cart} items={menuData.items} total={total} customer={customer} setCustomer={setCustomer} onBack={() => navigate("side") } onSubmit={handleCheckout} submitting={submitting} error={checkoutError} fieldErrors={checkoutFieldErrors} clearFieldError={clearCheckoutFieldError} onEdit={editLine} onDuplicate={duplicateLine} onRemove={removeLine} /> : null}
       {section === "success" && orderConfirmation ? <Success order={orderConfirmation} campaign={raffleCampaign} onCreateAnother={handleCreateAnother} /> : null}
       <MenuInfoDialog item={infoItem} onClose={() => setInfoItem(null)} />
-      <PersistentCta section={section} count={count} total={total} disabled={primaryDisabled} submitting={submitting} onClick={primaryAction} builder={builder} />
+      <PersistentCta section={section} count={count} total={total} disabled={primaryDisabled} submitting={submitting} onClick={primaryAction} builder={builder} sideHasSelection={sideHasSelection} hasBurgerOrCombo={hasBurgerOrComboInCart} />
     </main>
   );
 }
