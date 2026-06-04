@@ -276,7 +276,7 @@
       '<p class="campaign-menu-eyebrow">' + escapeHtml(campaignConfig.menuCtaLabel || '🎟️ Consulta tus tickets') + '</p>' +
       '<h3 id="campaignMenuTitle">🎟️ Sorteo activo</h3>' +
       '<p>Consulta tus tickets, copia tu código de referido y compártelo para sumar más oportunidades.</p>' +
-      '<a class="campaign-menu-cta" href="' + escapeHtml(url) + '">Consultar mis tickets</a>' +
+      '<a class="campaign-menu-cta secondary" href="' + escapeHtml(url) + '">Consultar mis tickets</a>' +
     '</section>';
   }
 
@@ -582,11 +582,15 @@
     if (menuLoadStatus === 'loading') return '<h2>MENÚ</h2><div class="menu-state menu-state-loading" role="status" aria-live="polite"><strong>Cargando menú desde D1...</strong><p>Preparando burgers, guarniciones y extras.</p></div>';
     if (menuLoadStatus === 'error') return '<h2>MENÚ</h2><div class="menu-state menu-state-error" role="alert"><strong>No se pudo cargar el menú.</strong><p>' + escapeHtml(menuLoadError || 'D1 no respondió.') + '</p><button type="button" class="secondary" id="retryMenuBtn">Reintentar</button></div>';
     if (!MENU.burgers.length && !MENU.sides.length && !MENU.extras.length) return '<h2>MENÚ</h2><div class="menu-state menu-state-empty"><strong>Menú vacío.</strong><p>Aplica el seed de MENU_LIVE en D1 para publicar productos.</p></div>';
-    var d1Hint = '<p class="muted">Menú cargado desde D1' + (menuSource ? ' · ' + escapeHtml(menuSource) : '') + '</p>';
-    return '<h2>MENÚ</h2>' + d1Hint + renderCampaignMenuCard() + '<h3>Burgers</h3><div class="menu-grid">' + renderMenuCards(MENU.burgers) + '</div>' +
-      '<h3>Guarniciones</h3><div class="menu-grid">' + renderMenuCards(MENU.sides) + '</div>' +
-      '<h3>Extras</h3><div class="menu-grid">' + renderMenuCards(MENU.extras) + '</div>' +
-      '<button id="startBtn" class="primary"' + (!MENU.burgers.length ? ' disabled' : '') + '>INICIAR PEDIDO</button>';
+    var d1Hint = '<p class="muted menu-source">Menú cargado desde D1' + (menuSource ? ' · ' + escapeHtml(menuSource) : '') + '</p>';
+    var menuIntro = '<p class="menu-orientation">⚡ Elige tus burgers, agrega guarniciones y confirma tu pedido.</p>';
+    var campaignCard = renderCampaignMenuCard();
+    return '<h2>MENÚ</h2>' + menuIntro + d1Hint +
+      '<section class="menu-catalog-section" aria-labelledby="menuBurgersTitle"><h3 id="menuBurgersTitle">Burgers</h3><div class="menu-grid">' + renderMenuCards(MENU.burgers) + '</div></section>' +
+      '<section class="menu-catalog-section" aria-labelledby="menuSidesTitle"><h3 id="menuSidesTitle">Guarniciones</h3><div class="menu-grid">' + renderMenuCards(MENU.sides) + '</div></section>' +
+      (MENU.extras.length ? '<section class="menu-catalog-section" aria-labelledby="menuExtrasTitle"><h3 id="menuExtrasTitle">Extras</h3><div class="menu-grid">' + renderMenuCards(MENU.extras) + '</div></section>' : '') +
+      '<button id="startBtn" class="primary"' + (!MENU.burgers.length ? ' disabled' : '') + '>INICIAR PEDIDO</button>' +
+      campaignCard;
   }
 
   function renderBurgersStep() {
@@ -627,7 +631,10 @@
         '<p class="custom-summary">Extras: ' + escapeHtml(extrasQtyLabel(u)) + '</p>' +
         '<div class="menu-grid compact-grid">' + MENU.extras.map(function (x) {
           var qty = getExtraQty(u, x.sku);
+          var imageSrc = x.image_url ? escapeHtml(x.image_url) : (SKU_ICONS[x.sku] || '');
+          var icon = imageSrc ? '<img class="menu-icon" src="' + imageSrc + '" alt="Icono de ' + escapeHtml(x.name) + '" loading="lazy">' : '';
           return '<article class="menu-item' + (qty > 0 ? ' is-selected' : '') + '" data-sku-card="extra-' + i + '-' + x.sku + '">' +
+            '<div class="menu-item-head">' + icon + '</div>' +
             '<h3>' + escapeHtml(x.name) + '</h3>' +
             '<p class="menu-price">+' + money(x.price) + '</p>' +
             '<small class="menu-description">' + escapeHtml(x.description) + '</small>' +
