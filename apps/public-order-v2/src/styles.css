@@ -2686,3 +2686,258 @@ p {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+/* Ported UX from legacy Cloudflare reference into real public-order-v2. */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.hero-panel > .menu-cluster {
+  order: 2;
+}
+
+.menu-bonus-zone {
+  position: relative;
+  z-index: 1;
+  order: 3;
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  border: 1px dashed rgba(255, 209, 102, 0.24);
+  border-radius: 22px;
+  background: rgba(255, 209, 102, 0.045);
+  padding: 12px;
+}
+
+.menu-bonus-zone .raffle-banner {
+  margin: 0;
+}
+
+.menu-bonus-zone .promo-rail {
+  opacity: 0.92;
+}
+
+.hero-copy-block .quest-button {
+  width: min(100%, 360px);
+  min-height: 56px;
+  justify-self: start;
+  font-size: 1rem;
+  text-transform: uppercase;
+}
+
+.kiosk-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 154px), 1fr));
+}
+
+.menu-cluster .kiosk-card {
+  border-radius: 18px;
+}
+
+.menu-cluster .kiosk-visual {
+  aspect-ratio: 4 / 3;
+}
+
+.menu-cluster .kiosk-body {
+  padding: 10px;
+}
+
+.menu-cluster .kiosk-body p {
+  -webkit-line-clamp: 1;
+  font-size: 0.82rem;
+}
+
+.menu-cluster .kiosk-body h3 {
+  font-size: 1rem;
+}
+
+.custom-accordion-block {
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.custom-accordion-block .custom-accordion-trigger {
+  border-radius: 0;
+}
+
+.custom-accordion-panel {
+  display: grid;
+  gap: 10px;
+  padding: 0 12px 12px;
+}
+
+.custom-accordion-trigger {
+  display: flex;
+  min-height: 52px;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  padding: 12px;
+  text-align: left;
+}
+
+.custom-accordion-trigger span {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.custom-accordion-trigger strong {
+  color: #fff;
+  font-size: 0.92rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.custom-accordion-trigger em {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-style: normal;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+}
+
+.custom-accordion-trigger b {
+  display: grid;
+  flex: 0 0 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid rgba(57, 255, 136, 0.28);
+  border-radius: 999px;
+  color: var(--neon);
+  font-size: 1.2rem;
+}
+
+.checkout-progress {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0 4px;
+}
+
+.checkout-progress button {
+  min-width: 0;
+  min-height: 52px;
+  border: 1px solid rgba(234, 255, 240, 0.14);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--muted);
+  padding: 8px;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.checkout-progress button span {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  margin: 0 auto 4px;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+}
+
+.checkout-progress button.active {
+  border-color: rgba(57, 255, 136, 0.62);
+  background: rgba(57, 255, 136, 0.14);
+  color: var(--neon);
+  box-shadow: 0 0 24px rgba(57, 255, 136, 0.12);
+}
+
+.checkout-step-panel {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.checkout-step-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.checkout-step-heading span {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid rgba(57, 255, 136, 0.34);
+  border-radius: 999px;
+  color: var(--neon);
+  font-weight: 950;
+}
+
+.checkout-step-heading h3 {
+  margin: 0;
+  color: #fff;
+  font-size: 1.2rem;
+}
+
+.checkout-panel .ticket-item footer button {
+  min-height: 44px;
+  padding: 0.62rem 0.78rem;
+}
+
+.checkout-total {
+  bottom: calc(env(safe-area-inset-bottom) + 8px);
+}
+
+.success-operational-block,
+.success-bonus-block {
+  width: min(100%, 560px);
+  display: grid;
+  gap: 12px;
+}
+
+.success-operational-block {
+  border: 1px solid rgba(57, 255, 136, 0.26);
+  border-radius: 26px;
+  background: rgba(57, 255, 136, 0.055);
+  padding: clamp(14px, 4vw, 20px);
+}
+
+.success-bonus-block {
+  border: 1px dashed rgba(255, 209, 102, 0.28);
+  border-radius: 24px;
+  background: rgba(255, 209, 102, 0.045);
+  padding: clamp(12px, 4vw, 18px);
+}
+
+.success-bonus-block h3 {
+  margin: 0;
+  color: #fff7d6;
+  font-size: clamp(1.25rem, 6vw, 1.8rem);
+}
+
+.success-bonus-block .success-reward-card,
+.success-bonus-block .success-referral-card {
+  width: 100%;
+  margin-top: 0;
+}
+
+@media (max-width: 430px) {
+  .hero-copy-block .quest-button {
+    width: 100%;
+  }
+
+  .menu-bonus-zone {
+    padding: 10px;
+  }
+
+  .checkout-progress {
+    gap: 6px;
+  }
+
+  .checkout-progress button {
+    min-height: 48px;
+    padding: 6px 4px;
+    font-size: 0.68rem;
+  }
+}
