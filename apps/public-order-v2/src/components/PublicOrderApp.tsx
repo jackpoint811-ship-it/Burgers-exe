@@ -480,11 +480,25 @@ const ProductChoiceCard = ({ item, onQuickAdd, onCustomize, reduce }: { item: Me
 };
 
 const MenuSection = ({ menuData, raffleCampaign, onExplore, onStart, reduce }: { menuData: MenuV2Response; raffleCampaign: RaffleCampaignPublicV2 | null; onExplore: (item: MenuItem) => void; onStart: () => void; reduce: boolean }) => {
+  const bonusZoneRef = useRef<HTMLElement | null>(null);
+  const hasBonusContent = Boolean(raffleCampaign) || menuData.promos.length > 0;
   const visibleItems = menuData.items.filter((item) => item.category !== "extras");
   const comboItems = menuData.items.filter((item) => inferItemKind(item) === "combo");
   const byGroup = (key: MenuCategory["key"] | "combos") => key === "combos" ? comboItems : visibleItems.filter((item) => item.category === key);
+  const scrollToBonusZone = () => {
+    const bonusZone = bonusZoneRef.current;
+    if (!bonusZone) return;
+    bonusZone.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+    window.setTimeout(() => bonusZone.focus({ preventScroll: true }), reduce ? 0 : 450);
+  };
   return (
     <section className="quest-panel hero-panel">
+      {hasBonusContent ? (
+        <button type="button" className="menu-bonus-anchor" aria-label="Ir al sorteo" onClick={scrollToBonusZone}>
+          <span className="menu-bonus-anchor-emoji" aria-hidden="true">🎁</span>
+          <span className="menu-bonus-anchor-text">Sorteo</span>
+        </button>
+      ) : null}
       <div className="hero-copy-block">
         <span className="eyebrow">Menu</span>
         <div className="hero-brand-lockup">
@@ -507,7 +521,7 @@ const MenuSection = ({ menuData, raffleCampaign, onExplore, onStart, reduce }: {
           </section>
         );
       })}
-      <aside className="menu-bonus-zone" aria-label="Bonus de tickets y referidos">
+      <aside ref={bonusZoneRef} className="menu-bonus-zone" aria-label="Bonus de tickets y referidos" tabIndex={-1}>
         <span className="eyebrow">Bonus secundario</span>
         <RaffleBanner campaign={raffleCampaign} />
         <PromoRail promos={menuData.promos} />

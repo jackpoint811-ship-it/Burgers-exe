@@ -2698,6 +2698,79 @@ body {
   order: 2;
 }
 
+.menu-bonus-anchor {
+  position: fixed;
+  right: max(12px, calc((100vw - 1120px) / 2 + 12px));
+  bottom: calc(106px + env(safe-area-inset-bottom));
+  z-index: 21;
+  display: inline-grid;
+  place-items: center;
+  gap: 2px;
+  width: clamp(58px, 18vw, 76px);
+  min-width: 58px;
+  min-height: 58px;
+  border: 1px solid rgba(255, 209, 102, 0.68);
+  border-radius: 18px;
+  color: #fff7d6;
+  background:
+    linear-gradient(145deg, rgba(255, 60, 172, 0.28), rgba(57, 255, 136, 0.13)),
+    rgba(4, 8, 16, 0.92);
+  box-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.52),
+    0 0 0 1px rgba(57, 255, 136, 0.2),
+    0 0 24px rgba(255, 60, 172, 0.24);
+  cursor: pointer;
+  touch-action: manipulation;
+  isolation: isolate;
+  overflow: hidden;
+  padding: 7px 8px;
+  font: inherit;
+  text-align: center;
+  text-transform: uppercase;
+  backdrop-filter: blur(14px);
+}
+
+.menu-bonus-anchor::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.18), transparent),
+    repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0 1px, transparent 1px 5px);
+  opacity: 0.5;
+}
+
+.menu-bonus-anchor:hover,
+.menu-bonus-anchor:focus-visible {
+  border-color: var(--neon);
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow:
+    0 18px 42px rgba(0, 0, 0, 0.58),
+    0 0 0 2px rgba(57, 255, 136, 0.34),
+    0 0 30px rgba(57, 255, 136, 0.22),
+    0 0 34px rgba(255, 60, 172, 0.2);
+}
+
+.menu-bonus-anchor:focus-visible {
+  outline: 3px solid rgba(255, 209, 102, 0.86);
+  outline-offset: 4px;
+}
+
+.menu-bonus-anchor-emoji {
+  font-size: clamp(1.45rem, 7vw, 2rem);
+  line-height: 1;
+  filter: drop-shadow(0 0 10px rgba(255, 209, 102, 0.55));
+}
+
+.menu-bonus-anchor-text {
+  font-size: 0.63rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+
 .menu-bonus-zone {
   position: relative;
   z-index: 1;
@@ -2705,10 +2778,16 @@ body {
   display: grid;
   gap: 10px;
   margin-top: 14px;
+  scroll-margin-top: calc(92px + env(safe-area-inset-top));
   border: 1px dashed rgba(255, 209, 102, 0.24);
   border-radius: 22px;
   background: rgba(255, 209, 102, 0.045);
   padding: 12px;
+}
+
+.menu-bonus-zone:focus {
+  outline: 3px solid rgba(255, 209, 102, 0.82);
+  outline-offset: 5px;
 }
 
 .menu-bonus-zone .raffle-banner {
@@ -2925,6 +3004,14 @@ body {
 @media (max-width: 430px) {
   .hero-copy-block .quest-button {
     width: 100%;
+  }
+
+  .menu-bonus-anchor {
+    right: max(10px, env(safe-area-inset-right));
+    bottom: calc(126px + env(safe-area-inset-bottom));
+    width: 60px;
+    min-height: 60px;
+    border-radius: 16px;
   }
 
   .menu-bonus-zone {
