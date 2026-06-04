@@ -2798,25 +2798,27 @@ body {
   opacity: 0.92;
 }
 
-.raffle-ticket-lookup {
+.raffle-lookup-cta {
   display: grid;
   gap: 12px;
   overflow: hidden;
-  border: 1px solid rgba(57, 255, 136, 0.2);
+  border: 1px solid rgba(57, 255, 136, 0.22);
   border-radius: 20px;
   background:
-    linear-gradient(135deg, rgba(57, 255, 136, 0.1), rgba(255, 0, 229, 0.07)),
-    rgba(2, 5, 4, 0.74);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.035), 0 14px 38px rgba(0, 0, 0, 0.24);
+    radial-gradient(circle at top left, rgba(255, 0, 229, 0.14), transparent 44%),
+    linear-gradient(135deg, rgba(57, 255, 136, 0.1), rgba(255, 209, 102, 0.06)),
+    rgba(2, 5, 4, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.035), 0 14px 34px rgba(0, 0, 0, 0.2);
   padding: 12px;
 }
 
-.raffle-ticket-lookup-head {
+.raffle-lookup-cta div {
   display: grid;
-  gap: 4px;
+  gap: 5px;
+  min-width: 0;
 }
 
-.raffle-ticket-lookup-head span {
+.raffle-lookup-cta span {
   color: var(--neon);
   font-size: 0.68rem;
   font-weight: 950;
@@ -2824,147 +2826,48 @@ body {
   text-transform: uppercase;
 }
 
-.raffle-ticket-lookup-head h3 {
+.raffle-lookup-cta h3 {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(1.1rem, 6vw, 1.45rem);
+  font-size: clamp(1.05rem, 5vw, 1.35rem);
   line-height: 1;
 }
 
-.raffle-ticket-lookup-head p,
-.lookup-message,
-.lookup-code-note {
+.raffle-lookup-cta p {
   margin: 0;
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: 0.88rem;
 }
 
-.raffle-ticket-lookup-form {
-  display: grid;
-  gap: 10px;
-}
-
-.raffle-ticket-lookup-form label {
-  display: grid;
-  gap: 6px;
-  min-width: 0;
-  color: rgba(234, 255, 240, 0.86);
-  font-size: 0.78rem;
-  font-weight: 900;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.raffle-ticket-lookup-form input {
-  min-height: 48px;
-  border-color: rgba(57, 255, 136, 0.22);
-  border-radius: 14px;
-  background: rgba(0, 0, 0, 0.46);
-  font-size: 1rem;
-}
-
-.raffle-ticket-lookup-form .quest-button {
-  min-height: 48px;
-  width: 100%;
-}
-
-.raffle-ticket-lookup-status {
-  display: grid;
-  gap: 10px;
-  min-width: 0;
-}
-
-.lookup-message {
-  border: 1px solid rgba(255, 209, 102, 0.22);
-  border-radius: 16px;
-  background: rgba(255, 209, 102, 0.08);
-  padding: 10px;
-}
-
-.lookup-message.error {
-  border-color: rgba(255, 107, 74, 0.34);
-  background: rgba(255, 107, 74, 0.1);
-  color: #ffd0c4;
-}
-
-.lookup-result-card {
-  display: grid;
-  gap: 12px;
-  min-width: 0;
-  border: 1px solid rgba(255, 209, 102, 0.26);
-  border-radius: 18px;
-  background: rgba(255, 209, 102, 0.08);
-  padding: 12px;
-}
-
-.lookup-total {
-  display: flex;
+.raffle-lookup-cta a {
+  min-height: 44px;
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-width: 0;
-}
-
-.lookup-total span {
-  color: var(--muted);
-  font-size: 0.75rem;
+  justify-content: center;
+  border: 1px solid rgba(57, 255, 136, 0.36);
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(57, 255, 136, 0.94), rgba(154, 255, 196, 0.96));
+  color: #021207;
+  padding: 0.72rem 1rem;
   font-weight: 950;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  text-align: center;
+  text-decoration: none;
+  box-shadow: 0 0 22px rgba(57, 255, 136, 0.16);
 }
 
-.lookup-total strong {
-  min-width: 0;
-  color: var(--amber);
-  font-family: var(--font-display);
-  font-size: clamp(1.8rem, 12vw, 2.8rem);
-  line-height: 0.9;
-  overflow-wrap: anywhere;
-  text-shadow: 0 0 18px rgba(255, 209, 102, 0.34);
-}
-
-.lookup-stats-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 8px;
-  margin: 0;
-}
-
-.lookup-stats-grid div {
-  min-width: 0;
-  border: 1px solid rgba(234, 255, 240, 0.1);
-  border-radius: 14px;
-  background: rgba(0, 0, 0, 0.22);
-  padding: 10px;
-}
-
-.lookup-stats-grid dt {
-  color: var(--muted);
-  font-size: 0.7rem;
-  font-weight: 950;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-}
-
-.lookup-stats-grid dd {
-  margin: 3px 0 0;
-  color: #fff;
-  font-weight: 950;
-  overflow-wrap: anywhere;
-}
-
-.lookup-code-note {
-  overflow-wrap: anywhere;
+.raffle-lookup-cta a:focus-visible {
+  outline: 3px solid rgba(255, 209, 102, 0.9);
+  outline-offset: 3px;
 }
 
 @media (min-width: 560px) {
-  .raffle-ticket-lookup-form,
-  .lookup-stats-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .raffle-lookup-cta {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
   }
 
-  .raffle-ticket-lookup-form .quest-button {
-    grid-column: 1 / -1;
+  .raffle-lookup-cta a {
+    white-space: nowrap;
   }
 }
 

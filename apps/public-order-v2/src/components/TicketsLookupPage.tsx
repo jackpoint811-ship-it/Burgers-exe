@@ -1,21 +1,24 @@
+import type { RaffleTicketsLookupResult } from '@config/index';
 import { useState } from 'react';
+import { lookupRaffleTicketsV2 } from '../lib/raffles-v2';
 
 type LookupState = 'idle' | 'loading' | 'success' | 'error';
-
-type ReferralTicketsResult = {
-  customerName?: string;
-  phoneMasked?: string;
-  referralCode?: string;
-  ticketsCount?: number;
-  shareUrl?: string;
-  ticketsLabel?: string;
-};
+type CopyKind = 'code' | 'link' | 'message';
 
 const digitsOnly = (value: string) => value.replace(/\D/g, '');
+const normalizeReferralCode = (value: string) => value.trim().toUpperCase().slice(0, 32);
 
-const buildShareMessage = (data: ReferralTicketsResult) => {
-  const code = data.referralCode || '';
-  const shareUrl = data.shareUrl || `${window.location.origin}/?ref=${encodeURIComponent(code)}`;
+const formatLookupDate = (value?: string) => {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
+};
+
+const buildShareUrl = (code: string) => `${window.location.origin}/?ref=${encodeURIComponent(code)}`;
+
+const buildShareMessage = (code: string) => {
+  const shareUrl = buildShareUrl(code);
   return `Ya estoy participando en el sorteo de Burgers.exe 🍔🎟️ Usa mi código ${code} cuando hagas tu pedido y me ayudas a sumar tickets. Pide aquí: ${shareUrl}`;
 };
 
@@ -40,44 +43,56 @@ const copyTextToClipboard = async (text: string) => {
 
 export const TicketsLookupPage = () => {
   const [phone, setPhone] = useState('');
-  const [phoneError, setPhoneError] = useState('');
+  const [code, setCode] = useState('');
+  const [fieldError, setFieldError] = useState('');
   const [status, setStatus] = useState<LookupState>('idle');
   const [statusText, setStatusText] = useState('');
-  const [result, setResult] = useState<ReferralTicketsResult | null>(null);
+  const [result, setResult] = useState<RaffleTicketsLookupResult | null>(null);
   const [copyFeedback, setCopyFeedback] = useState('');
 
-  const validatePhone = () => {
-    const normalized = digitsOnly(phone);
-    if (normalized.length !== 10) {
-      setPhoneError('Escribe exactamente 10 dígitos.');
-      return '';
+  const validateLookup = () => {
+    const normalizedPhone = digitsOnly(phone);
+    const normalizedCode = normalizeReferralCode(code);
+    if (!normalizedPhone && !normalizedCode) {
+      setFieldError('Ingresa tu teléfono o tu código referido.');
+      return null;
     }
-    setPhoneError('');
-    return normalized;
+    if (normalizedPhone && normalizedPhone.length < 10) {
+      setFieldError('El teléfono debe tener al menos 10 dígitos.');
+      return null;
+    }
+    setFieldError('');
+    return { normalizedPhone, normalizedCode };
   };
 
   const handleLookup = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const normalizedPhone = validatePhone();
-    if (!normalizedPhone) return;
+    const values = validateLookup();
+    if (!values) return;
 
+    setPhone(values.normalizedPhone);
+    setCode(values.normalizedCode);
     setResult(null);
     setStatus('loading');
     setStatusText('Consultando tus tickets...');
     setCopyFeedback('');
 
     try {
-      const response = await fetch(`/api/referral-tickets?phone=${encodeURIComponent(normalizedPhone)}`);
-      const payload = await response.json().catch(() => null) as { ok?: boolean; data?: ReferralTicketsResult; error?: { code?: string } } | null;
-      if (response.status === 404 || payload?.error?.code === 'NOT_FOUND') {
+      const response = await lookupRaffleTicketsV2({ phone: values.normalizedPhone, code: values.normalizedCode });
+      if (!response.ok || !response.data) throw new Error('lookup failed');
+      setResult(response.data);
+      if (!response.data.campaign) {
         setStatus('error');
-        setStatusText('No encontramos tickets con ese teléfono. Revisa el número o participa haciendo tu pedido.');
+        setStatusText('No hay campaña activa en este momento. Vuelve pronto para consultar tickets.');
         return;
       }
-      if (!response.ok || payload?.ok !== true || !payload.data) throw new Error('lookup failed');
-      setResult(payload.data);
+      if (!response.data.found) {
+        setStatus('error');
+        setStatusText('No encontramos tickets con esos datos.');
+        return;
+      }
       setStatus('success');
-      setStatusText('Tickets encontrados. Ya puedes copiar o compartir tu código.');
+      setStatusText('Tickets encontrados. Puedes revisar tu resumen y compartir tu código.');
     } catch {
       setStatus('error');
       setStatusText('No pudimos consultar tus tickets ahora. Intenta más tarde.');
@@ -85,14 +100,20 @@ export const TicketsLookupPage = () => {
   };
 
   const handlePhoneInput = (value: string) => {
-    setPhone(digitsOnly(value).slice(0, 10));
-    if (phoneError) setPhoneError('');
+    setPhone(digitsOnly(value).slice(0, 16));
+    if (fieldError) setFieldError('');
   };
 
-  const handleCopy = async (kind: 'code' | 'link' | 'message') => {
-    if (!result) return;
-    const shareUrl = result.shareUrl || `${window.location.origin}/?ref=${encodeURIComponent(result.referralCode || '')}`;
-    const value = kind === 'code' ? result.referralCode || '' : kind === 'link' ? shareUrl : buildShareMessage({ ...result, shareUrl });
+  const handleCodeInput = (value: string) => {
+    setCode(normalizeReferralCode(value));
+    if (fieldError) setFieldError('');
+  };
+
+  const handleCopy = async (kind: CopyKind) => {
+    const referralCode = result?.referralCode?.code;
+    if (!referralCode) return;
+    const shareUrl = buildShareUrl(referralCode);
+    const value = kind === 'code' ? referralCode : kind === 'link' ? shareUrl : buildShareMessage(referralCode);
     try {
       await copyTextToClipboard(value);
       setCopyFeedback(kind === 'code' ? 'Código copiado.' : kind === 'link' ? 'Link copiado.' : 'Mensaje copiado.');
@@ -101,23 +122,23 @@ export const TicketsLookupPage = () => {
     }
   };
 
-  const canLookup = phone.length === 10;
-  const ticketsCount = Number(result?.ticketsCount || 0);
-  const shareUrl = result?.shareUrl || (result?.referralCode ? `${window.location.origin}/?ref=${encodeURIComponent(result.referralCode)}` : '');
-  const shareMessage = result ? buildShareMessage({ ...result, shareUrl }) : '';
+  const participant = result?.participant ?? null;
+  const referralCode = result?.referralCode ?? null;
+  const canLookup = status !== 'loading' && (phone.length > 0 || code.length > 0);
+  const shareMessage = referralCode?.code ? buildShareMessage(referralCode.code) : '';
 
   return (
     <main className="tickets-page app-shell" aria-labelledby="ticketsPageTitle">
       <section className="terminal-window tickets-hero-card">
         <span className="terminal-path">Burgers.exe campaign module</span>
         <h1 id="ticketsPageTitle">🎟️ Consulta tus tickets</h1>
-        <p className="hero-copy">Ingresa tu teléfono de 10 dígitos para ver cuántos tickets tienes, copiar tu código de referido y compartirlo con tus compas.</p>
+        <p className="hero-copy">Busca con tu teléfono o código referido. La consulta es privada: solo mostramos teléfonos enmascarados.</p>
         <a className="tickets-back-link" href="/">← Volver al menú</a>
       </section>
 
       <section className="terminal-window tickets-lookup-card" aria-labelledby="lookupTitle">
-        <span className="terminal-path">Lookup</span>
-        <h2 id="lookupTitle">Buscar por teléfono</h2>
+        <span className="terminal-path">Lookup seguro</span>
+        <h2 id="lookupTitle">Buscar tickets</h2>
         <form onSubmit={handleLookup} noValidate>
           <label className="terminal-label" htmlFor="ticketPhoneInput">
             Teléfono
@@ -128,37 +149,80 @@ export const TicketsLookupPage = () => {
               inputMode="numeric"
               autoComplete="tel"
               placeholder="10 dígitos"
-              pattern="[0-9]{10}"
-              maxLength={10}
               value={phone}
               onChange={(event) => handlePhoneInput(event.target.value)}
-              aria-describedby="ticketPhoneHelp ticketPhoneError"
-              aria-invalid={phoneError ? 'true' : 'false'}
+              aria-describedby="ticketLookupHelp ticketLookupError"
+              aria-invalid={fieldError ? 'true' : 'false'}
               aria-busy={status === 'loading' ? 'true' : 'false'}
-              required
             />
           </label>
-          <p className="muted" id="ticketPhoneHelp">Usa exactamente los 10 dígitos del número con el que hiciste tu pedido.</p>
-          {phoneError ? <p className="inline-error" id="ticketPhoneError" role="alert">{phoneError}</p> : <p id="ticketPhoneError" className="sr-only" />}
-          <button className="terminal-button" type="submit" disabled={status === 'loading' || !canLookup}>{status === 'loading' ? 'Consultando...' : 'Consultar tickets'}</button>
+          <label className="terminal-label" htmlFor="ticketCodeInput">
+            Código referido
+            <input
+              id="ticketCodeInput"
+              name="code"
+              type="text"
+              autoCapitalize="characters"
+              autoComplete="off"
+              placeholder="TU-CODIGO-01"
+              maxLength={32}
+              value={code}
+              onChange={(event) => handleCodeInput(event.target.value)}
+              aria-describedby="ticketLookupHelp ticketLookupError"
+              aria-invalid={fieldError ? 'true' : 'false'}
+              aria-busy={status === 'loading' ? 'true' : 'false'}
+            />
+          </label>
+          <p className="muted" id="ticketLookupHelp">Ingresa al menos uno. Si escribes teléfono, debe tener mínimo 10 dígitos.</p>
+          {fieldError ? <p className="inline-error" id="ticketLookupError" role="alert">{fieldError}</p> : <p id="ticketLookupError" className="sr-only" />}
+          <button className="terminal-button" type="submit" disabled={!canLookup}>{status === 'loading' ? 'Consultando...' : 'Consultar tickets'}</button>
         </form>
         <p className={status === 'error' ? 'tickets-status is-error' : status === 'success' ? 'tickets-status is-success' : 'tickets-status'} aria-live="polite">{statusText}</p>
       </section>
 
-      {result ? (
+      {participant ? (
         <section className="terminal-window tickets-result-card" aria-labelledby="ticketsResultTitle" aria-live="polite">
           <span className="terminal-path">Resultado encontrado</span>
           <h2 id="ticketsResultTitle">Tus oportunidades</h2>
-          <div className="tickets-count-card" aria-label="Cantidad de tickets"><strong>{ticketsCount}</strong><span>{result.ticketsLabel || 'tickets'}</span></div>
-          <p className="tickets-copy">Tienes {ticketsCount} tickets.</p>
+          <div className="tickets-count-card" aria-label="Total tickets"><strong>{participant.totalTickets}</strong><span>total tickets</span></div>
           <dl className="tickets-result-list">
-            <div><dt>Cliente</dt><dd>{result.customerName || 'Cliente Burgers.exe'}</dd></div>
-            <div><dt>Teléfono</dt><dd>{result.phoneMasked || 'Teléfono confirmado'}</dd></div>
-            <div><dt>Código de referido</dt><dd><code>{result.referralCode || '—'}</code></dd></div>
+            <div><dt>Tickets por burgers</dt><dd>{participant.burgerTickets}</dd></div>
+            <div><dt>Tickets por referidos</dt><dd>{participant.referralTickets}</dd></div>
+            <div><dt>Último folio</dt><dd>{participant.lastOrderFolio || '—'}</dd></div>
+            <div><dt>Última orden</dt><dd>{formatLookupDate(participant.lastOrderAt)}</dd></div>
+            <div><dt>Teléfono</dt><dd>{participant.customerPhoneMasked || 'Teléfono confirmado'}</dd></div>
+            {referralCode ? <div><dt>Código referido</dt><dd><code>{referralCode.code}</code></dd></div> : null}
+            {referralCode ? <div><dt>Estado del código</dt><dd>{referralCode.isActive ? 'Activo' : 'Inactivo'}</dd></div> : null}
           </dl>
-          <label className="terminal-label" htmlFor="shareMessage">
+          {referralCode ? <p className="tickets-code-owner">Teléfono del código: {referralCode.ownerPhoneMasked}</p> : null}
+          {referralCode ? (
+            <>
+              <label className="terminal-label" htmlFor="shareMessage">
+                Copy listo para WhatsApp
+                <textarea id="shareMessage" value={shareMessage} readOnly rows={5} />
+              </label>
+              <div className="tickets-actions-grid">
+                <button type="button" onClick={() => handleCopy('code')}>Copiar código</button>
+                <button type="button" onClick={() => handleCopy('link')}>Copiar link</button>
+                <button type="button" onClick={() => handleCopy('message')}>Copiar mensaje</button>
+                <a className="tickets-whatsapp-button" href={`https://wa.me/?text=${encodeURIComponent(shareMessage)}`} target="_blank" rel="noopener noreferrer">Compartir por WhatsApp</a>
+              </div>
+              {copyFeedback ? <p className="tickets-status is-success" aria-live="polite">{copyFeedback}</p> : null}
+            </>
+          ) : null}
+        </section>
+      ) : referralCode && result?.found ? (
+        <section className="terminal-window tickets-result-card" aria-labelledby="ticketsCodeTitle" aria-live="polite">
+          <span className="terminal-path">Código encontrado</span>
+          <h2 id="ticketsCodeTitle">Código referido</h2>
+          <div className="tickets-count-card compact" aria-label="Código referido"><strong>{referralCode.code}</strong><span>{referralCode.isActive ? 'activo' : 'inactivo'}</span></div>
+          <dl className="tickets-result-list">
+            <div><dt>Teléfono enmascarado</dt><dd>{referralCode.ownerPhoneMasked}</dd></div>
+            <div><dt>Estado del código</dt><dd>{referralCode.isActive ? 'Activo' : 'Inactivo'}</dd></div>
+          </dl>
+          <label className="terminal-label" htmlFor="shareMessageCodeOnly">
             Copy listo para WhatsApp
-            <textarea id="shareMessage" value={shareMessage} readOnly rows={5} />
+            <textarea id="shareMessageCodeOnly" value={shareMessage} readOnly rows={5} />
           </label>
           <div className="tickets-actions-grid">
             <button type="button" onClick={() => handleCopy('code')}>Copiar código</button>
