@@ -1545,7 +1545,7 @@ export function PublicOrderApp() {
     window.history.pushState({ burgersExePublicSection: sectionRef.current, modal: "menu-info" }, "", `${window.location.pathname}${window.location.search}#${sectionRef.current}-info`);
   };
   const primaryDisabled = (section === "main" && !builder && !cart.length) || ((section === "workbench" || section === "customize") && !builder) || (section === "checkout" && (submitting || !cart.length));
-  const showPersistentCta = section !== "success" && section !== "checkout";
+  const showPersistentCta = section !== "success" && section !== "checkout" && section !== "customize";
   const primaryAction = () => {
     if (section === "menu") beginQuest();
     else if (section === "main" && builder) navigate("workbench");
@@ -1569,7 +1569,7 @@ export function PublicOrderApp() {
       {section === "checkout" && cart.length ? <Checkout cart={cart} items={menuData.items} total={total} customer={customer} setCustomer={setCustomer} checkoutStep={checkoutStep} setCheckoutStep={setCheckoutStep} onDataStepBlocked={blockCheckoutDataStep} onBack={() => navigate("side") } onSubmit={handleCheckout} submitting={submitting} error={checkoutError} fieldErrors={checkoutFieldErrors} clearFieldError={clearCheckoutFieldError} onEdit={editLine} onDuplicate={duplicateLine} onRemove={removeLine} /> : null}
       {section === "success" && orderConfirmation ? <Success order={orderConfirmation} campaign={raffleCampaign} onCreateAnother={handleCreateAnother} /> : null}
       <MenuInfoDialog item={infoItem} onClose={() => setInfoItem(null)} />
-      <PersistentCta section={section} count={count} total={total} disabled={primaryDisabled} submitting={submitting} onClick={primaryAction} builder={builder} sideHasSelection={sideHasSelection} hasBurgerOrCombo={hasBurgerOrComboInCart} />
+      {showPersistentCta ? <PersistentCta section={section} count={count} total={total} disabled={primaryDisabled} submitting={submitting} onClick={primaryAction} builder={builder} sideHasSelection={sideHasSelection} hasBurgerOrCombo={hasBurgerOrComboInCart} /> : null}
     </main>
   );
 }
