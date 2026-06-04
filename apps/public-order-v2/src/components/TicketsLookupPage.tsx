@@ -48,8 +48,8 @@ export const TicketsLookupPage = () => {
 
   const validatePhone = () => {
     const normalized = digitsOnly(phone);
-    if (normalized.length < 8) {
-      setPhoneError('Escribe al menos 8 dígitos.');
+    if (normalized.length !== 10) {
+      setPhoneError('Escribe exactamente 10 dígitos.');
       return '';
     }
     setPhoneError('');
@@ -68,7 +68,7 @@ export const TicketsLookupPage = () => {
 
     try {
       const response = await fetch(`/api/referral-tickets?phone=${encodeURIComponent(normalizedPhone)}`);
-      const payload = await response.json().catch(() => null);
+      const payload = await response.json().catch(() => null) as { ok?: boolean; data?: ReferralTicketsResult; error?: { code?: string } } | null;
       if (response.status === 404 || payload?.error?.code === 'NOT_FOUND') {
         setStatus('error');
         setStatusText('No encontramos tickets con ese teléfono. Revisa el número o participa haciendo tu pedido.');
@@ -85,7 +85,7 @@ export const TicketsLookupPage = () => {
   };
 
   const handlePhoneInput = (value: string) => {
-    setPhone(digitsOnly(value).slice(0, 14));
+    setPhone(digitsOnly(value).slice(0, 10));
     if (phoneError) setPhoneError('');
   };
 
@@ -101,6 +101,7 @@ export const TicketsLookupPage = () => {
     }
   };
 
+  const canLookup = phone.length === 10;
   const ticketsCount = Number(result?.ticketsCount || 0);
   const shareUrl = result?.shareUrl || (result?.referralCode ? `${window.location.origin}/?ref=${encodeURIComponent(result.referralCode)}` : '');
   const shareMessage = result ? buildShareMessage({ ...result, shareUrl }) : '';
@@ -110,7 +111,7 @@ export const TicketsLookupPage = () => {
       <section className="terminal-window tickets-hero-card">
         <span className="terminal-path">Burgers.exe campaign module</span>
         <h1 id="ticketsPageTitle">🎟️ Consulta tus tickets</h1>
-        <p className="hero-copy">Ingresa tu teléfono para ver cuántos tickets tienes, copiar tu código de referido y compartirlo con tus compas.</p>
+        <p className="hero-copy">Ingresa tu teléfono de 10 dígitos para ver cuántos tickets tienes, copiar tu código de referido y compartirlo con tus compas.</p>
         <a className="tickets-back-link" href="/">← Volver al menú</a>
       </section>
 
@@ -127,6 +128,8 @@ export const TicketsLookupPage = () => {
               inputMode="numeric"
               autoComplete="tel"
               placeholder="10 dígitos"
+              pattern="[0-9]{10}"
+              maxLength={10}
               value={phone}
               onChange={(event) => handlePhoneInput(event.target.value)}
               aria-describedby="ticketPhoneHelp ticketPhoneError"
@@ -135,9 +138,9 @@ export const TicketsLookupPage = () => {
               required
             />
           </label>
-          <p className="muted" id="ticketPhoneHelp">Usa el mismo número con el que hiciste tu pedido.</p>
+          <p className="muted" id="ticketPhoneHelp">Usa exactamente los 10 dígitos del número con el que hiciste tu pedido.</p>
           {phoneError ? <p className="inline-error" id="ticketPhoneError" role="alert">{phoneError}</p> : <p id="ticketPhoneError" className="sr-only" />}
-          <button className="terminal-button" type="submit" disabled={status === 'loading'}>{status === 'loading' ? 'Consultando...' : 'Consultar tickets'}</button>
+          <button className="terminal-button" type="submit" disabled={status === 'loading' || !canLookup}>{status === 'loading' ? 'Consultando...' : 'Consultar tickets'}</button>
         </form>
         <p className={status === 'error' ? 'tickets-status is-error' : status === 'success' ? 'tickets-status is-success' : 'tickets-status'} aria-live="polite">{statusText}</p>
       </section>

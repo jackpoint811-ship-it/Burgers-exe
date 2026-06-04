@@ -26,7 +26,7 @@ const HomeTicketsCta = () => {
       .then((response) => response.ok ? response.json() : null)
       .then((payload) => {
         if (!active) return;
-        const data = payload?.data as CampaignConfig | undefined;
+        const data = (payload as { data?: CampaignConfig } | null)?.data;
         if (data?.enabled === true && data?.ticketsPageEnabled === true) setConfig(data);
       })
       .catch(() => {
