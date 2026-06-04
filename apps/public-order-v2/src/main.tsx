@@ -59,7 +59,7 @@ const HomeTicketsCta = () => {
   if (!config || !target) return null;
 
   return createPortal(
-    <a className="raffle-ticket-cta" href={config.ticketsPageUrl || '/tickets'}>Consulta tus tickets</a>,
+    <a className="raffle-ticket-cta terminal-button" href={config.ticketsPageUrl || '/tickets'}>🎟️ Consulta tus tickets</a>,
     target
   );
 };
