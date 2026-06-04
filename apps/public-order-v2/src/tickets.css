@@ -44,10 +44,13 @@
 
 .tickets-page {
   min-height: 100dvh;
+  max-width: 100%;
+  overflow-x: clip;
   padding-bottom: 28px;
 }
 
 .tickets-page .terminal-window {
+  max-width: 100%;
   padding: 18px;
 }
 
@@ -90,6 +93,28 @@
   gap: 10px;
 }
 
+.tickets-lookup-card .terminal-label,
+.tickets-lookup-card input,
+.tickets-result-card .terminal-label,
+.tickets-result-card textarea {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.tickets-lookup-card input,
+.tickets-result-card textarea {
+  width: 100%;
+}
+
+.tickets-lookup-card input:focus-visible,
+.tickets-result-card textarea:focus-visible,
+.tickets-back-link:focus-visible,
+.tickets-whatsapp-button:focus-visible,
+.tickets-actions-grid button:focus-visible {
+  outline: 3px solid rgba(255, 209, 102, 0.9);
+  outline-offset: 3px;
+}
+
 .tickets-status {
   min-height: 1.4em;
   color: var(--muted);
@@ -116,9 +141,12 @@
 }
 
 .tickets-count-card strong {
+  max-width: 100%;
   color: var(--neon);
   font-size: clamp(3rem, 18vw, 6rem);
   line-height: 0.92;
+  overflow-wrap: anywhere;
+  text-align: center;
 }
 
 .tickets-count-card span {
@@ -129,10 +157,22 @@
   text-transform: uppercase;
 }
 
+.tickets-count-card.compact strong {
+  color: var(--amber);
+  font-size: clamp(1.65rem, 12vw, 3rem);
+}
+
+.tickets-code-owner,
 .tickets-copy {
   color: #f7fff9;
   font-weight: 900;
   text-align: center;
+}
+
+.tickets-code-owner {
+  margin: 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
 }
 
 .tickets-result-list {
@@ -197,6 +237,17 @@
 
   .tickets-page {
     width: min(760px, 100%);
+  }
+
+  .tickets-lookup-card form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tickets-lookup-card .muted,
+  .tickets-lookup-card .inline-error,
+  .tickets-lookup-card .sr-only,
+  .tickets-lookup-card .terminal-button {
+    grid-column: 1 / -1;
   }
 
   .tickets-actions-grid {

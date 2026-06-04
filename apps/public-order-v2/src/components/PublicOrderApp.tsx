@@ -7,13 +7,12 @@ import {
   type OrderV2PaymentMethod,
   type PromoCard,
   type RaffleCampaignPublicV2,
-  type RaffleTicketsLookupResult,
 } from "@config/index";
 import { EmptyState } from "@ui/index";
 import { motion, useReducedMotion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadMenuV2, toFallbackMenuResponse } from "../lib/menu-v2";
-import { loadActiveRaffleV2, lookupRaffleTicketsV2 } from "../lib/raffles-v2";
+import { loadActiveRaffleV2 } from "../lib/raffles-v2";
 import {
   type CartEntry,
   type TicketItemKind,
@@ -480,118 +479,16 @@ const ProductChoiceCard = ({ item, onQuickAdd, onCustomize, reduce }: { item: Me
   );
 };
 
-const formatLookupDate = (value?: string) => {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short" }).format(date);
-};
-
-const RaffleTicketLookup = () => {
-  const [phone, setPhone] = useState("");
-  const [code, setCode] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<RaffleTicketsLookupResult | null>(null);
-  const lookupId = "raffle-ticket-lookup-status";
-  const participant = result?.participant ?? null;
-  const referralCode = result?.referralCode ?? null;
-  const hasNoCampaign = result && !result.campaign;
-  const hasNoResults = result && result.campaign && !result.found;
-
-  const submitLookup = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const normalizedPhone = normalizePhoneDigits(phone);
-    const normalizedCode = code.trim().toUpperCase().slice(0, 32);
-    setResult(null);
-    setError(null);
-    if (!normalizedPhone && !normalizedCode) {
-      setError("Ingresa tu teléfono o código referido.");
-      return;
-    }
-    if (normalizedPhone && normalizedPhone.length < 10) {
-      setError("El teléfono debe tener al menos 10 dígitos.");
-      return;
-    }
-    setPhone(normalizedPhone);
-    setCode(normalizedCode);
-    setLoading(true);
-    try {
-      const response = await lookupRaffleTicketsV2({ phone: normalizedPhone, code: normalizedCode });
-      if (!response.ok || !response.data) {
-        setError("No pudimos consultar tus tickets. Intenta de nuevo en unos segundos.");
-        return;
-      }
-      setResult(response.data);
-    } catch {
-      setError("No pudimos consultar tus tickets. Intenta de nuevo en unos segundos.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <section className="raffle-ticket-lookup" aria-labelledby="raffleTicketLookupTitle">
-      <div className="raffle-ticket-lookup-head">
-        <span>Consulta privada</span>
-        <h3 id="raffleTicketLookupTitle">Consultar tickets</h3>
-        <p>Busca con tu teléfono o código referido.</p>
-      </div>
-      <form className="raffle-ticket-lookup-form" onSubmit={submitLookup} aria-describedby={lookupId}>
-        <label>
-          <span>Teléfono</span>
-          <input
-            type="tel"
-            inputMode="tel"
-            autoComplete="tel"
-            value={phone}
-            onChange={(event) => setPhone(event.target.value)}
-            placeholder="10 dígitos"
-          />
-        </label>
-        <label>
-          <span>Código referido opcional</span>
-          <input
-            type="text"
-            autoCapitalize="characters"
-            value={code}
-            onChange={(event) => setCode(event.target.value.toUpperCase().slice(0, 32))}
-            placeholder="TU-CODIGO-01"
-            maxLength={32}
-          />
-        </label>
-        <QuestButton type="submit" disabled={loading}>{loading ? "Consultando..." : "Consultar tickets"}</QuestButton>
-      </form>
-      <div id={lookupId} className="raffle-ticket-lookup-status" role="status" aria-live="polite">
-        {error ? <p className="lookup-message error">{error}</p> : null}
-        {hasNoCampaign ? <p className="lookup-message">No hay sorteo activo en este momento. Vuelve pronto para consultar tickets.</p> : null}
-        {hasNoResults ? <p className="lookup-message">No encontramos tickets con esos datos.</p> : null}
-        {participant ? (
-          <article className="lookup-result-card">
-            <div className="lookup-total">
-              <span>Total tickets</span>
-              <strong>{participant.totalTickets}</strong>
-            </div>
-            <dl className="lookup-stats-grid">
-              <div><dt>Tickets por burgers</dt><dd>{participant.burgerTickets}</dd></div>
-              <div><dt>Tickets por referidos</dt><dd>{participant.referralTickets}</dd></div>
-              <div><dt>Último folio</dt><dd>{participant.lastOrderFolio || "—"}</dd></div>
-              <div><dt>Última orden</dt><dd>{formatLookupDate(participant.lastOrderAt)}</dd></div>
-              <div><dt>Teléfono</dt><dd>{participant.customerPhoneMasked}</dd></div>
-              {referralCode ? <div><dt>Código referido</dt><dd>{referralCode.code}</dd></div> : null}
-            </dl>
-            {referralCode ? <p className="lookup-code-note">Código de {referralCode.ownerName} · {referralCode.isActive ? "activo" : "inactivo"}</p> : null}
-          </article>
-        ) : referralCode && result?.found ? (
-          <article className="lookup-result-card compact">
-            <div className="lookup-total"><span>Código referido</span><strong>{referralCode.code}</strong></div>
-            <p className="lookup-code-note">Pertenece a {referralCode.ownerName} · {referralCode.ownerPhoneMasked} · {referralCode.isActive ? "activo" : "inactivo"}</p>
-          </article>
-        ) : null}
-      </div>
-    </section>
-  );
-};
+const TicketsLookupCta = () => (
+  <section className="raffle-lookup-cta" aria-labelledby="raffleLookupCtaTitle">
+    <div>
+      <span>Consulta privada</span>
+      <h3 id="raffleLookupCtaTitle">¿Ya participas?</h3>
+      <p>Revisa tus tickets y comparte tu código sin llenar formularios en el menú.</p>
+    </div>
+    <a href="/tickets" aria-label="Consulta tus tickets en una página dedicada">Consulta tus tickets</a>
+  </section>
+);
 
 const MenuSection = ({ menuData, raffleCampaign, onExplore, onStart, reduce }: { menuData: MenuV2Response; raffleCampaign: RaffleCampaignPublicV2 | null; onExplore: (item: MenuItem) => void; onStart: () => void; reduce: boolean }) => {
   const bonusZoneRef = useRef<HTMLElement | null>(null);
@@ -638,7 +535,7 @@ const MenuSection = ({ menuData, raffleCampaign, onExplore, onStart, reduce }: {
       <aside ref={bonusZoneRef} className="menu-bonus-zone" aria-label="Bonus de tickets y referidos" tabIndex={-1}>
         <span className="eyebrow">Bonus secundario</span>
         <RaffleBanner campaign={raffleCampaign} />
-        <RaffleTicketLookup />
+        <TicketsLookupCta />
         <PromoRail promos={menuData.promos} />
       </aside>
     </section>
