@@ -23,7 +23,6 @@ import {
 import { createOrderV2 } from "../lib/orders-v2";
 
 type QuestSection = "menu" | "main" | "burgers" | "combos" | "workbench" | "customize" | "side" | "checkout" | "success";
-type OrderChoice = "burger" | "combo";
 type SideQuestEntryMode = "builder" | "direct" | "quickAdd";
 type PaymentTiming = "" | "before" | "after";
 type CustomerDraft = {
@@ -456,40 +455,6 @@ const ProductCard = ({ item, mode, onClick, reduce, descriptionMode = "paragraph
   );
 };
 
-
-const ProductChoiceCard = ({ item, onQuickAdd, onCustomize, reduce }: { item: MenuItem; onQuickAdd: (item: MenuItem) => void; onCustomize: (item: MenuItem) => void; reduce: boolean }) => {
-  const src = resolveAssetUrl(item.imageUrl, item.imageKey);
-  const [imageFailed, setImageFailed] = useState(false);
-  const showImage = Boolean(src) && !imageFailed;
-  const kind = inferItemKind(item);
-  const ingredientBullets = getProductIngredientBullets(item);
-  const canQuickAdd = item.isAvailable && kind === "burger";
-  return (
-    <motion.article className={item.isAvailable ? "product-choice-card" : "product-choice-card unavailable"} whileTap={reduce ? undefined : { scale: 0.99 }}>
-      <div className={showImage ? "kiosk-visual" : "kiosk-visual no-image"}>
-        {showImage && src ? <img src={src} alt="" loading="lazy" decoding="async" onError={() => setImageFailed(true)} /> : <span>{item.name}</span>}
-      </div>
-      <div className="kiosk-body product-choice-body">
-        <span>{kind === "combo" ? "Combo" : item.category}</span>
-        <h3>{item.name}</h3>
-        {ingredientBullets.length ? (
-          <ul className="kiosk-ingredients-list">
-            {ingredientBullets.map((ingredient) => <li key={ingredient}>{ingredient}</li>)}
-          </ul>
-        ) : <p>{item.description}</p>}
-        {kind === "combo" ? <p className="combo-garnish-copy">El combo requiere elegir guarnición.</p> : null}
-        <footer>
-          <strong>{formatCurrency(item.price)}</strong>
-          <em>{item.isAvailable ? "Disponible" : "Agotado"}</em>
-        </footer>
-        <div className="product-choice-actions">
-          {canQuickAdd ? <QuestButton onClick={() => onQuickAdd(item)}>Agregar</QuestButton> : null}
-          <QuestButton className={canQuickAdd ? "ghost" : ""} disabled={!item.isAvailable} onClick={() => onCustomize(item)}>Personalizar</QuestButton>
-        </div>
-      </div>
-    </motion.article>
-  );
-};
 
 const TicketsLookupCta = () => (
   <section className="raffle-lookup-cta" aria-labelledby="raffleLookupCtaTitle">
@@ -1545,7 +1510,6 @@ export function PublicOrderApp() {
   const [section, setSection] = useState<QuestSection>("menu");
   const [cart, setCart] = useState<CartEntry[]>([]);
   const [builder, setBuilder] = useState<BuilderDraft | null>(null);
-  const [orderChoice, setOrderChoice] = useState<OrderChoice | null>(null);
   const [infoItem, setInfoItem] = useState<MenuItem | null>(null);
   const [sideQuestEntryMode, setSideQuestEntryMode] = useState<SideQuestEntryMode>("builder");
   const [sideQuestError, setSideQuestError] = useState<string | null>(null);
@@ -1564,13 +1528,11 @@ export function PublicOrderApp() {
   const [checkoutFieldErrors, setCheckoutFieldErrors] = useState<CheckoutErrors>({});
   const [checkoutStep, setCheckoutStep] = useState<CheckoutStepIndex>(0);
   const [orderConfirmation, setOrderConfirmation] = useState<OrderConfirmation | null>(null);
-  const [quickAddFeedback, setQuickAddFeedback] = useState<string | null>(null);
   const [burgerSelectionError, setBurgerSelectionError] = useState<string | null>(null);
   const [cartCustomizationError, setCartCustomizationError] = useState<string | null>(null);
   const total = useMemo(() => getCartTotal(cart, menuData.items), [cart, menuData.items]);
   const count = getCartCount(cart);
   const availableBurgerItems = useMemo(() => menuData.items.filter((item) => inferItemKind(item) === "burger" && item.isAvailable), [menuData.items]);
-  const availableComboItems = useMemo(() => menuData.items.filter((item) => inferItemKind(item) === "combo" && item.isAvailable), [menuData.items]);
   const extras = menuData.items.filter((item) => item.category === "extras" && inferItemKind(item) !== "combo" && item.isAvailable);
   const garnishes = menuData.items.filter((item) => item.category === "guarniciones" && item.isAvailable);
   const hasBurgerOrComboInCart = cart.some((entry) => entry.itemKind === "burger" || entry.itemKind === "combo");
@@ -1604,21 +1566,6 @@ export function PublicOrderApp() {
   useEffect(() => { sideQuestEntryModeRef.current = sideQuestEntryMode; }, [sideQuestEntryMode]);
   useEffect(() => { builderRef.current = builder; }, [builder]);
   useEffect(() => { const frame = window.requestAnimationFrame(scrollToTop); return () => window.cancelAnimationFrame(frame); }, [section]);
-  useEffect(() => {
-    if (!quickAddFeedback) return;
-    const timeout = window.setTimeout(() => setQuickAddFeedback(null), 3200);
-    return () => window.clearTimeout(timeout);
-  }, [quickAddFeedback]);
-  useEffect(() => {
-    if (orderChoice === "combo" && availableComboItems.length === 0) {
-      setOrderChoice(null);
-      setBuilder((draft) => draft?.itemKind === "combo" ? null : draft);
-    }
-    if (orderChoice === "burger" && availableBurgerItems.length === 0) {
-      setOrderChoice(null);
-      setBuilder((draft) => draft?.itemKind === "burger" ? null : draft);
-    }
-  }, [availableBurgerItems.length, availableComboItems.length, orderChoice]);
   useEffect(() => {
     let mounted = true;
     const bootTimer = window.setTimeout(() => mounted && setShowBoot(false), reduce ? 250 : 1300);
@@ -1669,34 +1616,15 @@ export function PublicOrderApp() {
     const seen = new Map<string, number>();
     return entries.map((entry) => { const next = (seen.get(entry.sku) ?? 0) + 1; seen.set(entry.sku, next); return { ...entry, itemDisplayIndex: next }; });
   };
-  const beginQuest = () => { setOrderChoice(null); setBuilder(null); setQuickAddFeedback(null); setBurgerSelectionError(null); setCartCustomizationError(null); setExtraGarnishQuantities({}); setSideQuestError(null); setSideQuestEntryMode("builder"); setCheckoutError(null); setOrderConfirmation(null); navigate("main"); };
-  const startBurgerSelection = () => { setBuilder(null); setOrderChoice("burger"); setQuickAddFeedback(null); setBurgerSelectionError(null); setCartCustomizationError(null); setSideQuestError(null); setSideQuestEntryMode("builder"); setCheckoutError(null); setOrderConfirmation(null); navigate("burgers"); };
-  const startDirectSideQuest = () => { setBuilder(null); setOrderChoice(null); setQuickAddFeedback(null); setBurgerSelectionError(null); setCartCustomizationError(null); setExtraGarnishQuantities({}); setSideQuestError(null); setSideQuestEntryMode("direct"); navigate("side"); };
+  const beginQuest = () => { setBuilder(null); setBurgerSelectionError(null); setCartCustomizationError(null); setExtraGarnishQuantities({}); setSideQuestError(null); setSideQuestEntryMode("builder"); setCheckoutError(null); setOrderConfirmation(null); navigate("main"); };
+  const startBurgerSelection = () => { setBuilder(null); setBurgerSelectionError(null); setCartCustomizationError(null); setSideQuestError(null); setSideQuestEntryMode("builder"); setCheckoutError(null); setOrderConfirmation(null); navigate("burgers"); };
+  const startDirectSideQuest = () => { setBuilder(null); setBurgerSelectionError(null); setCartCustomizationError(null); setExtraGarnishQuantities({}); setSideQuestError(null); setSideQuestEntryMode("direct"); navigate("side"); };
   const startBuilder = (item: MenuItem, source?: CartEntry, nextSection: QuestSection = "workbench") => {
     if (!item.isAvailable) return;
     const itemKind = inferItemKind(item);
     if (itemKind !== "burger" && itemKind !== "combo") return;
-    setOrderChoice(itemKind);
-    setQuickAddFeedback(null);
     setBuilder({ item, itemKind, quantity: 1, units: [makeUnit(item, itemKind, 1, source)], error: null, editLineKey: source?.lineKey });
     navigate(nextSection);
-  };
-  const quickAddItem = (item: MenuItem) => {
-    if (!item.isAvailable) return;
-    const itemKind = inferItemKind(item);
-    if (itemKind !== "burger" && itemKind !== "combo") return;
-    if (itemKind === "combo") return;
-    setCart((prev) => {
-      const nextIndex = prev.filter((entry) => entry.sku === item.sku).length + 1;
-      const unit = makeUnit(item, itemKind, nextIndex);
-      return reindex([...prev, unit]);
-    });
-    setBuilder(null);
-    setOrderChoice(itemKind);
-    setSideQuestError(null);
-    setCheckoutError(null);
-    setOrderConfirmation(null);
-    setQuickAddFeedback(`${item.name} agregada al ticket.`);
   };
   const setBurgerQuantity = (item: MenuItem, quantity: number) => {
     if (!item.isAvailable || inferItemKind(item) !== "burger") return;
@@ -1722,7 +1650,6 @@ export function PublicOrderApp() {
       return;
     }
     setBuilder(null);
-    setOrderChoice("burger");
     setBurgerSelectionError(null);
     setCartCustomizationError(null);
     navigate("customize");
@@ -1827,7 +1754,7 @@ export function PublicOrderApp() {
       setSubmitting(false);
     }
   };
-  const handleCreateAnother = () => { setOrderConfirmation(null); setCheckoutError(null); setCheckoutFieldErrors({}); setCheckoutStep(0); setCart([]); setCustomer(createEmptyCustomer()); clearDraftIdempotencyKey(); setBuilder(null); setOrderChoice(null); setQuickAddFeedback(null); setExtraGarnishQuantities({}); setSideQuestError(null); setSideQuestEntryMode("builder"); navigate("menu"); };
+  const handleCreateAnother = () => { setOrderConfirmation(null); setCheckoutError(null); setCheckoutFieldErrors({}); setCheckoutStep(0); setCart([]); setCustomer(createEmptyCustomer()); clearDraftIdempotencyKey(); setBuilder(null); setExtraGarnishQuantities({}); setSideQuestError(null); setSideQuestEntryMode("builder"); navigate("menu"); };
   const openInfoDialog = (item: MenuItem) => {
     setInfoItem(item);
     window.history.pushState({ burgersExePublicSection: sectionRef.current, modal: "menu-info" }, "", `${window.location.pathname}${window.location.search}#${sectionRef.current}-info`);
@@ -1856,7 +1783,7 @@ export function PublicOrderApp() {
       <LoadingOverlay loading={showBoot || loadingMenu} />
       <AppHeader section={section} count={count} total={total} builder={builder} />
       {section === "menu" ? <MenuSection menuData={menuData} raffleCampaign={raffleCampaign} onExplore={openInfoDialog} onStart={beginQuest} reduce={reduce} /> : null}
-      {section === "main" ? <MainQuest onBack={() => navigate("menu")} onBurgers={startBurgerSelection} onCombos={() => { setBuilder(null); setOrderChoice("combo"); navigate("combos"); }} onSideQuest={startDirectSideQuest} /> : null}
+      {section === "main" ? <MainQuest onBack={() => navigate("menu")} onBurgers={startBurgerSelection} onCombos={() => { setBuilder(null); navigate("combos"); }} onSideQuest={startDirectSideQuest} /> : null}
       {section === "burgers" ? <BurgerSelectionView items={availableBurgerItems} cart={cart} error={burgerSelectionError} onBack={() => navigate("main")} onAdd={(item) => setBurgerQuantity(item, (cart.filter((entry) => entry.sku === item.sku && entry.itemKind === "burger").length) + 1)} onQuantity={setBurgerQuantity} onContinue={continueFromBurgerSelection} reduce={reduce} /> : null}
       {section === "combos" ? <CombosUnavailable onBack={() => navigate("main")} /> : null}
       {section === "workbench" ? <Workbench builder={builder} onBack={() => navigate("main")} onQuantity={updateBuilderQuantity} onContinue={() => navigate("customize")} /> : null}
