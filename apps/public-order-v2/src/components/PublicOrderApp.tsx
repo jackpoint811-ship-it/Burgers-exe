@@ -969,19 +969,28 @@ const CartCustomizationReview = ({ cart, items, extras, garnishes, error, onBack
   );
 };
 
-const SideQuest = ({ garnishes, selected, onQuantity, onBack, canSkip, error, reduce }: { garnishes: MenuItem[]; selected: Record<string, number>; onQuantity: (sku: string, quantity: number) => void; onBack: () => void; canSkip: boolean; error: string | null; reduce: boolean }) => (
-  <section className="quest-panel side-quest-panel">
-    <QuestButton className="back-button" onClick={onBack}>← Volver a personalizar</QuestButton>
-    <span className="eyebrow">Side Quest</span>
-    <h2>Guarniciones extra</h2>
-    <p className="muted section-subcopy">Agrega papas o guarniciones. Si ya traes burger/combo, esta parte es opcional.</p>
-    {garnishes.length ? <div className="kiosk-grid">{garnishes.map((item) => {
-      const quantity = selected[item.sku] ?? 0;
-      return <div className={quantity ? "side-card active" : "side-card"} key={item.sku}><ProductCard item={item} mode="select" onClick={() => onQuantity(item.sku, quantity + 1)} reduce={reduce} /><QuantityControl value={quantity} min={0} max={10} label={`Cantidad de ${item.name}`} onChange={(nextQty) => onQuantity(item.sku, nextQty)} /></div>;
-    })}</div> : <div className="compact-empty"><EmptyState title="Sin guarniciones disponibles" description={canSkip ? "Puedes continuar sin guarnición extra." : "Vuelve a elegir otra opción del menú."} /></div>}
-    {error ? <p className="inline-error" role="alert">{error}</p> : null}
-  </section>
-);
+const SideQuest = ({ garnishes, selected, onQuantity, onBack, canSkip, error, reduce, entryMode }: { garnishes: MenuItem[]; selected: Record<string, number>; onQuantity: (sku: string, quantity: number) => void; onBack: () => void; canSkip: boolean; error: string | null; reduce: boolean; entryMode: SideQuestEntryMode }) => {
+  const isDirectEntry = entryMode === "direct";
+  const backLabel = isDirectEntry ? "← Volver a Main" : "← Volver a personalizar";
+  const title = isDirectEntry ? "Elige tus guarniciones" : "Guarniciones extra";
+  const subcopy = isDirectEntry
+    ? "Agrega papas o aros. Puedes hacer un pedido solo de guarniciones."
+    : "Agrega papas o guarniciones. Si ya traes burger/combo, esta parte es opcional.";
+
+  return (
+    <section className="quest-panel side-quest-panel">
+      <QuestButton className="back-button" onClick={onBack}>{backLabel}</QuestButton>
+      <span className="eyebrow">Side Quest</span>
+      <h2>{title}</h2>
+      <p className="muted section-subcopy">{subcopy}</p>
+      {garnishes.length ? <div className="kiosk-grid">{garnishes.map((item) => {
+        const quantity = selected[item.sku] ?? 0;
+        return <div className={quantity ? "side-card active" : "side-card"} key={item.sku}><ProductCard item={item} mode="select" onClick={() => onQuantity(item.sku, quantity + 1)} reduce={reduce} /><QuantityControl value={quantity} min={0} max={10} label={`Cantidad de ${item.name}`} onChange={(nextQty) => onQuantity(item.sku, nextQty)} /></div>;
+      })}</div> : <div className="compact-empty"><EmptyState title="Sin guarniciones disponibles" description={canSkip ? "Puedes continuar sin guarnición extra." : "Vuelve a elegir otra opción del menú."} /></div>}
+      {error ? <p className="inline-error" role="alert">{error}</p> : null}
+    </section>
+  );
+};
 
 const TicketList = ({ cart, items, onEdit, onDuplicate, onRemove }: { cart: CartEntry[]; items: MenuItem[]; onEdit: (lineKey: string) => void; onDuplicate: (lineKey: string) => void; onRemove: (lineKey: string) => void }) => (
   <div className="ticket-list">
@@ -1763,7 +1772,7 @@ export function PublicOrderApp() {
       {section === "combos" ? <CombosUnavailable onBack={() => navigate("main")} /> : null}
       {section === "workbench" ? <Workbench builder={builder} onBack={() => navigate("main")} onQuantity={updateBuilderQuantity} onContinue={() => navigate("customize")} /> : null}
       {section === "customize" ? (builder ? <CustomizationReview builder={builder} extras={extras} garnishes={garnishes} onBack={() => navigate("workbench")} onUnitChange={updateBuilderUnit} onContinue={confirmBuilder} /> : <CartCustomizationReview cart={cart} items={menuData.items} extras={extras} garnishes={garnishes} error={cartCustomizationError} onBack={() => navigate("burgers")} onUnitChange={updateCartUnit} onContinue={continueCartCustomization} />) : null}
-      {section === "side" ? <SideQuest garnishes={garnishes} selected={extraGarnishQuantities} onQuantity={(sku, quantity) => { setSideQuestError(null); setExtraGarnishQuantities((prev) => ({ ...prev, [sku]: Math.min(10, Math.max(0, quantity)) })); }} onBack={() => navigate(sideQuestEntryMode === "direct" ? "main" : "customize")} canSkip={hasBurgerOrComboInCart} error={sideQuestError} reduce={reduce} /> : null}
+      {section === "side" ? <SideQuest garnishes={garnishes} selected={extraGarnishQuantities} onQuantity={(sku, quantity) => { setSideQuestError(null); setExtraGarnishQuantities((prev) => ({ ...prev, [sku]: Math.min(10, Math.max(0, quantity)) })); }} onBack={() => navigate(sideQuestEntryMode === "direct" ? "main" : "customize")} canSkip={hasBurgerOrComboInCart} error={sideQuestError} reduce={reduce} entryMode={sideQuestEntryMode} /> : null}
       {section === "checkout" && cart.length ? <Checkout cart={cart} items={menuData.items} total={total} customer={customer} setCustomer={setCustomer} checkoutStep={checkoutStep} setCheckoutStep={setCheckoutStep} onDataStepBlocked={blockCheckoutDataStep} onBack={() => navigate("side") } onSubmit={handleCheckout} submitting={submitting} error={checkoutError} fieldErrors={checkoutFieldErrors} clearFieldError={clearCheckoutFieldError} clearCheckoutError={clearCheckoutErrorMessage} onEdit={editLine} onDuplicate={duplicateLine} onRemove={removeLine} /> : null}
       {section === "success" && orderConfirmation ? <Success order={orderConfirmation} campaign={raffleCampaign} onCreateAnother={handleCreateAnother} /> : null}
       <MenuInfoDialog item={infoItem} onClose={() => setInfoItem(null)} onQuickAdd={quickAddItem} onCustomize={startBuilder} />
