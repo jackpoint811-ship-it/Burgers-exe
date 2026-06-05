@@ -1349,40 +1349,6 @@ p {
 .field-label { display: grid; gap: 8px; color: var(--muted); font-weight: 850; margin-top: 12px; }
 .inline-error { color: #ffd0c4; border: 1px solid rgba(255, 107, 74, 0.36); border-radius: 16px; background: rgba(255, 107, 74, 0.09); padding: 12px; }
 
-.product-choice-card {
-  min-width: 0;
-  min-height: 100%;
-  overflow: hidden;
-  display: grid;
-  grid-template-rows: auto 1fr;
-  border: 1px solid rgba(234, 255, 240, 0.12);
-  border-radius: 26px;
-  background:
-    linear-gradient(180deg, rgba(9, 18, 15, 0.94), rgba(3, 7, 6, 0.9)),
-    rgba(4, 10, 8, 0.82);
-  color: var(--text);
-  box-shadow: 0 18px 52px rgba(0, 0, 0, 0.34);
-}
-.product-choice-card.unavailable { opacity: 0.55; }
-.product-choice-body { gap: 10px; }
-.product-choice-actions {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 8px;
-  margin-top: 2px;
-}
-.product-choice-actions .quest-button {
-  width: 100%;
-  min-width: 0;
-  padding-inline: 12px;
-}
-.combo-garnish-copy {
-  margin: 0;
-  color: var(--amber);
-  font-size: 0.82rem;
-  font-weight: 850;
-  line-height: 1.3;
-}
 .side-card.active .kiosk-card { border-color: var(--neon); box-shadow: 0 0 28px rgba(57, 255, 136, 0.2); }
 .ticket-item ul { margin: 10px 0; padding-left: 1.1rem; color: var(--muted); }
 .ticket-item footer { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -1420,7 +1386,6 @@ p {
 @keyframes boot-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @media (min-width: 720px) {
   .kiosk-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .product-choice-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .choice-grid, .checkout-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .field-label.wide { grid-column: 1 / -1; }
   .promo-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -2384,73 +2349,6 @@ p {
   gap: 12px;
 }
 
-.main-accordion {
-  display: grid;
-  gap: 12px;
-  width: 100%;
-}
-
-.accordion-item {
-  overflow: hidden;
-  border: 1px solid rgba(234, 255, 240, 0.12);
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.035);
-}
-
-.accordion-item.active {
-  border-color: rgba(57, 255, 136, 0.45);
-  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.22), inset 0 0 24px rgba(57, 255, 136, 0.055);
-}
-
-.accordion-trigger {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  width: 100%;
-  border: 0;
-  background: transparent;
-  color: #fff;
-  padding: 14px;
-  text-align: left;
-}
-
-.accordion-trigger span {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-
-.accordion-trigger strong {
-  font-size: clamp(1rem, 4vw, 1.18rem);
-  line-height: 1.1;
-}
-
-.accordion-trigger em {
-  color: var(--muted);
-  font-size: 0.82rem;
-  font-style: normal;
-  line-height: 1.25;
-}
-
-.accordion-trigger b {
-  display: grid;
-  flex: 0 0 auto;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border: 1px solid rgba(57, 255, 136, 0.28);
-  border-radius: 999px;
-  color: var(--neon);
-  font-size: 1.2rem;
-}
-
-.accordion-panel {
-  display: grid;
-  gap: 12px;
-  padding: 0 10px 12px;
-}
-
 .side-direct-card,
 .compact-empty {
   border: 1px dashed rgba(234, 255, 240, 0.16);
@@ -2487,24 +2385,9 @@ p {
 
 @media (max-width: 360px) {
   .back-button,
-  .accordion-trigger,
   .side-direct-card .quest-button,
   .secondary-action {
     width: 100%;
-  }
-
-  .accordion-trigger {
-    align-items: flex-start;
-    padding: 12px;
-  }
-
-  .product-choice-actions {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .accordion-trigger b {
-    width: 30px;
-    height: 30px;
   }
 }
 
@@ -3503,97 +3386,9 @@ body {
   min-width: 0;
 }
 
-.main-quest-panel .accordion-trigger {
-  min-height: 56px;
-}
-
-.main-quest-panel .accordion-trigger b {
-  width: 44px;
-  height: 44px;
-}
-
-.main-quest-panel .accordion-item.active:first-child .accordion-trigger {
-  border-bottom: 1px solid rgba(57, 255, 136, 0.18);
-  background: linear-gradient(90deg, rgba(57, 255, 136, 0.08), rgba(57, 255, 136, 0));
-}
-
-.main-quest-panel .accordion-panel .kiosk-grid {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.main-quest-panel .product-choice-card {
-  grid-template-columns: minmax(82px, 31%) minmax(0, 1fr);
-  grid-template-rows: auto;
-}
-
-.main-quest-panel .product-choice-card .kiosk-visual {
-  height: 100%;
-  min-height: 176px;
-  aspect-ratio: auto;
-  border-right: 1px solid rgba(57, 255, 136, 0.12);
-  border-bottom: 0;
-}
-
-.main-quest-panel .product-choice-body {
-  align-content: start;
-  gap: 8px;
-  padding: 12px;
-}
-
-.main-quest-panel .product-choice-body .kiosk-ingredients-list {
-  max-height: 3.4rem;
-  overflow: hidden;
-}
-
-.main-quest-panel .product-choice-body footer {
-  margin-top: 0;
-}
-
-.main-quest-panel .product-choice-actions {
-  margin-top: 0;
-}
-
-@media (max-width: 360px) {
-  .main-quest-panel .product-choice-card {
-    grid-template-columns: minmax(74px, 28%) minmax(0, 1fr);
-  }
-
-  .main-quest-panel .product-choice-card .kiosk-visual {
-    min-height: 168px;
-    padding: 0.2rem;
-  }
-
-  .main-quest-panel .product-choice-body {
-    padding: 10px;
-  }
-
-  .main-quest-panel .product-choice-body .kiosk-ingredients-list {
-    max-height: 2.5rem;
-  }
-}
-
 @media (min-width: 560px) {
   .info-dialog-actions {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 720px) {
-  .main-quest-panel .product-choice-card {
-    grid-template-columns: none;
-    grid-template-rows: auto 1fr;
-  }
-
-  .main-quest-panel .product-choice-card .kiosk-visual {
-    height: auto;
-    min-height: unset;
-    aspect-ratio: 1 / 1;
-    border-right: 0;
-    border-bottom: 1px solid rgba(57, 255, 136, 0.12);
-  }
-
-  .main-quest-panel .product-choice-body .kiosk-ingredients-list {
-    max-height: none;
   }
 }
 
@@ -3725,7 +3520,6 @@ html {
 .field-helper,
 .field-label small,
 .kiosk-body p,
-.accordion-trigger em,
 .ticket-item ul {
   color: var(--muted);
   line-height: 1.45;
@@ -3778,13 +3572,11 @@ html {
   font-size: clamp(0.92rem, 3.6vw, 1rem);
 }
 
-.kiosk-grid,
-.main-quest-panel .accordion-panel .kiosk-grid {
+.kiosk-grid {
   gap: 10px;
 }
 
-.kiosk-card,
-.product-choice-card {
+.kiosk-card {
   border-radius: 18px;
   box-shadow: 0 14px 38px rgba(0, 0, 0, 0.3);
 }
@@ -3825,52 +3617,6 @@ html {
 
 .main-quest-panel {
   gap: 10px;
-}
-
-.main-quest-panel .accordion-panel {
-  padding-inline: 8px;
-}
-
-.main-quest-panel .product-choice-card {
-  grid-template-columns: minmax(78px, 28%) minmax(0, 1fr);
-}
-
-.main-quest-panel .product-choice-card .kiosk-visual {
-  min-height: 132px;
-  padding: 0.28rem;
-}
-
-.main-quest-panel .product-choice-card .kiosk-visual img {
-  border-radius: 16px;
-  object-fit: contain;
-}
-
-.main-quest-panel .product-choice-body {
-  gap: 6px;
-  padding: 10px;
-}
-
-.main-quest-panel .product-choice-body h3 {
-  font-size: clamp(1.02rem, 4.5vw, 1.22rem);
-}
-
-.main-quest-panel .product-choice-body .kiosk-ingredients-list {
-  max-height: 2.7rem;
-}
-
-.main-quest-panel .product-choice-body footer {
-  gap: 0.35rem 0.55rem;
-  padding-top: 0;
-}
-
-.main-quest-panel .product-choice-actions {
-  gap: 6px;
-}
-
-.main-quest-panel .product-choice-actions .quest-button {
-  min-height: 44px;
-  padding: 0.62rem 0.72rem;
-  font-size: 0.82rem;
 }
 
 .app-shell.has-persistent-cta {
@@ -3963,29 +3709,9 @@ html {
   .menu-cluster .kiosk-body {
     padding: 9px;
   }
-
-  .main-quest-panel .accordion-trigger {
-    min-height: 52px;
-  }
 }
 
 @media (max-width: 360px) {
-  .main-quest-panel .product-choice-card {
-    grid-template-columns: minmax(70px, 26%) minmax(0, 1fr);
-  }
-
-  .main-quest-panel .product-choice-card .kiosk-visual {
-    min-height: 122px;
-  }
-
-  .main-quest-panel .product-choice-body {
-    padding: 9px;
-  }
-
-  .main-quest-panel .product-choice-body .kiosk-ingredients-list {
-    max-height: 2.35rem;
-  }
-
   .persistent-cta {
     grid-template-columns: minmax(0, 0.95fr) minmax(112px, auto);
     padding: 8px;
@@ -4003,12 +3729,6 @@ html {
     padding-inline: 0.68rem;
     font-size: 0.78rem;
     white-space: normal;
-  }
-}
-
-@media (min-width: 720px) {
-  .main-quest-panel .product-choice-card .kiosk-visual {
-    min-height: unset;
   }
 }
 
