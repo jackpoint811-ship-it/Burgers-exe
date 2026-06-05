@@ -1075,7 +1075,7 @@ const TransferDetailsModal = ({ onClose }: { onClose: () => void }) => {
 
 const checkoutSteps = ["Resumen", "Datos", "Pago"] as const;
 
-const Checkout = ({ cart, items, total, customer, setCustomer, checkoutStep, setCheckoutStep, onDataStepBlocked, onBack, onSubmit, submitting, error, fieldErrors, clearFieldError, onEdit, onDuplicate, onRemove }: { cart: CartEntry[]; items: MenuItem[]; total: number; customer: CustomerDraft; setCustomer: (customer: CustomerDraft) => void; checkoutStep: CheckoutStepIndex; setCheckoutStep: (step: CheckoutStepIndex) => void; onDataStepBlocked: (fields: CheckoutErrors) => void; onBack: () => void; onSubmit: () => void; submitting: boolean; error: string | null; fieldErrors: CheckoutErrors; clearFieldError: (field: CheckoutField) => void; onEdit: (lineKey: string) => void; onDuplicate: (lineKey: string) => void; onRemove: (lineKey: string) => void }) => {
+const Checkout = ({ cart, items, total, customer, setCustomer, checkoutStep, setCheckoutStep, onDataStepBlocked, onBack, onSubmit, submitting, error, fieldErrors, clearFieldError, clearCheckoutError, onEdit, onDuplicate, onRemove }: { cart: CartEntry[]; items: MenuItem[]; total: number; customer: CustomerDraft; setCustomer: (customer: CustomerDraft) => void; checkoutStep: CheckoutStepIndex; setCheckoutStep: (step: CheckoutStepIndex) => void; onDataStepBlocked: (fields: CheckoutErrors) => void; onBack: () => void; onSubmit: () => void; submitting: boolean; error: string | null; fieldErrors: CheckoutErrors; clearFieldError: (field: CheckoutField) => void; clearCheckoutError: () => void; onEdit: (lineKey: string) => void; onDuplicate: (lineKey: string) => void; onRemove: (lineKey: string) => void }) => {
   const [transferModalOpen, setTransferModalOpen] = useState(false);
   const updatePaymentMethod = (paymentMethod: OrderV2PaymentMethod) => {
     clearFieldError("paymentMethod");
@@ -1089,6 +1089,7 @@ const Checkout = ({ cart, items, total, customer, setCustomer, checkoutStep, set
         onDataStepBlocked(dataFields);
         return;
       }
+      clearCheckoutError();
     }
     setCheckoutStep(step);
     window.requestAnimationFrame(() => document.getElementById("checkoutWizard")?.scrollIntoView({ behavior: "smooth", block: "start" }));
@@ -1121,19 +1122,19 @@ const Checkout = ({ cart, items, total, customer, setCustomer, checkoutStep, set
         <div className="checkout-grid">
           <label className="field-label" htmlFor="checkoutName">
             <span>Nombre <em>obligatorio</em></span>
-            <input id="checkoutName" value={customer.name} onChange={(event) => { clearFieldError("name"); setCustomer({ ...customer, name: event.target.value }); }} placeholder="Ej. Alex" aria-invalid={fieldErrors.name ? "true" : "false"} aria-describedby={`checkoutNameHelp${fieldErrors.name ? " checkoutNameError" : ""}`} />
+            <input id="checkoutName" value={customer.name} onChange={(event) => { clearFieldError("name"); clearCheckoutError(); setCustomer({ ...customer, name: event.target.value }); }} placeholder="Ej. Alex" aria-invalid={fieldErrors.name ? "true" : "false"} aria-describedby={`checkoutNameHelp${fieldErrors.name ? " checkoutNameError" : ""}`} />
             <small id="checkoutNameHelp">Lo usamos para identificar tu pedido al entregarlo. Mínimo 2 caracteres.</small>
             {fieldErrors.name ? <span className="inline-error" id="checkoutNameError" role="alert">{fieldErrors.name}</span> : null}
           </label>
           <label className="field-label" htmlFor="checkoutPhone">
             <span>Teléfono <em>obligatorio</em></span>
-            <input id="checkoutPhone" inputMode="numeric" autoComplete="tel" value={customer.phone} onChange={(event) => { clearFieldError("phone"); setCustomer({ ...customer, phone: formatPhoneForDisplay(event.target.value) }); }} placeholder="222 123 4567" aria-invalid={fieldErrors.phone ? "true" : "false"} aria-describedby={`checkoutPhoneHelp${fieldErrors.phone ? " checkoutPhoneError" : ""}`} />
+            <input id="checkoutPhone" inputMode="numeric" autoComplete="tel" value={customer.phone} onChange={(event) => { clearFieldError("phone"); clearCheckoutError(); setCustomer({ ...customer, phone: formatPhoneForDisplay(event.target.value) }); }} placeholder="222 123 4567" aria-invalid={fieldErrors.phone ? "true" : "false"} aria-describedby={`checkoutPhoneHelp${fieldErrors.phone ? " checkoutPhoneError" : ""}`} />
             <small id="checkoutPhoneHelp">Escribe 10 dígitos. Ej. 2221234567.</small>
             {fieldErrors.phone ? <span className="inline-error" id="checkoutPhoneError" role="alert">{fieldErrors.phone}</span> : null}
           </label>
           <label className="field-label wide field-label-optional" htmlFor="checkoutNotes">
             <span>Nota general <em>opcional</em></span>
-            <textarea id="checkoutNotes" maxLength={500} value={customer.notes} onChange={(event) => { clearFieldError("notes"); setCustomer({ ...customer, notes: event.target.value }); }} placeholder="Ej. Sin servilletas extra" aria-invalid={fieldErrors.notes ? "true" : "false"} aria-describedby={`checkoutNotesHelp${fieldErrors.notes ? " checkoutNotesError" : ""}`} />
+            <textarea id="checkoutNotes" maxLength={500} value={customer.notes} onChange={(event) => { clearFieldError("notes"); clearCheckoutError(); setCustomer({ ...customer, notes: event.target.value }); }} placeholder="Ej. Sin servilletas extra" aria-invalid={fieldErrors.notes ? "true" : "false"} aria-describedby={`checkoutNotesHelp${fieldErrors.notes ? " checkoutNotesError" : ""}`} />
             <small id="checkoutNotesHelp">Aplica para todo el pedido. Los cambios por burger van en personalización.</small>
             {fieldErrors.notes ? <span className="inline-error" id="checkoutNotesError" role="alert">{fieldErrors.notes}</span> : null}
           </label>
@@ -1145,7 +1146,7 @@ const Checkout = ({ cart, items, total, customer, setCustomer, checkoutStep, set
           <div className="builder-block location-block" id="checkoutLocation" tabIndex={-1} aria-describedby={`checkoutLocationHelp${fieldErrors.location ? " checkoutLocationError" : ""}`} aria-invalid={fieldErrors.location ? "true" : "false"}>
             <h4>Ubicación <em>obligatoria</em></h4>
             <p className="field-helper" id="checkoutLocationHelp">Selecciona dónde recogerás o recibirás tu pedido.</p>
-            <div className="chip-grid location-chip-grid">{LOCATIONS.map((location) => <button type="button" key={location} className={customer.location === location ? "chip location-chip active" : "chip location-chip"} onClick={() => { clearFieldError("location"); setCustomer({ ...customer, location }); }} aria-pressed={customer.location === location}>{customer.location === location ? "✓ " : ""}{location}</button>)}</div>
+            <div className="chip-grid location-chip-grid">{LOCATIONS.map((location) => <button type="button" key={location} className={customer.location === location ? "chip location-chip active" : "chip location-chip"} onClick={() => { clearFieldError("location"); clearCheckoutError(); setCustomer({ ...customer, location }); }} aria-pressed={customer.location === location}>{customer.location === location ? "✓ " : ""}{location}</button>)}</div>
             {fieldErrors.location ? <p className="inline-error" id="checkoutLocationError" role="alert">{fieldErrors.location}</p> : null}
           </div>
         </div>
@@ -1385,6 +1386,7 @@ export function PublicOrderApp() {
   const garnishes = menuData.items.filter((item) => item.category === "guarniciones" && item.isAvailable);
   const hasBurgerOrComboInCart = cart.some((entry) => entry.itemKind === "burger" || entry.itemKind === "combo");
   const sideHasSelection = Object.values(extraGarnishQuantities).some((quantity) => quantity > 0);
+  const clearCheckoutErrorMessage = () => setCheckoutError(null);
   const clearCheckoutFieldError = (field: CheckoutField) => setCheckoutFieldErrors((prev) => {
     if (!prev[field]) return prev;
     const next = { ...prev };
@@ -1617,7 +1619,7 @@ export function PublicOrderApp() {
       {section === "workbench" ? <Workbench builder={builder} onBack={() => navigate("main")} onQuantity={updateBuilderQuantity} onContinue={() => navigate("customize")} /> : null}
       {section === "customize" ? <CustomizationReview builder={builder} extras={extras} garnishes={garnishes} onBack={() => navigate("workbench")} onUnitChange={updateBuilderUnit} onContinue={confirmBuilder} /> : null}
       {section === "side" ? <SideQuest garnishes={garnishes} selected={extraGarnishQuantities} onQuantity={(sku, quantity) => { setSideQuestError(null); setExtraGarnishQuantities((prev) => ({ ...prev, [sku]: Math.min(10, Math.max(0, quantity)) })); }} onBack={() => navigate(sideQuestEntryMode === "builder" && builder ? "customize" : "main")} canSkip={hasBurgerOrComboInCart} error={sideQuestError} reduce={reduce} /> : null}
-      {section === "checkout" && cart.length ? <Checkout cart={cart} items={menuData.items} total={total} customer={customer} setCustomer={setCustomer} checkoutStep={checkoutStep} setCheckoutStep={setCheckoutStep} onDataStepBlocked={blockCheckoutDataStep} onBack={() => navigate("side") } onSubmit={handleCheckout} submitting={submitting} error={checkoutError} fieldErrors={checkoutFieldErrors} clearFieldError={clearCheckoutFieldError} onEdit={editLine} onDuplicate={duplicateLine} onRemove={removeLine} /> : null}
+      {section === "checkout" && cart.length ? <Checkout cart={cart} items={menuData.items} total={total} customer={customer} setCustomer={setCustomer} checkoutStep={checkoutStep} setCheckoutStep={setCheckoutStep} onDataStepBlocked={blockCheckoutDataStep} onBack={() => navigate("side") } onSubmit={handleCheckout} submitting={submitting} error={checkoutError} fieldErrors={checkoutFieldErrors} clearFieldError={clearCheckoutFieldError} clearCheckoutError={clearCheckoutErrorMessage} onEdit={editLine} onDuplicate={duplicateLine} onRemove={removeLine} /> : null}
       {section === "success" && orderConfirmation ? <Success order={orderConfirmation} campaign={raffleCampaign} onCreateAnother={handleCreateAnother} /> : null}
       <MenuInfoDialog item={infoItem} onClose={() => setInfoItem(null)} onQuickAdd={quickAddItem} onCustomize={startBuilder} />
       {showPersistentCta ? <PersistentCta section={section} count={count} total={total} disabled={primaryDisabled} submitting={submitting} onClick={primaryAction} builder={builder} sideHasSelection={sideHasSelection} hasBurgerOrCombo={hasBurgerOrComboInCart} /> : null}
