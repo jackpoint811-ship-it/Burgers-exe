@@ -676,10 +676,12 @@ const QuantityControl = ({ value, onChange, min = 1, max = 3, label = "Cantidad 
 const UnitEditor = ({ unit, index, item, extras, garnishes, onChange }: { unit: CartEntry; index: number; item: MenuItem; extras: MenuItem[]; garnishes: MenuItem[]; onChange: (unit: CartEntry) => void }) => {
   const ingredients = getRemovableIngredients(item);
   const isBurgerLike = unit.itemKind === "burger" || unit.itemKind === "combo";
-  const [openPanels, setOpenPanels] = useState({ mod: true, upgrades: false, combo: true });
+  const [openPanels, setOpenPanels] = useState({ mod: true, upgrades: true, combo: true });
   const changeSummary = getUnitChangeSummary(unit);
   const removedSummary = changeSummary.removed.length ? `Quitado: ${changeSummary.removed.join(", ")}` : "Burger original";
-  const extrasSummaryText = changeSummary.extras.length ? changeSummary.extras.map((entry) => `${entry.name} x${entry.quantity}`).join(", ") : "Sin extras";
+  const extrasSummaryText = changeSummary.extras.length ? changeSummary.extras.map((entry) => `${entry.name} x${entry.quantity}`).join(", ") : "Sin upgrades";
+  const upgradeTotal = unit.extras.reduce((sum, extra) => sum + (extra.price ?? 0), 0);
+  const upgradeTotalLabel = `Upgrade actual: ${upgradeTotal ? `+${formatCurrency(upgradeTotal)}` : formatCurrency(0)}`;
   const togglePanel = (panel: keyof typeof openPanels) => setOpenPanels((current) => ({ ...current, [panel]: !current[panel] }));
 
   return (
@@ -691,30 +693,111 @@ const UnitEditor = ({ unit, index, item, extras, garnishes, onChange }: { unit: 
         </div>
         <strong className="status-badge">Personalizando</strong>
       </header>
-      {isBurgerLike ? <section className="builder-block mod-block custom-accordion-block"><button type="button" className="custom-accordion-trigger" aria-expanded={openPanels.mod} onClick={() => togglePanel("mod")}><span><strong>Quita ingredientes de tu burger</strong><em>{removedSummary}</em></span><b aria-hidden="true">{openPanels.mod ? "−" : "+"}</b></button>{openPanels.mod ? <div className="custom-accordion-panel"><p className="builder-hint">Selecciona lo que quieres quitar. Toca de nuevo para regresarlo.</p>{ingredients.length ? <div className="chip-grid mod-chip-grid">{ingredients.map((ingredient) => {
-        const active = unit.removedIngredients.includes(ingredient);
-        return <button type="button" key={ingredient} className={active ? "chip mod-chip active" : "chip mod-chip"} aria-pressed={active} aria-label={active ? `${ingredient} quitado. Toca para regresarlo.` : `Quitar ${ingredient}`} onClick={() => onChange({ ...unit, removedIngredients: active ? unit.removedIngredients.filter((entry) => entry !== ingredient) : [...unit.removedIngredients, ingredient] })}><span>{ingredient}</span>{active ? <strong>✓ Quitado</strong> : <em>Quitar</em>}</button>;
-      })}</div> : <p className="muted unavailable-mod-copy">Esta burger no tiene MOD disponible por ahora.</p>}</div> : null}</section> : null}
-      {isBurgerLike ? <section className="builder-block upgrade-block custom-accordion-block"><button type="button" className="custom-accordion-trigger" aria-expanded={openPanels.upgrades} onClick={() => togglePanel("upgrades")}><span><strong>Extras</strong><em>{extrasSummaryText}</em></span><b aria-hidden="true">{openPanels.upgrades ? "−" : "+"}</b></button>{openPanels.upgrades ? <div className="custom-accordion-panel"><p className="builder-hint">Agrega extras por pieza. Puedes sumar más de uno.</p>{extras.length ? <div className="upgrade-grid">{extras.map((extra) => {
-        const quantity = unit.extras.filter((entry) => entry.sku === extra.sku).length;
-        return <div className={quantity ? "upgrade-card active" : "upgrade-card"} key={extra.sku}><button type="button" className={quantity ? "chip upgrade-chip active" : "chip upgrade-chip"} aria-pressed={quantity > 0} onClick={() => onChange({ ...unit, extras: [...unit.extras, { sku: extra.sku, name: extra.name, price: extra.price }] })}><span>{extra.name}</span><strong>+{formatCurrency(extra.price)}</strong>{quantity ? <em>{quantity}</em> : null}</button>{quantity ? <div className="upgrade-controls"><QuantityControl value={quantity} min={0} max={10} label={`Cantidad de ${extra.name}`} onChange={(nextQty) => {
-          if (nextQty > quantity) onChange({ ...unit, extras: [...unit.extras, ...Array.from({ length: nextQty - quantity }, () => ({ sku: extra.sku, name: extra.name, price: extra.price }))] });
-          else if (nextQty < quantity) {
-            const remainingToRemove = quantity - nextQty;
-            let removedCount = 0;
-            onChange({ ...unit, extras: unit.extras.filter((entry) => {
-              if (entry.sku === extra.sku && removedCount < remainingToRemove) { removedCount += 1; return false; }
-              return true;
-            }) });
-          }
-        }} /></div> : null}</div>;
-      })}</div> : <p className="muted">Sin extras disponibles.</p>}</div> : null}</section> : null}
+      {isBurgerLike ? (
+        <section className="builder-block mod-block custom-accordion-block">
+          <button type="button" className="custom-accordion-trigger" aria-expanded={openPanels.mod} onClick={() => togglePanel("mod")}>
+            <span>
+              <strong>Quita ingredientes de tu burger</strong>
+              <em>{removedSummary}</em>
+            </span>
+            <b aria-hidden="true">{openPanels.mod ? "−" : "+"}</b>
+          </button>
+          {openPanels.mod ? (
+            <div className="custom-accordion-panel">
+              <p className="builder-hint">Selecciona lo que quieres quitar. Toca de nuevo para regresarlo.</p>
+              {ingredients.length ? (
+                <div className="chip-grid mod-chip-grid">
+                  {ingredients.map((ingredient) => {
+                    const active = unit.removedIngredients.includes(ingredient);
+                    return <button type="button" key={ingredient} className={active ? "chip mod-chip active" : "chip mod-chip"} aria-pressed={active} aria-label={active ? `${ingredient} quitado. Toca para regresarlo.` : `Quitar ${ingredient}`} onClick={() => onChange({ ...unit, removedIngredients: active ? unit.removedIngredients.filter((entry) => entry !== ingredient) : [...unit.removedIngredients, ingredient] })}><span>{ingredient}</span>{active ? <strong>✓ Quitado</strong> : <em>Quitar</em>}</button>;
+                  })}
+                </div>
+              ) : <p className="muted unavailable-mod-copy">Esta burger no tiene MOD disponible por ahora.</p>}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+      {isBurgerLike ? (
+        <section className="builder-block upgrade-block custom-accordion-block" aria-labelledby={`upgrade-title-${unit.lineKey}`}>
+          <button type="button" className="custom-accordion-trigger upgrade-accordion-trigger" aria-expanded={openPanels.upgrades} onClick={() => togglePanel("upgrades")}>
+            <span>
+              <strong id={`upgrade-title-${unit.lineKey}`}>LEVEL UP de burger</strong>
+              <em>{extrasSummaryText}</em>
+            </span>
+            <b aria-hidden="true">{openPanels.upgrades ? "−" : "+"}</b>
+          </button>
+          {openPanels.upgrades ? (
+            <div className="custom-accordion-panel upgrade-panel">
+              <div className="upgrade-copy-block">
+                <p className="builder-hint upgrade-hint">Agrega extras por pieza y arma una burger más potente.</p>
+                <strong className={upgradeTotal ? "upgrade-money active" : "upgrade-money"} aria-live="polite">{upgradeTotalLabel}</strong>
+              </div>
+              {extras.length ? (
+                <div className="upgrade-grid">
+                  {extras.map((extra) => {
+                    const quantity = unit.extras.filter((entry) => entry.sku === extra.sku).length;
+                    const extraTotal = quantity * (extra.price ?? 0);
+                    return (
+                      <div className={quantity ? "upgrade-card active" : "upgrade-card"} key={extra.sku}>
+                        <button type="button" className={quantity ? "chip upgrade-chip active" : "chip upgrade-chip"} aria-pressed={quantity > 0} onClick={() => onChange({ ...unit, extras: [...unit.extras, { sku: extra.sku, name: extra.name, price: extra.price }] })}>
+                          <span>+ {extra.name}</span>
+                          <strong>· +{formatCurrency(extra.price)}</strong>
+                          {quantity ? <em>{quantity} en esta burger · +{formatCurrency(extraTotal)}</em> : null}
+                        </button>
+                        {quantity ? (
+                          <div className="upgrade-controls">
+                            <QuantityControl value={quantity} min={0} max={10} label={`Cantidad de ${extra.name}`} onChange={(nextQty) => {
+                              if (nextQty > quantity) onChange({ ...unit, extras: [...unit.extras, ...Array.from({ length: nextQty - quantity }, () => ({ sku: extra.sku, name: extra.name, price: extra.price }))] });
+                              else if (nextQty < quantity) {
+                                const remainingToRemove = quantity - nextQty;
+                                let removedCount = 0;
+                                onChange({ ...unit, extras: unit.extras.filter((entry) => {
+                                  if (entry.sku === extra.sku && removedCount < remainingToRemove) { removedCount += 1; return false; }
+                                  return true;
+                                }) });
+                              }
+                            }} />
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : <p className="muted">Sin extras disponibles.</p>}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
       {unit.itemKind === "combo" ? <section className="builder-block custom-accordion-block"><button type="button" className="custom-accordion-trigger" aria-expanded={openPanels.combo} onClick={() => togglePanel("combo")}><span><strong>Guarnición incluida</strong><em>{unit.garnish?.name ?? "Elige una guarnición"}</em></span><b aria-hidden="true">{openPanels.combo ? "−" : "+"}</b></button>{openPanels.combo ? <div className="custom-accordion-panel">{garnishes.length ? <div className="chip-grid">{garnishes.map((garnish) => <button type="button" key={garnish.sku} className={unit.garnish?.sku === garnish.sku ? "chip active" : "chip"} onClick={() => onChange({ ...unit, garnish: { sku: garnish.sku, name: garnish.name } })}>{garnish.name}</button>)}</div> : <p className="inline-error">No hay guarniciones disponibles para confirmar este combo.</p>}</div> : null}</section> : null}
       {isBurgerLike ? <label className="field-label burger-note-label">Nota por burger opcional<textarea maxLength={220} value={unit.burgerNote ?? ""} onChange={(event) => onChange({ ...unit, burgerNote: event.target.value })} placeholder="Ej. bien cocida" /></label> : null}
-      {isBurgerLike ? <section className="change-summary-card" aria-live="polite" aria-labelledby={`change-summary-title-${unit.lineKey}`}><div className="change-summary-head"><span className="eyebrow">Cambios antes de guardar</span><h4 id={`change-summary-title-${unit.lineKey}`}>Esto se guardará en tu burger</h4></div>{changeSummary.hasChanges ? <dl className="change-summary-list"><div><dt>Ingredientes quitados</dt><dd>{changeSummary.removed.length ? changeSummary.removed.map((ingredient) => <span className="change-pill removed" key={ingredient}>✓ {ingredient}</span>) : <span className="summary-empty">Ninguno</span>}</dd></div><div><dt>Extras agregados</dt><dd>{changeSummary.extras.length ? changeSummary.extras.map((extra) => <span className="change-pill extra" key={extra.name}>{extra.name}{extra.quantity > 1 ? ` x${extra.quantity}` : ""}</span>) : <span className="summary-empty">Ninguno</span>}</dd></div><div><dt>Nota de burger</dt><dd>{changeSummary.note ? <span className="change-note">“{changeSummary.note}”</span> : <span className="summary-empty">Sin nota</span>}</dd></div></dl> : <p className="summary-empty-state">Sin cambios por ahora · Burger original</p>}</section> : null}
+      {isBurgerLike ? (
+        <section className="change-summary-card" aria-live="polite" aria-labelledby={`change-summary-title-${unit.lineKey}`}>
+          <div className="change-summary-head">
+            <span className="eyebrow">Cambios antes de guardar</span>
+            <h4 id={`change-summary-title-${unit.lineKey}`}>Esto se guardará en tu burger</h4>
+          </div>
+          {changeSummary.hasChanges ? (
+            <dl className="change-summary-list">
+              <div>
+                <dt>Ingredientes quitados</dt>
+                <dd>{changeSummary.removed.length ? changeSummary.removed.map((ingredient) => <span className="change-pill removed" key={ingredient}>✓ {ingredient}</span>) : <span className="summary-empty">Ninguno</span>}</dd>
+              </div>
+              <div className="change-summary-upgrades">
+                <dt>Extras agregados</dt>
+                <dd>{changeSummary.extras.length ? changeSummary.extras.map((extra) => <span className="change-pill extra" key={extra.name}>⚡ {extra.name}{extra.quantity > 1 ? ` x${extra.quantity}` : ""} · +{formatCurrency(extra.total)}</span>) : <span className="summary-empty">Ninguno</span>}</dd>
+              </div>
+              <div>
+                <dt>Nota de burger</dt>
+                <dd>{changeSummary.note ? <span className="change-note">“{changeSummary.note}”</span> : <span className="summary-empty">Sin nota</span>}</dd>
+              </div>
+            </dl>
+          ) : <p className="summary-empty-state">Sin cambios por ahora · Burger original</p>}
+        </section>
+      ) : null}
     </article>
   );
 };
+
 
 type WorkbenchProps = {
   builder: BuilderDraft | null;
@@ -751,12 +834,11 @@ const Workbench = ({ builder, onBack, onQuantity, onContinue }: WorkbenchProps) 
   );
 };
 
-
 const unitHasChanges = (unit: CartEntry) => Boolean(unit.removedIngredients.length || unit.extras.length || unit.burgerNote?.trim());
 
-const groupExtras = (unit: CartEntry) => unit.extras.reduce<Record<string, { name: string; quantity: number }>>((acc, extra) => {
+const groupExtras = (unit: CartEntry) => unit.extras.reduce<Record<string, { name: string; quantity: number; total: number }>>((acc, extra) => {
   const key = extra.sku ?? extra.name;
-  acc[key] = { name: extra.name, quantity: (acc[key]?.quantity ?? 0) + 1 };
+  acc[key] = { name: extra.name, quantity: (acc[key]?.quantity ?? 0) + 1, total: (acc[key]?.total ?? 0) + (extra.price ?? 0) };
   return acc;
 }, {});
 
