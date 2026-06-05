@@ -22,9 +22,8 @@ import {
 } from "../lib/order";
 import { createOrderV2 } from "../lib/orders-v2";
 
-type QuestSection = "menu" | "main" | "workbench" | "customize" | "side" | "checkout" | "success";
+type QuestSection = "menu" | "main" | "burgers" | "combos" | "workbench" | "customize" | "side" | "checkout" | "success";
 type OrderChoice = "burger" | "combo";
-type MainAccordionSection = OrderChoice | "side";
 type SideQuestEntryMode = "builder" | "direct" | "quickAdd";
 type PaymentTiming = "" | "before" | "after";
 type CustomerDraft = {
@@ -555,13 +554,13 @@ const MenuSection = ({ menuData, raffleCampaign, onExplore, onStart, reduce }: {
   );
 };
 
-const MenuInfoDialog = ({ item, onClose, onQuickAdd, onCustomize }: { item: MenuItem | null; onClose: () => void; onQuickAdd: (item: MenuItem) => void; onCustomize: (item: MenuItem) => void }) => {
+const MenuInfoDialog = ({ item, onClose, onChooseInFlow }: { item: MenuItem | null; onClose: () => void; onChooseInFlow: (item: MenuItem) => void }) => {
   const closeRef = useRef<HTMLButtonElement | null>(null);
   const titleId = "menu-info-title";
   const src = item ? resolveAssetUrl(item.imageUrl, item.imageKey) : undefined;
   const kind = item ? inferItemKind(item) : "other";
-  const canCustomize = Boolean(item?.isAvailable && (kind === "burger" || kind === "combo"));
-  const canQuickAdd = Boolean(item?.isAvailable && kind === "burger");
+  const canEnterOrderFlow = Boolean(item?.isAvailable);
+  const orderFlowLabel = kind === "burger" ? "Elegir en Burgers" : "Armar pedido";
   useEffect(() => {
     if (!item) return;
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -581,8 +580,7 @@ const MenuInfoDialog = ({ item, onClose, onQuickAdd, onCustomize }: { item: Menu
           <p>{item.description}</p>
           <strong>{formatCurrency(item.price)}</strong>
           <div className="info-dialog-actions" aria-label={`Acciones para ${item.name}`}>
-            {canQuickAdd ? <button type="button" className="quest-button" onClick={() => { onQuickAdd(item); onClose(); }}>Agregar</button> : null}
-            {canCustomize ? <button type="button" className={canQuickAdd ? "quest-button ghost" : "quest-button"} onClick={() => { onCustomize(item); onClose(); }}>Personalizar</button> : null}
+            {canEnterOrderFlow ? <button type="button" className="quest-button" aria-label={`${orderFlowLabel}: ${item.name}`} onClick={() => { onClose(); onChooseInFlow(item); }}>{orderFlowLabel}</button> : null}
             <button ref={closeRef} type="button" className="quest-button ghost" onClick={onClose}>Cerrar</button>
           </div>
         </div>
@@ -591,65 +589,78 @@ const MenuInfoDialog = ({ item, onClose, onQuickAdd, onCustomize }: { item: Menu
   );
 };
 
-const MainQuest = ({ choice, availableBurgerItems, availableComboItems, garnishes, builder, quickAddFeedback, onBack, onChoice, onProduct, onQuickAdd, onSideQuest, reduce }: { choice: OrderChoice | null; availableBurgerItems: MenuItem[]; availableComboItems: MenuItem[]; garnishes: MenuItem[]; builder: BuilderDraft | null; quickAddFeedback: string | null; onBack: () => void; onChoice: (choice: OrderChoice) => void; onProduct: (item: MenuItem) => void; onQuickAdd: (item: MenuItem) => void; onSideQuest: () => void; reduce: boolean }) => {
-  const [openSection, setOpenSection] = useState<MainAccordionSection | null>(choice ?? "burger");
-  useEffect(() => { setOpenSection(choice ?? "burger"); }, [choice]);
-  const renderProductList = (items: MenuItem[], emptyTitle: string, emptyDescription: string) => (
-    items.length ? <div className="kiosk-grid">{items.map((item) => <ProductChoiceCard key={item.sku} item={item} onQuickAdd={onQuickAdd} onCustomize={onProduct} reduce={reduce} />)}</div> : <div className="compact-empty"><EmptyState title={emptyTitle} description={emptyDescription} /></div>
-  );
-  const accordionItems: Array<{ key: MainAccordionSection; title: string; description: string; content: JSX.Element }> = [
-    {
-      key: "burger",
-      title: "Burger",
-      description: "Hamburguesas disponibles para personalizar.",
-      content: renderProductList(availableBurgerItems, "Burgers disponibles pronto", "Vuelve a revisar esta opción más tarde."),
-    },
-    {
-      key: "combo",
-      title: "Combo",
-      description: "Combos completos disponibles hoy.",
-      content: renderProductList(availableComboItems, "Sin combos disponibles", "Puedes elegir una burger o ir directo a guarniciones."),
-    },
-    {
-      key: "side",
-      title: "Side Quest / Guarniciones",
-      description: "Papas y guarniciones sin elegir burger.",
-      content: (
-        <div className="side-direct-card">
-          {garnishes.length ? <><p>Solo quieres papas o guarniciones? Entra directo a Side Quest.</p><QuestButton onClick={onSideQuest}>Ir a Side Quest</QuestButton></> : <div className="compact-empty"><EmptyState title="Sin guarniciones disponibles" description="Side Quest estará disponible cuando haya guarniciones en menú." /></div>}
-        </div>
-      ),
-    },
-  ];
+const MainQuest = ({ onBack, onBurgers, onCombos, onSideQuest }: { onBack: () => void; onBurgers: () => void; onCombos: () => void; onSideQuest: () => void }) => {
+  const routes = [
+    { key: "burgers", title: "Burgers", description: "Elige varios tipos y cantidades antes de personalizar.", action: onBurgers },
+    { key: "combos", title: "Combos", description: "Espacio reservado para combos cuando estén activos.", action: onCombos },
+    { key: "side", title: "Guarniciones", description: "Ve directo a Side Quest si solo quieres papas o extras.", action: onSideQuest },
+  ] as const;
   return (
     <section className="quest-panel main-quest-panel">
       <QuestButton className="back-button" onClick={onBack}>← Volver al menú</QuestButton>
       <span className="eyebrow">Main Quest</span>
-      <h2>¿Qué vas a ordenar?</h2>
-      <p className="muted section-subcopy">Las burgers ya están visibles abajo: agrega directo o personaliza. También puedes abrir combos o entrar directo por guarniciones.</p>
-      <div className="main-accordion" role="list">
-        {accordionItems.map((item) => {
-          const isOpen = openSection === item.key;
-          return (
-            <article className={isOpen ? "accordion-item active" : "accordion-item"} key={item.key} role="listitem">
-              <button type="button" className="accordion-trigger" aria-expanded={isOpen} onClick={() => {
-                if (isOpen) {
-                  setOpenSection(null);
-                  return;
-                }
-                setOpenSection(item.key);
-                if (item.key === "burger" || item.key === "combo") onChoice(item.key);
-              }}>
-                <span><strong>{item.title}</strong><em>{item.description}</em></span>
-                <b aria-hidden="true">{isOpen ? "−" : "+"}</b>
-              </button>
-              {isOpen ? <div className="accordion-panel">{item.content}</div> : null}
-            </article>
-          );
-        })}
+      <h2>Elige tu ruta</h2>
+      <p className="muted section-subcopy">Main ahora es el hub: entra a burgers, revisa combos o ve directo por guarniciones.</p>
+      <div className="route-grid" role="list" aria-label="Rutas del pedido">
+        {routes.map((route) => (
+          <article className="route-card" key={route.key} role="listitem">
+            <div>
+              <span className="route-chip">{route.key === "burgers" ? "01" : route.key === "combos" ? "02" : "03"}</span>
+              <h3>{route.title}</h3>
+              <p>{route.description}</p>
+            </div>
+            <QuestButton onClick={route.action}>Entrar</QuestButton>
+          </article>
+        ))}
       </div>
-      {quickAddFeedback ? <p className="selection-pulse" role="status" aria-live="polite">{quickAddFeedback}</p> : null}
-      {builder ? <p className="selection-pulse">Seleccionado: {builder.item.name}</p> : null}
+    </section>
+  );
+};
+
+const CombosUnavailable = ({ onBack }: { onBack: () => void }) => (
+  <section className="quest-panel combos-empty-panel">
+    <QuestButton className="back-button" onClick={onBack}>← Volver a Main</QuestButton>
+    <span className="eyebrow">Combos</span>
+    <EmptyState title="Combos no disponibles por el momento." description="Esta ruta queda lista para activar combos en un PR futuro." />
+  </section>
+);
+
+const BurgerSelectionView = ({ items, cart, error, onBack, onAdd, onQuantity, onContinue, reduce }: { items: MenuItem[]; cart: CartEntry[]; error: string | null; onBack: () => void; onAdd: (item: MenuItem) => void; onQuantity: (item: MenuItem, quantity: number) => void; onContinue: () => void; reduce: boolean }) => {
+  const burgerEntries = cart.filter((entry) => entry.itemKind === "burger");
+  const totalSelected = burgerEntries.length;
+  const counts = new Map<string, number>();
+  burgerEntries.forEach((entry) => counts.set(entry.sku, (counts.get(entry.sku) ?? 0) + 1));
+  return (
+    <section className="quest-panel burger-selection-panel">
+      <QuestButton className="back-button" onClick={onBack}>← Volver a Main</QuestButton>
+      <span className="eyebrow">Burgers</span>
+      <h2>Selecciona tus burgers</h2>
+      <p className="muted section-subcopy">Toca una tarjeta o usa + para agregar unidades. Podrás personalizar cada burger en el siguiente paso.</p>
+      <div className="selection-summary" role="status" aria-live="polite">
+        <span>Total seleccionado</span>
+        <strong>{totalSelected}</strong>
+      </div>
+      {items.length ? <div className="burger-selection-grid">{items.map((item) => {
+        const quantity = counts.get(item.sku) ?? 0;
+        const src = resolveAssetUrl(item.imageUrl, item.imageKey);
+        return (
+          <motion.article className={quantity ? "burger-pick-card active" : "burger-pick-card"} key={item.sku} whileTap={reduce ? undefined : { scale: 0.99 }}>
+            <button type="button" className="burger-pick-main" onClick={() => onAdd(item)} aria-label={`Agregar ${item.name}`}>
+              {src ? <img src={src} alt="" loading="lazy" decoding="async" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : <span aria-hidden="true">B</span>}
+              <span className="burger-pick-copy"><strong>{item.name}</strong><em>{formatCurrency(item.price)}</em></span>
+            </button>
+            <div className="burger-pick-controls">
+              <QuantityControl value={quantity} min={0} max={10} label={`Cantidad de ${item.name}`} onChange={(nextQty) => onQuantity(item, nextQty)} />
+              <span className="burger-count-badge" aria-label={`${quantity} seleccionadas de ${item.name}`}>x{quantity}</span>
+            </div>
+          </motion.article>
+        );
+      })}</div> : <div className="compact-empty"><EmptyState title="Burgers disponibles pronto" description="Vuelve a revisar esta ruta más tarde." /></div>}
+      {error ? <p className="inline-error" role="alert">{error}</p> : null}
+      <div className="burger-selection-actions">
+        <QuestButton onClick={onContinue} disabled={totalSelected === 0}>Continuar a personalizar</QuestButton>
+        <QuestButton className="ghost" onClick={onBack}>Volver a Main</QuestButton>
+      </div>
     </section>
   );
 };
@@ -872,19 +883,113 @@ const CustomizationReview = ({ builder, extras, garnishes, onBack, onUnitChange,
   );
 };
 
-const SideQuest = ({ garnishes, selected, onQuantity, onBack, canSkip, error, reduce }: { garnishes: MenuItem[]; selected: Record<string, number>; onQuantity: (sku: string, quantity: number) => void; onBack: () => void; canSkip: boolean; error: string | null; reduce: boolean }) => (
-  <section className="quest-panel side-quest-panel">
-    <QuestButton className="back-button" onClick={onBack}>← Volver a personalizar</QuestButton>
-    <span className="eyebrow">Side Quest</span>
-    <h2>Guarniciones extra</h2>
-    <p className="muted section-subcopy">Agrega papas o guarniciones. Si ya traes burger/combo, esta parte es opcional.</p>
-    {garnishes.length ? <div className="kiosk-grid">{garnishes.map((item) => {
-      const quantity = selected[item.sku] ?? 0;
-      return <div className={quantity ? "side-card active" : "side-card"} key={item.sku}><ProductCard item={item} mode="select" onClick={() => onQuantity(item.sku, quantity + 1)} reduce={reduce} /><QuantityControl value={quantity} min={0} max={10} label={`Cantidad de ${item.name}`} onChange={(nextQty) => onQuantity(item.sku, nextQty)} /></div>;
-    })}</div> : <div className="compact-empty"><EmptyState title="Sin guarniciones disponibles" description={canSkip ? "Puedes continuar sin guarnición extra." : "Vuelve a elegir otra opción del menú."} /></div>}
-    {error ? <p className="inline-error" role="alert">{error}</p> : null}
-  </section>
-);
+const CartCustomizationReview = ({ cart, items, extras, garnishes, error, onBack, onUnitChange, onContinue }: { cart: CartEntry[]; items: MenuItem[]; extras: MenuItem[]; garnishes: MenuItem[]; error: string | null; onBack: () => void; onUnitChange: (lineKey: string, unit: CartEntry) => void; onContinue: () => void }) => {
+  const editableUnits = cart.filter((entry) => entry.itemKind === "burger" || entry.itemKind === "combo");
+  const [editingLineKey, setEditingLineKey] = useState<string | null>(null);
+  const [draftUnit, setDraftUnit] = useState<CartEntry | null>(null);
+  const editorTitleRef = useRef<HTMLHeadingElement | null>(null);
+  const editingUnit = editingLineKey ? editableUnits.find((entry) => entry.lineKey === editingLineKey) ?? null : null;
+  const editingItem = editingUnit ? items.find((item) => item.sku === editingUnit.sku) ?? null : null;
+
+  const closeEditor = useCallback(() => {
+    setEditingLineKey(null);
+    setDraftUnit(null);
+  }, []);
+
+  useEffect(() => {
+    if (!editingLineKey) return;
+    const frame = window.requestAnimationFrame(() => editorTitleRef.current?.focus({ preventScroll: true }));
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeEditor();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [closeEditor, editingLineKey]);
+
+  const startEditing = (unit: CartEntry) => {
+    setEditingLineKey(unit.lineKey);
+    setDraftUnit({ ...unit, removedIngredients: [...unit.removedIngredients], extras: [...unit.extras] });
+  };
+  const saveEditing = () => {
+    if (!editingLineKey || !draftUnit) return;
+    onUnitChange(editingLineKey, draftUnit);
+    closeEditor();
+  };
+  const restoreEditing = () => {
+    if (!draftUnit || !editingItem) return;
+    setDraftUnit(restoreOriginalUnit(editingItem, draftUnit, draftUnit.itemDisplayIndex - 1));
+  };
+
+  return (
+    <section className="quest-panel customization-review-panel">
+      <QuestButton className="back-button" onClick={onBack}>← Volver a burgers</QuestButton>
+      <span className="eyebrow">Personalización opcional</span>
+      <h2>Revisa cada burger</h2>
+      <p className="muted section-subcopy">Puedes tocar una unidad para quitar ingredientes, agregar extras o dejarla original.</p>
+      {editableUnits.length ? <div className="customization-unit-list">{editableUnits.map((unit) => {
+        const item = items.find((menuItem) => menuItem.sku === unit.sku);
+        const src = item ? resolveAssetUrl(item.imageUrl, item.imageKey) : undefined;
+        const changed = unitHasChanges(unit) || (unit.itemKind === "combo" && Boolean(unit.garnish));
+        return (
+          <article className="customization-unit-card" key={unit.lineKey}>
+            {src ? <img src={src} alt="" loading="lazy" decoding="async" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : <div className="customization-unit-fallback" aria-hidden="true">B</div>}
+            <div className="customization-unit-summary">
+              <h3>{unit.name} #{unit.itemDisplayIndex}</h3>
+              <p>{summarizeUnitCustomization(unit)}</p>
+            </div>
+            <QuestButton className="ghost" disabled={!item} onClick={() => startEditing(unit)}>{changed ? "Editar" : unit.itemKind === "combo" ? "Personalizar combo" : "Personalizar"}</QuestButton>
+          </article>
+        );
+      })}</div> : <EmptyState title="Sin burgers para personalizar" description="Agrega al menos una burger antes de continuar." />}
+      {error ? <p className="inline-error" role="alert">{error}</p> : null}
+      {editingLineKey && draftUnit && editingItem ? <section className="customization-editor" aria-labelledby="customization-editor-title">
+        <header className="customization-editor-header">
+          <div>
+            <span className="eyebrow">Editor enfocado</span>
+            <h3 id="customization-editor-title" ref={editorTitleRef} tabIndex={-1}>Personalizando {draftUnit.name} #{draftUnit.itemDisplayIndex}</h3>
+          </div>
+          <QuestButton className="ghost" onClick={closeEditor}>Cancelar</QuestButton>
+        </header>
+        <UnitEditor unit={draftUnit} index={draftUnit.itemDisplayIndex - 1} item={editingItem} extras={extras} garnishes={garnishes} onChange={setDraftUnit} />
+        <div className="customization-actions">
+          <QuestButton onClick={saveEditing}>Guardar cambios</QuestButton>
+          <QuestButton className="ghost" onClick={closeEditor}>Cancelar</QuestButton>
+          <QuestButton className="ghost danger-action" onClick={restoreEditing}>Restaurar original</QuestButton>
+        </div>
+      </section> : null}
+      {!editingLineKey ? <div className="customization-actions review-actions">
+        <QuestButton onClick={onContinue} disabled={!editableUnits.length}>Todo bien, continuar</QuestButton>
+        <QuestButton className="ghost" onClick={onBack}>Volver</QuestButton>
+      </div> : null}
+    </section>
+  );
+};
+
+const SideQuest = ({ garnishes, selected, onQuantity, onBack, canSkip, error, reduce, entryMode }: { garnishes: MenuItem[]; selected: Record<string, number>; onQuantity: (sku: string, quantity: number) => void; onBack: () => void; canSkip: boolean; error: string | null; reduce: boolean; entryMode: SideQuestEntryMode }) => {
+  const isDirectEntry = entryMode === "direct";
+  const backLabel = isDirectEntry ? "← Volver a Main" : "← Volver a personalizar";
+  const title = isDirectEntry ? "Elige tus guarniciones" : "Guarniciones extra";
+  const subcopy = isDirectEntry
+    ? "Agrega papas o aros. Puedes hacer un pedido solo de guarniciones."
+    : "Agrega papas o guarniciones. Si ya traes burger/combo, esta parte es opcional.";
+
+  return (
+    <section className="quest-panel side-quest-panel">
+      <QuestButton className="back-button" onClick={onBack}>{backLabel}</QuestButton>
+      <span className="eyebrow">Side Quest</span>
+      <h2>{title}</h2>
+      <p className="muted section-subcopy">{subcopy}</p>
+      {garnishes.length ? <div className="kiosk-grid">{garnishes.map((item) => {
+        const quantity = selected[item.sku] ?? 0;
+        return <div className={quantity ? "side-card active" : "side-card"} key={item.sku}><ProductCard item={item} mode="select" onClick={() => onQuantity(item.sku, quantity + 1)} reduce={reduce} /><QuantityControl value={quantity} min={0} max={10} label={`Cantidad de ${item.name}`} onChange={(nextQty) => onQuantity(item.sku, nextQty)} /></div>;
+      })}</div> : <div className="compact-empty"><EmptyState title="Sin guarniciones disponibles" description={canSkip ? "Puedes continuar sin guarnición extra." : "Vuelve a elegir otra opción del menú."} /></div>}
+      {error ? <p className="inline-error" role="alert">{error}</p> : null}
+    </section>
+  );
+};
 
 const TicketList = ({ cart, items, onEdit, onDuplicate, onRemove }: { cart: CartEntry[]; items: MenuItem[]; onEdit: (lineKey: string) => void; onDuplicate: (lineKey: string) => void; onRemove: (lineKey: string) => void }) => (
   <div className="ticket-list">
@@ -1338,8 +1443,8 @@ const PersistentCta = ({ section, count, total, disabled, submitting, onClick, b
   if (section === "success" || section === "checkout") return null;
   const label = section === "menu"
     ? "Armar mi pedido"
-    : section === "main"
-      ? count > 0 ? "Continuar a guarniciones" : "Elige tu burger"
+    : section === "burgers"
+      ? "Continuar a personalizar"
       : section === "workbench"
         ? "Continuar"
         : section === "customize"
@@ -1348,7 +1453,7 @@ const PersistentCta = ({ section, count, total, disabled, submitting, onClick, b
           ? "Continuar sin guarnición"
           : "Ir a checkout";
   const title = count > 0 ? "Ticket" : builder ? "En edición" : "Quest";
-  const summary = count > 0 ? `${count} item${count === 1 ? "" : "s"} · ${formatCurrency(total)}` : builder ? builder.item.name : "Elige tu burger";
+  const summary = count > 0 ? `${count} item${count === 1 ? "" : "s"} · ${formatCurrency(total)}` : builder ? builder.item.name : "Arma tu pedido";
   return <aside className="persistent-cta"><div><span>{title}</span><strong>{summary}</strong></div><QuestButton disabled={disabled || submitting} onClick={onClick}>{label}</QuestButton></aside>;
 };
 
@@ -1378,6 +1483,8 @@ export function PublicOrderApp() {
   const [checkoutStep, setCheckoutStep] = useState<CheckoutStepIndex>(0);
   const [orderConfirmation, setOrderConfirmation] = useState<OrderConfirmation | null>(null);
   const [quickAddFeedback, setQuickAddFeedback] = useState<string | null>(null);
+  const [burgerSelectionError, setBurgerSelectionError] = useState<string | null>(null);
+  const [cartCustomizationError, setCartCustomizationError] = useState<string | null>(null);
   const total = useMemo(() => getCartTotal(cart, menuData.items), [cart, menuData.items]);
   const count = getCartCount(cart);
   const availableBurgerItems = useMemo(() => menuData.items.filter((item) => inferItemKind(item) === "burger" && item.isAvailable), [menuData.items]);
@@ -1468,8 +1575,9 @@ export function PublicOrderApp() {
         return;
       }
       if (current === "menu") return;
-      const sideBackTarget: QuestSection = sideQuestEntryModeRef.current === "builder" && builderRef.current ? "customize" : "main";
-      const fallback: QuestSection = current === "checkout" ? "side" : current === "side" ? sideBackTarget : current === "customize" ? "workbench" : current === "workbench" ? "main" : "menu";
+      const sideBackTarget: QuestSection = sideQuestEntryModeRef.current === "direct" ? "main" : "customize";
+      const customizeBackTarget: QuestSection = builderRef.current ? "workbench" : "burgers";
+      const fallback: QuestSection = current === "checkout" ? "side" : current === "side" ? sideBackTarget : current === "customize" ? customizeBackTarget : current === "burgers" || current === "combos" || current === "workbench" ? "main" : "menu";
       navigate(fallback, { replace: true });
     };
     window.addEventListener("popstate", onPopState);
@@ -1479,8 +1587,9 @@ export function PublicOrderApp() {
     const seen = new Map<string, number>();
     return entries.map((entry) => { const next = (seen.get(entry.sku) ?? 0) + 1; seen.set(entry.sku, next); return { ...entry, itemDisplayIndex: next }; });
   };
-  const beginQuest = () => { setOrderChoice(null); setBuilder(null); setQuickAddFeedback(null); setExtraGarnishQuantities({}); setSideQuestError(null); setSideQuestEntryMode("builder"); setCheckoutError(null); setOrderConfirmation(null); navigate("main"); };
-  const startDirectSideQuest = () => { setBuilder(null); setOrderChoice(null); setQuickAddFeedback(null); setExtraGarnishQuantities({}); setSideQuestError(null); setSideQuestEntryMode("direct"); navigate("side"); };
+  const beginQuest = () => { setOrderChoice(null); setBuilder(null); setQuickAddFeedback(null); setBurgerSelectionError(null); setCartCustomizationError(null); setExtraGarnishQuantities({}); setSideQuestError(null); setSideQuestEntryMode("builder"); setCheckoutError(null); setOrderConfirmation(null); navigate("main"); };
+  const startBurgerSelection = () => { setBuilder(null); setOrderChoice("burger"); setQuickAddFeedback(null); setBurgerSelectionError(null); setCartCustomizationError(null); setSideQuestError(null); setSideQuestEntryMode("builder"); setCheckoutError(null); setOrderConfirmation(null); navigate("burgers"); };
+  const startDirectSideQuest = () => { setBuilder(null); setOrderChoice(null); setQuickAddFeedback(null); setBurgerSelectionError(null); setCartCustomizationError(null); setExtraGarnishQuantities({}); setSideQuestError(null); setSideQuestEntryMode("direct"); navigate("side"); };
   const startBuilder = (item: MenuItem, source?: CartEntry, nextSection: QuestSection = "workbench") => {
     if (!item.isAvailable) return;
     const itemKind = inferItemKind(item);
@@ -1506,6 +1615,50 @@ export function PublicOrderApp() {
     setCheckoutError(null);
     setOrderConfirmation(null);
     setQuickAddFeedback(`${item.name} agregada al ticket.`);
+  };
+  const setBurgerQuantity = (item: MenuItem, quantity: number) => {
+    if (!item.isAvailable || inferItemKind(item) !== "burger") return;
+    const nextQuantity = Math.min(10, Math.max(0, quantity));
+    setCart((prev) => {
+      const current = prev.filter((entry) => entry.sku === item.sku && entry.itemKind === "burger");
+      if (nextQuantity === current.length) return prev;
+      if (nextQuantity < current.length) {
+        const removeKeys = new Set(current.slice(nextQuantity).map((entry) => entry.lineKey));
+        return reindex(prev.filter((entry) => !removeKeys.has(entry.lineKey)));
+      }
+      const additions = Array.from({ length: nextQuantity - current.length }, (_, index) => makeUnit(item, "burger", current.length + index + 1));
+      return reindex([...prev, ...additions]);
+    });
+    setBurgerSelectionError(null);
+    setCartCustomizationError(null);
+    setCheckoutError(null);
+    setOrderConfirmation(null);
+  };
+  const continueFromBurgerSelection = () => {
+    if (!cart.some((entry) => entry.itemKind === "burger")) {
+      setBurgerSelectionError("Agrega al menos 1 burger para continuar.");
+      return;
+    }
+    setBuilder(null);
+    setOrderChoice("burger");
+    setBurgerSelectionError(null);
+    setCartCustomizationError(null);
+    navigate("customize");
+  };
+  const updateCartUnit = (lineKey: string, unit: CartEntry) => {
+    setCart((prev) => reindex(prev.map((entry) => entry.lineKey === lineKey ? { ...unit, lineKey } : entry)));
+    setCartCustomizationError(null);
+    setCheckoutError(null);
+    setOrderConfirmation(null);
+  };
+  const continueCartCustomization = () => {
+    if (!cart.some((entry) => entry.itemKind === "burger" || entry.itemKind === "combo")) {
+      setCartCustomizationError("Agrega al menos una burger para continuar.");
+      return;
+    }
+    setSideQuestEntryMode("quickAdd");
+    setSideQuestError(null);
+    navigate("side");
   };
   const updateBuilderQuantity = (quantity: number) => setBuilder((draft) => draft ? { ...draft, quantity: Math.min(3, Math.max(1, quantity)) as 1 | 2 | 3, units: Array.from({ length: Math.min(3, Math.max(1, quantity)) }, (_, index) => makeUnit(draft.item, draft.itemKind, index + 1, draft.units[index])), error: null } : draft);
   const updateBuilderUnit = (index: number, unit: CartEntry) => setBuilder((draft) => draft ? { ...draft, units: draft.units.map((entry, entryIndex) => entryIndex === index ? unit : entry), error: null } : draft);
@@ -1597,14 +1750,20 @@ export function PublicOrderApp() {
     setInfoItem(item);
     window.history.pushState({ burgersExePublicSection: sectionRef.current, modal: "menu-info" }, "", `${window.location.pathname}${window.location.search}#${sectionRef.current}-info`);
   };
-  const primaryDisabled = (section === "main" && !builder && !cart.length) || ((section === "workbench" || section === "customize") && !builder) || (section === "checkout" && (submitting || !cart.length));
-  const showPersistentCta = section !== "success" && section !== "checkout" && section !== "customize";
+  const chooseInfoDialogItemInFlow = (item: MenuItem) => {
+    if (inferItemKind(item) === "burger") {
+      startBurgerSelection();
+      return;
+    }
+    beginQuest();
+  };
+  const primaryDisabled = ((section === "workbench" || (section === "customize" && builder)) && !builder) || (section === "burgers" && !cart.some((entry) => entry.itemKind === "burger")) || (section === "checkout" && (submitting || !cart.length));
+  const showPersistentCta = section !== "success" && section !== "checkout" && section !== "customize" && section !== "main" && section !== "combos";
   const primaryAction = () => {
     if (section === "menu") beginQuest();
-    else if (section === "main" && builder) navigate("workbench");
-    else if (section === "main" && cart.length) { setSideQuestEntryMode("quickAdd"); setSideQuestError(null); setQuickAddFeedback(null); navigate("side"); }
+    else if (section === "burgers") continueFromBurgerSelection();
     else if (section === "workbench") navigate("customize");
-    else if (section === "customize") confirmBuilder();
+    else if (section === "customize" && builder) confirmBuilder();
     else if (section === "side") addSideQuestAndCheckout();
     else if (section === "checkout") handleCheckout();
     else if (section === "success") handleCreateAnother();
@@ -1615,13 +1774,15 @@ export function PublicOrderApp() {
       <LoadingOverlay loading={showBoot || loadingMenu} />
       <AppHeader section={section} count={count} total={total} builder={builder} />
       {section === "menu" ? <MenuSection menuData={menuData} raffleCampaign={raffleCampaign} onExplore={openInfoDialog} onStart={beginQuest} reduce={reduce} /> : null}
-      {section === "main" ? <MainQuest choice={orderChoice} availableBurgerItems={availableBurgerItems} availableComboItems={availableComboItems} garnishes={garnishes} builder={builder} quickAddFeedback={quickAddFeedback} onBack={() => navigate("menu")} onChoice={(choice) => { setOrderChoice(choice); setBuilder(null); setQuickAddFeedback(null); }} onProduct={startBuilder} onQuickAdd={quickAddItem} onSideQuest={startDirectSideQuest} reduce={reduce} /> : null}
+      {section === "main" ? <MainQuest onBack={() => navigate("menu")} onBurgers={startBurgerSelection} onCombos={() => { setBuilder(null); setOrderChoice("combo"); navigate("combos"); }} onSideQuest={startDirectSideQuest} /> : null}
+      {section === "burgers" ? <BurgerSelectionView items={availableBurgerItems} cart={cart} error={burgerSelectionError} onBack={() => navigate("main")} onAdd={(item) => setBurgerQuantity(item, (cart.filter((entry) => entry.sku === item.sku && entry.itemKind === "burger").length) + 1)} onQuantity={setBurgerQuantity} onContinue={continueFromBurgerSelection} reduce={reduce} /> : null}
+      {section === "combos" ? <CombosUnavailable onBack={() => navigate("main")} /> : null}
       {section === "workbench" ? <Workbench builder={builder} onBack={() => navigate("main")} onQuantity={updateBuilderQuantity} onContinue={() => navigate("customize")} /> : null}
-      {section === "customize" ? <CustomizationReview builder={builder} extras={extras} garnishes={garnishes} onBack={() => navigate("workbench")} onUnitChange={updateBuilderUnit} onContinue={confirmBuilder} /> : null}
-      {section === "side" ? <SideQuest garnishes={garnishes} selected={extraGarnishQuantities} onQuantity={(sku, quantity) => { setSideQuestError(null); setExtraGarnishQuantities((prev) => ({ ...prev, [sku]: Math.min(10, Math.max(0, quantity)) })); }} onBack={() => navigate(sideQuestEntryMode === "builder" && builder ? "customize" : "main")} canSkip={hasBurgerOrComboInCart} error={sideQuestError} reduce={reduce} /> : null}
+      {section === "customize" ? (builder ? <CustomizationReview builder={builder} extras={extras} garnishes={garnishes} onBack={() => navigate("workbench")} onUnitChange={updateBuilderUnit} onContinue={confirmBuilder} /> : <CartCustomizationReview cart={cart} items={menuData.items} extras={extras} garnishes={garnishes} error={cartCustomizationError} onBack={() => navigate("burgers")} onUnitChange={updateCartUnit} onContinue={continueCartCustomization} />) : null}
+      {section === "side" ? <SideQuest garnishes={garnishes} selected={extraGarnishQuantities} onQuantity={(sku, quantity) => { setSideQuestError(null); setExtraGarnishQuantities((prev) => ({ ...prev, [sku]: Math.min(10, Math.max(0, quantity)) })); }} onBack={() => navigate(sideQuestEntryMode === "direct" ? "main" : "customize")} canSkip={hasBurgerOrComboInCart} error={sideQuestError} reduce={reduce} entryMode={sideQuestEntryMode} /> : null}
       {section === "checkout" && cart.length ? <Checkout cart={cart} items={menuData.items} total={total} customer={customer} setCustomer={setCustomer} checkoutStep={checkoutStep} setCheckoutStep={setCheckoutStep} onDataStepBlocked={blockCheckoutDataStep} onBack={() => navigate("side") } onSubmit={handleCheckout} submitting={submitting} error={checkoutError} fieldErrors={checkoutFieldErrors} clearFieldError={clearCheckoutFieldError} clearCheckoutError={clearCheckoutErrorMessage} onEdit={editLine} onDuplicate={duplicateLine} onRemove={removeLine} /> : null}
       {section === "success" && orderConfirmation ? <Success order={orderConfirmation} campaign={raffleCampaign} onCreateAnother={handleCreateAnother} /> : null}
-      <MenuInfoDialog item={infoItem} onClose={() => setInfoItem(null)} onQuickAdd={quickAddItem} onCustomize={startBuilder} />
+      <MenuInfoDialog item={infoItem} onClose={() => setInfoItem(null)} onChooseInFlow={chooseInfoDialogItemInFlow} />
       {showPersistentCta ? <PersistentCta section={section} count={count} total={total} disabled={primaryDisabled} submitting={submitting} onClick={primaryAction} builder={builder} sideHasSelection={sideHasSelection} hasBurgerOrCombo={hasBurgerOrComboInCart} /> : null}
     </main>
   );

@@ -3953,3 +3953,209 @@ html {
     min-height: unset;
   }
 }
+
+/* Main hub + dedicated burger selection route. */
+.route-grid,
+.burger-selection-grid {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.route-card,
+.burger-pick-card,
+.selection-summary,
+.combos-empty-panel {
+  min-width: 0;
+}
+
+.route-card {
+  display: grid;
+  gap: 14px;
+  border: 1px solid rgba(57, 255, 136, 0.24);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(57, 255, 136, 0.16), transparent 34%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.025));
+  padding: clamp(14px, 4vw, 18px);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.route-card > div {
+  display: grid;
+  gap: 8px;
+}
+
+.route-card h3,
+.burger-pick-copy strong {
+  margin: 0;
+  color: #fff;
+}
+
+.route-card p {
+  margin: 0;
+  color: var(--muted-strong);
+  line-height: 1.4;
+}
+
+.route-card .quest-button {
+  min-height: 48px;
+  width: 100%;
+}
+
+.route-chip,
+.burger-count-badge {
+  justify-self: start;
+  border: 1px solid rgba(57, 255, 136, 0.42);
+  border-radius: 999px;
+  background: rgba(57, 255, 136, 0.1);
+  color: var(--neon);
+  padding: 0.32rem 0.62rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.selection-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid rgba(255, 209, 102, 0.28);
+  border-radius: 20px;
+  background: rgba(255, 209, 102, 0.07);
+  padding: 12px 14px;
+}
+
+.selection-summary span {
+  color: var(--muted-strong);
+  font-weight: 800;
+}
+
+.selection-summary strong {
+  color: var(--amber);
+  font-size: 1.45rem;
+}
+
+.burger-pick-card {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(57, 255, 136, 0.18);
+  border-radius: 24px;
+  background:
+    linear-gradient(135deg, rgba(57, 255, 136, 0.075), transparent 44%),
+    rgba(255, 255, 255, 0.035);
+  padding: 10px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.burger-pick-card.active {
+  border-color: rgba(57, 255, 136, 0.5);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.34), 0 0 28px rgba(57, 255, 136, 0.13);
+}
+
+.burger-pick-main {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  min-height: 76px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  text-align: left;
+}
+
+.burger-pick-main img,
+.burger-pick-main > span[aria-hidden="true"] {
+  width: 76px;
+  height: 76px;
+  border: 1px solid rgba(234, 255, 240, 0.12);
+  border-radius: 18px;
+  background: rgba(57, 255, 136, 0.08);
+}
+
+.burger-pick-main img {
+  object-fit: contain;
+}
+
+.burger-pick-main > span[aria-hidden="true"] {
+  display: grid;
+  place-items: center;
+  color: var(--neon);
+  font-weight: 950;
+}
+
+.burger-pick-copy {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.burger-pick-copy strong {
+  overflow-wrap: anywhere;
+  font-size: clamp(1.05rem, 4.8vw, 1.35rem);
+  line-height: 1.05;
+}
+
+.burger-pick-copy em {
+  color: var(--amber);
+  font-style: normal;
+  font-weight: 950;
+}
+
+.burger-pick-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.burger-pick-controls .qty-control {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.burger-selection-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.burger-selection-actions .quest-button {
+  width: 100%;
+  min-height: 48px;
+}
+
+@media (min-width: 720px) {
+  .route-grid,
+  .burger-selection-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .burger-selection-actions {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+}
+
+@media (max-width: 360px) {
+  .burger-pick-main {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+
+  .burger-pick-main img,
+  .burger-pick-main > span[aria-hidden="true"] {
+    width: 64px;
+    height: 64px;
+  }
+
+  .burger-pick-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .burger-count-badge {
+    justify-self: stretch;
+    text-align: center;
+  }
+}
