@@ -524,8 +524,9 @@ const MenuInfoDialog = ({ item, onClose, onChooseInFlow }: { item: MenuItem | nu
   const titleId = "menu-info-title";
   const src = item ? resolveAssetUrl(item.imageUrl, item.imageKey) : undefined;
   const kind = item ? inferItemKind(item) : "other";
-  const canEnterOrderFlow = Boolean(item?.isAvailable);
-  const orderFlowLabel = kind === "burger" ? "Elegir en Burgers" : "Armar pedido";
+  const isCombo = kind === "combo";
+  const canEnterOrderFlow = Boolean(item?.isAvailable && (kind === "burger" || kind === "garnish"));
+  const orderFlowLabel = kind === "burger" ? "Elegir en Burgers" : "Elegir en Guarniciones";
   useEffect(() => {
     if (!item) return;
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -545,6 +546,7 @@ const MenuInfoDialog = ({ item, onClose, onChooseInFlow }: { item: MenuItem | nu
           <p>{item.description}</p>
           <strong>{formatCurrency(item.price)}</strong>
           <div className="info-dialog-actions" aria-label={`Acciones para ${item.name}`}>
+            {isCombo ? <button type="button" className="quest-button combo-coming-soon-cta" aria-label={`Combos próximamente: ${item.name}`} disabled>Combos próximamente</button> : null}
             {canEnterOrderFlow ? <button type="button" className="quest-button" aria-label={`${orderFlowLabel}: ${item.name}`} onClick={() => { onClose(); onChooseInFlow(item); }}>{orderFlowLabel}</button> : null}
             <button ref={closeRef} type="button" className="quest-button ghost" onClick={onClose}>Cerrar</button>
           </div>
@@ -1768,11 +1770,14 @@ export function PublicOrderApp() {
     window.history.pushState({ burgersExePublicSection: sectionRef.current, modal: "menu-info" }, "", `${window.location.pathname}${window.location.search}#${sectionRef.current}-info`);
   };
   const chooseInfoDialogItemInFlow = (item: MenuItem) => {
-    if (inferItemKind(item) === "burger") {
+    const itemKind = inferItemKind(item);
+    if (itemKind === "burger") {
       startBurgerSelection();
       return;
     }
-    beginQuest();
+    if (itemKind === "garnish") {
+      startDirectSideQuest();
+    }
   };
   const primaryDisabled = ((section === "workbench" || (section === "customize" && builder)) && !builder) || (section === "burgers" && !cart.some((entry) => entry.itemKind === "burger")) || (section === "checkout" && (submitting || !cart.length));
   const showPersistentCta = section !== "success" && section !== "checkout" && section !== "customize" && section !== "main" && section !== "combos";

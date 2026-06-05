@@ -3417,6 +3417,13 @@ body {
   min-width: 0;
 }
 
+.info-dialog-actions .combo-coming-soon-cta:disabled {
+  border-color: rgba(255, 209, 102, 0.34);
+  background: rgba(255, 209, 102, 0.1);
+  color: var(--amber);
+  opacity: 1;
+}
+
 @media (min-width: 560px) {
   .info-dialog-actions {
     grid-template-columns: repeat(3, minmax(0, 1fr));
