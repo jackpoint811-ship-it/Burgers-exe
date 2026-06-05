@@ -524,8 +524,9 @@ const MenuInfoDialog = ({ item, onClose, onChooseInFlow }: { item: MenuItem | nu
   const titleId = "menu-info-title";
   const src = item ? resolveAssetUrl(item.imageUrl, item.imageKey) : undefined;
   const kind = item ? inferItemKind(item) : "other";
-  const canEnterOrderFlow = Boolean(item?.isAvailable);
-  const orderFlowLabel = kind === "burger" ? "Elegir en Burgers" : "Armar pedido";
+  const isCombo = kind === "combo";
+  const canEnterOrderFlow = Boolean(item?.isAvailable && (kind === "burger" || kind === "garnish"));
+  const orderFlowLabel = kind === "burger" ? "Elegir en Burgers" : "Elegir en Guarniciones";
   useEffect(() => {
     if (!item) return;
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -545,6 +546,7 @@ const MenuInfoDialog = ({ item, onClose, onChooseInFlow }: { item: MenuItem | nu
           <p>{item.description}</p>
           <strong>{formatCurrency(item.price)}</strong>
           <div className="info-dialog-actions" aria-label={`Acciones para ${item.name}`}>
+            {isCombo ? <button type="button" className="quest-button combo-coming-soon-cta" aria-label={`Combos próximamente: ${item.name}`} disabled>Combos próximamente</button> : null}
             {canEnterOrderFlow ? <button type="button" className="quest-button" aria-label={`${orderFlowLabel}: ${item.name}`} onClick={() => { onClose(); onChooseInFlow(item); }}>{orderFlowLabel}</button> : null}
             <button ref={closeRef} type="button" className="quest-button ghost" onClick={onClose}>Cerrar</button>
           </div>
@@ -554,29 +556,37 @@ const MenuInfoDialog = ({ item, onClose, onChooseInFlow }: { item: MenuItem | nu
   );
 };
 
-const MainQuest = ({ onBack, onBurgers, onCombos, onSideQuest }: { onBack: () => void; onBurgers: () => void; onCombos: () => void; onSideQuest: () => void }) => {
+const MainQuest = ({ onBack, onBurgers, onSideQuest }: { onBack: () => void; onBurgers: () => void; onSideQuest: () => void }) => {
   const routes = [
-    { key: "burgers", title: "Burgers", description: "Elige varios tipos y cantidades antes de personalizar.", action: onBurgers },
-    { key: "combos", title: "Combos", description: "Espacio reservado para combos cuando estén activos.", action: onCombos },
-    { key: "side", title: "Guarniciones", description: "Ve directo a Side Quest si solo quieres papas o extras.", action: onSideQuest },
+    { key: "burgers", title: "Burgers", description: "Elige varios tipos y cantidades antes de personalizar.", action: onBurgers, status: "active" },
+    { key: "combos", title: "Combos", description: "Combos estarán disponibles pronto. Esta ruta queda visible como teaser para una próxima quest.", status: "coming-soon" },
+    { key: "side", title: "Guarniciones", description: "Ve directo a Side Quest si solo quieres papas o extras.", action: onSideQuest, status: "active" },
   ] as const;
   return (
     <section className="quest-panel main-quest-panel">
       <QuestButton className="back-button" onClick={onBack}>← Volver al menú</QuestButton>
       <span className="eyebrow">Main Quest</span>
       <h2>Elige tu ruta</h2>
-      <p className="muted section-subcopy">Main ahora es el hub: entra a burgers, revisa combos o ve directo por guarniciones.</p>
+      <p className="muted section-subcopy">Main ahora es el hub: entra a burgers, mira el teaser de combos o ve directo por guarniciones.</p>
       <div className="route-grid" role="list" aria-label="Rutas del pedido">
-        {routes.map((route) => (
-          <article className="route-card" key={route.key} role="listitem">
-            <div>
-              <span className="route-chip">{route.key === "burgers" ? "01" : route.key === "combos" ? "02" : "03"}</span>
-              <h3>{route.title}</h3>
-              <p>{route.description}</p>
-            </div>
-            <QuestButton onClick={route.action}>Entrar</QuestButton>
-          </article>
-        ))}
+        {routes.map((route) => {
+          const isComingSoon = route.status === "coming-soon";
+          return (
+            <article className={`route-card ${isComingSoon ? "route-card-coming-soon" : ""}`} key={route.key} role="listitem" aria-disabled={isComingSoon || undefined}>
+              <div>
+                <span className="route-chip">{route.key === "burgers" ? "01" : route.key === "combos" ? "02" : "03"}</span>
+                {isComingSoon ? <span className="route-status-badge">Próximamente</span> : null}
+                <h3>{route.title}</h3>
+                <p>{route.description}</p>
+              </div>
+              {isComingSoon ? (
+                <QuestButton disabled aria-label="Combos próximamente" className="route-disabled-cta">Próximamente</QuestButton>
+              ) : (
+                <QuestButton onClick={route.action}>Entrar</QuestButton>
+              )}
+            </article>
+          );
+        })}
       </div>
     </section>
   );
@@ -1760,11 +1770,14 @@ export function PublicOrderApp() {
     window.history.pushState({ burgersExePublicSection: sectionRef.current, modal: "menu-info" }, "", `${window.location.pathname}${window.location.search}#${sectionRef.current}-info`);
   };
   const chooseInfoDialogItemInFlow = (item: MenuItem) => {
-    if (inferItemKind(item) === "burger") {
+    const itemKind = inferItemKind(item);
+    if (itemKind === "burger") {
       startBurgerSelection();
       return;
     }
-    beginQuest();
+    if (itemKind === "garnish") {
+      startDirectSideQuest();
+    }
   };
   const primaryDisabled = ((section === "workbench" || (section === "customize" && builder)) && !builder) || (section === "burgers" && !cart.some((entry) => entry.itemKind === "burger")) || (section === "checkout" && (submitting || !cart.length));
   const showPersistentCta = section !== "success" && section !== "checkout" && section !== "customize" && section !== "main" && section !== "combos";
@@ -1783,7 +1796,7 @@ export function PublicOrderApp() {
       <LoadingOverlay loading={showBoot || loadingMenu} />
       <AppHeader section={section} count={count} total={total} builder={builder} />
       {section === "menu" ? <MenuSection menuData={menuData} raffleCampaign={raffleCampaign} onExplore={openInfoDialog} onStart={beginQuest} reduce={reduce} /> : null}
-      {section === "main" ? <MainQuest onBack={() => navigate("menu")} onBurgers={startBurgerSelection} onCombos={() => { setBuilder(null); navigate("combos"); }} onSideQuest={startDirectSideQuest} /> : null}
+      {section === "main" ? <MainQuest onBack={() => navigate("menu")} onBurgers={startBurgerSelection} onSideQuest={startDirectSideQuest} /> : null}
       {section === "burgers" ? <BurgerSelectionView items={availableBurgerItems} cart={cart} error={burgerSelectionError} onBack={() => navigate("main")} onAdd={(item) => setBurgerQuantity(item, (cart.filter((entry) => entry.sku === item.sku && entry.itemKind === "burger").length) + 1)} onQuantity={setBurgerQuantity} onContinue={continueFromBurgerSelection} reduce={reduce} /> : null}
       {section === "combos" ? <CombosUnavailable onBack={() => navigate("main")} /> : null}
       {section === "workbench" ? <Workbench builder={builder} onBack={() => navigate("main")} onQuantity={updateBuilderQuantity} onContinue={() => navigate("customize")} /> : null}
