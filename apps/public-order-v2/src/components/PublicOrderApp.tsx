@@ -554,13 +554,13 @@ const MenuSection = ({ menuData, raffleCampaign, onExplore, onStart, reduce }: {
   );
 };
 
-const MenuInfoDialog = ({ item, onClose, onQuickAdd, onCustomize }: { item: MenuItem | null; onClose: () => void; onQuickAdd: (item: MenuItem) => void; onCustomize: (item: MenuItem) => void }) => {
+const MenuInfoDialog = ({ item, onClose, onChooseInFlow }: { item: MenuItem | null; onClose: () => void; onChooseInFlow: (item: MenuItem) => void }) => {
   const closeRef = useRef<HTMLButtonElement | null>(null);
   const titleId = "menu-info-title";
   const src = item ? resolveAssetUrl(item.imageUrl, item.imageKey) : undefined;
   const kind = item ? inferItemKind(item) : "other";
-  const canCustomize = Boolean(item?.isAvailable && (kind === "burger" || kind === "combo"));
-  const canQuickAdd = Boolean(item?.isAvailable && kind === "burger");
+  const canEnterOrderFlow = Boolean(item?.isAvailable);
+  const orderFlowLabel = kind === "burger" ? "Elegir en Burgers" : "Armar pedido";
   useEffect(() => {
     if (!item) return;
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -580,8 +580,7 @@ const MenuInfoDialog = ({ item, onClose, onQuickAdd, onCustomize }: { item: Menu
           <p>{item.description}</p>
           <strong>{formatCurrency(item.price)}</strong>
           <div className="info-dialog-actions" aria-label={`Acciones para ${item.name}`}>
-            {canQuickAdd ? <button type="button" className="quest-button" onClick={() => { onQuickAdd(item); onClose(); }}>Agregar</button> : null}
-            {canCustomize ? <button type="button" className={canQuickAdd ? "quest-button ghost" : "quest-button"} onClick={() => { onCustomize(item); onClose(); }}>Personalizar</button> : null}
+            {canEnterOrderFlow ? <button type="button" className="quest-button" aria-label={`${orderFlowLabel}: ${item.name}`} onClick={() => { onClose(); onChooseInFlow(item); }}>{orderFlowLabel}</button> : null}
             <button ref={closeRef} type="button" className="quest-button ghost" onClick={onClose}>Cerrar</button>
           </div>
         </div>
@@ -1589,6 +1588,7 @@ export function PublicOrderApp() {
     return entries.map((entry) => { const next = (seen.get(entry.sku) ?? 0) + 1; seen.set(entry.sku, next); return { ...entry, itemDisplayIndex: next }; });
   };
   const beginQuest = () => { setOrderChoice(null); setBuilder(null); setQuickAddFeedback(null); setBurgerSelectionError(null); setCartCustomizationError(null); setExtraGarnishQuantities({}); setSideQuestError(null); setSideQuestEntryMode("builder"); setCheckoutError(null); setOrderConfirmation(null); navigate("main"); };
+  const startBurgerSelection = () => { setBuilder(null); setOrderChoice("burger"); setQuickAddFeedback(null); setBurgerSelectionError(null); setCartCustomizationError(null); setSideQuestError(null); setSideQuestEntryMode("builder"); setCheckoutError(null); setOrderConfirmation(null); navigate("burgers"); };
   const startDirectSideQuest = () => { setBuilder(null); setOrderChoice(null); setQuickAddFeedback(null); setBurgerSelectionError(null); setCartCustomizationError(null); setExtraGarnishQuantities({}); setSideQuestError(null); setSideQuestEntryMode("direct"); navigate("side"); };
   const startBuilder = (item: MenuItem, source?: CartEntry, nextSection: QuestSection = "workbench") => {
     if (!item.isAvailable) return;
@@ -1750,6 +1750,13 @@ export function PublicOrderApp() {
     setInfoItem(item);
     window.history.pushState({ burgersExePublicSection: sectionRef.current, modal: "menu-info" }, "", `${window.location.pathname}${window.location.search}#${sectionRef.current}-info`);
   };
+  const chooseInfoDialogItemInFlow = (item: MenuItem) => {
+    if (inferItemKind(item) === "burger") {
+      startBurgerSelection();
+      return;
+    }
+    beginQuest();
+  };
   const primaryDisabled = ((section === "workbench" || (section === "customize" && builder)) && !builder) || (section === "burgers" && !cart.some((entry) => entry.itemKind === "burger")) || (section === "checkout" && (submitting || !cart.length));
   const showPersistentCta = section !== "success" && section !== "checkout" && section !== "customize" && section !== "main" && section !== "combos";
   const primaryAction = () => {
@@ -1767,7 +1774,7 @@ export function PublicOrderApp() {
       <LoadingOverlay loading={showBoot || loadingMenu} />
       <AppHeader section={section} count={count} total={total} builder={builder} />
       {section === "menu" ? <MenuSection menuData={menuData} raffleCampaign={raffleCampaign} onExplore={openInfoDialog} onStart={beginQuest} reduce={reduce} /> : null}
-      {section === "main" ? <MainQuest onBack={() => navigate("menu")} onBurgers={() => { setBuilder(null); setOrderChoice("burger"); setBurgerSelectionError(null); navigate("burgers"); }} onCombos={() => { setBuilder(null); setOrderChoice("combo"); navigate("combos"); }} onSideQuest={startDirectSideQuest} /> : null}
+      {section === "main" ? <MainQuest onBack={() => navigate("menu")} onBurgers={startBurgerSelection} onCombos={() => { setBuilder(null); setOrderChoice("combo"); navigate("combos"); }} onSideQuest={startDirectSideQuest} /> : null}
       {section === "burgers" ? <BurgerSelectionView items={availableBurgerItems} cart={cart} error={burgerSelectionError} onBack={() => navigate("main")} onAdd={(item) => setBurgerQuantity(item, (cart.filter((entry) => entry.sku === item.sku && entry.itemKind === "burger").length) + 1)} onQuantity={setBurgerQuantity} onContinue={continueFromBurgerSelection} reduce={reduce} /> : null}
       {section === "combos" ? <CombosUnavailable onBack={() => navigate("main")} /> : null}
       {section === "workbench" ? <Workbench builder={builder} onBack={() => navigate("main")} onQuantity={updateBuilderQuantity} onContinue={() => navigate("customize")} /> : null}
@@ -1775,7 +1782,7 @@ export function PublicOrderApp() {
       {section === "side" ? <SideQuest garnishes={garnishes} selected={extraGarnishQuantities} onQuantity={(sku, quantity) => { setSideQuestError(null); setExtraGarnishQuantities((prev) => ({ ...prev, [sku]: Math.min(10, Math.max(0, quantity)) })); }} onBack={() => navigate(sideQuestEntryMode === "direct" ? "main" : "customize")} canSkip={hasBurgerOrComboInCart} error={sideQuestError} reduce={reduce} entryMode={sideQuestEntryMode} /> : null}
       {section === "checkout" && cart.length ? <Checkout cart={cart} items={menuData.items} total={total} customer={customer} setCustomer={setCustomer} checkoutStep={checkoutStep} setCheckoutStep={setCheckoutStep} onDataStepBlocked={blockCheckoutDataStep} onBack={() => navigate("side") } onSubmit={handleCheckout} submitting={submitting} error={checkoutError} fieldErrors={checkoutFieldErrors} clearFieldError={clearCheckoutFieldError} clearCheckoutError={clearCheckoutErrorMessage} onEdit={editLine} onDuplicate={duplicateLine} onRemove={removeLine} /> : null}
       {section === "success" && orderConfirmation ? <Success order={orderConfirmation} campaign={raffleCampaign} onCreateAnother={handleCreateAnother} /> : null}
-      <MenuInfoDialog item={infoItem} onClose={() => setInfoItem(null)} onQuickAdd={quickAddItem} onCustomize={startBuilder} />
+      <MenuInfoDialog item={infoItem} onClose={() => setInfoItem(null)} onChooseInFlow={chooseInfoDialogItemInFlow} />
       {showPersistentCta ? <PersistentCta section={section} count={count} total={total} disabled={primaryDisabled} submitting={submitting} onClick={primaryAction} builder={builder} sideHasSelection={sideHasSelection} hasBurgerOrCombo={hasBurgerOrComboInCart} /> : null}
     </main>
   );
