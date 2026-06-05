@@ -1946,12 +1946,12 @@ p {
 }
 .upgrade-card {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
   border: 1px solid rgba(255, 209, 102, 0.16);
   border-radius: 18px;
   background: rgba(255, 209, 102, 0.045);
-  padding: 8px;
+  padding: 10px;
 }
 .upgrade-card.active {
   border-color: rgba(255, 209, 102, 0.72);
@@ -1960,48 +1960,79 @@ p {
 }
 .upgrade-chip {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 6px;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  justify-items: start;
+  gap: 8px;
   width: 100%;
   border-radius: 16px;
   border-color: rgba(255, 209, 102, 0.32);
   background: rgba(255, 209, 102, 0.08);
+  padding: 0.82rem;
+  overflow-wrap: normal;
+  text-align: left;
+  word-break: normal;
 }
 .upgrade-chip span,
 .upgrade-chip strong {
   min-width: 0;
 }
-.upgrade-chip strong {
+.upgrade-chip-name {
+  display: block;
+  width: 100%;
+  color: #ffffff;
+  font-size: 0.95rem;
+  line-height: 1.28;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+.upgrade-chip-price {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  border: 1px solid rgba(255, 209, 102, 0.38);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.24);
+  padding: 0.2rem 0.58rem;
   color: var(--amber);
   white-space: nowrap;
 }
 .upgrade-chip em {
   grid-column: 1 / -1;
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
-  justify-self: center;
+  justify-self: stretch;
   border-radius: 999px;
-  padding: 0.24rem 0.56rem;
+  padding: 0.34rem 0.6rem;
   background: var(--neon);
   color: #001b0a;
   font-size: 0.72rem;
   font-style: normal;
   font-weight: 950;
   letter-spacing: 0.04em;
+  line-height: 1.25;
+  overflow-wrap: break-word;
+  text-align: center;
+  word-break: normal;
 }
 .upgrade-chip.active strong {
   color: #fff;
 }
+.upgrade-chip.active .upgrade-chip-price {
+  border-color: rgba(255, 209, 102, 0.64);
+  background: rgba(255, 209, 102, 0.18);
+  color: var(--amber);
+}
 .upgrade-controls {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 .upgrade-controls .qty-control {
   width: 100%;
-  grid-template-columns: 44px minmax(44px, 1fr) 44px;
+  grid-template-columns: minmax(44px, 1fr) minmax(50px, 1.1fr) minmax(44px, 1fr);
   gap: 6px;
   margin: 0;
 }

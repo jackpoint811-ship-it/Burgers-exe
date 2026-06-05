@@ -705,9 +705,9 @@ const UnitEditor = ({ unit, index, item, extras, garnishes, onChange }: { unit: 
                     return (
                       <div className={quantity ? "upgrade-card active" : "upgrade-card"} key={extra.sku}>
                         <button type="button" className={quantity ? "chip upgrade-chip active" : "chip upgrade-chip"} aria-pressed={quantity > 0} onClick={() => onChange({ ...unit, extras: [...unit.extras, { sku: extra.sku, name: extra.name, price: extra.price }] })}>
-                          <span>+ {extra.name}</span>
-                          <strong>· +{formatCurrency(extra.price)}</strong>
-                          {quantity ? <em>{quantity} en esta burger · +{formatCurrency(extraTotal)}</em> : null}
+                          <span className="upgrade-chip-name">+ {extra.name}</span>
+                          <strong className="upgrade-chip-price">+{formatCurrency(extra.price)}</strong>
+                          {quantity ? <em className="upgrade-chip-status">{quantity} en esta burger · +{formatCurrency(extraTotal)}</em> : null}
                         </button>
                         {quantity ? (
                           <div className="upgrade-controls">
