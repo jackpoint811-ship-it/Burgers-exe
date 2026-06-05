@@ -2143,7 +2143,7 @@ p {
 }
 .qty-control button,
 .qty-control strong {
-  min-height: 42px;
+  min-height: 44px;
   border-radius: 14px;
   font-size: 1rem;
 }
@@ -3644,5 +3644,312 @@ body {
 @media (min-width: 420px) {
   .location-chip-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* PR: mobile-first visual/performance polish for public order flow. */
+html {
+  scroll-padding-top: calc(74px + env(safe-area-inset-top));
+  scroll-padding-bottom: calc(124px + env(safe-area-inset-bottom));
+}
+
+:root {
+  --muted: #b7c9bf;
+  --muted-strong: #d7eadf;
+}
+
+.hero-copy,
+.muted,
+.section-title p,
+.menu-card-body p,
+.empty-line,
+.section-subcopy,
+.field-helper,
+.field-label small,
+.kiosk-body p,
+.accordion-trigger em,
+.ticket-item ul {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.quest-panel > .eyebrow + h2,
+.menu-cluster h2,
+.quest-panel > h2,
+.checkout-step-heading h3 {
+  text-wrap: balance;
+}
+
+.hero-copy-block {
+  min-height: clamp(168px, 46vw, 280px);
+  gap: 10px;
+}
+
+.hero-copy-block .hero-brand-title {
+  font-size: clamp(2.15rem, 11.2vw, 7.5rem);
+  line-height: 0.88;
+  letter-spacing: -0.04em;
+}
+
+.hero-brand-status {
+  color: #c8ffdc !important;
+  line-height: 1.35;
+}
+
+.hero-copy-block p {
+  color: var(--muted-strong);
+  font-size: clamp(0.95rem, 3.8vw, 1.05rem);
+  line-height: 1.45;
+}
+
+.menu-cluster {
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.menu-cluster h2,
+.quest-panel > h2 {
+  font-size: clamp(1.42rem, 6.1vw, 3.35rem);
+  line-height: 0.98;
+  letter-spacing: -0.045em;
+}
+
+.section-subcopy {
+  margin-bottom: 2px;
+  color: var(--muted-strong);
+  font-size: clamp(0.92rem, 3.6vw, 1rem);
+}
+
+.kiosk-grid,
+.main-quest-panel .accordion-panel .kiosk-grid {
+  gap: 10px;
+}
+
+.kiosk-card,
+.product-choice-card {
+  border-radius: 18px;
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.3);
+}
+
+.kiosk-body h3 {
+  font-size: clamp(1rem, 4.25vw, 1.28rem);
+  line-height: 1.12;
+}
+
+.kiosk-body p {
+  color: var(--muted-strong);
+  font-size: 0.86rem;
+  -webkit-line-clamp: 2;
+}
+
+.kiosk-body strong,
+.checkout-total strong,
+.ticket-item strong {
+  font-size: clamp(1.12rem, 4.8vw, 1.24rem);
+}
+
+.kiosk-body em {
+  min-height: 28px;
+  padding: 0.34rem 0.58rem;
+  font-size: 0.74rem;
+  line-height: 1;
+}
+
+.kiosk-ingredients-list {
+  gap: 0.28rem;
+}
+
+.kiosk-ingredients-list li {
+  color: #ecfff4;
+  padding: 0.16rem 0.38rem;
+  font-size: clamp(0.66rem, 3vw, 0.74rem);
+}
+
+.main-quest-panel {
+  gap: 10px;
+}
+
+.main-quest-panel .accordion-panel {
+  padding-inline: 8px;
+}
+
+.main-quest-panel .product-choice-card {
+  grid-template-columns: minmax(78px, 28%) minmax(0, 1fr);
+}
+
+.main-quest-panel .product-choice-card .kiosk-visual {
+  min-height: 132px;
+  padding: 0.28rem;
+}
+
+.main-quest-panel .product-choice-card .kiosk-visual img {
+  border-radius: 16px;
+  object-fit: contain;
+}
+
+.main-quest-panel .product-choice-body {
+  gap: 6px;
+  padding: 10px;
+}
+
+.main-quest-panel .product-choice-body h3 {
+  font-size: clamp(1.02rem, 4.5vw, 1.22rem);
+}
+
+.main-quest-panel .product-choice-body .kiosk-ingredients-list {
+  max-height: 2.7rem;
+}
+
+.main-quest-panel .product-choice-body footer {
+  gap: 0.35rem 0.55rem;
+  padding-top: 0;
+}
+
+.main-quest-panel .product-choice-actions {
+  gap: 6px;
+}
+
+.main-quest-panel .product-choice-actions .quest-button {
+  min-height: 44px;
+  padding: 0.62rem 0.72rem;
+  font-size: 0.82rem;
+}
+
+.app-shell.has-persistent-cta {
+  padding-bottom: calc(132px + env(safe-area-inset-bottom));
+}
+
+.app-shell.public-section-checkout,
+.app-shell.public-section-success {
+  padding-bottom: calc(18px + env(safe-area-inset-bottom));
+}
+
+.persistent-cta {
+  left: max(10px, env(safe-area-inset-left));
+  right: max(10px, env(safe-area-inset-right));
+  bottom: max(10px, env(safe-area-inset-bottom));
+  width: auto;
+  max-width: 760px;
+  margin-inline: auto;
+  grid-template-columns: minmax(0, 1fr) minmax(118px, auto);
+  align-items: center;
+  gap: 8px;
+  padding: 9px;
+  border-radius: 20px;
+}
+
+.persistent-cta strong {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.persistent-cta .quest-button {
+  min-height: 44px;
+  padding: 0.66rem 0.82rem;
+  line-height: 1.05;
+}
+
+:where(button, input, textarea, select, [tabindex]):focus-visible {
+  scroll-margin-top: calc(84px + env(safe-area-inset-top));
+  scroll-margin-bottom: calc(132px + env(safe-area-inset-bottom));
+}
+
+.checkout-panel {
+  overflow-x: hidden;
+}
+
+.checkout-step-panel,
+.checkout-panel .ticket-item,
+.customization-review-panel,
+.unit-editor {
+  scroll-margin-bottom: calc(28px + env(safe-area-inset-bottom));
+}
+
+@media (max-width: 430px) {
+  .app-shell {
+    padding: 10px 10px calc(20px + env(safe-area-inset-bottom));
+  }
+
+  .app-shell.has-persistent-cta {
+    padding-bottom: calc(132px + env(safe-area-inset-bottom));
+  }
+
+  .quest-panel {
+    padding: 14px;
+  }
+
+  .hero-copy-block {
+    min-height: 164px;
+  }
+
+  .hero-copy-block .hero-brand-title,
+  .hero-copy-block h1 {
+    font-size: clamp(2.12rem, 10.8vw, 3.7rem);
+  }
+
+  .hero-copy-block .quest-button {
+    min-height: 50px;
+  }
+
+  .menu-cluster h2,
+  .quest-panel > h2 {
+    font-size: clamp(1.36rem, 5.9vw, 2.05rem);
+  }
+
+  .menu-cluster .kiosk-visual {
+    aspect-ratio: 5 / 3.65;
+  }
+
+  .menu-cluster .kiosk-body {
+    padding: 9px;
+  }
+
+  .main-quest-panel .accordion-trigger {
+    min-height: 52px;
+  }
+}
+
+@media (max-width: 360px) {
+  .main-quest-panel .product-choice-card {
+    grid-template-columns: minmax(70px, 26%) minmax(0, 1fr);
+  }
+
+  .main-quest-panel .product-choice-card .kiosk-visual {
+    min-height: 122px;
+  }
+
+  .main-quest-panel .product-choice-body {
+    padding: 9px;
+  }
+
+  .main-quest-panel .product-choice-body .kiosk-ingredients-list {
+    max-height: 2.35rem;
+  }
+
+  .persistent-cta {
+    grid-template-columns: minmax(0, 0.95fr) minmax(112px, auto);
+    padding: 8px;
+  }
+
+  .persistent-cta span {
+    font-size: 0.66rem;
+  }
+
+  .persistent-cta strong {
+    font-size: 0.84rem;
+  }
+
+  .persistent-cta .quest-button {
+    padding-inline: 0.68rem;
+    font-size: 0.78rem;
+    white-space: normal;
+  }
+}
+
+@media (min-width: 720px) {
+  .main-quest-panel .product-choice-card .kiosk-visual {
+    min-height: unset;
   }
 }

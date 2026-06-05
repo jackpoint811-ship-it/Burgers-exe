@@ -381,7 +381,7 @@ const RaffleBanner = ({ campaign }: { campaign: RaffleCampaignPublicV2 | null })
     <section className={`raffle-banner ${src ? "" : "raffle-banner-no-media"}`} aria-label="Sorteo activo">
       {src ? (
         <div className="raffle-banner-media">
-          <img src={src} alt={campaign.title} loading="lazy" onError={(event) => { event.currentTarget.style.display = "none"; }} />
+          <img src={src} alt={campaign.title} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.style.display = "none"; }} />
         </div>
       ) : null}
       <div className="raffle-banner-copy">
@@ -394,7 +394,7 @@ const RaffleBanner = ({ campaign }: { campaign: RaffleCampaignPublicV2 | null })
           </div>
         ) : null}
         {campaign.rulesText ? <p className="raffle-rules"><strong>Reglas del servidor:</strong> {campaign.rulesText}</p> : null}
-        {detailSrc ? <img className="raffle-detail-image" src={detailSrc} alt={`Detalles de ${campaign.title}`} loading="lazy" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : null}
+        {detailSrc ? <img className="raffle-detail-image" src={detailSrc} alt={`Detalles de ${campaign.title}`} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : null}
       </div>
     </section>
   );
@@ -409,7 +409,7 @@ const PromoRail = ({ promos }: { promos: PromoCard[] }) => {
         const src = resolveAssetUrl(promo.asset.imageUrl, promo.asset.imageKey);
         return (
           <article className="promo-card" key={promo.id}>
-            {src ? <img src={src} alt={promo.asset.alt || promo.title} loading="lazy" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : null}
+            {src ? <img src={src} alt={promo.asset.alt || promo.title} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : null}
             <div>
               <span>{promo.badge || promo.promoLabel || "Promo"}</span>
               <h3>{promo.title}</h3>
@@ -438,7 +438,7 @@ const ProductCard = ({ item, mode, onClick, reduce, descriptionMode = "paragraph
       disabled={mode === "select" && !item.isAvailable}
     >
       <div className={showImage ? "kiosk-visual" : "kiosk-visual no-image"}>
-        {showImage && src ? <img src={src} alt="" loading="lazy" onError={() => setImageFailed(true)} /> : <span>{item.name}</span>}
+        {showImage && src ? <img src={src} alt="" loading="lazy" decoding="async" onError={() => setImageFailed(true)} /> : <span>{item.name}</span>}
       </div>
       <div className="kiosk-body">
         <span>{kind === "combo" ? "Combo" : item.category}</span>
@@ -468,7 +468,7 @@ const ProductChoiceCard = ({ item, onQuickAdd, onCustomize, reduce }: { item: Me
   return (
     <motion.article className={item.isAvailable ? "product-choice-card" : "product-choice-card unavailable"} whileTap={reduce ? undefined : { scale: 0.99 }}>
       <div className={showImage ? "kiosk-visual" : "kiosk-visual no-image"}>
-        {showImage && src ? <img src={src} alt="" loading="lazy" onError={() => setImageFailed(true)} /> : <span>{item.name}</span>}
+        {showImage && src ? <img src={src} alt="" loading="lazy" decoding="async" onError={() => setImageFailed(true)} /> : <span>{item.name}</span>}
       </div>
       <div className="kiosk-body product-choice-body">
         <span>{kind === "combo" ? "Combo" : item.category}</span>
@@ -574,7 +574,7 @@ const MenuInfoDialog = ({ item, onClose, onQuickAdd, onCustomize }: { item: Menu
   return (
     <div className="dialog-backdrop" role="presentation">
       <section aria-labelledby={titleId} aria-modal="true" className="info-dialog" role="dialog">
-        {src ? <img src={src} alt={item.name} onError={(event) => { event.currentTarget.style.display = "none"; }} /> : null}
+        {src ? <img src={src} alt={item.name} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : null}
         <div>
           <span className="eyebrow">Menu</span>
           <h2 id={titleId}>{item.name}</h2>
@@ -722,7 +722,7 @@ const Workbench = ({ builder, onBack, onQuantity, onContinue }: WorkbenchProps) 
       <h2>{builder ? builder.item.name : "Selecciona producto"}</h2>
       <p className="muted section-subcopy">Elige cuántas quieres agregar.</p>
       {builder ? <div className="workbench-summary-card">
-        {src ? <img src={src} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : null}
+        {src ? <img src={src} alt="" loading="lazy" decoding="async" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : null}
         <div className="workbench-summary-copy">
           <span className="product-chip">{builder.itemKind === "combo" ? "Combo" : "Burger"}</span>
           <h3>{builder.item.name}</h3>
@@ -838,7 +838,7 @@ const CustomizationReview = ({ builder, extras, garnishes, onBack, onUnitChange,
           const changed = unitHasChanges(unit) || (unit.itemKind === "combo" && Boolean(unit.garnish));
           return (
             <article className="customization-unit-card" key={unit.lineKey}>
-              {src ? <img src={src} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : <div className="customization-unit-fallback" aria-hidden="true">B</div>}
+              {src ? <img src={src} alt="" loading="lazy" decoding="async" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : <div className="customization-unit-fallback" aria-hidden="true">B</div>}
               <div className="customization-unit-summary">
                 <h3>{unit.name} #{index + 1}</h3>
                 <p>{summarizeUnitCustomization(unit)}</p>
