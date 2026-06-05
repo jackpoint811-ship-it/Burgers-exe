@@ -2143,7 +2143,7 @@ p {
 }
 .qty-control button,
 .qty-control strong {
-  min-height: 42px;
+  min-height: 44px;
   border-radius: 14px;
   font-size: 1rem;
 }
@@ -3649,7 +3649,6 @@ body {
 
 /* PR: mobile-first visual/performance polish for public order flow. */
 html {
-  overflow-x: hidden;
   scroll-padding-top: calc(74px + env(safe-area-inset-top));
   scroll-padding-bottom: calc(124px + env(safe-area-inset-bottom));
 }
@@ -3811,7 +3810,7 @@ html {
 }
 
 .main-quest-panel .product-choice-actions .quest-button {
-  min-height: 42px;
+  min-height: 44px;
   padding: 0.62rem 0.72rem;
   font-size: 0.82rem;
 }
