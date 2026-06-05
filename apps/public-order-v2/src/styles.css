@@ -3812,6 +3812,46 @@ html {
   width: 100%;
 }
 
+.route-card-coming-soon {
+  border-color: rgba(255, 209, 102, 0.3);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(255, 209, 102, 0.14), transparent 34%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.042), rgba(255, 255, 255, 0.018));
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.route-card-coming-soon h3,
+.route-card-coming-soon p {
+  opacity: 0.82;
+}
+
+.route-card-coming-soon .route-chip {
+  border-color: rgba(255, 209, 102, 0.44);
+  background: rgba(255, 209, 102, 0.1);
+  color: var(--amber);
+}
+
+.route-status-badge {
+  justify-self: start;
+  border: 1px solid rgba(255, 209, 102, 0.42);
+  border-radius: 999px;
+  background: rgba(255, 209, 102, 0.11);
+  color: var(--amber);
+  padding: 0.34rem 0.68rem;
+  font-size: 0.76rem;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.route-card .route-disabled-cta:disabled {
+  border-color: rgba(255, 209, 102, 0.34);
+  background: rgba(255, 209, 102, 0.1);
+  color: var(--amber);
+  opacity: 1;
+}
+
 .route-chip,
 .burger-count-badge {
   justify-self: start;
