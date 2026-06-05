@@ -102,6 +102,17 @@ const createEmptyCustomer = (): CustomerDraft => ({
   paymentTiming: "",
 });
 const normalizePhoneDigits = (phone: string) => phone.replace(/\D/g, "");
+const formatPhoneForDisplay = (phone: string) => {
+  const digits = normalizePhoneDigits(phone);
+  const parts = [digits.slice(0, 3), digits.slice(3, 6), digits.slice(6)].filter(Boolean);
+  return parts.join(" ");
+};
+const getPhoneError = (phone: string) => {
+  const digitCount = normalizePhoneDigits(phone).length;
+  if (digitCount === 10) return null;
+  if (digitCount < 10) return `Faltan ${10 - digitCount} dígito${10 - digitCount === 1 ? "" : "s"}. Escribe 10 dígitos, ej. 2221234567.`;
+  return `Sobran ${digitCount - 10} dígito${digitCount - 10 === 1 ? "" : "s"}. El teléfono debe tener exactamente 10 dígitos.`;
+};
 const scrollToTop = () => window.scrollTo({ top: 0, behavior: "auto" });
 const createId = (prefix: string) => {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return `${prefix}-${crypto.randomUUID()}`;
@@ -285,7 +296,8 @@ const validateCheckout = (customer: CustomerDraft, cart: CartEntry[], items: Men
   const fields: CheckoutErrors = {};
   if (cart.length === 0) fields.cart = "Agrega al menos un producto al ticket.";
   if (customer.name.trim().length < 2) fields.name = "Escribe tu nombre con al menos dos caracteres.";
-  if (normalizePhoneDigits(customer.phone).length < 10) fields.phone = "Escribe un teléfono válido con al menos diez dígitos.";
+  const phoneError = getPhoneError(customer.phone);
+  if (phoneError) fields.phone = phoneError;
   if (!customer.location) fields.location = "Elige Torre GGA o Torre Valcob.";
   if (!PAYMENT_METHODS.has(customer.paymentMethod)) fields.paymentMethod = "Elige un método de pago.";
   if (customer.paymentMethod === "transfer" && !customer.paymentTiming) fields.paymentTiming = "Elige si pagarás antes o después.";
@@ -298,7 +310,8 @@ const validateCheckout = (customer: CustomerDraft, cart: CartEntry[], items: Men
 const validateCheckoutDataStep = (customer: CustomerDraft): CheckoutErrors => {
   const fields: CheckoutErrors = {};
   if (customer.name.trim().length < 2) fields.name = "Escribe tu nombre con al menos dos caracteres.";
-  if (normalizePhoneDigits(customer.phone).length < 10) fields.phone = "Escribe un teléfono válido con al menos diez dígitos.";
+  const phoneError = getPhoneError(customer.phone);
+  if (phoneError) fields.phone = phoneError;
   if (!customer.location) fields.location = "Elige Torre GGA o Torre Valcob.";
   return fields;
 };
@@ -1103,12 +1116,38 @@ const Checkout = ({ cart, items, total, customer, setCustomer, checkoutStep, set
       </section> : null}
       {checkoutStep === 1 ? <section className="checkout-step-panel" aria-labelledby="checkoutDataTitle">
         <div className="checkout-step-heading"><span>02</span><h3 id="checkoutDataTitle">Datos del pedido</h3></div>
+        <p className="muted section-subcopy">Completa los campos obligatorios para identificar tu pedido y coordinar entrega.</p>
+        {error ? <p className="checkout-error-summary" role="alert">Revisa el dato marcado: {error}</p> : null}
         <div className="checkout-grid">
-          <label className="field-label">Nombre<input id="checkoutName" value={customer.name} onChange={(event) => { clearFieldError("name"); setCustomer({ ...customer, name: event.target.value }); }} placeholder="Tu nombre" aria-invalid={fieldErrors.name ? "true" : "false"} aria-describedby={fieldErrors.name ? "checkoutNameError" : undefined} />{fieldErrors.name ? <span className="inline-error" id="checkoutNameError" role="alert">{fieldErrors.name}</span> : null}</label>
-          <label className="field-label">Teléfono<input id="checkoutPhone" inputMode="tel" value={customer.phone} onChange={(event) => { clearFieldError("phone"); setCustomer({ ...customer, phone: event.target.value }); }} placeholder="55 0000 0000" aria-invalid={fieldErrors.phone ? "true" : "false"} aria-describedby={fieldErrors.phone ? "checkoutPhoneError" : undefined} />{fieldErrors.phone ? <span className="inline-error" id="checkoutPhoneError" role="alert">{fieldErrors.phone}</span> : null}</label>
-          <label className="field-label wide">Nota general opcional<textarea id="checkoutNotes" maxLength={500} value={customer.notes} onChange={(event) => { clearFieldError("notes"); setCustomer({ ...customer, notes: event.target.value }); }} placeholder="Nota general del pedido" aria-invalid={fieldErrors.notes ? "true" : "false"} aria-describedby={fieldErrors.notes ? "checkoutNotesError" : undefined} />{fieldErrors.notes ? <span className="inline-error" id="checkoutNotesError" role="alert">{fieldErrors.notes}</span> : null}</label>
-          <label className="field-label wide">Código de invitado<input value={customer.referralCode} onChange={(event) => setCustomer({ ...customer, referralCode: event.target.value.toUpperCase() })} placeholder="CARLOS-BURGER-27" maxLength={32} /><small>Bonus secundario: si alguien te invitó, escribe su código.</small></label>
-          <div className="builder-block" id="checkoutLocation" tabIndex={-1}><h4>Ubicación</h4><div className="chip-grid">{LOCATIONS.map((location) => <button type="button" key={location} className={customer.location === location ? "chip active" : "chip"} onClick={() => { clearFieldError("location"); setCustomer({ ...customer, location }); }} aria-pressed={customer.location === location}>{location}</button>)}</div>{fieldErrors.location ? <p className="inline-error" id="checkoutLocationError" role="alert">{fieldErrors.location}</p> : null}</div>
+          <label className="field-label" htmlFor="checkoutName">
+            <span>Nombre <em>obligatorio</em></span>
+            <input id="checkoutName" value={customer.name} onChange={(event) => { clearFieldError("name"); setCustomer({ ...customer, name: event.target.value }); }} placeholder="Ej. Alex" aria-invalid={fieldErrors.name ? "true" : "false"} aria-describedby={`checkoutNameHelp${fieldErrors.name ? " checkoutNameError" : ""}`} />
+            <small id="checkoutNameHelp">Lo usamos para identificar tu pedido al entregarlo. Mínimo 2 caracteres.</small>
+            {fieldErrors.name ? <span className="inline-error" id="checkoutNameError" role="alert">{fieldErrors.name}</span> : null}
+          </label>
+          <label className="field-label" htmlFor="checkoutPhone">
+            <span>Teléfono <em>obligatorio</em></span>
+            <input id="checkoutPhone" inputMode="numeric" autoComplete="tel" value={customer.phone} onChange={(event) => { clearFieldError("phone"); setCustomer({ ...customer, phone: formatPhoneForDisplay(event.target.value) }); }} placeholder="222 123 4567" aria-invalid={fieldErrors.phone ? "true" : "false"} aria-describedby={`checkoutPhoneHelp${fieldErrors.phone ? " checkoutPhoneError" : ""}`} />
+            <small id="checkoutPhoneHelp">Escribe 10 dígitos. Ej. 2221234567.</small>
+            {fieldErrors.phone ? <span className="inline-error" id="checkoutPhoneError" role="alert">{fieldErrors.phone}</span> : null}
+          </label>
+          <label className="field-label wide field-label-optional" htmlFor="checkoutNotes">
+            <span>Nota general <em>opcional</em></span>
+            <textarea id="checkoutNotes" maxLength={500} value={customer.notes} onChange={(event) => { clearFieldError("notes"); setCustomer({ ...customer, notes: event.target.value }); }} placeholder="Ej. Sin servilletas extra" aria-invalid={fieldErrors.notes ? "true" : "false"} aria-describedby={`checkoutNotesHelp${fieldErrors.notes ? " checkoutNotesError" : ""}`} />
+            <small id="checkoutNotesHelp">Aplica para todo el pedido. Los cambios por burger van en personalización.</small>
+            {fieldErrors.notes ? <span className="inline-error" id="checkoutNotesError" role="alert">{fieldErrors.notes}</span> : null}
+          </label>
+          <label className="field-label wide referral-code-field" htmlFor="checkoutReferralCode">
+            <span>Código de invitado <em>opcional</em></span>
+            <input id="checkoutReferralCode" value={customer.referralCode} onChange={(event) => setCustomer({ ...customer, referralCode: event.target.value.toUpperCase() })} placeholder="CARLOS-BURGER-27" maxLength={32} aria-describedby="checkoutReferralHelp" />
+            <small id="checkoutReferralHelp">Opcional: si alguien te invitó, escribe su código.</small>
+          </label>
+          <div className="builder-block location-block" id="checkoutLocation" tabIndex={-1} aria-describedby={`checkoutLocationHelp${fieldErrors.location ? " checkoutLocationError" : ""}`} aria-invalid={fieldErrors.location ? "true" : "false"}>
+            <h4>Ubicación <em>obligatoria</em></h4>
+            <p className="field-helper" id="checkoutLocationHelp">Selecciona dónde recogerás o recibirás tu pedido.</p>
+            <div className="chip-grid location-chip-grid">{LOCATIONS.map((location) => <button type="button" key={location} className={customer.location === location ? "chip location-chip active" : "chip location-chip"} onClick={() => { clearFieldError("location"); setCustomer({ ...customer, location }); }} aria-pressed={customer.location === location}>{customer.location === location ? "✓ " : ""}{location}</button>)}</div>
+            {fieldErrors.location ? <p className="inline-error" id="checkoutLocationError" role="alert">{fieldErrors.location}</p> : null}
+          </div>
         </div>
         <QuestButton onClick={nextStep}>Continuar a pago</QuestButton>
       </section> : null}
