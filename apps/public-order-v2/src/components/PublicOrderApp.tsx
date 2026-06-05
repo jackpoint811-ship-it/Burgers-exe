@@ -1499,7 +1499,9 @@ const Success = ({ order, campaign, onCreateAnother }: { order: OrderConfirmatio
 const PersistentCta = ({ section, count, total, disabled, submitting, onClick, builder, sideHasSelection, hasBurgerOrCombo }: { section: QuestSection; count: number; total: number; disabled?: boolean; submitting?: boolean; onClick: () => void; builder: BuilderDraft | null; sideHasSelection: boolean; hasBurgerOrCombo: boolean }) => {
   if (section === "success" || section === "checkout") return null;
   const label = section === "menu"
-    ? "Armar mi pedido"
+    ? count > 0
+      ? "Continuar pedido"
+      : "Armar mi pedido"
     : section === "burgers"
       ? "Continuar a personalizar"
       : section === "workbench"
