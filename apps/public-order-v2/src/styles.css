@@ -1904,11 +1904,15 @@ p {
   padding: clamp(12px, 3vw, 16px);
 }
 .workbench-panel .mod-block {
-  border-color: rgba(57, 255, 136, 0.18);
+  border-color: rgba(57, 255, 136, 0.14);
+  background: rgba(0, 0, 0, 0.18);
 }
 .workbench-panel .upgrade-block {
-  border-color: rgba(255, 209, 102, 0.2);
-  background: linear-gradient(180deg, rgba(255, 209, 102, 0.075), rgba(0, 0, 0, 0.22));
+  border-color: rgba(255, 209, 102, 0.52);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(255, 209, 102, 0.22), transparent 34%),
+    linear-gradient(180deg, rgba(255, 209, 102, 0.14), rgba(0, 0, 0, 0.24));
+  box-shadow: 0 0 0 1px rgba(255, 209, 102, 0.08), 0 0 30px rgba(255, 209, 102, 0.13);
 }
 .builder-block-head {
   display: grid;
@@ -1979,15 +1983,15 @@ p {
   display: grid;
   gap: 8px;
   min-width: 0;
-  border: 1px solid rgba(234, 255, 240, 0.08);
+  border: 1px solid rgba(255, 209, 102, 0.16);
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.025);
+  background: rgba(255, 209, 102, 0.045);
   padding: 8px;
 }
 .upgrade-card.active {
-  border-color: rgba(255, 209, 102, 0.44);
-  background: rgba(255, 209, 102, 0.09);
-  box-shadow: 0 0 24px rgba(255, 209, 102, 0.1);
+  border-color: rgba(255, 209, 102, 0.72);
+  background: linear-gradient(180deg, rgba(255, 209, 102, 0.18), rgba(255, 209, 102, 0.08));
+  box-shadow: 0 0 0 1px rgba(255, 209, 102, 0.16), 0 0 28px rgba(255, 209, 102, 0.18);
 }
 .upgrade-chip {
   display: grid;
@@ -1996,6 +2000,8 @@ p {
   gap: 6px;
   width: 100%;
   border-radius: 16px;
+  border-color: rgba(255, 209, 102, 0.32);
+  background: rgba(255, 209, 102, 0.08);
 }
 .upgrade-chip span,
 .upgrade-chip strong {
@@ -2008,13 +2014,16 @@ p {
 .upgrade-chip em {
   grid-column: 1 / -1;
   width: fit-content;
+  max-width: 100%;
   justify-self: center;
   border-radius: 999px;
-  padding: 0.18rem 0.52rem;
+  padding: 0.24rem 0.56rem;
   background: var(--neon);
   color: #001b0a;
+  font-size: 0.72rem;
   font-style: normal;
   font-weight: 950;
+  letter-spacing: 0.04em;
 }
 .upgrade-chip.active strong {
   color: #fff;
@@ -2027,13 +2036,13 @@ p {
 }
 .upgrade-controls .qty-control {
   width: 100%;
-  grid-template-columns: 36px minmax(44px, 1fr) 36px;
-  gap: 5px;
+  grid-template-columns: 44px minmax(44px, 1fr) 44px;
+  gap: 6px;
   margin: 0;
 }
 .upgrade-controls .qty-control button,
 .upgrade-controls .qty-control strong {
-  min-height: 36px;
+  min-height: 44px;
   border-radius: 12px;
   font-size: 0.92rem;
 }
@@ -2939,6 +2948,54 @@ body {
   border-radius: 0;
 }
 
+.custom-accordion-trigger.upgrade-accordion-trigger {
+  background:
+    linear-gradient(90deg, rgba(255, 209, 102, 0.14), rgba(57, 255, 136, 0.045));
+}
+.custom-accordion-trigger.upgrade-accordion-trigger strong {
+  color: var(--amber);
+  text-shadow: 0 0 18px rgba(255, 209, 102, 0.42);
+}
+.custom-accordion-trigger.upgrade-accordion-trigger b {
+  border-color: rgba(255, 209, 102, 0.48);
+  color: var(--amber);
+  box-shadow: 0 0 18px rgba(255, 209, 102, 0.16);
+}
+.upgrade-panel {
+  gap: 12px;
+}
+.upgrade-copy-block {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid rgba(255, 209, 102, 0.18);
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.18);
+  padding: 10px;
+}
+.workbench-panel .upgrade-hint {
+  color: #fff4cf;
+}
+.upgrade-money {
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid rgba(234, 255, 240, 0.16);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.24);
+  color: var(--muted);
+  padding: 0.5rem 0.72rem;
+  font-size: 0.82rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.upgrade-money.active {
+  border-color: rgba(255, 209, 102, 0.62);
+  background: rgba(255, 209, 102, 0.16);
+  color: var(--amber);
+  box-shadow: 0 0 22px rgba(255, 209, 102, 0.16);
+}
+
 .custom-accordion-panel {
   display: grid;
   gap: 10px;
@@ -3363,9 +3420,10 @@ body {
   color: #eafff0;
 }
 .change-pill.extra {
-  border-color: rgba(255, 209, 102, 0.42);
-  background: rgba(255, 209, 102, 0.12);
+  border-color: rgba(255, 209, 102, 0.68);
+  background: linear-gradient(180deg, rgba(255, 209, 102, 0.22), rgba(255, 209, 102, 0.1));
   color: #fff4cf;
+  box-shadow: 0 0 18px rgba(255, 209, 102, 0.14);
 }
 .change-note {
   display: block;
