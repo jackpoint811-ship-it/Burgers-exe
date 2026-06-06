@@ -122,7 +122,7 @@ export function CatalogAdminPanel() {
     return (menu?.promos ?? []).filter((promo) => !q || [promo.id, promo.title, promo.description, promo.badge, promo.promoLabel].join(' ').toLowerCase().includes(q));
   }, [menu, promoQuery]);
 
-  const sourceLabel = menu?.source === 'd1' ? 'Catálogo live' : menu?.source === 'fallback' ? 'Fallback local' : 'Catálogo local';
+  const sourceLabel = menu?.source === 'd1' ? 'Listo para editar' : menu?.source === 'fallback' ? 'Vista local' : 'Vista local';
   const canEdit = Boolean(menu?.source === 'd1');
   const imagePreviewUrl = getAssetUrl(form?.imageUrl, form?.imageKey);
   const promoImagePreviewUrl = getAssetUrl(promoForm?.imageUrl, promoForm?.imageKey);
@@ -207,7 +207,7 @@ export function CatalogAdminPanel() {
   const onUploadImage = async () => {
     if (!editing || !form) return;
 
-    if (menu?.source !== 'd1') { setImageError('El upload solo está disponible con source d1'); return; }
+    if (menu?.source !== 'd1') { setImageError('La carga de imágenes requiere catálogo editable'); return; }
     const fileError = validateSelectedFile(selectedFile);
     if (fileError || !selectedFile) { setImageError(fileError); return; }
 
@@ -234,7 +234,7 @@ export function CatalogAdminPanel() {
   const onPromoUploadImage = async () => {
     if (!editingPromo || !promoForm) return;
 
-    if (menu?.source !== 'd1') { setPromoImageError('El upload solo está disponible con source d1'); return; }
+    if (menu?.source !== 'd1') { setPromoImageError('La carga de imágenes requiere catálogo editable'); return; }
     const fileError = validateSelectedFile(selectedPromoFile);
     if (fileError || !selectedPromoFile) { setPromoImageError(fileError); return; }
 
@@ -261,7 +261,7 @@ export function CatalogAdminPanel() {
   const onRemoveImage = async () => {
     if (!editing || !form) return;
 
-    if (menu?.source !== 'd1') { setImageError('La eliminación de imagen solo está disponible con source d1'); return; }
+    if (menu?.source !== 'd1') { setImageError('La eliminación de imágenes requiere catálogo editable'); return; }
 
     setRemovingImage(true);
     setImageError(null);
@@ -284,7 +284,7 @@ export function CatalogAdminPanel() {
   const onPromoRemoveImage = async () => {
     if (!editingPromo || !promoForm) return;
 
-    if (menu?.source !== 'd1') { setPromoImageError('La eliminación de imagen solo está disponible con source d1'); return; }
+    if (menu?.source !== 'd1') { setPromoImageError('La eliminación de imágenes requiere catálogo editable'); return; }
 
     setPromoRemovingImage(true);
     setPromoImageError(null);
@@ -361,7 +361,7 @@ export function CatalogAdminPanel() {
   const onPromoSave = async () => {
     if (!editingPromo || !promoForm || promoValidationError) return;
 
-    if (menu?.source !== 'd1') { setPromoSaveError('La edición solo está disponible con source d1'); return; }
+    if (menu?.source !== 'd1') { setPromoSaveError('La edición requiere catálogo editable'); return; }
 
     setPromoSaving(true);
     setPromoSaveError(null);
@@ -388,10 +388,10 @@ export function CatalogAdminPanel() {
   return <section className='space-y-2'>
     <Card className='p-3'>
       <div className='flex flex-wrap items-center justify-between gap-2'>
-        <div><h3 className='font-bold'>Catálogo V2</h3><p className='muted'>Source: {sourceLabel}</p></div>
-        {menu?.source !== 'd1' ? <p className='text-xs text-amber-300'>Edición deshabilitada hasta conectar D1.</p> : null}
+        <div><h3 className='font-bold'>Catálogo</h3><p className='muted'>Estado: {sourceLabel}</p></div>
+        {menu?.source !== 'd1' ? <p className='text-xs text-amber-300'>Edición deshabilitada por el momento.</p> : null}
       </div>
-      <div className='mt-2 flex flex-wrap gap-2'><span className='chip'>Sesión admin activa</span><span className='chip'>Catálogo D1</span></div>
+      <div className='mt-2 flex flex-wrap gap-2'><span className='chip'>Sesión activa</span><span className='chip'>Catálogo</span></div>
     </Card>
 
     <div className='flex gap-2 overflow-x-auto pb-1'>

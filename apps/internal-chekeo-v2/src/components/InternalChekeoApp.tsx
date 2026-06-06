@@ -359,7 +359,11 @@ const getKitchenLineKey = (
 
 const getEventReason = (event: OrderV2Event): string | undefined => {
   const reason = event.detail?.reason;
-  return typeof reason === "string" && reason.trim() ? reason : undefined;
+  if (typeof reason !== "string" || !reason.trim()) return undefined;
+  const trimmedReason = reason.trim();
+  return /^Internal V2/i.test(trimmedReason)
+    ? "Actualizado desde Chekeo"
+    : trimmedReason;
 };
 
 const formatEventType = (type: string) =>
@@ -541,10 +545,10 @@ const OrdersExportControls = ({
       <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="text-xs font-bold text-zinc-100">
-            Export CSV operativo
+            Exportar reporte
           </p>
           <p className="text-[11px] text-zinc-400">
-            Descarga órdenes V2 desde D1 para reporting manual.
+            Descarga pedidos filtrados para revisión administrativa.
           </p>
         </div>
         {!sessionActive ? (
@@ -677,9 +681,9 @@ const SourcePanel = ({
     <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
       <div>
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-200">
-          Sesión admin activa
+          Sesión activa
         </p>
-        <p className="text-[11px] text-zinc-400">Órdenes operativas</p>
+        <p className="text-[11px] text-zinc-400">Órdenes</p>
       </div>
       <div className="flex flex-col gap-2 md:flex-row">
         {runtime.lastUpdated ? (
@@ -697,8 +701,8 @@ const SourcePanel = ({
       </div>
     </div>
     <div className="mt-3 flex flex-wrap items-center gap-2">
-      <span className="chip">Sesión admin activa</span>
-      <span className="chip">Órdenes operativas</span>
+      <span className="chip">Sesión activa</span>
+      <span className="chip">Órdenes</span>
     </div>
     <OrdersExportControls
       sessionActive={runtime.sessionActive}
@@ -732,7 +736,11 @@ const InternalLogin = ({
     event.preventDefault();
     const trimmed = pin.trim();
     if (!trimmed) {
-      setError("Escribe tu PIN / contraseña.");
+      setError("Escribe tu PIN de 4 dígitos.");
+      return;
+    }
+    if (!/^\d{4}$/.test(trimmed)) {
+      setError("El PIN debe tener 4 dígitos.");
       return;
     }
     setLoading(true);
@@ -765,24 +773,31 @@ const InternalLogin = ({
         </div>
         <form className="space-y-4" onSubmit={(event) => void submit(event)}>
           <label className="block text-sm font-bold text-zinc-100" htmlFor="pin">
-            PIN / contraseña
+            PIN de acceso
             <input
               id="pin"
               type="password"
               className="input mt-2 min-h-12 text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"
-              placeholder="••••••"
+              placeholder="••••"
               value={pin}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={4}
+              pattern="[0-9]{4}"
+              aria-describedby={error ? "pin-error" : undefined}
               onChange={(event) => {
-                setPin(event.target.value);
+                setPin(event.target.value.replace(/\D/g, "").slice(0, 4));
                 setError(null);
               }}
-              autoComplete="current-password"
               autoFocus
               disabled={loading || checkingSession}
             />
           </label>
           {error ? (
-            <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">
+            <p
+              id="pin-error"
+              className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100"
+            >
               {error}
             </p>
           ) : null}
@@ -809,10 +824,10 @@ const OperatorHeader = ({
   <header className="card header-compact">
     <div>
       <h1 className="text-sm font-bold md:text-base">
-        Burgers.exe Operator Console
+        Chekeo Burgers.exe
       </h1>
       <p className="text-[11px] text-zinc-400">
-        Activos {active} · {source === "d1" ? "Backend V2" : "Modo offline"} ·{" "}
+        Activos {active} · {source === "d1" ? "Live" : "Vista local"} ·{" "}
         {new Date().toLocaleTimeString()}
       </p>
     </div>
@@ -866,7 +881,7 @@ const DashboardHome = ({
         <h3 className="font-bold">Estado del turno</h3>
         <p className="muted">
           {source === "d1"
-            ? "Órdenes operativas"
+            ? "Órdenes"
             : "Vista operativa local"}
         </p>
       </Card>
@@ -1131,7 +1146,7 @@ const CancellationReasonDialog = ({
           </p>
           {runtime.source !== "d1" ? (
             <p className="mt-1 rounded bg-amber-500/10 px-2 py-1 text-amber-100">
-              Fallback local: la cancelación se simula solo en UI.
+              Vista local: la cancelación se refleja solo en pantalla.
             </p>
           ) : null}
         </div>
@@ -1276,7 +1291,7 @@ const OrdersBoard = ({
     {runtime.source === "d1" && orders.length === 0 ? (
       <EmptyOrdersState
         title="No hay pedidos activos."
-        description="Cuando Public V2 reciba un pedido nuevo, aparecerá aquí."
+        description="Cuando entre un pedido nuevo, aparecerá aquí."
       />
     ) : null}
     <div className="grid gap-2">
@@ -1291,7 +1306,7 @@ const OrdersBoard = ({
             <div className="mt-2 grid gap-1 text-xs text-zinc-300 md:grid-cols-2">
               <span>Modo entrega: {o.channel}</span>
               <span>Método de pago: {o.paymentMethod}</span>
-              <span>Payment status: {o.paymentState}</span>
+              <span>Estado de pago: {o.paymentState}</span>
               <span>Total: {formatCurrency(o.total)}</span>
               <span>Origen: {o.source === "d1" ? "Operativo" : "Local"}</span>
               <span>Creado: {o.createdAt}</span>
@@ -1830,13 +1845,13 @@ const OperationalClosePanel = ({ sessionActive }: { sessionActive: boolean }) =>
         topLimit: 10,
       });
       setSummary(data);
-      setNotice("Cierre actualizado desde D1");
+      setNotice("Cierre actualizado");
     } catch (closeError) {
       setSummary(null);
       setError(
         closeError instanceof Error
           ? closeError.message
-          : "No se pudo cargar cierre desde Backend V2",
+          : "No se pudo cargar el cierre",
       );
     } finally {
       setLoading(false);
@@ -1968,7 +1983,7 @@ const OperationalClosePanel = ({ sessionActive }: { sessionActive: boolean }) =>
 
       {loading ? (
         <Card className="p-3 text-sm text-zinc-300">
-          Cargando cierre operativo desde D1…
+          Cargando cierre operativo…
         </Card>
       ) : null}
       {!loading && summary && !hasData ? <EmptyCloseState /> : null}
@@ -2021,11 +2036,11 @@ const OperationalClosePanel = ({ sessionActive }: { sessionActive: boolean }) =>
               <h3 className="mb-2 font-bold">Tiempos promedio</h3>
               <div className="grid gap-2 sm:grid-cols-2">
                 <CloseMetricCard
-                  label="new → ready"
+                  label="Nuevo → listo"
                   value={formatDuration(summary.durations.newToReadyAvgSeconds)}
                 />
                 <CloseMetricCard
-                  label="new → delivered"
+                  label="Nuevo → entregado"
                   value={formatDuration(
                     summary.durations.newToDeliveredAvgSeconds,
                   )}
@@ -2052,7 +2067,7 @@ const OperationalClosePanel = ({ sessionActive }: { sessionActive: boolean }) =>
               </div>
             </Card>
             <Card className="p-3">
-              <h3 className="mb-2 font-bold">Pickup vs delivery</h3>
+              <h3 className="mb-2 font-bold">Para recoger vs entrega</h3>
               <div className="space-y-2">
                 {summary.byOrderMode.length ? (
                   summary.byOrderMode.map((entry) => (
@@ -2073,7 +2088,7 @@ const OperationalClosePanel = ({ sessionActive }: { sessionActive: boolean }) =>
           </section>
 
           <Card className="p-3">
-            <h3 className="mb-2 font-bold">Top items</h3>
+            <h3 className="mb-2 font-bold">Productos destacados</h3>
             <div className="space-y-2">
               {summary.topItems.length ? (
                 summary.topItems.map((item) => (
@@ -2094,7 +2109,7 @@ const OperationalClosePanel = ({ sessionActive }: { sessionActive: boolean }) =>
                 ))
               ) : (
                 <p className="text-sm text-zinc-400">
-                  Sin items no cancelados en el rango.
+                  Sin productos no cancelados en el rango.
                 </p>
               )}
             </div>
@@ -2226,13 +2241,13 @@ const PaymentNotesPanel = ({
         order.id,
         paymentStatus,
         notes,
-        `Pago operativo manual: ${paymentStatus}`,
+        `Control de pagos: ${paymentStatus}`,
       );
       setInlineNotice((current) => ({
         ...current,
         [order.id]: {
           tone: "success",
-          message: `${order.folio}: payment status declarado por operador.`,
+          message: `${order.folio}: estado de pago actualizado.`,
         },
       }));
     } catch (paymentError) {
@@ -2256,11 +2271,11 @@ const PaymentNotesPanel = ({
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-200">
-              Pago operativo manual
+              Control de pagos
             </p>
-            <h3 className="text-lg font-black">Pagos y notas V2</h3>
+            <h3 className="text-lg font-black">Pagos y notas</h3>
             <p className="text-sm text-zinc-400">
-              No se realiza ningún cobro en línea. Payment status declarado por
+              No se realiza ningún cobro en línea. Estado de pago declarado por
               operador.
             </p>
           </div>
@@ -2285,14 +2300,14 @@ const PaymentNotesPanel = ({
         </div>
         {!runtime.sessionActive ? (
           <p className="mt-3 rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-100">
-            Inicia sesión para declarar pagos en D1.
+            Inicia sesión para declarar pagos.
           </p>
         ) : null}
       </Card>
       {runtime.source === "d1" && paymentOrders.length === 0 ? (
         <EmptyOrdersState
           title="Sin órdenes para este filtro."
-          description="Usa Recargar órdenes o cambia el filtro de payment status."
+          description="Usa Recargar órdenes o cambia el filtro de estado de pago."
         />
       ) : null}
       <div className="grid gap-2">
@@ -2326,9 +2341,9 @@ const PaymentNotesPanel = ({
                 <span>
                   Total: <strong>{formatCurrency(order.total)}</strong>
                 </span>
-                <span>paymentMethod: {order.paymentMethod}</span>
-                <span>paymentStatus: {order.paymentState}</span>
-                <span>order status: {statusLabel[order.status]}</span>
+                <span>Método de pago: {order.paymentMethod}</span>
+                <span>Estado de pago: {order.paymentState}</span>
+                <span>Estado del pedido: {statusLabel[order.status]}</span>
               </div>
               <OrderItems order={order} />
               <label className="mt-2 block text-[11px] text-zinc-400">
@@ -2414,7 +2429,7 @@ const HistoryPanel = ({
       <SourcePanel runtime={runtime} includeTerminal />
       <Card className="p-3">
         <h3 className="mb-2">
-          Historial {runtime.source === "d1" ? "Backend V2" : "local"}
+          Historial {runtime.source === "d1" ? "Live" : "local"}
         </h3>
         {runtime.source === "d1" && terminalOrders.length === 0 ? (
           <p className="text-sm text-zinc-400">
@@ -2810,13 +2825,13 @@ export function InternalChekeoApp() {
         setLastUpdated(formatOrderRefreshTime(reason));
         registerLoadedOrders(mappedOrders);
         if (reason !== "auto") {
-          setOrdersNotice("Órdenes live actualizadas desde Backend V2");
+          setOrdersNotice("Órdenes actualizadas");
         }
       } catch (error) {
         const message =
           error instanceof Error
             ? error.message
-            : "No se pudieron cargar órdenes live";
+            : "No se pudieron cargar órdenes";
         if (/UNAUTHORIZED|401/i.test(message)) {
           expireSession();
           return;
@@ -3006,7 +3021,7 @@ export function InternalChekeoApp() {
       const mapped = mapOrderV2ToInternalOrder(updated);
       setOrders((p) => p.map((o) => (o.id === id ? mapped : o)));
       setSelected((current) => (current?.id === id ? mapped : current));
-      setOrdersNotice(`${mapped.folio}: payment status ${mapped.paymentState}`);
+      setOrdersNotice(`${mapped.folio}: estado de pago ${mapped.paymentState}`);
     } catch (error) {
       const message =
         error instanceof Error

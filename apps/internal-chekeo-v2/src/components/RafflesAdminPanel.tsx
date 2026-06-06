@@ -571,7 +571,7 @@ export const RafflesAdminPanel = () => {
         <Card className="p-3">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-emerald-200">Sorteos V2</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-emerald-200">Sorteos</p>
               <h2 className="text-xl font-black text-zinc-50">Campañas mensuales</h2>
               <p className="mt-1 text-xs text-zinc-400">Tickets por burger y referidos.</p>
             </div>
@@ -631,7 +631,7 @@ export const RafflesAdminPanel = () => {
         <Card className="p-3">
           <div className="mb-3">
             <h3 className="font-black text-zinc-100">Imágenes del sorteo</h3>
-            <p className="mt-1 text-xs text-zinc-400">Uploads protegidos con sesión interna. Se guardan en R2 y se publican vía assets V2.</p>
+            <p className="mt-1 text-xs text-zinc-400">Imágenes protegidas con sesión interna para campañas activas.</p>
           </div>
           <div className="grid gap-3">
             {renderImageBlock({ kind: "banner", title: "Banner horizontal", recommendation: "1600x900 px", preview: currentBannerPreview, currentKey: form.bannerImageKey, state: bannerUpload })}
