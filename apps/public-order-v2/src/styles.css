@@ -4135,3 +4135,171 @@ html {
     grid-template-columns: minmax(46px, 0.8fr) minmax(66px, 1fr) minmax(46px, 0.8fr);
   }
 }
+
+/* PR 1 — Public UX polish: safer mobile hero, product intel dialog, subdued bonus zone. */
+.hero-copy-block {
+  min-height: clamp(190px, 54vw, 292px);
+  overflow: visible;
+  align-content: center;
+}
+
+.hero-brand-lockup {
+  max-width: 100%;
+  overflow: visible;
+}
+
+.hero-copy-block .hero-brand-title {
+  max-width: 100%;
+  overflow: visible;
+  padding: 0.08em 0.16em 0.1em 0;
+  font-size: clamp(2rem, 9.6vw, 7.2rem);
+  line-height: 1;
+  letter-spacing: -0.035em;
+  white-space: nowrap;
+}
+
+.hero-copy-block .hero-brand-title::before {
+  inset: 0.08em 0.16em 0.1em 0;
+}
+
+.hero-brand-cursor {
+  flex: 0 0 auto;
+  margin-left: 0.055em;
+}
+
+.hero-copy-block > p {
+  max-width: 31rem;
+  text-wrap: balance;
+}
+
+.info-dialog-sales-copy {
+  margin: 0;
+  color: var(--muted-strong);
+  font-size: clamp(0.96rem, 3.6vw, 1.08rem);
+  line-height: 1.45;
+}
+
+.info-dialog-ingredients {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.info-dialog-ingredients li {
+  border: 1px solid rgba(57, 255, 136, 0.22);
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(57, 255, 136, 0.12), rgba(255, 209, 102, 0.07));
+  color: #edfff5;
+  padding: 0.34rem 0.58rem;
+  font-size: 0.78rem;
+  font-weight: 850;
+  line-height: 1.15;
+}
+
+.info-dialog-meta .availability-pill {
+  min-height: 38px;
+  padding: 0.54rem 0.76rem;
+}
+
+.menu-bonus-anchor {
+  width: clamp(54px, 15vw, 66px);
+  min-width: 54px;
+  min-height: 54px;
+  border-color: rgba(255, 209, 102, 0.48);
+  opacity: 0.88;
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.48),
+    0 0 0 1px rgba(57, 255, 136, 0.16),
+    0 0 18px rgba(255, 60, 172, 0.16);
+}
+
+.menu-bonus-anchor-emoji {
+  font-size: clamp(1.25rem, 5.5vw, 1.75rem);
+}
+
+.menu-bonus-anchor-text {
+  font-size: 0.58rem;
+}
+
+.menu-bonus-zone {
+  gap: 12px;
+  margin-top: 24px;
+  border-color: rgba(255, 209, 102, 0.18);
+  background: rgba(255, 209, 102, 0.032);
+  padding: 12px;
+}
+
+.menu-bonus-zone .raffle-banner,
+.menu-bonus-zone .promo-rail {
+  opacity: 0.86;
+}
+
+@media (max-width: 430px) {
+  .hero-copy-block {
+    min-height: clamp(188px, 62vw, 246px);
+    gap: 8px;
+  }
+
+  .hero-copy-block .hero-brand-title,
+  .hero-copy-block h1 {
+    font-size: clamp(2rem, 9.2vw, 2.72rem);
+    line-height: 1.02;
+  }
+
+  .hero-brand-status {
+    font-size: clamp(0.68rem, 3.1vw, 0.78rem) !important;
+    letter-spacing: 0.065em;
+  }
+
+  .hero-copy-block > p {
+    font-size: clamp(0.92rem, 3.9vw, 1rem);
+  }
+
+  .kiosk-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .menu-cluster .kiosk-card {
+    grid-template-rows: auto;
+  }
+
+  .menu-cluster .kiosk-visual {
+    aspect-ratio: 16 / 10;
+  }
+
+  .info-dialog > div {
+    gap: 10px;
+    padding: 16px;
+  }
+
+  .info-dialog-ingredients li {
+    font-size: 0.74rem;
+    padding: 0.3rem 0.5rem;
+  }
+
+  .menu-bonus-anchor {
+    right: max(10px, env(safe-area-inset-right));
+    width: 54px;
+    min-height: 54px;
+    border-radius: 15px;
+  }
+
+  .menu-bonus-zone {
+    margin-top: 20px;
+    padding: 10px;
+  }
+}
+
+@media (max-width: 340px) {
+  .hero-copy-block .hero-brand-title,
+  .hero-copy-block h1 {
+    font-size: clamp(1.9rem, 8.8vw, 2.1rem);
+  }
+
+  .hero-copy-block .quest-button {
+    min-height: 48px;
+  }
+}
