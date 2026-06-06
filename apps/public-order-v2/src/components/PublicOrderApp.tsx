@@ -221,6 +221,12 @@ const getKnownProductIngredients = (item: MenuItem): readonly string[] | null =>
   if (/(^|-)BBQ($|-)/.test(skuKey) || /^(?:BURGER-|HAMBURGUESA-)?BBQ$/.test(nameKey)) return BBQ_PRODUCT_INGREDIENTS;
   return null;
 };
+const getProductSalesCopy = (item: MenuItem): string => {
+  const description = item.description.trim();
+  if (!description) return "Drop especial del sistema, listo para entrar a tu ticket.";
+  return description.length > 118 ? `${description.slice(0, 115).trim()}…` : description;
+};
+
 const getProductIngredientBullets = (item: MenuItem): string[] => {
   const knownIngredients = getKnownProductIngredients(item);
   if (knownIngredients) return [...knownIngredients].slice(0, 8);
@@ -497,7 +503,7 @@ const MenuSection = ({ menuData, raffleCampaign, onExplore, onStart, reduce }: {
           </h1>
           <p className="hero-brand-status">&gt; order system online</p>
         </div>
-        <p>Elige tu burger, personalízala y confirma tu pedido.</p>
+        <p>Carga tu burger, desbloquea upgrades y manda tu orden al sistema.</p>
         <QuestButton onClick={onStart}>ARMAR MI PEDIDO</QuestButton>
       </div>
       {MENU_GROUPS.map(({ key, label }) => {
@@ -505,7 +511,7 @@ const MenuSection = ({ menuData, raffleCampaign, onExplore, onStart, reduce }: {
         return (
           <section className="menu-cluster" key={key}>
             <h2>{label}</h2>
-            {list.length ? <div className="kiosk-grid">{list.map((item) => <ProductCard key={item.sku} item={item} mode="info" onClick={onExplore} reduce={reduce} />)}</div> : <EmptyState title={key === "combos" ? "Combos disponibles pronto." : `${label} disponibles pronto.`} description="Vuelve a revisar el menú más tarde." />}
+            {list.length ? <div className="kiosk-grid">{list.map((item) => <ProductCard key={item.sku} item={item} mode="info" onClick={onExplore} reduce={reduce} />)}</div> : <EmptyState title={key === "combos" ? "Combos en carga… el sistema está preparando el siguiente drop." : key === "guarniciones" ? "Side quests disponibles pronto." : `${label} en carga…`} description="Vuelve a revisar el menú para desbloquear el siguiente drop." />}
           </section>
         );
       })}
@@ -527,6 +533,7 @@ const MenuInfoDialog = ({ item, onClose, onChooseInFlow }: { item: MenuItem | nu
   const isCombo = kind === "combo";
   const canEnterOrderFlow = Boolean(item?.isAvailable && (kind === "burger" || kind === "garnish"));
   const orderFlowLabel = kind === "burger" ? "Elegir en Burgers" : "Elegir en Guarniciones";
+  const ingredientBullets = item ? getProductIngredientBullets(item) : [];
   useEffect(() => {
     if (!item) return;
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -541,10 +548,18 @@ const MenuInfoDialog = ({ item, onClose, onChooseInFlow }: { item: MenuItem | nu
       <section aria-labelledby={titleId} aria-modal="true" className="info-dialog" role="dialog">
         {src ? <img src={src} alt={item.name} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : null}
         <div>
-          <span className="eyebrow">Menu</span>
+          <span className="eyebrow">Intel de producto</span>
           <h2 id={titleId}>{item.name}</h2>
-          <p>{item.description}</p>
-          <strong>{formatCurrency(item.price)}</strong>
+          <p className="info-dialog-sales-copy">{getProductSalesCopy(item)}</p>
+          {ingredientBullets.length ? (
+            <ul className="info-dialog-ingredients" aria-label={`Ingredientes de ${item.name}`}>
+              {ingredientBullets.map((ingredient) => <li key={ingredient}>{ingredient}</li>)}
+            </ul>
+          ) : null}
+          <div className="info-dialog-meta">
+            <strong>{formatCurrency(item.price)}</strong>
+            <span className={item.isAvailable ? "availability-pill" : "availability-pill off"}>{item.isAvailable ? "Disponible" : "Agotado"}</span>
+          </div>
           <div className="info-dialog-actions" aria-label={`Acciones para ${item.name}`}>
             {isCombo ? <button type="button" className="quest-button combo-coming-soon-cta" aria-label={`Combos próximamente: ${item.name}`} disabled>Combos próximamente</button> : null}
             {canEnterOrderFlow ? <button type="button" className="quest-button" aria-label={`${orderFlowLabel}: ${item.name}`} onClick={() => { onClose(); onChooseInFlow(item); }}>{orderFlowLabel}</button> : null}
@@ -559,7 +574,7 @@ const MenuInfoDialog = ({ item, onClose, onChooseInFlow }: { item: MenuItem | nu
 const MainQuest = ({ onBack, onBurgers, onSideQuest }: { onBack: () => void; onBurgers: () => void; onSideQuest: () => void }) => {
   const routes = [
     { key: "burgers", title: "Burgers", description: "Elige varios tipos y cantidades antes de personalizar.", action: onBurgers, status: "active" },
-    { key: "combos", title: "Combos", description: "Combos estarán disponibles pronto. Esta ruta queda visible como teaser para una próxima quest.", status: "coming-soon" },
+    { key: "combos", title: "Combos", description: "Combos en carga… el sistema está preparando el siguiente drop.", status: "coming-soon" },
     { key: "side", title: "Guarniciones", description: "Ve directo a Side Quest si solo quieres papas o extras.", action: onSideQuest, status: "active" },
   ] as const;
   return (
@@ -596,7 +611,7 @@ const CombosUnavailable = ({ onBack }: { onBack: () => void }) => (
   <section className="quest-panel combos-empty-panel">
     <QuestButton className="back-button" onClick={onBack}>← Volver a Main</QuestButton>
     <span className="eyebrow">Combos</span>
-    <EmptyState title="Combos no disponibles por el momento." description="Esta ruta queda lista para activar combos en un PR futuro." />
+    <EmptyState title="Combos en carga…" description="El sistema está preparando el siguiente drop sin bloquear tu burger actual." />
   </section>
 );
 
