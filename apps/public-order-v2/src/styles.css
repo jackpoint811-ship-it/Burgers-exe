@@ -3359,6 +3359,12 @@ body {
 .customization-actions.review-actions {
   margin-top: 4px;
 }
+.customization-editor-actions .editor-save-action {
+  box-shadow: 0 0 32px rgba(57, 255, 136, 0.32), 0 0 0 1px rgba(234, 255, 240, 0.12);
+}
+.customization-editor-header .editor-close-action {
+  padding-inline: 0.9rem;
+}
 .danger-action {
   border-color: rgba(255, 90, 54, 0.42) !important;
   color: #ffd4c9 !important;
@@ -3382,6 +3388,12 @@ body {
   }
   .customization-actions .danger-action {
     grid-column: 1 / -1;
+  }
+  .customization-editor-actions {
+    grid-template-columns: minmax(0, 1.45fr) minmax(0, 0.95fr);
+  }
+  .customization-editor-actions .danger-action {
+    grid-column: auto;
   }
 }
 @media (max-width: 340px) {
