@@ -40,13 +40,18 @@ export const priceToCents = (price: unknown): number => {
   return Number.isFinite(value) ? Math.round(value * 100) : 0;
 };
 
-const shortUuid = () => crypto.randomUUID().replace(/-/g, '').slice(0, 12);
+const randomFolioSuffix = () => {
+  const bytes = new Uint8Array(2);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => (byte % 36).toString(36).toUpperCase()).join('');
+};
 
 export const generateId = (prefix: 'ord' | 'oi' | 'evt' | string) => `${prefix}_${crypto.randomUUID()}`;
 
 export const generateFolio = (now = new Date()) => {
-  const ymd = now.toISOString().slice(0, 10).replace(/-/g, '');
-  return `BX-${ymd}-${shortUuid().slice(0, 6).toUpperCase()}`;
+  const secondsSinceMidnight = now.getUTCHours() * 3600 + now.getUTCMinutes() * 60 + now.getUTCSeconds();
+  const timeCode = secondsSinceMidnight.toString(36).padStart(4, '0').toUpperCase();
+  return `BX-${timeCode}${randomFolioSuffix()}`;
 };
 
 export const normalizePhone = (value: unknown) => String(value ?? '').replace(/\D/g, '');

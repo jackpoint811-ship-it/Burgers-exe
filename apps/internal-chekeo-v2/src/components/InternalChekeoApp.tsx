@@ -41,6 +41,13 @@ import {
   normalizeWhatsappPhone,
   type WhatsappOrderMessageType,
 } from "../lib/whatsapp";
+import {
+  buildOrderTicketSummaryText,
+  canShareOrderTicketImage,
+  downloadOrderTicketImage,
+  generateOrderTicketImage,
+  shareOrderTicketImage,
+} from "../lib/order-ticket-image";
 import { CatalogAdminPanel } from "./CatalogAdminPanel";
 import { RafflesAdminPanel } from "./RafflesAdminPanel";
 
@@ -971,33 +978,100 @@ const WhatsappOrderActions = ({
   showHint?: boolean;
 }) => {
   const [notice, setNotice] = useState<WhatsappNotice>(null);
+  const [ticketBlob, setTicketBlob] = useState<Blob | null>(null);
+  const [generatingTicket, setGeneratingTicket] = useState(false);
   const phone = normalizeWhatsappPhone(order.customerPhone ?? "");
   const message = buildWhatsappOrderMessage(order, template);
   const whatsappUrl = phone ? buildWhatsappUrl(phone, message) : "";
+  const canAttemptFileShare =
+    typeof navigator !== "undefined" &&
+    typeof navigator.share === "function" &&
+    typeof navigator.canShare === "function";
 
   useEffect(() => {
     if (!notice) return;
-    const timeout = window.setTimeout(() => setNotice(null), 2500);
+    const timeout = window.setTimeout(() => setNotice(null), 3000);
     return () => window.clearTimeout(timeout);
   }, [notice]);
+
+  useEffect(() => {
+    setTicketBlob(null);
+  }, [
+    order.id,
+    order.folio,
+    order.paymentMethod,
+    order.paymentState,
+    order.total,
+    order.items,
+  ]);
+
+  const getTicketBlob = async () => {
+    if (ticketBlob) return ticketBlob;
+    setGeneratingTicket(true);
+    try {
+      const nextBlob = await generateOrderTicketImage({
+        ...order,
+        orderStatus: statusLabel[order.status],
+      });
+      setTicketBlob(nextBlob);
+      return nextBlob;
+    } finally {
+      setGeneratingTicket(false);
+    }
+  };
 
   const openWhatsapp = () => {
     if (!whatsappUrl) return;
     window.open(whatsappUrl, "_blank", "noopener,noreferrer");
   };
 
-  const copyMessage = async () => {
+  const downloadTicket = async () => {
+    setNotice(null);
+    try {
+      const blob = await getTicketBlob();
+      downloadOrderTicketImage(blob, order.folio);
+      setNotice({ tone: "success", message: "Ticket PNG descargado" });
+    } catch {
+      setNotice({
+        tone: "error",
+        message: "No se pudo generar el ticket PNG en este navegador.",
+      });
+    }
+  };
+
+  const copySummary = async () => {
     setNotice(null);
     try {
       if (!navigator.clipboard?.writeText)
         throw new Error("Clipboard no disponible en este navegador");
-      await navigator.clipboard.writeText(message);
-      setNotice({ tone: "success", message: "Mensaje copiado" });
+      await navigator.clipboard.writeText(buildOrderTicketSummaryText(order));
+      setNotice({ tone: "success", message: "Resumen copiado" });
     } catch {
       setNotice({
         tone: "error",
         message:
-          "No se pudo copiar el mensaje. Copia manualmente desde un navegador seguro.",
+          "No se pudo copiar el resumen. Copia manualmente desde un navegador seguro.",
+      });
+    }
+  };
+
+  const shareTicket = async () => {
+    setNotice(null);
+    try {
+      const blob = await getTicketBlob();
+      if (!canShareOrderTicketImage(blob, order.folio)) {
+        setNotice({
+          tone: "error",
+          message: "Descarga la imagen y adjúntala manualmente en WhatsApp.",
+        });
+        return;
+      }
+      await shareOrderTicketImage(blob, order);
+      setNotice({ tone: "success", message: "Imagen lista para compartir" });
+    } catch {
+      setNotice({
+        tone: "error",
+        message: "Descarga la imagen y adjúntala manualmente en WhatsApp.",
       });
     }
   };
@@ -1006,7 +1080,8 @@ const WhatsappOrderActions = ({
     <div className="mt-2 rounded-lg border border-cyan-400/20 bg-cyan-400/5 p-2">
       {showHint ? (
         <p className="mb-2 text-[11px] text-cyan-100">
-          Acción manual: abre WhatsApp con mensaje prellenado.
+          Acción manual: abre WhatsApp con texto prellenado. WhatsApp vía
+          wa.me no adjunta el PNG automáticamente.
         </p>
       ) : null}
       {!phone ? (
@@ -1014,19 +1089,38 @@ const WhatsappOrderActions = ({
           Teléfono inválido para WhatsApp
         </p>
       ) : null}
-      <div className="grid grid-cols-2 gap-2">
+      {!canAttemptFileShare ? (
+        <p className="mb-2 rounded bg-zinc-800/70 px-2 py-1 text-[11px] text-zinc-300">
+          Descarga la imagen y adjúntala manualmente en WhatsApp.
+        </p>
+      ) : null}
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+        <Button
+          className="border border-amber-700 bg-amber-950/50 px-2 py-1.5 text-[11px] text-amber-100 disabled:opacity-40"
+          onClick={() => void downloadTicket()}
+          disabled={generatingTicket}
+        >
+          {generatingTicket ? "Generando…" : "Descargar ticket PNG"}
+        </Button>
+        <Button
+          className="border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-[11px]"
+          onClick={() => void copySummary()}
+        >
+          Copiar resumen
+        </Button>
         <Button
           className="border border-emerald-700 bg-emerald-950/50 px-2 py-1.5 text-[11px] text-emerald-100 disabled:opacity-40"
           onClick={openWhatsapp}
           disabled={!phone}
         >
-          WhatsApp
+          Abrir WhatsApp
         </Button>
         <Button
-          className="border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-[11px]"
-          onClick={() => void copyMessage()}
+          className="border border-cyan-700 bg-cyan-950/50 px-2 py-1.5 text-[11px] text-cyan-100 disabled:opacity-40"
+          onClick={() => void shareTicket()}
+          disabled={generatingTicket || !canAttemptFileShare}
         >
-          Copiar mensaje
+          Compartir imagen
         </Button>
       </div>
       {notice ? (
@@ -2346,6 +2440,7 @@ const PaymentNotesPanel = ({
                 <span>Estado del pedido: {statusLabel[order.status]}</span>
               </div>
               <OrderItems order={order} />
+              <WhatsappOrderActions order={order} template="received" showHint />
               <label className="mt-2 block text-[11px] text-zinc-400">
                 Notas operativas
                 <textarea
