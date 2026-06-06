@@ -1,7 +1,7 @@
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from "react";
 import type { CreateRaffleCampaignPayload, RaffleCampaignV2, RaffleParticipantSummary, RaffleReferralCodeV2, RaffleReferralStatus, RaffleReferralV2, RaffleSummaryResponse } from "@config/index";
 import { Button, Card, StatusPill } from "@ui/index";
-import { createRaffleCampaignV2, createRaffleReferralCodeV2, fetchRaffleCampaignsV2, fetchRaffleReferralCodesV2, fetchRaffleReferralsV2, fetchRaffleSummaryV2, deleteRaffleCampaignImageV2, updateRaffleCampaignV2, updateRaffleReferralCodeV2, updateRaffleReferralV2, uploadRaffleCampaignImageV2, type RaffleImageKind } from "../lib/raffles-v2-admin";
+import { createRaffleCampaignV2, createRaffleReferralCodeV2, deleteRaffleCampaignV2, fetchRaffleCampaignsV2, fetchRaffleReferralCodesV2, fetchRaffleReferralsV2, fetchRaffleSummaryV2, deleteRaffleCampaignImageV2, updateRaffleCampaignV2, updateRaffleReferralCodeV2, updateRaffleReferralV2, uploadRaffleCampaignImageV2, type RaffleImageKind } from "../lib/raffles-v2-admin";
 import { RAFFLE_SHARE_FALLBACK_CODE, buildRaffleShareText, buildWhatsAppUrl, downloadBlob, generateRaffleTicketImage, shareBlobIfSupported, type RaffleShareImageData } from "../lib/raffle-share-image";
 
 type RaffleSummary = NonNullable<RaffleSummaryResponse["data"]>;
@@ -486,6 +486,36 @@ export const RafflesAdminPanel = () => {
     }
   };
 
+  const deleteCampaign = async (campaign: RaffleCampaignV2) => {
+    const confirmed = window.confirm(
+      "Este sorteo dejará de mostrarse y no afectará tickets históricos.",
+    );
+    if (!confirmed) return;
+    setSaving(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await deleteRaffleCampaignV2(campaign.id);
+      const nextCampaigns = await fetchRaffleCampaignsV2();
+      setCampaigns(nextCampaigns);
+      const nextSelected = nextCampaigns.find((item) => item.isActive)?.id || nextCampaigns[0]?.id || "";
+      setSelectedCampaignId(nextSelected);
+      setForm(nextSelected ? toForm(nextCampaigns.find((item) => item.id === nextSelected) ?? nextCampaigns[0]) : emptyForm());
+      setSummary(await fetchRaffleSummaryV2({ campaignId: nextSelected || undefined, q: debouncedSearch }));
+      if (nextSelected) {
+        setReferralCodes(await fetchRaffleReferralCodesV2({ campaignId: nextSelected, q: codeSearch }));
+        setReferrals(await fetchRaffleReferralsV2({ campaignId: nextSelected, q: referralSearch, status: referralStatus }));
+      } else {
+        setReferralCodes([]);
+        setReferrals([]);
+      }
+      setNotice("Sorteo ocultado. Los tickets históricos siguen disponibles en registros internos.");
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "No se pudo ocultar el sorteo.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const createReferralCode = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -621,9 +651,10 @@ export const RafflesAdminPanel = () => {
             <label className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950/70 p-3 text-sm font-bold text-zinc-200"><input type="checkbox" checked={form.isActive} onChange={(event) => setForm((current) => ({ ...current, isActive: event.target.checked }))} /> Activar al guardar</label>
             {error ? <p className="rounded-lg bg-rose-500/10 px-3 py-2 text-sm text-rose-100">{error}</p> : null}
             {notice ? <p className="rounded-lg bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">{notice}</p> : null}
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-2 sm:grid-cols-3">
               <Button className="bg-emerald-400 px-4 py-3 font-black text-emerald-950 disabled:opacity-50" disabled={saving}>{saving ? "Guardando…" : form.id ? "Guardar cambios" : "Crear sorteo"}</Button>
               {form.id && selectedCampaign ? <Button type="button" className="border border-zinc-700 bg-zinc-900 px-4 py-3 font-black disabled:opacity-50" disabled={saving} onClick={() => void activate(selectedCampaign, !selectedCampaign.isActive)}>{selectedCampaign.isActive ? "Desactivar" : "Activar"}</Button> : null}
+              {form.id && selectedCampaign ? <Button type="button" className="border border-rose-500/40 bg-rose-500/10 px-4 py-3 font-black text-rose-100 disabled:opacity-50" disabled={saving} onClick={() => void deleteCampaign(selectedCampaign)}>Ocultar sorteo</Button> : null}
             </div>
           </form>
         </Card>

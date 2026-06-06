@@ -18,6 +18,7 @@ type OrderExportRow = {
   source: string;
   created_at: string;
   updated_at: string;
+  archived_at?: string | null;
 };
 
 type ItemExportRow = {
@@ -135,7 +136,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
   const limit = parseLimit(params.get('limit'));
   if (limit instanceof Response) return limit;
 
-  const conditions: string[] = [];
+  const conditions: string[] = ['archived_at IS NULL'];
   const bindings: Array<string | number> = [];
   if (status) {
     conditions.push('status = ?');

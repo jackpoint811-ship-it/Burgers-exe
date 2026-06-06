@@ -1,5 +1,6 @@
 import type {
   OrdersV2AdminResponse,
+  ArchiveOrderV2Response,
   OrdersV2SummaryResponse,
   OrderV2PaymentStatus,
   OrderV2Status,
@@ -166,6 +167,17 @@ export const updateOrderV2Payment = async (
   const envelope = await parseJsonEnvelope<UpdateOrderV2PaymentResponse>(res);
   if (!envelope.data?.order)
     throw new Error("Backend V2 no devolvió la orden actualizada");
+  return envelope.data.order;
+};
+
+export const archiveCancelledOrderV2 = async (orderId: string) => {
+  const res = await fetch(
+    `/api/orders-v2-admin/${encodeURIComponent(orderId)}/archive`,
+    buildSessionFetchInit({ method: "PATCH" }),
+  );
+  const envelope = await parseJsonEnvelope<ArchiveOrderV2Response>(res);
+  if (!envelope.data?.order)
+    throw new Error("Backend V2 no devolvió la orden ocultada");
   return envelope.data.order;
 };
 

@@ -13,6 +13,7 @@ type RaffleCampaignRow = {
   ticket_per_referral: number;
   created_at: string;
   updated_at: string;
+  deleted_at?: string | null;
 };
 
 type OrderTicketRow = {
@@ -26,6 +27,13 @@ type OrderTicketRow = {
 type ReferralTicketRow = {
   referrer_name: string;
   tickets_awarded: number;
+  created_at: string;
+  updated_at: string;
+};
+
+type InvitedTicketRow = {
+  referred_customer_name: string;
+  referred_order_folio: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -76,7 +84,7 @@ const campaignDateBounds = (campaign: RaffleCampaignRow) => ({
 const loadActiveCampaign = async (db: D1Database) => db.prepare(
   `SELECT id, title, starts_at, ends_at, is_active, ticket_per_burger, ticket_per_referral, created_at, updated_at
    FROM raffle_campaigns_v2
-   WHERE is_active = 1
+   WHERE is_active = 1 AND deleted_at IS NULL
    ORDER BY updated_at DESC, created_at DESC
    LIMIT 1`
 ).first<RaffleCampaignRow>();
@@ -171,6 +179,37 @@ const loadParticipant = async (db: D1Database, campaign: RaffleCampaignRow, phon
     if (activityAt && (!participant.lastActivityAt || activityAt > participant.lastActivityAt)) {
       participant.customerName = String(row.referrer_name || participant.customerName);
       participant.lastActivityAt = activityAt;
+      if (!participant.lastOrderAt || participant.lastOrderFolio === '—') participant.lastOrderAt = activityAt;
+    }
+  }
+
+  const invitedRows = await db.prepare(
+    `SELECT r.referred_customer_name, o.folio AS referred_order_folio, r.created_at, r.updated_at
+     FROM raffle_referrals_v2 r
+     LEFT JOIN orders_v2 o ON o.id = r.referred_order_id
+     WHERE r.campaign_id = ? AND r.referred_customer_phone = ? AND r.status IN ('pending', 'valid')
+     ORDER BY r.updated_at DESC, r.created_at DESC`
+  ).bind(campaign.id, phone).all<InvitedTicketRow>();
+
+  for (const row of invitedRows.results ?? []) {
+    const activityAt = String(row.updated_at || row.created_at || '');
+    if (!participant) {
+      participant = {
+        customerName: String(row.referred_customer_name || 'Sin nombre'),
+        customerPhoneMasked: maskPhone(phone),
+        burgerTickets: 0,
+        referralTickets: 0,
+        totalTickets: 0,
+        lastOrderFolio: String(row.referred_order_folio || '—'),
+        lastOrderAt: activityAt,
+        lastActivityAt: activityAt
+      };
+    }
+    participant.referralTickets += 1;
+    if (activityAt && (!participant.lastActivityAt || activityAt > participant.lastActivityAt)) {
+      participant.customerName = String(row.referred_customer_name || participant.customerName);
+      participant.lastActivityAt = activityAt;
+      if (row.referred_order_folio) participant.lastOrderFolio = String(row.referred_order_folio);
       if (!participant.lastOrderAt || participant.lastOrderFolio === '—') participant.lastOrderAt = activityAt;
     }
   }

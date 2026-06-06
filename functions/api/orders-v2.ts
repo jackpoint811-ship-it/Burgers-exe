@@ -174,7 +174,7 @@ const buildOrderSummary = (order: NonNullable<Awaited<ReturnType<typeof fetchOrd
 const loadActiveReferralCampaign = async (db: D1Database) => {
   const row = await db.prepare(
     `SELECT * FROM raffle_campaigns_v2
-     WHERE is_active = 1
+     WHERE is_active = 1 AND deleted_at IS NULL
      ORDER BY updated_at DESC, created_at DESC LIMIT 1`
   ).first<RaffleCampaignRow>();
   return row ?? null;
@@ -207,6 +207,12 @@ const applyReferralCode = async (db: D1Database, params: { referralCode: string 
       `INSERT INTO order_events_v2 (id, order_id, type, previous_status, next_status, detail_json, actor, created_at)
        VALUES (?, ?, 'RAFFLE_REFERRAL_APPLIED', NULL, NULL, ?, 'public-v2', ?)`
     ).bind(generateId('evt'), params.orderId, JSON.stringify({ referralCode: params.referralCode, referralAccepted: true }), params.now).run();
+    await safeLogOrderEvent(db, {
+      orderId: params.orderId,
+      type: 'RAFFLE_INVITED_TICKET_AWARDED',
+      detail: { referralCode: params.referralCode, referralAccepted: true, referralUsedTickets: 1 },
+      now: params.now
+    });
     return true;
   } catch (error) {
     if (error instanceof Error && error.message.includes('UNIQUE')) return true;
@@ -240,14 +246,19 @@ const safeLogOrderEvent = async (db: D1Database, params: { orderId: string; type
   }
 };
 
-const calculateEarnedTicketsForOrder = (order: OrderV2, campaign: RaffleCampaignRow): EarnedTickets => {
+const calculateEarnedTicketsForOrder = async (db: D1Database, order: OrderV2, campaign: RaffleCampaignRow): Promise<EarnedTickets> => {
   const ticketPerBurger = Number(campaign.ticket_per_burger) || 1;
   const burgerTickets = order.items.reduce((total, item) => {
     const kind = typeof item.snapshot?.itemKind === 'string' ? item.snapshot.itemKind : null;
     if (kind !== 'burger' && kind !== 'combo') return total;
     return total + Math.max(0, Number(item.qty) || 0) * ticketPerBurger;
   }, 0);
-  const referralUsedTickets = 0;
+  const acceptedReferral = await db.prepare(
+    `SELECT id FROM raffle_referrals_v2
+     WHERE campaign_id = ? AND referred_order_id = ? AND status IN ('pending', 'valid')
+     LIMIT 1`
+  ).bind(campaign.id, order.id).first<{ id: string }>();
+  const referralUsedTickets = acceptedReferral ? 1 : 0;
   return { burgerTickets, referralUsedTickets, totalTickets: burgerTickets + referralUsedTickets };
 };
 
@@ -318,7 +329,7 @@ const buildRaffleSuccessData = async (db: D1Database, params: { order: OrderV2; 
     activeRaffleTitle: campaign.title
   };
   try {
-    data.earnedTickets = calculateEarnedTicketsForOrder(params.order, campaign);
+    data.earnedTickets = await calculateEarnedTicketsForOrder(db, params.order, campaign);
   } catch {
     await safeLogOrderEvent(db, { orderId: params.orderId, type: 'RAFFLE_TICKETS_SKIPPED', detail: { reason: 'earned_tickets_calculation_failed' }, now: params.now });
   }

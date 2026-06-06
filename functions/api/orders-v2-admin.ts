@@ -31,7 +31,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
   const to = params.get('to')?.trim() ?? '';
   if ((from && !isDateOnly(from)) || (to && !isDateOnly(to))) return errorResponse(400, 'INVALID_DATE', 'Fechas inválidas.');
 
-  const conditions: string[] = [];
+  const conditions: string[] = ['archived_at IS NULL'];
   const bindings: Array<string | number> = [];
   if (status) {
     conditions.push('status = ?');

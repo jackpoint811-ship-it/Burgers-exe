@@ -18,6 +18,7 @@ export type RaffleCampaignRow = {
   ticket_per_referral: number;
   created_at: string;
   updated_at: string;
+  deleted_at?: string | null;
 };
 
 type OrderTicketRow = {
@@ -37,6 +38,14 @@ type ReferralTicketRow = {
   created_at: string;
   updated_at: string;
   code: string;
+};
+
+type InvitedTicketRow = {
+  referred_customer_phone: string;
+  referred_customer_name: string;
+  referred_order_folio: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 type ParticipantAccumulator = RaffleParticipantSummary & {
@@ -65,7 +74,8 @@ export const mapCampaign = (row: RaffleCampaignRow): RaffleCampaignV2 => ({
   ticketPerBurger: Number(row.ticket_per_burger) || 1,
   ticketPerReferral: Number(row.ticket_per_referral) || 2,
   createdAt: row.created_at,
-  updatedAt: row.updated_at
+  updatedAt: row.updated_at,
+  deletedAt: row.deleted_at ?? undefined
 });
 
 export const requireRaffleAdmin = async (request: Request, env: Env): Promise<Response | null> => {
@@ -186,7 +196,7 @@ export const createCampaign = async (db: D1Database, payload: CreateRaffleCampai
   const now = new Date().toISOString();
   const isActive = payload.isActive ? 1 : 0;
   const statements = [];
-  if (isActive) statements.push(db.prepare('UPDATE raffle_campaigns_v2 SET is_active = 0, updated_at = ? WHERE is_active = 1').bind(now));
+  if (isActive) statements.push(db.prepare('UPDATE raffle_campaigns_v2 SET is_active = 0, updated_at = ? WHERE is_active = 1 AND deleted_at IS NULL').bind(now));
   statements.push(db.prepare(
     `INSERT INTO raffle_campaigns_v2 (id, title, description, rules_text, banner_image_key, banner_image_url, detail_image_key, detail_image_url, starts_at, ends_at, is_active, ticket_per_burger, ticket_per_referral, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
@@ -198,7 +208,7 @@ export const createCampaign = async (db: D1Database, payload: CreateRaffleCampai
 };
 
 export const updateCampaign = async (db: D1Database, id: string, payload: UpdateRaffleCampaignPayload): Promise<RaffleCampaignV2 | null> => {
-  const existing = await db.prepare('SELECT * FROM raffle_campaigns_v2 WHERE id = ? LIMIT 1').bind(id).first<RaffleCampaignRow>();
+  const existing = await db.prepare('SELECT * FROM raffle_campaigns_v2 WHERE id = ? AND deleted_at IS NULL LIMIT 1').bind(id).first<RaffleCampaignRow>();
   if (!existing) return null;
   const now = new Date().toISOString();
   const assignments: string[] = [];
@@ -218,17 +228,27 @@ export const updateCampaign = async (db: D1Database, id: string, payload: Update
   if ('isActive' in payload) add('is_active', payload.isActive ? 1 : 0);
   add('updated_at', now);
   const statements = [];
-  if (payload.isActive === true) statements.push(db.prepare('UPDATE raffle_campaigns_v2 SET is_active = 0, updated_at = ? WHERE is_active = 1 AND id <> ?').bind(now, id));
+  if (payload.isActive === true) statements.push(db.prepare('UPDATE raffle_campaigns_v2 SET is_active = 0, updated_at = ? WHERE is_active = 1 AND deleted_at IS NULL AND id <> ?').bind(now, id));
   statements.push(db.prepare(`UPDATE raffle_campaigns_v2 SET ${assignments.join(', ')} WHERE id = ?`).bind(...bindings, id));
   await db.batch(statements);
+  const row = await db.prepare('SELECT * FROM raffle_campaigns_v2 WHERE id = ? AND deleted_at IS NULL LIMIT 1').bind(id).first<RaffleCampaignRow>();
+  return row ? mapCampaign(row) : null;
+};
+
+
+export const softDeleteCampaign = async (db: D1Database, id: string): Promise<RaffleCampaignV2 | null> => {
+  const existing = await db.prepare('SELECT * FROM raffle_campaigns_v2 WHERE id = ? AND deleted_at IS NULL LIMIT 1').bind(id).first<RaffleCampaignRow>();
+  if (!existing) return null;
+  const now = new Date().toISOString();
+  await db.prepare('UPDATE raffle_campaigns_v2 SET deleted_at = ?, is_active = 0, updated_at = ? WHERE id = ? AND deleted_at IS NULL').bind(now, now, id).run();
   const row = await db.prepare('SELECT * FROM raffle_campaigns_v2 WHERE id = ? LIMIT 1').bind(id).first<RaffleCampaignRow>();
   return row ? mapCampaign(row) : null;
 };
 
 export const getCampaignForSummary = async (db: D1Database, campaignId: string | null): Promise<RaffleCampaignV2 | null> => {
   const row = campaignId
-    ? await db.prepare('SELECT * FROM raffle_campaigns_v2 WHERE id = ? LIMIT 1').bind(campaignId).first<RaffleCampaignRow>()
-    : await db.prepare('SELECT * FROM raffle_campaigns_v2 WHERE is_active = 1 ORDER BY updated_at DESC, created_at DESC LIMIT 1').first<RaffleCampaignRow>();
+    ? await db.prepare('SELECT * FROM raffle_campaigns_v2 WHERE id = ? AND deleted_at IS NULL LIMIT 1').bind(campaignId).first<RaffleCampaignRow>()
+    : await db.prepare('SELECT * FROM raffle_campaigns_v2 WHERE is_active = 1 AND deleted_at IS NULL ORDER BY updated_at DESC, created_at DESC LIMIT 1').first<RaffleCampaignRow>();
   return row ? mapCampaign(row) : null;
 };
 
@@ -350,6 +370,42 @@ export const calculateSummary = async (db: D1Database, campaign: RaffleCampaignV
       current.searchName = current.customerName.toLowerCase();
       current.lastActivityAt = activityAt;
       if (!current.lastOrderFolio || current.lastOrderFolio === '—') current.lastOrderAt = activityAt;
+    }
+    byPhone.set(phone, current);
+  }
+
+  const invitedRows = await db.prepare(
+    `SELECT r.referred_customer_phone, r.referred_customer_name, o.folio AS referred_order_folio, r.created_at, r.updated_at
+     FROM raffle_referrals_v2 r
+     LEFT JOIN orders_v2 o ON o.id = r.referred_order_id
+     WHERE r.campaign_id = ? AND r.status IN ('pending', 'valid')
+     ORDER BY r.updated_at DESC, r.created_at DESC`
+  ).bind(campaign.id).all<InvitedTicketRow>();
+
+  for (const row of invitedRows.results ?? []) {
+    const phone = normalizePhone(row.referred_customer_phone);
+    if (!phone) continue;
+    const activityAt = String(row.updated_at || row.created_at || '');
+    const current = byPhone.get(phone) ?? {
+      customerName: String(row.referred_customer_name || 'Sin nombre'),
+      customerPhoneMasked: maskPhone(phone),
+      customerPhoneNormalized: phone,
+      searchName: String(row.referred_customer_name || '').toLowerCase(),
+      burgerTickets: 0,
+      referralTickets: 0,
+      totalTickets: 0,
+      lastOrderFolio: String(row.referred_order_folio || '—'),
+      lastOrderAt: activityAt,
+      lastActivityAt: activityAt
+    };
+    current.referralTickets += 1;
+    current.totalTickets = current.burgerTickets + current.referralTickets;
+    if (!current.lastActivityAt || activityAt > current.lastActivityAt) {
+      current.customerName = String(row.referred_customer_name || current.customerName);
+      current.searchName = current.customerName.toLowerCase();
+      current.lastActivityAt = activityAt;
+      if (row.referred_order_folio) current.lastOrderFolio = String(row.referred_order_folio);
+      if (!current.lastOrderAt || current.lastOrderFolio === '—') current.lastOrderAt = activityAt;
     }
     byPhone.set(phone, current);
   }
