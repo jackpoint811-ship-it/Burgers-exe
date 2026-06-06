@@ -1141,8 +1141,8 @@ const CancellationReasonDialog = ({
         </div>
         <div className="mt-3 rounded-lg border border-zinc-800 bg-zinc-900/60 p-2 text-xs text-zinc-300">
           <p>
-            Esta acción registra un evento STATUS_CHANGED con la razón de
-            cancelación para auditoría.
+            La cancelación quedará guardada con su razón para seguimiento
+            administrativo.
           </p>
           {runtime.source !== "d1" ? (
             <p className="mt-1 rounded bg-amber-500/10 px-2 py-1 text-amber-100">
