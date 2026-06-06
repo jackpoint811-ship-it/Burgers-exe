@@ -184,6 +184,7 @@ export type OrderV2 = {
   source: OrderV2Source;
   createdAt: string;
   updatedAt: string;
+  archivedAt?: string;
   items: OrderV2Item[];
   events?: OrderV2Event[];
 };
@@ -289,6 +290,12 @@ export type UpdateOrderV2StatusResponse = {
   error?: OrderV2Error;
 };
 
+export type ArchiveOrderV2Response = {
+  ok: boolean;
+  data?: { order: OrderV2; event?: OrderV2Event };
+  error?: OrderV2Error;
+};
+
 export type UpdateOrderV2PaymentPayload = {
   paymentStatus: OrderV2PaymentStatus;
   notes?: string;
@@ -336,6 +343,7 @@ export type RaffleCampaignV2 = {
   ticketPerReferral: number;
   createdAt: string;
   updatedAt: string;
+  deletedAt?: string;
 };
 
 export type RaffleCampaignPublicV2 = Pick<
@@ -430,6 +438,8 @@ export type RaffleCampaignMutationResponse = {
   data?: { campaign: RaffleCampaignV2 };
   error?: OrderV2Error;
 };
+
+export type DeleteRaffleCampaignResponse = RaffleCampaignMutationResponse;
 
 export type RaffleReferralCodesAdminResponse = {
   ok: boolean;

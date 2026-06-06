@@ -7,7 +7,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
 
   try {
     const result = await env.BOG_MENU_DB!.prepare(
-      'SELECT * FROM raffle_campaigns_v2 ORDER BY is_active DESC, created_at DESC'
+      'SELECT * FROM raffle_campaigns_v2 WHERE deleted_at IS NULL ORDER BY is_active DESC, created_at DESC'
     ).all<RaffleCampaignRow>();
     const payload: RaffleCampaignsAdminResponse = {
       ok: true,

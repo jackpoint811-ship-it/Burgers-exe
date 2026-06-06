@@ -49,6 +49,7 @@ const buildWhereClause = (includeTerminal: boolean, fromUtc: string, toUtc: stri
   const conditions: string[] = [];
   const bindings: Array<string | number> = [];
 
+  conditions.push('o.archived_at IS NULL');
   if (!includeTerminal) conditions.push("o.status NOT IN ('delivered', 'cancelled')");
   if (fromUtc) {
     conditions.push('o.created_at >= ?');

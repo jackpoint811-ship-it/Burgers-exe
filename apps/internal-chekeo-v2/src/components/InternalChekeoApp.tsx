@@ -28,6 +28,7 @@ import {
   logoutInternal,
 } from "../lib/internal-auth";
 import {
+  archiveCancelledOrderV2,
   exportOrdersV2Csv,
   fetchOrdersV2Admin,
   fetchOrdersV2Summary,
@@ -93,6 +94,7 @@ type InternalOrder = Omit<
   updatedAt?: string;
   items: InternalOrderItem[];
   timeline: InternalTimelineEvent[];
+  archivedAt?: string;
 };
 
 type StatusAction = { status: OrderStatus; label: string; tone?: "danger" };
@@ -417,6 +419,7 @@ const mapOrderV2ToInternalOrder = (order: OrderV2): InternalOrder => {
     channel: order.orderMode,
     createdAt: formatDateTime(order.createdAt),
     updatedAt: formatDateTime(order.updatedAt),
+    archivedAt: order.archivedAt,
     status: order.status,
     priority: "normal",
     paymentMethod: order.paymentMethod,
@@ -2514,9 +2517,11 @@ const PaymentNotesPanel = ({
 const HistoryPanel = ({
   orders,
   runtime,
+  onArchiveCancelled,
 }: {
   orders: InternalOrder[];
   runtime: OrdersRuntime;
+  onArchiveCancelled: (order: InternalOrder) => Promise<void>;
 }) => {
   const terminalOrders = orders.filter((o) => terminalStatuses.has(o.status));
   return (
@@ -2552,7 +2557,19 @@ const HistoryPanel = ({
                     </p>
                   ) : null}
                 </div>
-                <StatusBadge status={o.status} />
+                <div className="flex shrink-0 flex-col items-end gap-2">
+                  <StatusBadge status={o.status} />
+                  {o.status === "cancelled" && runtime.source === "d1" ? (
+                    <Button
+                      type="button"
+                      className="min-h-11 border border-rose-500/40 px-3 py-2 text-xs text-rose-100 disabled:opacity-50"
+                      disabled={runtime.actionOrderId === o.id}
+                      onClick={() => void onArchiveCancelled(o)}
+                    >
+                      {runtime.actionOrderId === o.id ? "Ocultando…" : "Ocultar"}
+                    </Button>
+                  ) : null}
+                </div>
               </div>
             );
           })}
@@ -3145,6 +3162,42 @@ export function InternalChekeoApp() {
     await move(order.id, "cancelled", reason);
   };
 
+  const archiveCancelledOrder = async (order: InternalOrder) => {
+    if (ordersSource !== "d1") {
+      setOrdersError("Solo puedes ocultar órdenes live desde Chekeo.");
+      return;
+    }
+    if (order.status !== "cancelled") {
+      setOrdersError("Solo se pueden ocultar órdenes canceladas.");
+      return;
+    }
+    const confirmed = window.confirm(
+      "Esta orden cancelada dejará de aparecer en historial operativo y métricas. No borra el registro interno.",
+    );
+    if (!confirmed) return;
+
+    actionOrderIdRef.current = order.id;
+    setActionOrderId(order.id);
+    setOrdersError(null);
+    try {
+      const updated = await archiveCancelledOrderV2(order.id);
+      setOrders((current) => current.filter((entry) => entry.id !== updated.id));
+      setSelected((current) => (current?.id === updated.id ? null : current));
+      setOrdersNotice(`${updated.folio}: orden cancelada oculta del historial operativo`);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "No se pudo ocultar la orden cancelada";
+      setOrdersError(message);
+      if (/UNAUTHORIZED|401/i.test(message)) expireSession();
+      throw error instanceof Error ? error : new Error(message);
+    } finally {
+      actionOrderIdRef.current = null;
+      setActionOrderId(null);
+    }
+  };
+
   const toggleKitchenItemDone: ToggleKitchenItemDone = async (
     orderId,
     lineKey,
@@ -3244,7 +3297,13 @@ export function InternalChekeoApp() {
             onUpdatePayment={updatePayment}
           />
         ),
-        historial: <HistoryPanel orders={orders} runtime={runtime} />,
+        historial: (
+          <HistoryPanel
+            orders={orders}
+            runtime={runtime}
+            onArchiveCancelled={archiveCancelledOrder}
+          />
+        ),
         cierre: <OperationalClosePanel sessionActive={logged} />,
         catalogo: <CatalogAdminPanel />,
         sorteos: <RafflesAdminPanel />,

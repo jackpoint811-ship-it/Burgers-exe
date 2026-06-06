@@ -1,6 +1,7 @@
 import type {
   CreateRaffleCampaignPayload,
   CreateRaffleReferralCodePayload,
+  DeleteRaffleCampaignResponse,
   RaffleCampaignMutationResponse,
   RaffleCampaignsAdminResponse,
   RaffleReferralCodeMutationResponse,
@@ -60,6 +61,17 @@ export const updateRaffleCampaignV2 = async (id: string, payload: UpdateRaffleCa
   return envelope.data.campaign;
 };
 
+
+
+export const deleteRaffleCampaignV2 = async (id: string) => {
+  const res = await fetch(
+    `/api/raffles-v2-admin/campaigns/${encodeURIComponent(id)}`,
+    buildSessionFetchInit({ method: "DELETE" }),
+  );
+  const envelope = await parseJsonEnvelope<DeleteRaffleCampaignResponse>(res);
+  if (!envelope.data?.campaign) throw new Error("Backend V2 no devolvió sorteo ocultado");
+  return envelope.data.campaign;
+};
 
 export type RaffleImageKind = "banner" | "detail";
 export type RaffleImageMutationResult = { campaign: import("@config/index").RaffleCampaignV2; imageKey?: string | null; assetUrl?: string | null; warning?: string };

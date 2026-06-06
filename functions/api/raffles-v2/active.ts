@@ -19,6 +19,7 @@ type RaffleCampaignRow = {
   ticket_per_referral: number;
   created_at: string;
   updated_at: string;
+  deleted_at?: string | null;
 };
 
 const mapCampaign = (row: RaffleCampaignRow): RaffleCampaignV2 => ({
@@ -67,7 +68,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
   try {
     const row = await env.BOG_MENU_DB.prepare(
       `SELECT * FROM raffle_campaigns_v2
-       WHERE is_active = 1
+       WHERE is_active = 1 AND deleted_at IS NULL
        ORDER BY updated_at DESC, created_at DESC
        LIMIT 1`
     ).first<RaffleCampaignRow>();

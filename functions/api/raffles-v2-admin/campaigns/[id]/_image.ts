@@ -53,7 +53,7 @@ const getSafeFileExtension = (file: File): string | null => {
   return GENERATED_EXTENSION_BY_TYPE[type] ?? null;
 };
 
-const fetchCampaign = async (db: D1Database, id: string) => db.prepare('SELECT * FROM raffle_campaigns_v2 WHERE id = ? LIMIT 1').bind(id).first<RaffleCampaignRow>();
+const fetchCampaign = async (db: D1Database, id: string) => db.prepare('SELECT * FROM raffle_campaigns_v2 WHERE id = ? AND deleted_at IS NULL LIMIT 1').bind(id).first<RaffleCampaignRow>();
 
 const deletePreviousAsset = async (bucket: R2Bucket | undefined, previousKey: unknown, folder: string): Promise<string | undefined> => {
   if (!bucket || typeof previousKey !== 'string') return undefined;

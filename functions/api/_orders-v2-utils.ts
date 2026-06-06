@@ -114,6 +114,7 @@ export const mapD1OrderToOrderV2 = (row: any, items: OrderV2Item[] = [], events?
   source: String(row.source) as OrderV2['source'],
   createdAt: String(row.created_at ?? row.createdAt),
   updatedAt: String(row.updated_at ?? row.updatedAt),
+  archivedAt: row.archived_at ?? row.archivedAt ? String(row.archived_at ?? row.archivedAt) : undefined,
   items,
   events
 });
