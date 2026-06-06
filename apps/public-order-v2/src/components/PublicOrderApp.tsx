@@ -923,12 +923,11 @@ const CustomizationReview = ({ builder, extras, garnishes, onBack, onUnitChange,
             <span className="eyebrow">Editor enfocado</span>
             <h3 id="customization-editor-title" ref={editorTitleRef} tabIndex={-1}>Personalizando {builder.item.name} #{editingIndex + 1}</h3>
           </div>
-          <QuestButton className="ghost" onClick={closeEditor}>Cancelar</QuestButton>
+          <QuestButton className="ghost editor-close-action" aria-label="Cerrar editor y descartar cambios" onClick={closeEditor}>Cerrar</QuestButton>
         </header>
         <UnitEditor unit={draftUnit} index={editingIndex} item={builder.item} extras={extras} garnishes={garnishes} onChange={setDraftUnit} />
-        <div className="customization-actions">
-          <QuestButton onClick={saveEditing}>Guardar cambios</QuestButton>
-          <QuestButton className="ghost" onClick={closeEditor}>Cancelar</QuestButton>
+        <div className="customization-actions customization-editor-actions">
+          <QuestButton className="editor-save-action" onClick={saveEditing}>Guardar cambios</QuestButton>
           <QuestButton className="ghost danger-action" onClick={restoreEditing}>Restaurar original</QuestButton>
         </div>
       </section> : null}
@@ -1008,12 +1007,11 @@ const CartCustomizationReview = ({ cart, items, extras, garnishes, error, onBack
             <span className="eyebrow">Editor enfocado</span>
             <h3 id="customization-editor-title" ref={editorTitleRef} tabIndex={-1}>Personalizando {draftUnit.name} #{draftUnit.itemDisplayIndex}</h3>
           </div>
-          <QuestButton className="ghost" onClick={closeEditor}>Cancelar</QuestButton>
+          <QuestButton className="ghost editor-close-action" aria-label="Cerrar editor y descartar cambios" onClick={closeEditor}>Cerrar</QuestButton>
         </header>
         <UnitEditor unit={draftUnit} index={draftUnit.itemDisplayIndex - 1} item={editingItem} extras={extras} garnishes={garnishes} onChange={setDraftUnit} />
-        <div className="customization-actions">
-          <QuestButton onClick={saveEditing}>Guardar cambios</QuestButton>
-          <QuestButton className="ghost" onClick={closeEditor}>Cancelar</QuestButton>
+        <div className="customization-actions customization-editor-actions">
+          <QuestButton className="editor-save-action" onClick={saveEditing}>Guardar cambios</QuestButton>
           <QuestButton className="ghost danger-action" onClick={restoreEditing}>Restaurar original</QuestButton>
         </div>
       </section> : null}
