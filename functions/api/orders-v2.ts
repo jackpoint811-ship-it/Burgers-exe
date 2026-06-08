@@ -453,7 +453,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
     }
 
     if (stockBySku.size > 0) {
-      const stockStatements = [...stockBySku.entries()].map(([sku, qty]) => env.BOG_MENU_DB!.prepare(
+      const stockEntries = [...stockBySku.entries()];
+      const stockStatements = stockEntries.map(([sku, qty]) => env.BOG_MENU_DB!.prepare(
         `UPDATE menu_items
          SET stock_remaining = stock_remaining - ?,
              sold_out_at = CASE WHEN stock_remaining - ? <= 0 THEN COALESCE(sold_out_at, ?) ELSE sold_out_at END,
@@ -462,7 +463,22 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
       ).bind(qty, qty, now, sku, qty));
       const stockResult = await env.BOG_MENU_DB.batch(stockStatements);
       const failedStock = stockResult.some((entry) => !entry.success || (entry.meta?.changes ?? 0) !== 1);
-      if (failedStock) return errorResponse(409, 'INSUFFICIENT_STOCK', 'No hay stock suficiente para completar la orden. Actualiza el menú e intenta de nuevo.');
+      if (failedStock) {
+        const reservedEntries = stockEntries.filter((_, index) => {
+          const entry = stockResult[index];
+          return Boolean(entry?.success && (entry.meta?.changes ?? 0) === 1);
+        });
+        if (reservedEntries.length > 0) {
+          await env.BOG_MENU_DB.batch(reservedEntries.map(([sku, qty]) => env.BOG_MENU_DB!.prepare(
+            `UPDATE menu_items
+             SET stock_remaining = COALESCE(stock_remaining, 0) + ?,
+                 sold_out_at = CASE WHEN COALESCE(stock_remaining, 0) + ? > 0 THEN NULL ELSE sold_out_at END,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE sku = ? AND stock_managed = 1`
+          ).bind(qty, qty, sku)));
+        }
+        return errorResponse(409, 'INSUFFICIENT_STOCK', 'No hay stock suficiente para completar la orden. Actualiza el menú e intenta de nuevo.');
+      }
     }
 
     const orderStatements: D1PreparedStatement[] = [
