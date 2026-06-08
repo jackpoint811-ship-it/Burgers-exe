@@ -350,6 +350,8 @@ const QuestButton = ({ children, className = "", ...props }: React.ButtonHTMLAtt
   <button {...props} className={`quest-button ${className}`}>{children}</button>
 );
 
+const normalizeMenuLink = (value: string) => value.trim().toUpperCase();
+
 const LoadingOverlay = ({ loading }: { loading: boolean }) => loading ? (
   <div className="boot-overlay" role="status" aria-live="polite">
     <div className="boot-window">
@@ -406,20 +408,23 @@ const RaffleBanner = ({ campaign }: { campaign: RaffleCampaignPublicV2 | null })
   );
 };
 
-const PromoRail = ({ promos }: { promos: PromoCard[] }) => {
+const PromoRail = ({ promos, items, onViewCombo, label = "Promos y concursos", variant = "inline" }: { promos: PromoCard[]; items: MenuItem[]; onViewCombo: (item: MenuItem) => void; label?: string; variant?: "featured" | "inline" }) => {
+  const itemBySku = new Map(items.map((item) => [normalizeMenuLink(item.sku), item]));
   const active = promos.filter((promo) => promo.isAvailable).sort((a, b) => a.sortOrder - b.sortOrder);
   if (!active.length) return null;
   return (
-    <section className="promo-rail" aria-label="Promos y concursos">
+    <section className={`promo-rail promo-rail-${variant}`} aria-label={label}>
       {active.map((promo) => {
         const src = resolveAssetUrl(promo.asset.imageUrl, promo.asset.imageKey);
+        const linkedCombo = promo.comboLinks.map((link) => itemBySku.get(normalizeMenuLink(link))).find((item): item is MenuItem => Boolean(item && inferItemKind(item) === "combo"));
         return (
           <article className="promo-card" key={promo.id}>
             {src ? <img src={src} alt={promo.asset.alt || promo.title} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : null}
-            <div>
+            <div className="promo-card-copy">
               <span>{promo.badge || promo.promoLabel || "Promo"}</span>
               <h3>{promo.title}</h3>
               <p>{promo.description}</p>
+              {linkedCombo ? <QuestButton className="ghost promo-card-cta" onClick={() => onViewCombo(linkedCombo)}>Ver combo</QuestButton> : null}
             </div>
           </article>
         );
@@ -493,10 +498,17 @@ const TicketsLookupCta = () => (
 
 const MenuSection = ({ menuData, raffleCampaign, onExplore, onStart, reduce }: { menuData: MenuV2Response; raffleCampaign: RaffleCampaignPublicV2 | null; onExplore: (item: MenuItem) => void; onStart: () => void; reduce: boolean }) => {
   const bonusZoneRef = useRef<HTMLElement | null>(null);
-  const hasBonusContent = Boolean(raffleCampaign) || menuData.promos.length > 0;
+  const activePromos = menuData.promos.filter((promo) => promo.isAvailable);
+  const featuredPromo = activePromos.filter((promo) => promo.isFeatured).sort((a, b) => a.sortOrder - b.sortOrder).slice(0, 1);
+  const inlinePromos = activePromos.filter((promo) => !promo.isFeatured);
+  const hasBonusContent = Boolean(raffleCampaign);
   const visibleItems = menuData.items.filter((item) => item.category !== "extras");
   const comboItems = menuData.items.filter((item) => inferItemKind(item) === "combo");
   const byGroup = (key: MenuCategory["key"] | "combos") => key === "combos" ? comboItems : visibleItems.filter((item) => item.category === key);
+  const promosForItems = (items: MenuItem[]) => {
+    const skus = new Set(items.map((item) => normalizeMenuLink(item.sku)));
+    return inlinePromos.filter((promo) => promo.comboLinks.some((link) => skus.has(normalizeMenuLink(link))));
+  };
   const bannersByCategory = new Map((menuData.categoryBanners ?? []).map((banner) => [banner.categoryKey, banner]));
   const scrollToBonusZone = () => {
     const bonusZone = bonusZoneRef.current;
@@ -525,6 +537,7 @@ const MenuSection = ({ menuData, raffleCampaign, onExplore, onStart, reduce }: {
         <p>Carga tu burger, desbloquea upgrades y manda tu orden al sistema.</p>
         <QuestButton onClick={onStart}>ARMAR MI PEDIDO</QuestButton>
       </div>
+      {featuredPromo.length ? <PromoRail promos={featuredPromo} items={menuData.items} onViewCombo={onExplore} label="Promo destacada" variant="featured" /> : null}
       {MENU_GROUPS.map(({ key, label }) => {
         const list = byGroup(key).sort((a, b) => a.sortOrder - b.sortOrder);
         return (
@@ -532,6 +545,7 @@ const MenuSection = ({ menuData, raffleCampaign, onExplore, onStart, reduce }: {
             <h2>{label}</h2>
             <CategoryBanner banner={bannersByCategory.get(key as MenuCategory["key"])} label={label} />
             {list.length ? <div className="kiosk-grid">{list.map((item) => <ProductCard key={item.sku} item={item} mode="info" onClick={onExplore} reduce={reduce} />)}</div> : <EmptyState title={key === "combos" ? "Combos en carga… el sistema está preparando el siguiente drop." : key === "guarniciones" ? "Side quests disponibles pronto." : `${label} en carga…`} description="Vuelve a revisar el menú para desbloquear el siguiente drop." />}
+            <PromoRail promos={promosForItems(list)} items={menuData.items} onViewCombo={onExplore} label={`Promos de ${label}`} />
           </section>
         );
       })}
@@ -539,7 +553,6 @@ const MenuSection = ({ menuData, raffleCampaign, onExplore, onStart, reduce }: {
         <span className="eyebrow">Bonus secundario</span>
         <RaffleBanner campaign={raffleCampaign} />
         <TicketsLookupCta />
-        <PromoRail promos={menuData.promos} />
       </aside>
     </section>
   );

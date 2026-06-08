@@ -4367,3 +4367,41 @@ html {
     height: 144px;
   }
 }
+
+/* Promo visibility controls: one featured banner, contextual inline promos only. */
+.promo-rail-featured {
+  margin-top: 14px;
+}
+
+.promo-rail-inline {
+  margin-top: 10px;
+}
+
+.promo-card-copy {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.promo-card-cta {
+  min-height: 44px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.68rem 0.9rem;
+  font-size: 0.82rem;
+}
+
+@media (max-width: 360px) {
+  .promo-card {
+    grid-template-columns: 1fr;
+  }
+
+  .promo-card img {
+    width: 100%;
+    height: 132px;
+  }
+
+  .promo-card-cta {
+    width: 100%;
+  }
+}
