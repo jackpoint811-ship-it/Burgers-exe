@@ -535,3 +535,72 @@ export type OperatorStats = {
   avgTicket: number;
   urgentOrders: number;
 };
+
+export type IngredientV2Unit = "pieza" | "g" | "kg" | "ml" | "l" | "paquete" | "bolsa";
+
+export type IngredientV2 = {
+  id: string;
+  name: string;
+  unit: IngredientV2Unit;
+  unitPriceCents: number | null;
+  isQuantifiable: boolean;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ProductIngredientRecipeV2 = {
+  id: string;
+  productSku: string;
+  ingredientId: string;
+  quantityPerUnit: number;
+  createdAt: string;
+  updatedAt: string;
+  ingredient?: IngredientV2;
+};
+
+export type IngredientsV2AdminResponse = {
+  ok: boolean;
+  data?: { ingredients: IngredientV2[] };
+  error?: OrderV2Error;
+};
+
+export type IngredientV2MutationResponse = {
+  ok: boolean;
+  data?: { ingredient: IngredientV2 };
+  error?: OrderV2Error;
+};
+
+export type ProductIngredientRecipeV2Response = {
+  ok: boolean;
+  data?: { productSku: string; recipes: ProductIngredientRecipeV2[] };
+  error?: OrderV2Error;
+};
+
+export type KitchenSummaryKResponse = {
+  ok: boolean;
+  data?: {
+    source: "d1";
+    range: { date: string; fromUtc: string; toUtc: string };
+    hasRecipes: boolean;
+    totals: {
+      burgers: number;
+      garnishes: number;
+      ingredients: number;
+      estimatedCostCents: number | null;
+    };
+    burgers: Array<{ sku: string; name: string; quantity: number }>;
+    garnishes: Array<{ sku: string; name: string; quantity: number }>;
+    ingredients: Array<{
+      ingredientId: string;
+      name: string;
+      unit: string;
+      quantity: number;
+      unitPriceCents: number | null;
+      estimatedCostCents: number | null;
+    }>;
+    generatedAt: string;
+  };
+  error?: OrderV2Error;
+};
