@@ -1,6 +1,7 @@
 import {
   type CreateOrderV2Response,
   type MenuCategory,
+  type MenuCategoryBanner,
   type MenuItem,
   type MenuV2Response,
   type OrderV2Mode,
@@ -65,6 +66,7 @@ const MENU_GROUPS: Array<{ key: MenuCategory["key"] | "combos"; label: string }>
   { key: "combos", label: "Combos" },
   { key: "guarniciones", label: "Guarniciones" },
   { key: "drinks", label: "Bebidas" },
+  { key: "extras", label: "Extras" },
 ];
 const paymentMethodLabels: Record<OrderV2PaymentMethod, string> = {
   cash: "Efectivo",
@@ -144,7 +146,7 @@ const resolveAssetUrl = (imageUrl?: string, imageKey?: string): string | undefin
 };
 const inferItemKind = (item: MenuItem): TicketItemKind => {
   const seed = `${item.category} ${item.name} ${item.tags.join(" ")}`.toLowerCase();
-  if (seed.includes("combo")) return "combo";
+  if (item.category === "combos" || seed.includes("combo")) return "combo";
   if (item.category === "burgers") return "burger";
   if (item.category === "guarniciones") return "garnish";
   if (item.category === "drinks") return "drink";
@@ -426,6 +428,22 @@ const PromoRail = ({ promos }: { promos: PromoCard[] }) => {
   );
 };
 
+
+const CategoryBanner = ({ banner, label }: { banner?: MenuCategoryBanner; label: string }) => {
+  if (!banner?.title && !banner?.subtitle && !banner?.imageUrl && !banner?.imageKey) return null;
+  const src = resolveAssetUrl(banner.imageUrl, banner.imageKey);
+  return (
+    <article className="category-banner">
+      {src ? <img src={src} alt="" loading="lazy" decoding="async" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : null}
+      <div>
+        <span>&gt; category drop</span>
+        <h3>{banner.title || label}</h3>
+        {banner.subtitle ? <p>{banner.subtitle}</p> : null}
+      </div>
+    </article>
+  );
+};
+
 const ProductCard = ({ item, mode, onClick, reduce, descriptionMode = "paragraph" }: { item: MenuItem; mode: "info" | "select"; onClick: (item: MenuItem) => void; reduce: boolean; descriptionMode?: "paragraph" | "ingredients" }) => {
   const src = resolveAssetUrl(item.imageUrl, item.imageKey);
   const [imageFailed, setImageFailed] = useState(false);
@@ -479,6 +497,7 @@ const MenuSection = ({ menuData, raffleCampaign, onExplore, onStart, reduce }: {
   const visibleItems = menuData.items.filter((item) => item.category !== "extras");
   const comboItems = menuData.items.filter((item) => inferItemKind(item) === "combo");
   const byGroup = (key: MenuCategory["key"] | "combos") => key === "combos" ? comboItems : visibleItems.filter((item) => item.category === key);
+  const bannersByCategory = new Map((menuData.categoryBanners ?? []).map((banner) => [banner.categoryKey, banner]));
   const scrollToBonusZone = () => {
     const bonusZone = bonusZoneRef.current;
     if (!bonusZone) return;
@@ -511,6 +530,7 @@ const MenuSection = ({ menuData, raffleCampaign, onExplore, onStart, reduce }: {
         return (
           <section className="menu-cluster" key={key}>
             <h2>{label}</h2>
+            <CategoryBanner banner={bannersByCategory.get(key as MenuCategory["key"])} label={label} />
             {list.length ? <div className="kiosk-grid">{list.map((item) => <ProductCard key={item.sku} item={item} mode="info" onClick={onExplore} reduce={reduce} />)}</div> : <EmptyState title={key === "combos" ? "Combos en carga… el sistema está preparando el siguiente drop." : key === "guarniciones" ? "Side quests disponibles pronto." : `${label} en carga…`} description="Vuelve a revisar el menú para desbloquear el siguiente drop." />}
           </section>
         );

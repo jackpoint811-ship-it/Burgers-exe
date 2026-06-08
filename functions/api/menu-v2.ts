@@ -1,5 +1,5 @@
 import { menuCategories, menuItems, promoCards, siteConfig, type MenuCategory, type MenuItem, type MenuV2Response, type PromoCard, type SiteConfig } from '../../packages/config/src';
-import { mapD1ItemToMenuItem, mapD1PromoToPromoCard, parseJsonArray } from './_menu-v2-utils';
+import { mapD1CategoryBanner, mapD1ItemToMenuItem, mapD1PromoToPromoCard, parseJsonArray } from './_menu-v2-utils';
 
 type Env = { BOG_MENU_DB?: D1Database };
 
@@ -9,13 +9,15 @@ const CATEGORY_LABELS: Record<MenuCategory['key'], string> = {
   burgers: 'Burgers',
   extras: 'Extras',
   guarniciones: 'Guarniciones',
-  drinks: 'Bebidas'
+  drinks: 'Bebidas',
+  combos: 'Combos'
 };
 
 const fallbackPayload = (source: MenuV2Response['source']): MenuV2Response => ({
   categories: [...menuCategories].sort((a, b) => a.sortOrder - b.sortOrder),
   items: [...menuItems].sort((a, b) => a.sortOrder - b.sortOrder),
   promos: [...promoCards].sort((a, b) => a.sortOrder - b.sortOrder),
+  categoryBanners: [],
   siteConfig,
   updatedAt: new Date().toISOString(),
   source
@@ -42,7 +44,7 @@ const optionalFirst = async <T>(query: D1PreparedStatement): Promise<T | null> =
 };
 
 const isMenuCategoryKey = (value: unknown): value is MenuCategory['key'] =>
-  value === 'burgers' || value === 'extras' || value === 'guarniciones' || value === 'drinks';
+  value === 'burgers' || value === 'combos' || value === 'extras' || value === 'guarniciones' || value === 'drinks';
 
 const deriveCategoriesFromItems = (items: MenuItem[]): MenuCategory[] => {
   const firstSortByCategory = new Map<MenuCategory['key'], number>();
@@ -94,6 +96,11 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
         description,
         price_cents AS price,
         is_available AS isAvailable,
+        CASE WHEN stock_managed = 1 AND COALESCE(stock_remaining, 0) <= 0 THEN 0 ELSE is_available END AS effectiveIsAvailable,
+        stock_managed AS stockManaged,
+        stock_limit AS stockLimit,
+        stock_remaining AS stockRemaining,
+        sold_out_at AS soldOutAt,
         is_featured AS isFeatured,
         sort_order AS sortOrder,
         image_url AS imageUrl,
@@ -112,23 +119,26 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
       .map((row: any) => mapD1ItemToMenuItem(row))
       .sort((a, b) => a.sortOrder - b.sortOrder);
 
-    const [categoryRows, promoRows, configRow] = await Promise.all([
+    const [categoryRows, promoRows, bannerRows, configRow] = await Promise.all([
       optionalAll<any>(env.BOG_MENU_DB.prepare('SELECT id, key, name, sort_order AS sortOrder, updated_at AS updatedAt FROM menu_categories ORDER BY sort_order ASC')),
       optionalAll<any>(env.BOG_MENU_DB.prepare('SELECT id, title, description, badge, promo_label AS promoLabel, is_featured AS isFeatured, is_available AS isAvailable, sort_order AS sortOrder, tags_json, combo_links_json, asset_alt, asset_placeholder, asset_image_url, asset_image_key, updated_at AS updatedAt FROM promo_cards ORDER BY sort_order ASC')),
+      optionalAll<any>(env.BOG_MENU_DB.prepare('SELECT category_key AS categoryKey, title, subtitle, image_key AS imageKey, image_url AS imageUrl, updated_at AS updatedAt FROM menu_category_banners ORDER BY category_key ASC')),
       optionalFirst<any>(env.BOG_MENU_DB.prepare('SELECT brand_name, currency, order_modes_json, support_phone, hero_cta, notice, updated_at AS updatedAt FROM site_config ORDER BY updated_at DESC LIMIT 1'))
     ]);
 
     const categories = resolveCategories(categoryRows, items);
     const promos: PromoCard[] = promoRows.map((row: any) => mapD1PromoToPromoCard(row));
+    const categoryBanners = bannerRows.map((row: any) => mapD1CategoryBanner(row)).filter((banner) => isMenuCategoryKey(banner.categoryKey));
     const resolvedSiteConfig = resolveSiteConfig(configRow);
 
     const updatedAt = [
       ...items.map((item) => item.updatedAt ?? ''),
       ...promos.map((promo) => promo.updatedAt ?? ''),
+      ...categoryBanners.map((banner) => banner.updatedAt ?? ''),
       resolvedSiteConfig.updatedAt ?? ''
     ].filter(Boolean).sort().at(-1) ?? new Date().toISOString();
 
-    return json({ categories, items, promos, siteConfig: resolvedSiteConfig, updatedAt, source: 'd1' });
+    return json({ categories, items, promos, categoryBanners, siteConfig: resolvedSiteConfig, updatedAt, source: 'd1' });
   } catch {
     return json(fallbackPayload('fallback'), 'no-store');
   }

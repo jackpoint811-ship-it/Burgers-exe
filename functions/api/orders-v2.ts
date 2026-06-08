@@ -13,6 +13,8 @@ type CatalogRow = {
   tags_json: string;
   badge: string | null;
   promo_label: string | null;
+  stock_managed: number;
+  stock_remaining: number | null;
 };
 
 type ItemCustomization = {
@@ -152,7 +154,7 @@ const validatePayload = (body: Record<string, unknown>, request: Request): Norma
 const loadCatalogRows = async (db: D1Database, skus: string[]): Promise<CatalogRow[]> => {
   const placeholders = skus.map(() => '?').join(', ');
   const result = await db.prepare(
-    `SELECT sku, name, price_cents, is_available, category_key, tags_json, badge, promo_label
+    `SELECT sku, name, price_cents, CASE WHEN stock_managed = 1 AND COALESCE(stock_remaining, 0) <= 0 THEN 0 ELSE is_available END AS is_available, category_key, tags_json, badge, promo_label, stock_managed, stock_remaining
      FROM menu_items
      WHERE sku IN (${placeholders})`
   ).bind(...skus).all<CatalogRow>();
@@ -392,6 +394,19 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
       }
     }
 
+    const purchasedQtyBySku = new Map<string, number>();
+    for (const item of parsed.items) {
+      purchasedQtyBySku.set(item.sku, (purchasedQtyBySku.get(item.sku) ?? 0) + item.qty);
+      for (const extra of item.extras) purchasedQtyBySku.set(extra.sku!, (purchasedQtyBySku.get(extra.sku!) ?? 0) + item.qty);
+      if (item.garnish?.sku) purchasedQtyBySku.set(item.garnish.sku, (purchasedQtyBySku.get(item.garnish.sku) ?? 0) + item.qty);
+    }
+    for (const [sku, qty] of purchasedQtyBySku.entries()) {
+      const row = catalogBySku.get(sku);
+      if (row && Number(row.stock_managed) === 1 && (row.stock_remaining == null || Number(row.stock_remaining) < qty)) {
+        return errorResponse(409, 'INSUFFICIENT_STOCK', `${row.name} no tiene stock suficiente para completar la orden.`);
+      }
+    }
+
     const now = new Date().toISOString();
     const orderId = generateId('ord');
     const folio = generateFolio(new Date(now));
@@ -431,7 +446,20 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
     const totalCents = subtotalCents;
     const eventId = generateId('evt');
 
+    const stockBySku = new Map<string, number>();
+    for (const [sku, qty] of purchasedQtyBySku.entries()) {
+      const row = catalogBySku.get(sku);
+      if (row && Number(row.stock_managed) === 1) stockBySku.set(sku, qty);
+    }
+
     const statements: D1PreparedStatement[] = [
+      ...[...stockBySku.entries()].map(([sku, qty]) => env.BOG_MENU_DB!.prepare(
+        `UPDATE menu_items
+         SET stock_remaining = stock_remaining - ?,
+             sold_out_at = CASE WHEN stock_remaining - ? <= 0 THEN COALESCE(sold_out_at, ?) ELSE sold_out_at END,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE sku = ? AND stock_managed = 1 AND stock_remaining IS NOT NULL AND stock_remaining >= ?`
+      ).bind(qty, qty, now, sku, qty)),
       env.BOG_MENU_DB.prepare(
         `INSERT INTO orders_v2 (id, folio, idempotency_key, customer_name, customer_phone, order_mode, payment_method, payment_status, notes, subtotal_cents, total_cents, status, source, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, 'new', 'public-v2', ?, ?)`
@@ -447,6 +475,9 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
     ];
 
     const batchResult = await env.BOG_MENU_DB.batch(statements);
+    const stockResultCount = stockBySku.size;
+    const failedStock = batchResult.slice(0, stockResultCount).some((entry) => !entry.success || (entry.meta?.changes ?? 0) !== 1);
+    if (failedStock) return errorResponse(409, 'INSUFFICIENT_STOCK', 'No hay stock suficiente para completar la orden. Actualiza el menú e intenta de nuevo.');
     if (!batchResult.every((entry) => entry.success)) return errorResponse(500, 'INTERNAL_ERROR', 'No se pudo crear la orden.');
 
     const referralAccepted = await applyReferralCode(env.BOG_MENU_DB, { referralCode: parsed.referralCode, orderId, customerPhone: parsed.customerPhone, customerName: parsed.customerName, eligibleForReferral: orderHasReferralEligibleItem(parsed.items), now });
