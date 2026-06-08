@@ -1,4 +1,4 @@
-import type { MenuItem, PromoCard } from '../../packages/config/src';
+import type { MenuCategoryBanner, MenuItem, PromoCard } from '../../packages/config/src';
 
 export const parseJsonArray = (value: unknown): string[] => {
   if (typeof value !== 'string') return [];
@@ -19,7 +19,11 @@ export const mapD1ItemToMenuItem = (row: any): MenuItem => ({
   tags: parseJsonArray(row.tags_json),
   badge: row.badge ?? undefined,
   promoLabel: row.promoLabel ?? undefined,
-  isAvailable: Boolean(row.isAvailable),
+  isAvailable: Boolean(row.effectiveIsAvailable ?? row.isAvailable),
+  stockManaged: Boolean(row.stockManaged ?? row.stock_managed ?? false),
+  stockLimit: row.stockLimit ?? row.stock_limit ?? undefined,
+  stockRemaining: row.stockRemaining ?? row.stock_remaining ?? undefined,
+  soldOutAt: row.soldOutAt ?? row.sold_out_at ?? undefined,
   isFeatured: Boolean(row.isFeatured),
   sortOrder: Number(row.sortOrder),
   imageUrl: row.imageUrl ?? undefined,
@@ -47,4 +51,14 @@ export const mapD1PromoToPromoCard = (row: any): PromoCard => ({
     imageKey: row.asset_image_key ?? undefined
   },
   updatedAt: row.updatedAt
+});
+
+
+export const mapD1CategoryBanner = (row: any): MenuCategoryBanner => ({
+  categoryKey: row.categoryKey ?? row.category_key,
+  title: row.title ?? undefined,
+  subtitle: row.subtitle ?? undefined,
+  imageKey: row.imageKey ?? row.image_key ?? undefined,
+  imageUrl: row.imageUrl ?? row.image_url ?? undefined,
+  updatedAt: row.updatedAt ?? row.updated_at
 });

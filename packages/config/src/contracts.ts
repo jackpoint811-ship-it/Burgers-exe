@@ -17,7 +17,7 @@ export type AssetRef = {
 
 export type MenuCategory = {
   id: string;
-  key: "burgers" | "extras" | "guarniciones" | "drinks";
+  key: "burgers" | "combos" | "extras" | "guarniciones" | "drinks";
   name: string;
   sortOrder: number;
   updatedAt?: string;
@@ -35,12 +35,25 @@ export type MenuItem = {
   promoLabel?: string;
   isFeatured: boolean;
   isAvailable: boolean;
+  stockManaged?: boolean;
+  stockLimit?: number | null;
+  stockRemaining?: number | null;
+  soldOutAt?: string | null;
   sortOrder: number;
   tags: string[];
   upsellItems: string[];
   comboLinks: string[];
   updatedAt?: string;
   availability?: Availability;
+};
+
+export type MenuCategoryBanner = {
+  categoryKey: MenuCategory["key"];
+  title?: string;
+  subtitle?: string;
+  imageKey?: string;
+  imageUrl?: string;
+  updatedAt: string;
 };
 
 export type PromoCard = {
@@ -72,6 +85,7 @@ export type MenuV2Response = {
   categories: MenuCategory[];
   items: MenuItem[];
   promos: PromoCard[];
+  categoryBanners?: MenuCategoryBanner[];
   siteConfig: SiteConfig;
   updatedAt: string;
   source: DataSource;
