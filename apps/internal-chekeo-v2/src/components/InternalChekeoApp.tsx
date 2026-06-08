@@ -12,6 +12,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   mockOrders,
   operatorStats,
+  type KitchenSummaryKResponse,
   type MockOrder,
   type OrdersV2SummaryResponse,
   type OrderStatus,
@@ -50,6 +51,7 @@ import {
   shareOrderTicketImage,
 } from "../lib/order-ticket-image";
 import { CatalogAdminPanel } from "./CatalogAdminPanel";
+import { fetchKitchenSummaryK } from "../lib/ingredients-v2-admin";
 import { RafflesAdminPanel } from "./RafflesAdminPanel";
 
 type TabKey =
@@ -63,6 +65,7 @@ type TabKey =
   | "sorteos";
 type OrdersSource = "d1" | "mock" | "fallback";
 type OrdersV2Summary = NonNullable<OrdersV2SummaryResponse["data"]>;
+type KitchenSummaryK = NonNullable<KitchenSummaryKResponse["data"]>;
 type KitchenItemKind = Extract<OrderV2ItemKind, "burger" | "combo" | "garnish">;
 type InternalOrderItem = MockOrder["items"][number] & {
   lineTotal?: number;
@@ -1693,6 +1696,48 @@ const SideQuestItemCard = ({
   );
 };
 
+
+const KitchenSummaryKPanel = () => {
+  const [summary, setSummary] = useState<KitchenSummaryK | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setSummary(await fetchKitchenSummaryK());
+    } catch {
+      setError("No se pudo cargar Resumen K. Cocina sigue funcionando normalmente.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void load();
+  }, []);
+
+  if (loading) return <Card className="border-cyan-500/20 bg-zinc-950 p-4"><p className="text-sm font-semibold text-cyan-100">Cargando Resumen K…</p></Card>;
+
+  if (error) return <Card className="border-rose-400/30 bg-rose-950/30 p-4"><p className="text-sm font-bold text-rose-100">{error}</p><Button className="mt-3 border border-rose-300/30 bg-zinc-950" onClick={load}>Reintentar</Button></Card>;
+
+  if (!summary) return null;
+  const costText = summary.totals.estimatedCostCents == null ? "—" : formatCurrency(summary.totals.estimatedCostCents / 100);
+
+  return <section className="space-y-4">
+    {!summary.hasRecipes ? <Card className="border-amber-400/30 bg-amber-950/20 p-4"><p className="text-sm font-bold text-amber-100">Configura recetas aproximadas en Chekeo para desbloquear el cálculo de ingredientes.</p></Card> : null}
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {[["Burgers totales", summary.totals.burgers], ["Guarniciones totales", summary.totals.garnishes], ["Ingredientes estimados", summary.totals.ingredients], ["Costo estimado", costText]].map(([label, value]) => <Card key={label} className="border-cyan-500/20 bg-zinc-950 p-4"><p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-400">{label}</p><p className="mt-2 text-3xl font-black text-cyan-100">{value}</p></Card>)}
+    </div>
+    <div className="grid gap-4 lg:grid-cols-2">
+      <Card className="border-emerald-500/20 bg-zinc-950 p-4"><h3 className="text-sm font-black uppercase tracking-[0.2em] text-emerald-200">Producción · burgers</h3><div className="mt-3 space-y-2">{summary.burgers.length ? summary.burgers.map((item) => <div key={item.sku} className="flex items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900/70 p-3"><span className="font-bold text-zinc-100">{item.name}</span><span className="text-xl font-black text-emerald-200">{item.quantity}</span></div>) : <EmptyOrdersState title="Sin burgers del día." />}</div></Card>
+      <Card className="border-amber-500/20 bg-zinc-950 p-4"><h3 className="text-sm font-black uppercase tracking-[0.2em] text-amber-200">Producción · guarniciones</h3><div className="mt-3 space-y-2">{summary.garnishes.length ? summary.garnishes.map((item) => <div key={item.sku} className="flex items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900/70 p-3"><span className="font-bold text-zinc-100">{item.name}</span><span className="text-xl font-black text-amber-200">{item.quantity}</span></div>) : <EmptyOrdersState title="Sin guarniciones del día." />}</div></Card>
+    </div>
+    <Card className="border-cyan-500/20 bg-zinc-950 p-4"><h3 className="text-sm font-black uppercase tracking-[0.2em] text-cyan-200">Ingredientes estimados</h3><div className="mt-3 space-y-2">{summary.ingredients.length ? summary.ingredients.map((ingredient) => <div key={ingredient.ingredientId} className="grid gap-1 rounded-xl border border-zinc-800 bg-zinc-900/70 p-3 sm:grid-cols-[1fr_auto_auto] sm:items-center"><div><p className="font-bold text-zinc-100">{ingredient.name}</p><p className="text-xs text-zinc-400">Precio unitario: {ingredient.unitPriceCents == null ? "—" : formatCurrency(ingredient.unitPriceCents / 100)}</p></div><p className="font-black text-cyan-100">{ingredient.quantity.toFixed(2)} {ingredient.unit}</p><p className="font-black text-emerald-200">{ingredient.estimatedCostCents == null ? "—" : formatCurrency(ingredient.estimatedCostCents / 100)}</p></div>) : <EmptyOrdersState title="Sin ingredientes estimados." />}</div></Card>
+  </section>;
+};
+
 const KitchenQueue = ({
   orders,
   runtime,
@@ -1702,7 +1747,7 @@ const KitchenQueue = ({
   runtime: OrdersRuntime;
   onToggleKitchenItem: ToggleKitchenItemDone;
 }) => {
-  const [mode, setMode] = useState<"burgers" | "sidequest">("burgers");
+  const [mode, setMode] = useState<"burgers" | "sidequest" | "summaryK">("burgers");
   const [busyLineKey, setBusyLineKey] = useState<string | null>(null);
   const activeOrders = orders.filter((o) => !terminalStatuses.has(o.status));
   const fallback = runtime.source !== "d1";
@@ -1760,7 +1805,7 @@ const KitchenQueue = ({
           {runtime.error}
         </p>
       ) : null}
-      <div className="grid grid-cols-2 gap-2 rounded-2xl border border-zinc-800 bg-zinc-950 p-2">
+      <div className="grid grid-cols-3 gap-2 rounded-2xl border border-zinc-800 bg-zinc-950 p-2">
         <Button
           className={`py-3 text-base font-black ${mode === "burgers" ? "bg-cyan-300 text-cyan-950" : "bg-zinc-900 text-zinc-300"}`}
           onClick={() => setMode("burgers")}
@@ -1773,9 +1818,17 @@ const KitchenQueue = ({
         >
           Side Quest
         </Button>
+        <Button
+          className={`py-3 text-base font-black ${mode === "summaryK" ? "bg-cyan-300 text-cyan-950" : "bg-zinc-900 text-zinc-300"}`}
+          onClick={() => setMode("summaryK")}
+        >
+          Resumen K
+        </Button>
       </div>
 
-      {mode === "burgers" ? (
+      {mode === "summaryK" ? (
+        <KitchenSummaryKPanel />
+      ) : mode === "burgers" ? (
         <div className="space-y-5">
           <section>
             <h3 className="mb-2 text-sm font-black uppercase tracking-[0.2em] text-amber-200">
