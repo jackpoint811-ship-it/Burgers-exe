@@ -9,6 +9,7 @@ type UpdatePayload = {
   description: string;
   price: number;
   isAvailable: boolean;
+  isFeatured: boolean;
   badge: string | null;
   promoLabel: string | null;
   sortOrder: number;
@@ -17,10 +18,19 @@ type UpdatePayload = {
   stockManaged: boolean;
   stockLimit: number | null;
   stockRemaining: number | null;
+  comboLinks: string[];
 };
 
 const json = (status: number, payload: unknown) =>
   new Response(JSON.stringify(payload), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
+
+const normalizeLinkArray = (value: unknown): string[] | null => {
+  if (!Array.isArray(value)) return null;
+  const links = value
+    .map((entry) => (typeof entry === 'string' ? entry.trim().toUpperCase() : ''))
+    .filter((entry) => entry.length > 0);
+  return [...new Set(links)];
+};
 
 const normalizeOptionalString = (value: unknown): string | null => {
   if (value == null) return null;
@@ -36,15 +46,17 @@ const parseBody = (input: unknown): UpdatePayload | null => {
   const description = typeof body.description === 'string' ? body.description.trim() : '';
   const price = typeof body.price === 'number' ? body.price : Number.NaN;
   const isAvailable = body.isAvailable;
+  const isFeatured = body.isFeatured;
   const sortOrder = typeof body.sortOrder === 'number' ? body.sortOrder : Number.NaN;
   const imageUrl = validateImageUrl(body.imageUrl);
   const imageKey = validateAssetKey(body.imageKey);
+  const comboLinks = normalizeLinkArray(body.comboLinks);
 
   const stockManaged = Boolean(body.stockManaged);
   const stockRemainingRaw = body.stockRemaining == null || body.stockRemaining === '' ? null : Number(body.stockRemaining);
   const stockLimitRaw = body.stockLimit == null || body.stockLimit === '' ? stockRemainingRaw : Number(body.stockLimit);
 
-  if (!name || !description || !Number.isFinite(price) || price < 0 || !Number.isInteger(sortOrder) || typeof isAvailable !== 'boolean' || imageUrl === undefined || imageKey === undefined) {
+  if (!name || !description || !Number.isFinite(price) || price < 0 || !Number.isInteger(sortOrder) || typeof isAvailable !== 'boolean' || typeof isFeatured !== 'boolean' || imageUrl === undefined || imageKey === undefined || comboLinks === null) {
     return null;
   }
   if (stockManaged && (stockRemainingRaw == null || !Number.isInteger(stockRemainingRaw) || stockRemainingRaw < 0)) return null;
@@ -55,6 +67,7 @@ const parseBody = (input: unknown): UpdatePayload | null => {
     description,
     price,
     isAvailable,
+    isFeatured,
     badge: normalizeOptionalString(body.badge),
     promoLabel: normalizeOptionalString(body.promoLabel),
     sortOrder,
@@ -62,7 +75,8 @@ const parseBody = (input: unknown): UpdatePayload | null => {
     imageKey,
     stockManaged,
     stockLimit: stockManaged ? stockLimitRaw : null,
-    stockRemaining: stockManaged ? stockRemainingRaw : null
+    stockRemaining: stockManaged ? stockRemainingRaw : null,
+    comboLinks
   };
 };
 
@@ -89,10 +103,10 @@ export const onRequestPatch: PagesFunction<Env> = async ({ env, params, request 
 
   const result = await env.BOG_MENU_DB.prepare(
     `UPDATE menu_items
-     SET name = ?, description = ?, price_cents = ?, is_available = ?, badge = ?, promo_label = ?, sort_order = ?, image_url = ?, image_key = ?, stock_managed = ?, stock_limit = ?, stock_remaining = ?, sold_out_at = ?, updated_at = CURRENT_TIMESTAMP
+     SET name = ?, description = ?, price_cents = ?, is_available = ?, is_featured = ?, badge = ?, promo_label = ?, sort_order = ?, image_url = ?, image_key = ?, combo_links_json = ?, stock_managed = ?, stock_limit = ?, stock_remaining = ?, sold_out_at = ?, updated_at = CURRENT_TIMESTAMP
      WHERE sku = ?`
   )
-    .bind(payload.name, payload.description, priceCents, payload.isAvailable ? 1 : 0, payload.badge, payload.promoLabel, payload.sortOrder, payload.imageUrl, payload.imageKey, payload.stockManaged ? 1 : 0, payload.stockLimit, payload.stockRemaining, soldOutAt, sku)
+    .bind(payload.name, payload.description, priceCents, payload.isAvailable ? 1 : 0, payload.isFeatured ? 1 : 0, payload.badge, payload.promoLabel, payload.sortOrder, payload.imageUrl, payload.imageKey, JSON.stringify(payload.comboLinks), payload.stockManaged ? 1 : 0, payload.stockLimit, payload.stockRemaining, soldOutAt, sku)
     .run();
 
   if (!result.success || (result.meta?.changes ?? 0) < 1) return json(404, { ok: false, error: 'Invalid payload' });

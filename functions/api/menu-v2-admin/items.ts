@@ -11,6 +11,14 @@ const SKU_PATTERN = /^[A-Z0-9][A-Z0-9-]{1,48}[A-Z0-9]$/;
 const json = (status: number, payload: unknown) =>
   new Response(JSON.stringify(payload), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
 
+const normalizeLinkArray = (value: unknown): string[] | null => {
+  if (!Array.isArray(value)) return null;
+  const links = value
+    .map((entry) => (typeof entry === 'string' ? entry.trim().toUpperCase() : ''))
+    .filter((entry) => entry.length > 0);
+  return [...new Set(links)];
+};
+
 const normalizeOptionalString = (value: unknown): string | null => {
   if (value == null) return null;
   if (typeof value !== 'string') return null;
@@ -31,14 +39,16 @@ const parseBody = (input: unknown) => {
   const price = typeof body.price === 'number' ? body.price : Number.NaN;
   const category = typeof body.category === 'string' ? body.category : '';
   const isAvailable = body.isAvailable;
+  const isFeatured = body.isFeatured;
   const sortOrder = typeof body.sortOrder === 'number' ? body.sortOrder : Number.NaN;
   const imageUrl = validateImageUrl(body.imageUrl);
   const imageKey = validateAssetKey(body.imageKey);
+  const comboLinks = normalizeLinkArray(body.comboLinks);
   const stockManaged = Boolean(body.stockManaged);
   const stockRemainingRaw = body.stockRemaining == null || body.stockRemaining === '' ? null : Number(body.stockRemaining);
   const stockLimitRaw = body.stockLimit == null || body.stockLimit === '' ? stockRemainingRaw : Number(body.stockLimit);
 
-  if (!SKU_PATTERN.test(sku) || !name || !Number.isFinite(price) || price < 0 || !CATEGORIES.has(category as MenuCategory['key']) || !Number.isInteger(sortOrder) || typeof isAvailable !== 'boolean' || imageUrl === undefined || imageKey === undefined) return null;
+  if (!SKU_PATTERN.test(sku) || !name || !Number.isFinite(price) || price < 0 || !CATEGORIES.has(category as MenuCategory['key']) || !Number.isInteger(sortOrder) || typeof isAvailable !== 'boolean' || typeof isFeatured !== 'boolean' || imageUrl === undefined || imageKey === undefined || comboLinks === null) return null;
   if (stockManaged && (stockRemainingRaw == null || !Number.isInteger(stockRemainingRaw) || stockRemainingRaw < 0)) return null;
   if (stockLimitRaw != null && (!Number.isInteger(stockLimitRaw) || stockLimitRaw < 0)) return null;
 
@@ -49,6 +59,7 @@ const parseBody = (input: unknown) => {
     price,
     category: category as MenuCategory['key'],
     isAvailable,
+    isFeatured,
     badge: normalizeOptionalString(body.badge),
     promoLabel: normalizeOptionalString(body.promoLabel),
     sortOrder,
@@ -56,7 +67,8 @@ const parseBody = (input: unknown) => {
     imageKey,
     stockManaged,
     stockLimit: stockManaged ? stockLimitRaw : null,
-    stockRemaining: stockManaged ? stockRemainingRaw : null
+    stockRemaining: stockManaged ? stockRemainingRaw : null,
+    comboLinks
   };
 };
 
@@ -77,8 +89,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
   const soldOutAt = payload.stockManaged && (payload.stockRemaining ?? 0) <= 0 ? new Date().toISOString() : null;
   const result = await env.BOG_MENU_DB.prepare(
     `INSERT INTO menu_items (id, sku, category_key, name, description, price_cents, tags_json, badge, promo_label, is_available, is_featured, sort_order, image_url, image_key, combo_links_json, upsell_items_json, stock_managed, stock_limit, stock_remaining, sold_out_at, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, '[]', ?, ?, ?, 0, ?, ?, ?, '[]', '[]', ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
-  ).bind(generateId('mi'), payload.sku, payload.category, payload.name, payload.description, priceCents, payload.badge, payload.promoLabel, payload.isAvailable ? 1 : 0, payload.sortOrder, payload.imageUrl, payload.imageKey, payload.stockManaged ? 1 : 0, payload.stockLimit, payload.stockRemaining, soldOutAt).run();
+     VALUES (?, ?, ?, ?, ?, ?, '[]', ?, ?, ?, ?, ?, ?, ?, ?, '[]', ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+  ).bind(generateId('mi'), payload.sku, payload.category, payload.name, payload.description, priceCents, payload.badge, payload.promoLabel, payload.isAvailable ? 1 : 0, payload.isFeatured ? 1 : 0, payload.sortOrder, payload.imageUrl, payload.imageKey, JSON.stringify(payload.comboLinks), payload.stockManaged ? 1 : 0, payload.stockLimit, payload.stockRemaining, soldOutAt).run();
 
   if (!result.success) return json(500, { ok: false, error: 'No se pudo crear producto' });
 

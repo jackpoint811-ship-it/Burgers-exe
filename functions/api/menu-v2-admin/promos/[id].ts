@@ -15,6 +15,7 @@ type UpdatePayload = {
   sortOrder: number;
   imageUrl: string | null;
   imageKey: string | null;
+  comboLinks: string[];
 };
 
 const PROMO_SELECT =
@@ -22,6 +23,14 @@ const PROMO_SELECT =
 
 const json = (status: number, payload: unknown) =>
   new Response(JSON.stringify(payload), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
+
+const normalizeLinkArray = (value: unknown): string[] | null => {
+  if (!Array.isArray(value)) return null;
+  const links = value
+    .map((entry) => (typeof entry === 'string' ? entry.trim().toUpperCase() : ''))
+    .filter((entry) => entry.length > 0);
+  return [...new Set(links)];
+};
 
 const normalizeOptionalString = (value: unknown): string | null => {
   if (value == null) return null;
@@ -52,8 +61,9 @@ const parseBody = (input: unknown): UpdatePayload | null => {
   const sortOrder = typeof body.sortOrder === 'number' ? body.sortOrder : Number.NaN;
   const imageUrl = validateImageUrl(body.imageUrl);
   const imageKey = validateAssetKey(body.imageKey);
+  const comboLinks = normalizeLinkArray(body.comboLinks);
 
-  if (!title || !description || typeof isAvailable !== 'boolean' || typeof isFeatured !== 'boolean' || !Number.isInteger(sortOrder) || imageUrl === undefined || imageKey === undefined) {
+  if (!title || !description || typeof isAvailable !== 'boolean' || typeof isFeatured !== 'boolean' || !Number.isInteger(sortOrder) || imageUrl === undefined || imageKey === undefined || comboLinks === null) {
     return null;
   }
 
@@ -66,7 +76,8 @@ const parseBody = (input: unknown): UpdatePayload | null => {
     isFeatured,
     sortOrder,
     imageUrl,
-    imageKey
+    imageKey,
+    comboLinks
   };
 };
 
@@ -88,10 +99,10 @@ export const onRequestPatch: PagesFunction<Env> = async ({ env, params, request 
 
   const result = await db.prepare(
     `UPDATE promo_cards
-     SET title = ?, description = ?, badge = ?, promo_label = ?, is_available = ?, is_featured = ?, sort_order = ?, asset_image_url = ?, asset_image_key = ?, updated_at = CURRENT_TIMESTAMP
+     SET title = ?, description = ?, badge = ?, promo_label = ?, is_available = ?, is_featured = ?, sort_order = ?, asset_image_url = ?, asset_image_key = ?, combo_links_json = ?, updated_at = CURRENT_TIMESTAMP
      WHERE id = ?`
   )
-    .bind(payload.title, payload.description, payload.badge, payload.promoLabel, payload.isAvailable ? 1 : 0, payload.isFeatured ? 1 : 0, payload.sortOrder, payload.imageUrl, payload.imageKey, auth.id)
+    .bind(payload.title, payload.description, payload.badge, payload.promoLabel, payload.isAvailable ? 1 : 0, payload.isFeatured ? 1 : 0, payload.sortOrder, payload.imageUrl, payload.imageKey, JSON.stringify(payload.comboLinks), auth.id)
     .run();
 
   if (!result.success || (result.meta?.changes ?? 0) < 1) return json(404, { ok: false, error: 'Promo not found' });
