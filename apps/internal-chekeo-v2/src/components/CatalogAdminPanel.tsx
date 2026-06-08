@@ -13,7 +13,7 @@ type ItemImageMutationResponse = { ok?: boolean; error?: string; warning?: strin
 type PromoMutationResponse = { ok?: boolean; error?: string; warning?: string; promo?: PromoCardType; imageKey?: string; assetUrl?: string; removed?: boolean };
 type ItemAvailabilityMutationResponse = { ok?: boolean; error?: string; item?: MenuItem };
 type CategoryBannerForm = { categoryKey: MenuCategory['key']; title: string; subtitle: string; imageUrl: string; imageKey: string };
-type CategoryBannerMutationResponse = { ok?: boolean; error?: string; banner?: MenuCategoryBanner };
+type CategoryBannerMutationResponse = { ok?: boolean; error?: string; warning?: string; banner?: MenuCategoryBanner; imageKey?: string | null; assetUrl?: string | null; removed?: boolean };
 type IngredientForm = { id?: string; name: string; unit: string; unitPrice: string; isActive: boolean; sortOrder: string };
 type RecipeFormRow = { ingredientId: string; quantityPerUnit: string };
 const INGREDIENT_UNITS = ['pieza', 'g', 'kg', 'ml', 'l', 'paquete', 'bolsa'];
@@ -88,6 +88,9 @@ export function CatalogAdminPanel() {
   const [selectedPromoFile, setSelectedPromoFile] = useState<File | null>(null);
   const [bannerForm, setBannerForm] = useState<CategoryBannerForm>({ categoryKey: 'burgers', title: '', subtitle: '', imageUrl: '', imageKey: '' });
   const [bannerSaving, setBannerSaving] = useState(false);
+  const [bannerUploading, setBannerUploading] = useState(false);
+  const [bannerRemovingImage, setBannerRemovingImage] = useState(false);
+  const [selectedBannerFile, setSelectedBannerFile] = useState<File | null>(null);
   const [bannerError, setBannerError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [ingredients, setIngredients] = useState<IngredientV2[]>([]);
@@ -102,6 +105,7 @@ export function CatalogAdminPanel() {
   const [recipeError, setRecipeError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const promoFileInputRef = useRef<HTMLInputElement | null>(null);
+  const bannerFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const loadMenu = async () => {
     setLoading(true);
@@ -120,6 +124,12 @@ export function CatalogAdminPanel() {
   useEffect(() => {
     void loadMenu();
   }, []);
+
+  useEffect(() => {
+    const current = (menu?.categoryBanners ?? []).find((entry) => entry.categoryKey === bannerForm.categoryKey);
+    if (!current || (!current.title && !current.subtitle && !current.imageUrl && !current.imageKey) || bannerForm.title || bannerForm.subtitle || bannerForm.imageUrl || bannerForm.imageKey) return;
+    setBannerForm((form) => ({ ...form, title: current.title ?? '', subtitle: current.subtitle ?? '', imageUrl: current.imageUrl ?? '', imageKey: current.imageKey ?? '' }));
+  }, [bannerForm, menu?.categoryBanners]);
 
   const filtered = useMemo(() => {
     const list = menu?.items ?? [];
@@ -152,8 +162,10 @@ export function CatalogAdminPanel() {
   const canEdit = Boolean(menu?.source === 'd1');
   const imagePreviewUrl = getAssetUrl(form?.imageUrl, form?.imageKey);
   const promoImagePreviewUrl = getAssetUrl(promoForm?.imageUrl, promoForm?.imageKey);
+  const bannerImagePreviewUrl = getAssetUrl(bannerForm.imageUrl, bannerForm.imageKey);
   const imageBusy = uploading || removingImage;
   const promoImageBusy = promoUploading || promoRemovingImage;
+  const bannerImageBusy = bannerUploading || bannerRemovingImage;
 
   const beginEdit = (item: MenuItem) => {
     setCreatingItem(false);
@@ -237,6 +249,19 @@ export function CatalogAdminPanel() {
     setMenu((current) => current ? { ...current, promos: current.promos.map((entry) => (entry.id === promo.id ? promo : entry)) } : current);
   };
 
+  const updateBannerInMenu = (banner: MenuCategoryBanner) => {
+    setBannerForm((current) => current.categoryKey === banner.categoryKey ? { ...current, imageUrl: banner.imageUrl ?? '', imageKey: banner.imageKey ?? '' } : current);
+    setMenu((current) => current ? { ...current, categoryBanners: [...(current.categoryBanners ?? []).filter((entry) => entry.categoryKey !== banner.categoryKey), banner] } : current);
+  };
+
+  const selectBannerCategory = (categoryKey: MenuCategory['key']) => {
+    const current = (menu?.categoryBanners ?? []).find((entry) => entry.categoryKey === categoryKey);
+    setBannerForm({ categoryKey, title: current?.title ?? '', subtitle: current?.subtitle ?? '', imageUrl: current?.imageUrl ?? '', imageKey: current?.imageKey ?? '' });
+    setSelectedBannerFile(null);
+    setBannerError(null);
+    if (bannerFileInputRef.current) bannerFileInputRef.current.value = '';
+  };
+
   const onFileChange = (file: File | null) => {
     setSelectedFile(file);
     setImageError(validateSelectedFile(file));
@@ -245,6 +270,11 @@ export function CatalogAdminPanel() {
   const onPromoFileChange = (file: File | null) => {
     setSelectedPromoFile(file);
     setPromoImageError(validateSelectedFile(file));
+  };
+
+  const onBannerFileChange = (file: File | null) => {
+    setSelectedBannerFile(file);
+    setBannerError(validateSelectedFile(file));
   };
 
   const onUploadImage = async () => {
@@ -432,6 +462,48 @@ export function CatalogAdminPanel() {
   };
 
 
+  const onBannerUploadImage = async () => {
+    if (!canEdit || bannerImageBusy) { setBannerError('La carga de imágenes requiere catálogo editable'); return; }
+    const fileError = validateSelectedFile(selectedBannerFile);
+    if (fileError || !selectedBannerFile) { setBannerError(fileError); return; }
+    setBannerUploading(true);
+    setBannerError(null);
+    try {
+      const body = new FormData();
+      body.append('file', selectedBannerFile);
+      const res = await fetch(`/api/menu-v2-admin/category-banners/${encodeURIComponent(bannerForm.categoryKey)}/image`, { method: 'POST', credentials: 'include', body });
+      const data = (await res.json()) as CategoryBannerMutationResponse;
+      if (!res.ok || !data.ok || !data.banner) throw new Error(data.error ?? 'No se pudo subir el banner');
+      updateBannerInMenu(data.banner);
+      setSelectedBannerFile(null);
+      if (bannerFileInputRef.current) bannerFileInputRef.current.value = '';
+      setNotice(data.warning ? `Descarga visual actualizada (${data.warning})` : 'Descarga visual actualizada');
+    } catch (e) {
+      setBannerError(e instanceof Error ? e.message : 'No se pudo subir el banner');
+    } finally {
+      setBannerUploading(false);
+    }
+  };
+
+  const onBannerRemoveImage = async () => {
+    if (!canEdit || bannerImageBusy) { setBannerError('La eliminación de imágenes requiere catálogo editable'); return; }
+    setBannerRemovingImage(true);
+    setBannerError(null);
+    try {
+      const res = await fetch(`/api/menu-v2-admin/category-banners/${encodeURIComponent(bannerForm.categoryKey)}/image`, { method: 'DELETE', credentials: 'include' });
+      const data = (await res.json()) as CategoryBannerMutationResponse;
+      if (!res.ok || !data.ok || !data.banner) throw new Error(data.error ?? 'No se pudo quitar la imagen');
+      updateBannerInMenu(data.banner);
+      setSelectedBannerFile(null);
+      if (bannerFileInputRef.current) bannerFileInputRef.current.value = '';
+      setNotice(data.warning ? `Imagen lista: banner sin imagen (${data.warning})` : 'Imagen lista: banner sin imagen');
+    } catch (e) {
+      setBannerError(e instanceof Error ? e.message : 'No se pudo quitar la imagen');
+    } finally {
+      setBannerRemovingImage(false);
+    }
+  };
+
   const onBannerSave = async () => {
     if (!canEdit || bannerSaving) return;
     const refError = validateImageRefs(bannerForm.imageUrl, bannerForm.imageKey);
@@ -447,7 +519,7 @@ export function CatalogAdminPanel() {
       });
       const data = (await res.json()) as CategoryBannerMutationResponse;
       if (!res.ok || !data.ok || !data.banner) throw new Error(data.error ?? 'Error al guardar banner');
-      setMenu((current) => current ? { ...current, categoryBanners: [...(current.categoryBanners ?? []).filter((entry) => entry.categoryKey !== data.banner!.categoryKey), data.banner!] } : current);
+      updateBannerInMenu(data.banner);
       setNotice('Banner de categoría actualizado');
     } catch (e) {
       setBannerError(e instanceof Error ? e.message : 'Error al guardar banner');
@@ -506,7 +578,7 @@ export function CatalogAdminPanel() {
       </section>
     ))}</div> : null}
 
-    {!loading && !error && catalogTab === 'banners' ? <Card className='p-3'><div className='grid gap-3'><div><h4 className='font-bold'>Banners de categorías</h4><p className='muted'>Configura título, copy e imagen opcional por categoría. No bloquea el menú si queda vacío.</p></div><label className='text-xs uppercase tracking-widest text-zinc-300'>Categoría<select className='input md:mt-1' value={bannerForm.categoryKey} onChange={(e) => { const categoryKey = e.target.value as MenuCategory['key']; const current = (menu?.categoryBanners ?? []).find((entry) => entry.categoryKey === categoryKey); setBannerForm({ categoryKey, title: current?.title ?? '', subtitle: current?.subtitle ?? '', imageUrl: current?.imageUrl ?? '', imageKey: current?.imageKey ?? '' }); }}><option value='burgers'>burgers</option><option value='combos'>combos</option><option value='guarniciones'>guarniciones</option><option value='drinks'>bebidas</option><option value='extras'>extras</option></select></label><input className='input md:mt-0' value={bannerForm.title} onChange={(e) => setBannerForm({ ...bannerForm, title: e.target.value })} placeholder='Título del banner' /><textarea className='input md:mt-0' value={bannerForm.subtitle} onChange={(e) => setBannerForm({ ...bannerForm, subtitle: e.target.value })} placeholder='Subtítulo / copy' /><input className='input md:mt-0' value={bannerForm.imageUrl} onChange={(e) => setBannerForm({ ...bannerForm, imageUrl: e.target.value })} placeholder='Image URL opcional' /><input className='input md:mt-0' value={bannerForm.imageKey} onChange={(e) => setBannerForm({ ...bannerForm, imageKey: e.target.value })} placeholder='Image key opcional' />{bannerError ? <p className='text-xs text-rose-300'>{bannerError}</p> : null}<Button disabled={!canEdit || bannerSaving} className='bg-cyan-400 text-black disabled:opacity-40' onClick={onBannerSave}>{bannerSaving ? 'Guardando…' : 'Guardar banner'}</Button></div></Card> : null}
+    {!loading && !error && catalogTab === 'banners' ? <Card className='p-3'><div className='grid gap-3'><div><h4 className='font-bold'>Banners de categorías</h4><p className='muted'>Flujo operativo: elige categoría, edita título/subtítulo, sube imagen y guarda banner. URL/key manual queda como opción avanzada.</p></div><label className='text-xs uppercase tracking-widest text-zinc-300'>Categoría<select className='input md:mt-1' value={bannerForm.categoryKey} onChange={(e) => selectBannerCategory(e.target.value as MenuCategory['key'])}><option value='burgers'>burgers</option><option value='combos'>combos</option><option value='guarniciones'>guarniciones</option><option value='drinks'>bebidas</option><option value='extras'>extras</option></select></label><input className='input md:mt-0' value={bannerForm.title} onChange={(e) => setBannerForm({ ...bannerForm, title: e.target.value })} placeholder='Título del banner' /><textarea className='input md:mt-0' value={bannerForm.subtitle} onChange={(e) => setBannerForm({ ...bannerForm, subtitle: e.target.value })} placeholder='Subtítulo / copy' /><div className='rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-3'><div className='flex flex-col gap-3 sm:flex-row'><div className='image-preview'>{bannerImagePreviewUrl ? <img src={bannerImagePreviewUrl} alt={`Banner de ${bannerForm.categoryKey}`} loading='lazy' decoding='async' /> : <span>Sin imagen</span>}</div><div className='min-w-0 flex-1 space-y-2'><h5 className='text-sm font-bold text-cyan-100'>Imagen del banner</h5>{bannerForm.imageKey || bannerForm.imageUrl ? <p className='break-all text-xs text-cyan-200'>Imagen lista: {bannerForm.imageKey || bannerForm.imageUrl}</p> : <p className='text-xs text-zinc-400'>Sin imagen asignada: Public V2 mostrará solo título/subtítulo si existen.</p>}<input ref={bannerFileInputRef} className='input md:mt-0' type='file' accept={ACCEPTED_IMAGE_TYPES.join(',')} disabled={bannerImageBusy || bannerSaving} onChange={(e) => onBannerFileChange(e.target.files?.[0] ?? null)} /><p className='text-xs text-zinc-400'>{ACCEPTED_IMAGE_TYPES_LABEL}. La ruta se genera automáticamente para banners de categoría.</p><div className='flex flex-col gap-2 sm:flex-row'><Button className='flex-1 bg-cyan-400 text-black disabled:opacity-40' disabled={bannerImageBusy || bannerSaving || !canEdit || !selectedBannerFile || Boolean(validateSelectedFile(selectedBannerFile))} onClick={onBannerUploadImage}>{bannerUploading ? 'Subiendo…' : 'Subir banner'}</Button><Button className='flex-1 border border-rose-700 bg-zinc-900 text-rose-200 disabled:opacity-40' disabled={bannerImageBusy || bannerSaving || !canEdit || (!bannerForm.imageKey && !bannerForm.imageUrl)} onClick={onBannerRemoveImage}>{bannerRemovingImage ? 'Quitando…' : 'Quitar imagen'}</Button></div></div></div></div><details className='rounded-xl border border-zinc-800 bg-zinc-900/50 p-3'><summary className='cursor-pointer text-xs uppercase tracking-widest text-zinc-300'>Opciones avanzadas</summary><div className='mt-2 grid gap-2'><input className='input md:mt-0' value={bannerForm.imageUrl} onChange={(e) => setBannerForm({ ...bannerForm, imageUrl: e.target.value })} placeholder='Image URL opcional' /><input className='input md:mt-0' value={bannerForm.imageKey} onChange={(e) => setBannerForm({ ...bannerForm, imageKey: e.target.value })} placeholder='Image key opcional' /><p className='text-xs text-zinc-400'>Cualquier imagen editable desde Chekeo debe ofrecer upload directo; imageUrl/imageKey manual solo debe ser opción avanzada.</p></div></details>{bannerError ? <p className='text-xs text-rose-300'>{bannerError}</p> : null}<Button disabled={!canEdit || bannerSaving || bannerImageBusy} className='bg-cyan-400 text-black disabled:opacity-40' onClick={onBannerSave}>{bannerSaving ? 'Guardando…' : 'Guardar banner'}</Button></div></Card> : null}
 
     {!loading && !error && catalogTab === 'promos' ? <div className='grid gap-2'>{filteredPromos.map((promo) => <Card key={promo.id} className='p-3'><div className='flex flex-wrap items-start justify-between gap-2'><div className='min-w-0'><p className='font-semibold'>{promo.title} <span className='muted'>({promo.id})</span></p><p className='text-xs text-zinc-400'>{promo.description}</p><p className='text-xs'>{promo.isAvailable ? 'Disponible' : 'Oculta'} · {promo.isFeatured ? 'Destacada' : 'No destacada'} · Orden {promo.sortOrder}</p><p className='text-xs text-zinc-300'>Badge: {promo.badge || '—'} · Promo label: {promo.promoLabel || '—'}</p>{promo.asset.imageKey || promo.asset.imageUrl ? <p className='break-all text-xs text-cyan-200'>Asset: {promo.asset.imageKey ?? promo.asset.imageUrl}</p> : <p className='text-xs text-zinc-500'>Asset: placeholder</p>}</div><Button disabled={!canEdit} className='border border-zinc-700 bg-zinc-900 disabled:opacity-40' onClick={() => beginPromoEdit(promo)}>Editar</Button></div></Card>)}</div> : null}
 
