@@ -14,7 +14,11 @@ body{font-family:Inter,system-ui,sans-serif;background:#050507;color:#f4f4f5;min
 .tab{@apply min-h-11 shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-[11px] text-zinc-300 data-[state=active]:bg-cyan-500/20 data-[state=active]:font-semibold data-[state=active]:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400}
 .row{@apply flex items-center justify-between gap-2 rounded-lg border border-zinc-800 bg-zinc-900/60 p-2 text-left}
 .chip{@apply rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-1 text-xs text-cyan-200}
-.overlay{@apply fixed inset-0 bg-black/70}
-.modal{@apply fixed left-1/2 top-1/2 w-[calc(100%-1rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 rounded-xl border border-zinc-700 bg-zinc-950 p-4}
+.overlay{@apply fixed inset-0 z-40 overflow-y-auto bg-black/70}
+.modal{@apply fixed left-1/2 top-1/2 z-50 w-[calc(100%-1rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-xl border border-zinc-700 bg-zinc-950 p-4}
+.modal{max-height:calc(100dvh - 1rem)}
+@supports not (height: 100dvh){
+  .modal{max-height:calc(100vh - 1rem)}
+}
 .image-preview{@apply flex h-28 w-full shrink-0 items-center justify-center overflow-hidden rounded-xl border border-zinc-700 bg-zinc-900 text-xs uppercase tracking-widest text-zinc-500 sm:w-32}
 .image-preview img{@apply h-full w-full object-cover}
