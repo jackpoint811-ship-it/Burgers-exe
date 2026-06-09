@@ -243,6 +243,24 @@ const getProductIngredientBullets = (item: MenuItem): string[] => {
   const uniqueParts = parts.filter((part, index) => parts.findIndex((candidate) => candidate.toLocaleLowerCase("es-MX") === part.toLocaleLowerCase("es-MX")) === index);
   return uniqueParts.length > 1 ? uniqueParts.slice(0, 8) : [];
 };
+const getComboIncludes = (combo: MenuItem, items: MenuItem[]): string[] => {
+  const itemBySku = new Map(items.map((item) => [normalizeMenuLink(item.sku), item]));
+  const linkedItems = combo.comboLinks
+    .map((link) => itemBySku.get(normalizeMenuLink(link)))
+    .filter((item): item is MenuItem => Boolean(item));
+  const linkedLabels = linkedItems.map((item) => {
+    const kind = inferItemKind(item);
+    const prefix = kind === "garnish" ? "Guarnición" : kind === "drink" ? "Bebida" : kind === "burger" ? "Burger" : "Item";
+    return `${prefix}: ${item.name}`;
+  });
+
+  const fallbackLabels = combo.tags.length
+    ? combo.tags.map((tag) => tag.trim()).filter(Boolean)
+    : getProductIngredientBullets(combo);
+  const source = linkedLabels.length ? linkedLabels : fallbackLabels;
+  const unique = source.filter((label, index) => source.findIndex((candidate) => candidate.toLocaleLowerCase("es-MX") === label.toLocaleLowerCase("es-MX")) === index);
+  return unique.slice(0, 5);
+};
 const makeUnit = (item: MenuItem, itemKind: TicketItemKind, index: number, source?: Partial<CartEntry>): CartEntry => ({
   sku: item.sku,
   name: item.name,
@@ -563,9 +581,8 @@ const MenuInfoDialog = ({ item, onClose, onChooseInFlow }: { item: MenuItem | nu
   const titleId = "menu-info-title";
   const src = item ? resolveAssetUrl(item.imageUrl, item.imageKey) : undefined;
   const kind = item ? inferItemKind(item) : "other";
-  const isCombo = kind === "combo";
-  const canEnterOrderFlow = Boolean(item?.isAvailable && (kind === "burger" || kind === "garnish"));
-  const orderFlowLabel = kind === "burger" ? "Elegir en Burgers" : "Elegir en Guarniciones";
+  const canEnterOrderFlow = Boolean(item?.isAvailable && (kind === "burger" || kind === "combo" || kind === "garnish"));
+  const orderFlowLabel = kind === "burger" ? "Elegir en Burgers" : kind === "combo" ? "Armar combo" : "Elegir en Guarniciones";
   const ingredientBullets = item ? getProductIngredientBullets(item) : [];
   useEffect(() => {
     if (!item) return;
@@ -594,7 +611,6 @@ const MenuInfoDialog = ({ item, onClose, onChooseInFlow }: { item: MenuItem | nu
             <span className={item.isAvailable ? "availability-pill" : "availability-pill off"}>{item.isAvailable ? "Disponible" : "Agotado"}</span>
           </div>
           <div className="info-dialog-actions" aria-label={`Acciones para ${item.name}`}>
-            {isCombo ? <button type="button" className="quest-button combo-coming-soon-cta" aria-label={`Combos próximamente: ${item.name}`} disabled>Combos próximamente</button> : null}
             {canEnterOrderFlow ? <button type="button" className="quest-button" aria-label={`${orderFlowLabel}: ${item.name}`} onClick={() => { onClose(); onChooseInFlow(item); }}>{orderFlowLabel}</button> : null}
             <button ref={closeRef} type="button" className="quest-button ghost" onClick={onClose}>Cerrar</button>
           </div>
@@ -604,18 +620,18 @@ const MenuInfoDialog = ({ item, onClose, onChooseInFlow }: { item: MenuItem | nu
   );
 };
 
-const MainQuest = ({ onBack, onBurgers, onSideQuest }: { onBack: () => void; onBurgers: () => void; onSideQuest: () => void }) => {
-  const routes = [
+const MainQuest = ({ onBack, onBurgers, onCombos, onSideQuest }: { onBack: () => void; onBurgers: () => void; onCombos: () => void; onSideQuest: () => void }) => {
+  const routes: Array<{ key: "burgers" | "combos" | "side"; title: string; description: string; action: () => void; status: "active" | "coming-soon" }> = [
     { key: "burgers", title: "Burgers", description: "Elige varios tipos y cantidades antes de personalizar.", action: onBurgers, status: "active" },
-    { key: "combos", title: "Combos", description: "Combos en carga… el sistema está preparando el siguiente drop.", status: "coming-soon" },
+    { key: "combos", title: "Combos", description: "Revisa qué incluye cada combo y arma tu ruta completa.", action: onCombos, status: "active" },
     { key: "side", title: "Guarniciones", description: "Ve directo a Side Quest si solo quieres papas o extras.", action: onSideQuest, status: "active" },
-  ] as const;
+  ];
   return (
     <section className="quest-panel main-quest-panel">
       <QuestButton className="back-button" onClick={onBack}>← Volver al menú</QuestButton>
       <span className="eyebrow">Main Quest</span>
       <h2>Elige tu ruta</h2>
-      <p className="muted section-subcopy">Main ahora es el hub: entra a burgers, mira el teaser de combos o ve directo por guarniciones.</p>
+      <p className="muted section-subcopy">Main ahora es el hub: entra a burgers, arma combos o ve directo por guarniciones.</p>
       <div className="route-grid" role="list" aria-label="Rutas del pedido">
         {routes.map((route) => {
           const isComingSoon = route.status === "coming-soon";
@@ -640,11 +656,58 @@ const MainQuest = ({ onBack, onBurgers, onSideQuest }: { onBack: () => void; onB
   );
 };
 
-const CombosUnavailable = ({ onBack }: { onBack: () => void }) => (
-  <section className="quest-panel combos-empty-panel">
+const ComboCard = ({ combo, items, onBuild, reduce }: { combo: MenuItem; items: MenuItem[]; onBuild: (item: MenuItem) => void; reduce: boolean }) => {
+  const includes = getComboIncludes(combo, items);
+  const src = resolveAssetUrl(combo.imageUrl, combo.imageKey);
+  const [imageFailed, setImageFailed] = useState(false);
+  const showImage = Boolean(src) && !imageFailed;
+  return (
+    <motion.article className="combo-card" whileTap={reduce ? undefined : { scale: 0.99 }}>
+      <div className={showImage ? "combo-card-visual" : "combo-card-visual no-image"} aria-hidden="true">
+        {showImage && src ? <img src={src} alt="" loading="lazy" decoding="async" onError={() => setImageFailed(true)} /> : <span>Combo</span>}
+      </div>
+      <div className="combo-card-body">
+        <div className="combo-card-kickers">
+          {combo.badge ? <span>{combo.badge}</span> : null}
+          {combo.promoLabel ? <span>{combo.promoLabel}</span> : null}
+          {!combo.badge && !combo.promoLabel ? <span>Combo activo</span> : null}
+        </div>
+        <div className="combo-card-title-row">
+          <h3>{combo.name}</h3>
+          <strong>{formatCurrency(combo.price)}</strong>
+        </div>
+        <p>{getProductSalesCopy(combo)}</p>
+        <div className="combo-includes" aria-label={`Incluye ${combo.name}`}>
+          <span>Incluye</span>
+          {includes.length ? (
+            <ul>
+              {includes.map((include) => <li key={include}>{include}</li>)}
+            </ul>
+          ) : (
+            <p>Base de combo lista para configurar en el siguiente paso.</p>
+          )}
+        </div>
+        <QuestButton onClick={() => onBuild(combo)} disabled={!combo.isAvailable} aria-label={`Armar combo ${combo.name}`}>Armar combo</QuestButton>
+      </div>
+    </motion.article>
+  );
+};
+
+const CombosSelectionView = ({ items, allItems, onBack, onBuild, reduce }: { items: MenuItem[]; allItems: MenuItem[]; onBack: () => void; onBuild: (item: MenuItem) => void; reduce: boolean }) => (
+  <section className="quest-panel combos-panel">
     <QuestButton className="back-button" onClick={onBack}>← Volver a Main</QuestButton>
     <span className="eyebrow">Combos</span>
-    <EmptyState title="Combos en carga…" description="El sistema está preparando el siguiente drop sin bloquear tu burger actual." />
+    <h2>Arma tu combo</h2>
+    <p className="muted section-subcopy">Cada card muestra el precio y lo que incluye antes de entrar al editor. Sin descuentos ocultos: eliges el combo y luego personalizas.</p>
+    {items.length ? (
+      <div className="combo-selection-grid">
+        {items.map((combo) => <ComboCard key={combo.sku} combo={combo} items={allItems} onBuild={onBuild} reduce={reduce} />)}
+      </div>
+    ) : (
+      <section className="combos-empty-panel" aria-live="polite">
+        <EmptyState title="Combos disponibles próximamente" description="El laboratorio Burgers.exe está compilando el siguiente drop. Mientras tanto, arma una burger y desbloquea tu side quest." />
+      </section>
+    )}
   </section>
 );
 
@@ -1099,15 +1162,38 @@ const TicketList = ({ cart, items, onEdit, onDuplicate, onRemove }: { cart: Cart
     {cart.map((entry) => {
       const price = items.find((item) => item.sku === entry.sku)?.price ?? 0;
       const extrasTotal = entry.extras.reduce((sum, extra) => sum + (extra.price ?? 0), 0);
+      const lineTotal = price + extrasTotal;
+      const isCombo = entry.itemKind === "combo";
+      const personalizationRows = [
+        ...entry.removedIngredients.map((ingredient) => `Sin ${ingredient}`),
+        entry.garnish ? `Guarnición incluida: ${entry.garnish.name}` : null,
+        entry.burgerNote ? `Nota: ${entry.burgerNote}` : null,
+      ].filter((row): row is string => Boolean(row));
       return <article className="ticket-item" key={entry.lineKey}>
-        <div className="ticket-item-head"><h3>{entry.name} #{entry.itemDisplayIndex}</h3><strong>{formatCurrency(price + extrasTotal)}</strong></div>
-        <ul>
-          {entry.removedIngredients.map((ingredient) => <li key={ingredient}>MOD · Sin {ingredient}</li>)}
-          {entry.extras.map((extra, extraIndex) => <li key={`${extra.sku ?? extra.name}-${extraIndex}`}>UPGRADE · {extra.name}{extra.price ? ` +${formatCurrency(extra.price)}` : ""}</li>)}
-          {entry.garnish ? <li>Guarnición incluida: {entry.garnish.name}</li> : null}
-          {entry.burgerNote ? <li>Nota: {entry.burgerNote}</li> : null}
-          {!entry.removedIngredients.length && !entry.extras.length && !entry.garnish && !entry.burgerNote ? <li>Unidad separada · precio unitario</li> : null}
-        </ul>
+        <div className="ticket-item-head">
+          <div>
+            <span className="ticket-item-kind">{isCombo ? "Combo" : entry.itemKind === "burger" ? "Burger" : "Item"}</span>
+            <h3>{entry.name} #{entry.itemDisplayIndex}</h3>
+          </div>
+          <strong>{formatCurrency(lineTotal)}</strong>
+        </div>
+        <div className="ticket-item-breakdown">
+          <div className="ticket-item-base-row"><span>{isCombo ? "Base del combo" : "Precio base"}</span><strong>{formatCurrency(price)}</strong></div>
+          {personalizationRows.length ? (
+            <div className="ticket-item-detail-block">
+              <span>Personalizaciones</span>
+              <ul>{personalizationRows.map((row) => <li key={row}>{row}</li>)}</ul>
+            </div>
+          ) : null}
+          {entry.extras.length ? (
+            <div className="ticket-item-detail-block ticket-item-extras-block">
+              <span>Extras</span>
+              <ul>{entry.extras.map((extra, extraIndex) => <li key={`${extra.sku ?? extra.name}-${extraIndex}`}><span>{extra.name}</span><strong>{extra.price ? `+${formatCurrency(extra.price)}` : formatCurrency(0)}</strong></li>)}</ul>
+            </div>
+          ) : null}
+          {!personalizationRows.length && !entry.extras.length ? <p>Sin cambios · precio unitario</p> : null}
+          <div className="ticket-item-total-row"><span>Total</span><strong>{formatCurrency(lineTotal)}</strong></div>
+        </div>
         <footer>{entry.itemKind === "burger" || entry.itemKind === "combo" ? <button type="button" onClick={() => onEdit(entry.lineKey)}>Editar</button> : null}<button type="button" onClick={() => onDuplicate(entry.lineKey)}>Duplicar</button><button type="button" onClick={() => onRemove(entry.lineKey)}>Eliminar</button></footer>
       </article>;
     })}
@@ -1591,6 +1677,7 @@ export function PublicOrderApp() {
   const total = useMemo(() => getCartTotal(cart, menuData.items), [cart, menuData.items]);
   const count = getCartCount(cart);
   const availableBurgerItems = useMemo(() => menuData.items.filter((item) => inferItemKind(item) === "burger" && item.isAvailable), [menuData.items]);
+  const availableComboItems = useMemo(() => menuData.items.filter((item) => inferItemKind(item) === "combo" && item.isAvailable), [menuData.items]);
   const extras = menuData.items.filter((item) => item.category === "extras" && inferItemKind(item) !== "combo" && item.isAvailable);
   const garnishes = menuData.items.filter((item) => item.category === "guarniciones" && item.isAvailable);
   const hasBurgerOrComboInCart = cart.some((entry) => entry.itemKind === "burger" || entry.itemKind === "combo");
@@ -1676,6 +1763,7 @@ export function PublicOrderApp() {
   };
   const beginQuest = () => { setBuilder(null); setBurgerSelectionError(null); setCartCustomizationError(null); setExtraGarnishQuantities({}); setSideQuestError(null); setSideQuestEntryMode("builder"); setCheckoutError(null); setOrderConfirmation(null); navigate("main"); };
   const startBurgerSelection = () => { setBuilder(null); setBurgerSelectionError(null); setCartCustomizationError(null); setSideQuestError(null); setSideQuestEntryMode("builder"); setCheckoutError(null); setOrderConfirmation(null); navigate("burgers"); };
+  const startComboSelection = () => { setBuilder(null); setBurgerSelectionError(null); setCartCustomizationError(null); setSideQuestError(null); setSideQuestEntryMode("builder"); setCheckoutError(null); setOrderConfirmation(null); navigate("combos"); };
   const startDirectSideQuest = () => { setBuilder(null); setBurgerSelectionError(null); setCartCustomizationError(null); setExtraGarnishQuantities({}); setSideQuestError(null); setSideQuestEntryMode("direct"); navigate("side"); };
   const startBuilder = (item: MenuItem, source?: CartEntry, nextSection: QuestSection = "workbench") => {
     if (!item.isAvailable) return;
@@ -1720,7 +1808,7 @@ export function PublicOrderApp() {
   };
   const continueCartCustomization = () => {
     if (!cart.some((entry) => entry.itemKind === "burger" || entry.itemKind === "combo")) {
-      setCartCustomizationError("Agrega al menos una burger para continuar.");
+      setCartCustomizationError("Agrega al menos una burger o combo para continuar.");
       return;
     }
     setSideQuestEntryMode("quickAdd");
@@ -1823,6 +1911,10 @@ export function PublicOrderApp() {
       startBurgerSelection();
       return;
     }
+    if (itemKind === "combo") {
+      startBuilder(item);
+      return;
+    }
     if (itemKind === "garnish") {
       startDirectSideQuest();
     }
@@ -1844,9 +1936,9 @@ export function PublicOrderApp() {
       <LoadingOverlay loading={showBoot || loadingMenu} />
       <AppHeader section={section} count={count} total={total} builder={builder} />
       {section === "menu" ? <MenuSection menuData={menuData} raffleCampaign={raffleCampaign} onExplore={openInfoDialog} onStart={beginQuest} reduce={reduce} /> : null}
-      {section === "main" ? <MainQuest onBack={() => navigate("menu")} onBurgers={startBurgerSelection} onSideQuest={startDirectSideQuest} /> : null}
+      {section === "main" ? <MainQuest onBack={() => navigate("menu")} onBurgers={startBurgerSelection} onCombos={startComboSelection} onSideQuest={startDirectSideQuest} /> : null}
       {section === "burgers" ? <BurgerSelectionView items={availableBurgerItems} cart={cart} error={burgerSelectionError} onBack={() => navigate("main")} onAdd={(item) => setBurgerQuantity(item, (cart.filter((entry) => entry.sku === item.sku && entry.itemKind === "burger").length) + 1)} onQuantity={setBurgerQuantity} onContinue={continueFromBurgerSelection} reduce={reduce} /> : null}
-      {section === "combos" ? <CombosUnavailable onBack={() => navigate("main")} /> : null}
+      {section === "combos" ? <CombosSelectionView items={availableComboItems} allItems={menuData.items} onBack={() => navigate("main")} onBuild={startBuilder} reduce={reduce} /> : null}
       {section === "workbench" ? <Workbench builder={builder} onBack={() => navigate("main")} onQuantity={updateBuilderQuantity} onContinue={() => navigate("customize")} /> : null}
       {section === "customize" ? (builder ? <CustomizationReview builder={builder} extras={extras} garnishes={garnishes} onBack={() => navigate("workbench")} onUnitChange={updateBuilderUnit} onContinue={confirmBuilder} /> : <CartCustomizationReview cart={cart} items={menuData.items} extras={extras} garnishes={garnishes} error={cartCustomizationError} onBack={() => navigate("burgers")} onUnitChange={updateCartUnit} onContinue={continueCartCustomization} />) : null}
       {section === "side" ? <SideQuest garnishes={garnishes} selected={extraGarnishQuantities} onQuantity={(sku, quantity) => { setSideQuestError(null); setExtraGarnishQuantities((prev) => ({ ...prev, [sku]: Math.min(10, Math.max(0, quantity)) })); }} onBack={() => navigate(sideQuestEntryMode === "direct" ? "main" : "customize")} canSkip={hasBurgerOrComboInCart} error={sideQuestError} reduce={reduce} entryMode={sideQuestEntryMode} /> : null}
