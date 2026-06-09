@@ -2058,7 +2058,25 @@ export function PublicOrderApp() {
       focusCheckoutErrorsOnStep(validation.fields, targetStep);
       return;
     }
-    const payloadItems = cart.map((entry) => ({ sku: entry.sku, name: entry.name, qty: 1, lineKey: entry.lineKey, itemDisplayIndex: entry.itemDisplayIndex, itemKind: entry.itemKind, removedIngredients: entry.removedIngredients, extras: entry.extras, burgerNote: entry.burgerNote?.trim() || undefined, garnish: entry.garnish ? { sku: entry.garnish.sku, name: entry.garnish.name } : null, includedDrink: entry.includedDrink ?? null, sideQuestExtras: entry.sideQuestExtras ?? [], comboBurgers: entry.comboBurgers ?? [] }));
+    const payloadItems = cart.map((entry) => ({
+      sku: entry.sku,
+      name: entry.name,
+      qty: 1,
+      lineKey: entry.lineKey,
+      itemDisplayIndex: entry.itemDisplayIndex,
+      itemKind: entry.itemKind,
+      removedIngredients: entry.removedIngredients,
+      extras: entry.extras,
+      burgerNote: entry.burgerNote?.trim() || undefined,
+      garnish: entry.garnish ? { sku: entry.garnish.sku, name: entry.garnish.name, upcharge: entry.garnish.upcharge } : null,
+      includedDrink: entry.includedDrink ? { sku: entry.includedDrink.sku, name: entry.includedDrink.name } : null,
+      sideQuestExtras: (entry.sideQuestExtras ?? []).map((extra) => {
+        const menuItem = extra.sku ? menuData.items.find((item) => item.sku === extra.sku) : null;
+        const kind = menuItem ? inferItemKind(menuItem) : "other";
+        return { sku: extra.sku, name: extra.name, price: extra.price, itemKind: kind === "drink" ? "drink" as const : "garnish" as const };
+      }),
+      comboBurgers: entry.comboBurgers ?? []
+    }));
     const notes = buildCheckoutNotes(customer);
     const idempotencyKey = getDraftIdempotencyKey({ customer, items: cart });
     submittingRef.current = true;

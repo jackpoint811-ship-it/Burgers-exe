@@ -75,8 +75,19 @@ type InternalOrderItem = MockOrder["items"][number] & {
   removedIngredients: string[];
   extras: Array<{ sku?: string; name: string; price?: number }>;
   burgerNote?: string;
-  garnish?: { sku?: string; name: string } | null;
+  garnish?: { sku?: string; name: string; upcharge?: number } | null;
+  includedDrink?: { sku?: string; name: string } | null;
+  sideQuestExtras: Array<{ sku?: string; name: string; price?: number; itemKind?: "garnish" | "drink" }>;
+  comboBurgers: Array<{
+    sku?: string;
+    name: string;
+    removedIngredients: string[];
+    extras: Array<{ sku?: string; name: string; price?: number }>;
+    burgerNote?: string;
+  }>;
   extrasTotalCents?: number;
+  sideQuestExtrasTotalCents?: number;
+  includedGarnishUpchargeCents?: number;
   kitchenDone?: boolean;
 };
 type InternalTimelineEvent = MockOrder["timeline"][number] & {
@@ -191,6 +202,9 @@ const normalizeMockOrderItem = (
   removedIngredients: item.note ? [item.note] : [],
   extras: [],
   garnish: null,
+  includedDrink: null,
+  sideQuestExtras: [],
+  comboBurgers: [],
   kitchenDone: false,
 });
 const asInternalOrders = (orders: MockOrder[]): InternalOrder[] =>
@@ -280,7 +294,46 @@ const parseSnapshotGarnish = (value: unknown) => {
   const name = getOptionalString(record.name);
   if (!name) return null;
   const sku = getOptionalString(record.sku);
+  const upcharge = getOptionalNumber(record.upcharge);
+  return { ...(sku ? { sku } : {}), name, ...(upcharge !== undefined ? { upcharge } : {}) };
+};
+
+const parseSnapshotIncludedDrink = (value: unknown) => {
+  if (value === null) return null;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  const name = getOptionalString(record.name);
+  if (!name) return null;
+  const sku = getOptionalString(record.sku);
   return { ...(sku ? { sku } : {}), name };
+};
+
+const parseSnapshotSideQuestExtras = (
+  value: unknown,
+): Array<{ sku?: string; name: string; price?: number; itemKind?: "garnish" | "drink" }> =>
+  parseSnapshotExtras(value).map((extra, index) => {
+    const rawEntry = Array.isArray(value) ? value[index] : null;
+    const record = rawEntry && typeof rawEntry === "object" && !Array.isArray(rawEntry) ? rawEntry as Record<string, unknown> : {};
+    const itemKind = record.itemKind === "drink" || record.itemKind === "garnish" ? record.itemKind : undefined;
+    return { ...extra, ...(itemKind ? { itemKind } : {}) };
+  });
+
+const parseSnapshotComboBurgers = (value: unknown): InternalOrderItem["comboBurgers"] => {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return [];
+    const record = entry as Record<string, unknown>;
+    const name = getOptionalString(record.name);
+    if (!name) return [];
+    const sku = getOptionalString(record.sku);
+    return [{
+      ...(sku ? { sku } : {}),
+      name,
+      removedIngredients: Array.isArray(record.removedIngredients) ? record.removedIngredients.filter((ingredient): ingredient is string => typeof ingredient === "string" && Boolean(ingredient.trim())) : [],
+      extras: parseSnapshotExtras(record.extras),
+      burgerNote: getOptionalString(record.burgerNote),
+    }];
+  });
 };
 
 const getKitchenDoneByLineKey = (events: OrderV2Event[]) => {
@@ -332,7 +385,12 @@ const mapOrderV2ItemToInternalItem = (
     extras: parseSnapshotExtras(snapshot.extras),
     burgerNote: getOptionalString(snapshot.burgerNote),
     garnish: parseSnapshotGarnish(snapshot.garnish),
+    includedDrink: parseSnapshotIncludedDrink(snapshot.includedDrink),
+    sideQuestExtras: parseSnapshotSideQuestExtras(snapshot.sideQuestExtras),
+    comboBurgers: parseSnapshotComboBurgers(snapshot.comboBurgers),
     extrasTotalCents: getOptionalNumber(snapshot.extrasTotalCents),
+    sideQuestExtrasTotalCents: getOptionalNumber(snapshot.sideQuestExtrasTotalCents),
+    includedGarnishUpchargeCents: getOptionalNumber(snapshot.includedGarnishUpchargeCents),
     kitchenDone: lineKey ? (doneByLineKey.get(lineKey) ?? false) : false,
   };
 };
@@ -1515,8 +1573,31 @@ const KitchenBurgerCard = ({
         <div className="mt-3">
           {kind === "combo" && item.garnish ? (
             <p className="mb-3 rounded-lg bg-zinc-900 px-3 py-2 text-xs font-semibold text-zinc-300">
-              Guarnición incluida: {item.garnish.name}
+              Guarnición incluida: {item.garnish.name}{item.garnish.upcharge ? ` (+$${item.garnish.upcharge})` : ""}
             </p>
+          ) : null}
+          {kind === "combo" && item.includedDrink ? (
+            <p className="mb-3 rounded-lg bg-zinc-900 px-3 py-2 text-xs font-semibold text-cyan-200">
+              Bebida incluida: {item.includedDrink.name}
+            </p>
+          ) : null}
+          {kind === "combo" && item.comboBurgers.length ? (
+            <div className="mb-3 rounded-xl border border-lime-400/20 bg-lime-400/5 p-3 text-xs font-semibold text-zinc-200">
+              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-lime-200">Burger(s) del combo</p>
+              <ul className="mt-2 space-y-1">
+                {item.comboBurgers.map((burger, index) => (
+                  <li key={`${burger.sku ?? burger.name}-${index}`}>{burger.name}{burger.extras.length ? ` · Extras: ${burger.extras.map((extra) => extra.name).join(", ")}` : ""}{burger.removedIngredients.length ? ` · Sin: ${burger.removedIngredients.join(", ")}` : ""}{burger.burgerNote ? ` · Nota: ${burger.burgerNote}` : ""}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {item.sideQuestExtras.length ? (
+            <div className="mb-3 rounded-xl border border-fuchsia-400/20 bg-fuchsia-400/5 p-3 text-xs font-semibold text-zinc-200">
+              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-fuchsia-200">Side Quest extra</p>
+              <ul className="mt-2 space-y-1">
+                {item.sideQuestExtras.map((extra, index) => <li key={`${extra.sku ?? extra.name}-${index}`}>{extra.itemKind === "drink" ? "Bebida" : "Guarnición"}: {extra.name}</li>)}
+              </ul>
+            </div>
           ) : null}
           <KitchenItemModifiers item={item} />
           {item.burgerNote ? (
