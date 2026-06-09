@@ -17,15 +17,28 @@ type CatalogRow = {
   stock_remaining: number | null;
 };
 
+type OrderExtra = { sku?: string; name: string; price?: number };
+type SideQuestExtra = OrderExtra & { itemKind?: 'garnish' | 'drink' };
+type ComboBurgerCustomization = {
+  sku?: string;
+  name: string;
+  removedIngredients: string[];
+  extras: OrderExtra[];
+  burgerNote?: string;
+};
+
 type ItemCustomization = {
   name?: string;
   lineKey?: string;
   itemDisplayIndex?: number;
   itemKind?: 'burger' | 'combo' | 'garnish' | 'drink' | 'other';
   removedIngredients: string[];
-  extras: Array<{ sku?: string; name: string; price?: number }>;
+  extras: OrderExtra[];
   burgerNote?: string;
-  garnish?: { sku?: string; name: string } | null;
+  garnish?: { sku?: string; name: string; upcharge?: number } | null;
+  includedDrink?: { sku?: string; name: string } | null;
+  sideQuestExtras: SideQuestExtra[];
+  comboBurgers: ComboBurgerCustomization[];
 };
 
 type NormalizedPayload = {
@@ -44,6 +57,8 @@ const PAYMENT_METHODS = new Set<OrderV2PaymentMethod>(['cash', 'transfer', 'card
 
 const normalizeString = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
 const ITEM_KINDS = new Set(['burger', 'combo', 'garnish', 'drink', 'other']);
+const DRINK_CATEGORY_KEYS = new Set(['drinks', 'bebidas', 'drink', 'beverage']);
+const SIDE_QUEST_ITEM_KINDS = new Set(['garnish', 'drink']);
 
 const normalizeStringArray = (value: unknown, limit = 20) => Array.isArray(value)
   ? value.map(normalizeString).filter(Boolean).slice(0, limit)
@@ -64,8 +79,57 @@ const normalizeGarnish = (value: unknown): ItemCustomization['garnish'] => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const raw = value as Record<string, unknown>;
   const sku = normalizeString(raw.sku);
+  const upcharge = Number(raw.upcharge);
+  return { ...(sku ? { sku } : {}), name: normalizeString(raw.name), ...(Number.isFinite(upcharge) && upcharge >= 0 ? { upcharge } : {}) };
+};
+
+const normalizeIncludedDrink = (value: unknown): ItemCustomization['includedDrink'] => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const raw = value as Record<string, unknown>;
+  const sku = normalizeString(raw.sku);
   return { ...(sku ? { sku } : {}), name: normalizeString(raw.name) };
 };
+
+const normalizeSideQuestExtras = (value: unknown): ItemCustomization['sideQuestExtras'] => Array.isArray(value)
+  ? value.map((entry) => {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null;
+    const raw = entry as Record<string, unknown>;
+    const sku = normalizeString(raw.sku);
+    const name = normalizeString(raw.name);
+    const price = Number(raw.price);
+    const itemKind = normalizeString(raw.itemKind);
+    return {
+      ...(sku ? { sku } : {}),
+      name,
+      ...(Number.isFinite(price) && price >= 0 ? { price } : {}),
+      ...(SIDE_QUEST_ITEM_KINDS.has(itemKind) ? { itemKind: itemKind as SideQuestExtra['itemKind'] } : {})
+    };
+  }).filter((entry): entry is NonNullable<typeof entry> => Boolean(entry)).slice(0, 20)
+  : [];
+
+const normalizeComboBurgers = (value: unknown): ItemCustomization['comboBurgers'] => Array.isArray(value)
+  ? value.map((entry) => {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null;
+    const raw = entry as Record<string, unknown>;
+    const sku = normalizeString(raw.sku);
+    const name = normalizeString(raw.name);
+    if (!name) return null;
+    return {
+      ...(sku ? { sku } : {}),
+      name,
+      removedIngredients: normalizeStringArray(raw.removedIngredients),
+      extras: normalizeExtras(raw.extras),
+      burgerNote: normalizeString(raw.burgerNote).slice(0, 220) || undefined
+    };
+  }).filter((entry): entry is NonNullable<typeof entry> => Boolean(entry)).slice(0, 4)
+  : [];
+
+const isDrinkCategory = (categoryKey: string) => DRINK_CATEGORY_KEYS.has(categoryKey.trim().toLowerCase());
+const isOnionRingCatalogItem = (item: CatalogRow) => {
+  const seed = `${item.sku} ${item.name} ${item.tags_json}`.toLowerCase();
+  return seed.includes('aro') || seed.includes('onion');
+};
+const getIncludedGarnishUpchargeCents = (item: CatalogRow) => isOnionRingCatalogItem(item) ? 500 : 0;
 
 const normalizeIdempotencyKey = (request: Request, body: Record<string, unknown>) => {
   const headerKey = normalizeString(request.headers.get('Idempotency-Key'));
@@ -111,7 +175,7 @@ const validatePayload = (body: Record<string, unknown>, request: Request): Norma
     const nextSkuQty = (qtyBySku.get(sku) ?? 0) + qty;
     if (nextSkuQty > 20) return errorResponse(400, 'INVALID_ITEMS', 'Cantidad máxima por SKU excedida.');
     qtyBySku.set(sku, nextSkuQty);
-    const hasCustomizations = Boolean(item.lineKey || item.itemDisplayIndex || item.itemKind || item.removedIngredients || item.extras || item.burgerNote || item.garnish || item.name);
+    const hasCustomizations = Boolean(item.lineKey || item.itemDisplayIndex || item.itemKind || item.removedIngredients || item.extras || item.burgerNote || item.garnish || item.includedDrink || item.sideQuestExtras || item.comboBurgers || item.name);
     if (!hasCustomizations) {
       const nextQty = (legacyQtyBySku.get(sku) ?? 0) + qty;
       legacyQtyBySku.set(sku, nextQty);
@@ -121,8 +185,12 @@ const validatePayload = (body: Record<string, unknown>, request: Request): Norma
     const burgerNote = normalizeString(item.burgerNote);
     const extras = normalizeExtras(item.extras);
     const garnish = normalizeGarnish(item.garnish);
-    if (extras.some((extra) => !extra.sku) || garnish && !garnish.sku) {
-      return errorResponse(400, 'INVALID_CUSTOMIZATIONS', 'Extras y guarniciones deben incluir SKU válido.');
+    const includedDrink = normalizeIncludedDrink(item.includedDrink);
+    const sideQuestExtras = normalizeSideQuestExtras(item.sideQuestExtras);
+    const comboBurgers = normalizeComboBurgers(item.comboBurgers);
+    const comboBurgerExtras = comboBurgers.flatMap((burger) => burger.extras);
+    if (extras.some((extra) => !extra.sku) || garnish && !garnish.sku || includedDrink && !includedDrink.sku || sideQuestExtras.some((extra) => !extra.sku) || comboBurgerExtras.some((extra) => !extra.sku)) {
+      return errorResponse(400, 'INVALID_CUSTOMIZATIONS', 'Extras, guarniciones y bebidas deben incluir SKU válido.');
     }
     normalizedItems.push({
       sku,
@@ -134,10 +202,13 @@ const validatePayload = (body: Record<string, unknown>, request: Request): Norma
       removedIngredients: normalizeStringArray(item.removedIngredients),
       extras,
       burgerNote: burgerNote.slice(0, 220) || undefined,
-      garnish
+      garnish,
+      includedDrink,
+      sideQuestExtras,
+      comboBurgers
     });
   }
-  normalizedItems.unshift(...[...legacyQtyBySku.entries()].map(([sku, qty]) => ({ sku, qty, removedIngredients: [], extras: [], garnish: null })));
+  normalizedItems.unshift(...[...legacyQtyBySku.entries()].map(([sku, qty]) => ({ sku, qty, removedIngredients: [], extras: [], garnish: null, includedDrink: null, sideQuestExtras: [], comboBurgers: [] })));
 
   return {
     customerName,
@@ -366,7 +437,10 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
     const primarySkus = parsed.items.map((item) => item.sku);
     const customizationSkus = parsed.items.flatMap((item) => [
       ...item.extras.map((extra) => extra.sku).filter((sku): sku is string => Boolean(sku)),
-      ...(item.garnish?.sku ? [item.garnish.sku] : [])
+      ...(item.garnish?.sku ? [item.garnish.sku] : []),
+      ...(item.includedDrink?.sku ? [item.includedDrink.sku] : []),
+      ...item.sideQuestExtras.map((extra) => extra.sku).filter((sku): sku is string => Boolean(sku)),
+      ...item.comboBurgers.flatMap((burger) => burger.extras.map((extra) => extra.sku).filter((sku): sku is string => Boolean(sku)))
     ]);
     const skus = [...new Set([...primarySkus, ...customizationSkus])];
     const catalogRows = await loadCatalogRows(env.BOG_MENU_DB, skus);
@@ -375,6 +449,9 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
       const catalogItem = catalogBySku.get(item.sku);
       if (!catalogItem || Number(catalogItem.is_available) !== 1) {
         return errorResponse(400, 'ITEM_UNAVAILABLE', 'Uno o más productos no existen o no están disponibles.');
+      }
+      if (item.itemKind === 'combo' && item.qty !== 1) {
+        return errorResponse(400, 'INVALID_ITEMS', 'Cada combo debe armarse individualmente.');
       }
       const validExtras = [];
       for (const extra of item.extras) {
@@ -390,8 +467,55 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
         if (!catalogGarnish || Number(catalogGarnish.is_available) !== 1 || catalogGarnish.category_key !== 'guarniciones') {
           return errorResponse(400, 'INVALID_CUSTOMIZATIONS', 'La guarnición no existe, no está disponible o no es guarnición.');
         }
-        item.garnish = { sku: catalogGarnish.sku, name: catalogGarnish.name };
+        item.garnish = { sku: catalogGarnish.sku, name: catalogGarnish.name, upcharge: getIncludedGarnishUpchargeCents(catalogGarnish) / 100 };
       }
+      if (item.includedDrink) {
+        const catalogDrink = item.includedDrink.sku ? catalogBySku.get(item.includedDrink.sku) : null;
+        if (!catalogDrink || Number(catalogDrink.is_available) !== 1 || !isDrinkCategory(catalogDrink.category_key)) {
+          return errorResponse(400, 'INVALID_CUSTOMIZATIONS', 'La bebida incluida no existe, no está disponible o no es bebida.');
+        }
+        item.includedDrink = { sku: catalogDrink.sku, name: catalogDrink.name };
+      }
+      const validSideQuestExtras = [];
+      for (const extra of item.sideQuestExtras) {
+        const catalogExtra = extra.sku ? catalogBySku.get(extra.sku) : null;
+        const categoryKind: SideQuestExtra['itemKind'] | null = catalogExtra?.category_key === 'guarniciones' ? 'garnish' : catalogExtra && isDrinkCategory(catalogExtra.category_key) ? 'drink' : null;
+        if (!catalogExtra || Number(catalogExtra.is_available) !== 1 || !categoryKind || extra.itemKind && extra.itemKind !== categoryKind) {
+          return errorResponse(400, 'INVALID_CUSTOMIZATIONS', 'Una Side Quest extra no existe, no está disponible o no coincide con guarnición/bebida.');
+        }
+        validSideQuestExtras.push({ sku: catalogExtra.sku, name: catalogExtra.name, price: Number(catalogExtra.price_cents) / 100, itemKind: categoryKind });
+      }
+      item.sideQuestExtras = validSideQuestExtras;
+      const validComboBurgers = [];
+      for (const burger of item.comboBurgers) {
+        const validBurgerExtras = [];
+        for (const extra of burger.extras) {
+          const catalogExtra = extra.sku ? catalogBySku.get(extra.sku) : null;
+          if (!catalogExtra || Number(catalogExtra.is_available) !== 1 || catalogExtra.category_key !== 'extras') {
+            return errorResponse(400, 'INVALID_CUSTOMIZATIONS', 'Uno o más extras de burger de combo no existen o no están disponibles.');
+          }
+          validBurgerExtras.push({ sku: catalogExtra.sku, name: catalogExtra.name, price: Number(catalogExtra.price_cents) / 100 });
+        }
+        validComboBurgers.push({ ...burger, extras: validBurgerExtras });
+      }
+      item.comboBurgers = validComboBurgers;
+    }
+
+    for (const item of parsed.items) {
+      // Billing source for burger extras is item.extras. Combo burger extras are snapshot detail;
+      // if a client omits one from item.extras, normalize it into item.extras once as a compatibility fallback.
+      const billedExtraCounts = new Map<string, number>();
+      for (const extra of item.extras) billedExtraCounts.set(extra.sku!, (billedExtraCounts.get(extra.sku!) ?? 0) + 1);
+      const fallbackExtras: OrderExtra[] = [];
+      for (const extra of item.comboBurgers.flatMap((burger) => burger.extras)) {
+        const currentCount = billedExtraCounts.get(extra.sku!) ?? 0;
+        if (currentCount > 0) {
+          billedExtraCounts.set(extra.sku!, currentCount - 1);
+        } else {
+          fallbackExtras.push(extra);
+        }
+      }
+      if (fallbackExtras.length) item.extras = [...item.extras, ...fallbackExtras];
     }
 
     const purchasedQtyBySku = new Map<string, number>();
@@ -399,6 +523,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
       purchasedQtyBySku.set(item.sku, (purchasedQtyBySku.get(item.sku) ?? 0) + item.qty);
       for (const extra of item.extras) purchasedQtyBySku.set(extra.sku!, (purchasedQtyBySku.get(extra.sku!) ?? 0) + item.qty);
       if (item.garnish?.sku) purchasedQtyBySku.set(item.garnish.sku, (purchasedQtyBySku.get(item.garnish.sku) ?? 0) + item.qty);
+      if (item.includedDrink?.sku) purchasedQtyBySku.set(item.includedDrink.sku, (purchasedQtyBySku.get(item.includedDrink.sku) ?? 0) + item.qty);
+      for (const extra of item.sideQuestExtras) purchasedQtyBySku.set(extra.sku!, (purchasedQtyBySku.get(extra.sku!) ?? 0) + item.qty);
     }
     for (const [sku, qty] of purchasedQtyBySku.entries()) {
       const row = catalogBySku.get(sku);
@@ -414,7 +540,9 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
       const catalogItem = catalogBySku.get(item.sku)!;
       const unitPriceCents = Number(catalogItem.price_cents);
       const extrasTotalCents = item.extras.reduce((acc, extra) => acc + Math.round((extra.price ?? 0) * 100), 0);
-      const lineTotalCents = (unitPriceCents + extrasTotalCents) * item.qty;
+      const sideQuestExtrasTotalCents = item.sideQuestExtras.reduce((acc, extra) => acc + Math.round((extra.price ?? 0) * 100), 0);
+      const includedGarnishUpchargeCents = item.garnish?.sku ? Math.round((item.garnish.upcharge ?? 0) * 100) : 0;
+      const lineTotalCents = (unitPriceCents + extrasTotalCents + sideQuestExtrasTotalCents + includedGarnishUpchargeCents) * item.qty;
       return {
         id: generateId('oi'),
         orderId,
@@ -428,6 +556,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
           name: catalogItem.name,
           priceCents: unitPriceCents,
           extrasTotalCents,
+          sideQuestExtrasTotalCents,
+          includedGarnishUpchargeCents,
           category: catalogItem.category_key,
           tags: catalogItem.tags_json,
           badge: catalogItem.badge,
@@ -438,7 +568,10 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
           removedIngredients: item.removedIngredients,
           extras: item.extras,
           burgerNote: item.burgerNote,
-          garnish: item.garnish
+          garnish: item.garnish,
+          includedDrink: item.includedDrink,
+          sideQuestExtras: item.sideQuestExtras,
+          comboBurgers: item.comboBurgers
         })
       };
     });

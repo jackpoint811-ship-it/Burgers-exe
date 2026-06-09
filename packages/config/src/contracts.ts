@@ -156,8 +156,19 @@ export type OrderV2ItemCustomization = {
   removedIngredients?: string[];
   extras?: Array<{ sku?: string; name: string; price?: number }>;
   burgerNote?: string;
-  garnish?: { sku?: string; name: string } | null;
+  garnish?: { sku?: string; name: string; upcharge?: number } | null;
+  includedDrink?: { sku?: string; name: string } | null;
+  sideQuestExtras?: Array<{ sku?: string; name: string; price?: number; itemKind?: "garnish" | "drink" }>;
+  comboBurgers?: Array<{
+    sku?: string;
+    name: string;
+    removedIngredients: string[];
+    extras: Array<{ sku?: string; name: string; price?: number }>;
+    burgerNote?: string;
+  }>;
   extrasTotalCents?: number;
+  sideQuestExtrasTotalCents?: number;
+  includedGarnishUpchargeCents?: number;
 };
 
 export type OrderV2Item = {

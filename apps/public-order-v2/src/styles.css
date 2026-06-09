@@ -4625,3 +4625,203 @@ html {
     height: 150px;
   }
 }
+
+/* Combo Builder + Side Quest refinement */
+.combo-builder-panel,
+.side-quest-panel {
+  gap: 1rem;
+}
+
+.combo-builder-hero,
+.combo-builder-section,
+.side-section-card,
+.combo-success-card {
+  border: 1px solid rgba(0, 255, 157, 0.18);
+  border-radius: 1.25rem;
+  background: linear-gradient(135deg, rgba(5, 12, 18, 0.95), rgba(0, 255, 157, 0.06));
+  box-shadow: 0 0 26px rgba(0, 255, 157, 0.08);
+  padding: 1rem;
+  min-width: 0;
+}
+
+.combo-builder-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 96px) minmax(0, 1fr);
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.combo-builder-hero img,
+.combo-included-card img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 1rem;
+  border: 1px solid rgba(0, 255, 157, 0.22);
+}
+
+.combo-builder-hero h2,
+.combo-section-heading h3,
+.side-section-card h3,
+.side-section-card h4 {
+  margin: 0.15rem 0;
+  overflow-wrap: anywhere;
+}
+
+.combo-builder-badges,
+.combo-confirm-actions,
+.combo-included-card,
+.combo-summary-list > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.combo-builder-badges span,
+.combo-builder-badges strong,
+.combo-section-heading span,
+.side-section-card > div > span,
+.side-card-kind,
+.side-option-card span {
+  border: 1px solid rgba(0, 255, 157, 0.24);
+  border-radius: 999px;
+  padding: 0.25rem 0.55rem;
+  color: #a7ffd8;
+  background: rgba(0, 255, 157, 0.08);
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.combo-builder-instruction,
+.side-quest-cta-copy {
+  color: #dfffea;
+  font-weight: 700;
+}
+
+.combo-included-list,
+.side-option-grid,
+.combo-summary-list {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.combo-included-card {
+  justify-content: space-between;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  background: rgba(0, 0, 0, 0.28);
+  padding: 0.75rem;
+}
+
+.combo-included-card img,
+.combo-included-card > span[aria-hidden="true"] {
+  flex: 0 0 58px;
+  width: 58px;
+  height: 58px;
+}
+
+.combo-included-card > span[aria-hidden="true"] {
+  display: grid;
+  place-items: center;
+  border-radius: 1rem;
+  background: rgba(0, 255, 157, 0.12);
+  color: #a7ffd8;
+  font-weight: 900;
+}
+
+.combo-included-card > div,
+.combo-summary-list strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.combo-burger-editor {
+  border-color: rgba(255, 209, 102, 0.36);
+  background: rgba(255, 209, 102, 0.06);
+}
+
+.side-option-card,
+.side-card {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.045);
+  color: inherit;
+  padding: 0.75rem;
+  text-align: left;
+}
+
+.side-option-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.65rem;
+  cursor: pointer;
+}
+
+.side-option-card.active,
+.side-card.active {
+  border-color: rgba(0, 255, 157, 0.72);
+  background: rgba(0, 255, 157, 0.12);
+  box-shadow: 0 0 18px rgba(0, 255, 157, 0.16);
+}
+
+.side-card-main {
+  width: 100%;
+  min-height: 44px;
+  display: grid;
+  gap: 0.25rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.combo-summary-list > div {
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 0.55rem;
+}
+
+.combo-summary-list > div:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.combo-total-row strong {
+  color: #a7ffd8;
+  font-size: 1.25rem;
+}
+
+.combo-success-card {
+  border-color: rgba(0, 255, 157, 0.55);
+  background: linear-gradient(135deg, rgba(0, 255, 157, 0.16), rgba(3, 10, 16, 0.95));
+}
+
+.ticket-item-combo-block strong,
+.ticket-item-side-block strong {
+  text-align: right;
+}
+
+@media (max-width: 360px) {
+  .combo-builder-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .combo-builder-hero img {
+    max-width: 160px;
+  }
+
+  .combo-included-card,
+  .side-option-card,
+  .combo-summary-list > div {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
