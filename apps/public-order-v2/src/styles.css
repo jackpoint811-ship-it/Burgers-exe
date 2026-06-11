@@ -4825,3 +4825,381 @@ html {
     flex-direction: column;
   }
 }
+
+/* Post-merge Public Order V2 visual fixes. */
+.main-quest-panel {
+  gap: clamp(12px, 3vw, 18px);
+}
+
+.route-card {
+  overflow: hidden;
+  gap: 0;
+  border-radius: 24px;
+  padding: 0;
+  background:
+    linear-gradient(145deg, rgba(4, 10, 12, 0.96), rgba(17, 22, 12, 0.9)),
+    rgba(2, 5, 4, 0.92);
+}
+
+.route-card-burgers {
+  border-color: rgba(57, 255, 136, 0.38);
+}
+
+.route-card-combos {
+  border-color: rgba(255, 209, 102, 0.36);
+}
+
+.route-card-side {
+  border-color: rgba(255, 76, 168, 0.34);
+}
+
+.route-card-visual {
+  position: relative;
+  min-height: clamp(148px, 42vw, 220px);
+  overflow: hidden;
+  border-bottom: 1px solid rgba(234, 255, 240, 0.12);
+  background:
+    repeating-linear-gradient(135deg, rgba(234, 255, 240, 0.08) 0 1px, transparent 1px 12px),
+    linear-gradient(135deg, rgba(57, 255, 136, 0.18), rgba(255, 209, 102, 0.12) 48%, rgba(255, 76, 168, 0.14));
+}
+
+.route-card-visual::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(2, 5, 4, 0.02), rgba(2, 5, 4, 0.48));
+  pointer-events: none;
+}
+
+.route-card-visual img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  object-fit: cover;
+}
+
+.route-card-visual.no-image {
+  display: grid;
+  place-items: center;
+}
+
+.route-card-visual.no-image span {
+  position: relative;
+  z-index: 1;
+  color: #f7fff7;
+  font-family: var(--font-display);
+  font-size: clamp(1.45rem, 9vw, 2.35rem);
+  font-weight: 950;
+  line-height: 1;
+}
+
+.route-card-copy {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 14px 14px 12px;
+}
+
+.route-card-copy h3 {
+  font-size: clamp(1.48rem, 7vw, 2rem);
+  line-height: 1;
+}
+
+.route-card-copy p {
+  min-height: 2.8em;
+  overflow-wrap: anywhere;
+}
+
+.route-card .quest-button {
+  width: calc(100% - 28px);
+  margin: 0 14px 14px;
+}
+
+.burger-selection-secondary-actions {
+  justify-items: start;
+}
+
+.burger-selection-secondary-actions .quest-button {
+  width: auto;
+  max-width: 100%;
+}
+
+@media (min-width: 720px) {
+  .route-card {
+    grid-template-rows: auto 1fr auto;
+  }
+
+  .route-card-visual {
+    min-height: 178px;
+  }
+
+  .burger-selection-secondary-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+.checkout-panel,
+.checkout-panel .ticket-list,
+.checkout-panel .ticket-item,
+.ticket-item-head,
+.ticket-item-head > div,
+.ticket-item-breakdown,
+.ticket-item-base-row,
+.ticket-item-detail-block,
+.ticket-item-combo-block,
+.ticket-item-extras-block,
+.ticket-item-side-block,
+.ticket-item-total-row {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ticket-item {
+  overflow-wrap: anywhere;
+}
+
+.ticket-item-head,
+.ticket-item-base-row,
+.ticket-item-total-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.ticket-item-head strong,
+.ticket-item-base-row strong,
+.ticket-item-total-row strong {
+  justify-self: end;
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-align: right;
+  white-space: normal;
+}
+
+.ticket-item-breakdown {
+  display: flex;
+  flex-direction: column;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  align-items: stretch;
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.ticket-item-breakdown > * {
+  flex: 0 0 auto;
+  width: 100%;
+}
+
+.ticket-item-detail-block {
+  border: 1px solid rgba(234, 255, 240, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.025);
+  padding: 10px;
+}
+
+.ticket-item-detail-block ul {
+  gap: 8px;
+  padding-left: 0;
+  list-style: none;
+}
+
+.ticket-item-detail-block li,
+.ticket-item-detail-block li span,
+.ticket-item-detail-block li strong,
+.ticket-item-detail-block p {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.ticket-item-combo-block li,
+.ticket-item-extras-block li,
+.ticket-item-side-block li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+}
+
+.ticket-item-extras-block li strong,
+.ticket-item-combo-block strong,
+.ticket-item-side-block strong {
+  color: var(--amber);
+  font-size: 0.95rem;
+  text-align: left;
+  white-space: normal;
+}
+
+.ticket-item-note-row {
+  color: var(--muted);
+}
+
+.ticket-item-combo-note {
+  margin: 10px 0 0;
+  color: var(--muted-strong);
+  font-size: 0.86rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.ticket-item footer {
+  min-width: 0;
+}
+
+.ticket-item footer button {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 420px) {
+  .ticket-item-head {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ticket-item-head strong {
+    justify-self: start;
+    text-align: left;
+  }
+}
+
+@media (min-width: 620px) {
+  .ticket-item-combo-block li,
+  .ticket-item-extras-block li,
+  .ticket-item-side-block li {
+    grid-template-columns: minmax(0, 1fr) minmax(120px, auto);
+    align-items: start;
+  }
+
+  .ticket-item-extras-block li strong,
+  .ticket-item-combo-block strong,
+  .ticket-item-side-block strong {
+    text-align: right;
+  }
+}
+
+.combo-builder-panel {
+  gap: 12px;
+}
+
+.combo-builder-hero,
+.combo-builder-section,
+.combo-success-card {
+  border-radius: 18px;
+  padding: clamp(12px, 3.5vw, 16px);
+}
+
+.combo-builder-hero {
+  grid-template-columns: minmax(0, 78px) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.combo-builder-hero img {
+  max-height: 78px;
+}
+
+.combo-builder-hero > div,
+.combo-section-heading {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.combo-builder-hero h2 {
+  font-size: clamp(1.4rem, 7vw, 2rem);
+  line-height: 1;
+}
+
+.combo-builder-hero p,
+.combo-section-heading p,
+.side-section-card p {
+  margin: 0;
+  line-height: 1.35;
+}
+
+.combo-builder-instruction {
+  font-size: 0.9rem;
+}
+
+.combo-section-heading {
+  margin-bottom: 10px;
+}
+
+.combo-included-card {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  align-items: center;
+  justify-content: stretch;
+}
+
+.combo-included-card .quest-button {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 42px;
+}
+
+.combo-side-extra-section .side-section-card {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.combo-summary-list > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 4px;
+}
+
+.combo-summary-list span,
+.combo-summary-list strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.combo-confirm-card {
+  border-color: rgba(255, 209, 102, 0.34);
+  background:
+    linear-gradient(135deg, rgba(255, 209, 102, 0.09), rgba(57, 255, 136, 0.05)),
+    rgba(3, 10, 16, 0.9);
+}
+
+.combo-confirm-actions .quest-button {
+  min-width: 0;
+}
+
+@media (min-width: 620px) {
+  .combo-included-card {
+    grid-template-columns: 58px minmax(0, 1fr) auto;
+  }
+
+  .combo-included-card .quest-button {
+    grid-column: auto;
+    width: auto;
+  }
+
+  .combo-summary-list > div {
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  }
+}
+
+@media (max-width: 360px) {
+  .combo-builder-hero {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+
+  .combo-builder-hero img {
+    max-width: 64px;
+    max-height: 64px;
+  }
+
+  .combo-included-card,
+  .side-option-card,
+  .combo-summary-list > div {
+    align-items: stretch;
+  }
+}
