@@ -2142,12 +2142,13 @@ p {
   margin: 0;
 }
 .qty-control {
-  grid-template-columns: 42px 58px 42px;
+  grid-template-columns: minmax(44px, 1fr) minmax(58px, 1.25fr) minmax(44px, 1fr);
   gap: 6px;
   margin: 10px 0;
 }
 .qty-control button,
 .qty-control strong {
+  min-width: 44px;
   min-height: 44px;
   border-radius: 14px;
   font-size: 1rem;
@@ -2320,7 +2321,7 @@ p {
   .side-quest-panel .side-card .qty-control,
   .workbench-panel .side-card .qty-control {
     width: 100%;
-    grid-template-columns: 42px minmax(52px, 1fr) 42px;
+    grid-template-columns: 44px minmax(52px, 1fr) 44px;
   }
   .checkout-total {
     bottom: 0;
@@ -2464,8 +2465,8 @@ p {
   position: absolute;
   top: 0.85rem;
   right: 0.85rem;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border: 1px solid rgba(234, 255, 240, 0.2);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.06);
@@ -3673,6 +3674,33 @@ html {
   padding-bottom: calc(132px + env(safe-area-inset-bottom));
 }
 
+.menu-sync-notice {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(255, 209, 102, 0.34);
+  border-radius: 20px;
+  background:
+    linear-gradient(135deg, rgba(255, 209, 102, 0.12), rgba(57, 255, 136, 0.05)),
+    rgba(3, 8, 6, 0.78);
+  color: var(--muted-strong);
+  padding: 12px;
+}
+
+.menu-sync-notice strong {
+  color: var(--amber);
+  font-weight: 950;
+}
+
+.menu-sync-notice p {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.menu-sync-notice .quest-button {
+  width: fit-content;
+  max-width: 100%;
+}
+
 .app-shell.public-section-checkout,
 .app-shell.public-section-success {
   padding-bottom: calc(18px + env(safe-area-inset-bottom));
@@ -3758,6 +3786,20 @@ html {
 
   .menu-cluster .kiosk-body {
     padding: 9px;
+  }
+}
+
+@media (min-width: 720px) {
+  .public-section-menu.has-persistent-cta {
+    padding-bottom: calc(40px + env(safe-area-inset-bottom));
+  }
+
+  .public-section-menu .persistent-cta {
+    display: none;
+  }
+
+  .app-shell.has-persistent-cta:not(.public-section-menu) {
+    padding-bottom: calc(156px + env(safe-area-inset-bottom));
   }
 }
 
@@ -5137,7 +5179,7 @@ html {
 .combo-included-card .quest-button {
   grid-column: 1 / -1;
   width: 100%;
-  min-height: 42px;
+  min-height: 44px;
 }
 
 .combo-side-extra-section .side-section-card {
