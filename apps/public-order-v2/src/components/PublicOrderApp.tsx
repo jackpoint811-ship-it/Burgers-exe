@@ -79,7 +79,7 @@ const paymentMethodLabels: Record<OrderV2PaymentMethod, string> = {
   cash: "Efectivo",
   transfer: "Transferencia",
   card: "No disponible",
-  unknown: "Por confirmar",
+  unknown: "Pago por confirmar en WhatsApp",
 };
 const paymentTimingLabels: Record<Exclude<PaymentTiming, "">, string> = {
   before: "Pagar antes",
@@ -407,7 +407,7 @@ const LoadingOverlay = ({ loading }: { loading: boolean }) => loading ? (
   <div className="boot-overlay" role="status" aria-live="polite">
     <div className="boot-window">
       <h1>Burgers.exe</h1>
-      <p>Preparando menú y quest.</p>
+      <p>Cargando menú actualizado… Si tarda unos segundos, estamos sincronizando la quest.</p>
       <div className="boot-bar"><span /></div>
     </div>
   </div>
@@ -535,6 +535,7 @@ const TicketsLookupCta = () => (
 const MenuSection = ({ menuData, raffleCampaign, onExplore, onStart, reduce }: { menuData: MenuV2Response; raffleCampaign: RaffleCampaignPublicV2 | null; onExplore: (item: MenuItem) => void; onStart: () => void; reduce: boolean }) => {
   const bonusZoneRef = useRef<HTMLElement | null>(null);
   const activePromos = menuData.promos.filter((promo) => promo.isAvailable);
+  const usingFallbackMenu = menuData.source === "fallback";
   const featuredPromo = activePromos.filter((promo) => promo.isFeatured).sort((a, b) => a.sortOrder - b.sortOrder).slice(0, 1);
   const inlinePromos = activePromos.filter((promo) => !promo.isFeatured);
   const hasBonusContent = Boolean(raffleCampaign);
@@ -572,6 +573,13 @@ const MenuSection = ({ menuData, raffleCampaign, onExplore, onStart, reduce }: {
         <p>Carga tu burger, desbloquea upgrades y manda tu orden al sistema.</p>
         <QuestButton onClick={onStart}>ARMAR MI PEDIDO</QuestButton>
       </div>
+      {usingFallbackMenu ? (
+        <section className="menu-sync-notice" role="status" aria-live="polite">
+          <strong>Menú de respaldo activo</strong>
+          <p>No pudimos confirmar el menú actualizado. Revisa tu conexión o recarga la página antes de ordenar.</p>
+          <button type="button" className="quest-button ghost" onClick={() => window.location.reload()}>Reintentar carga</button>
+        </section>
+      ) : null}
       {featuredPromo.length ? <PromoRail promos={featuredPromo} items={menuData.items} onViewCombo={onExplore} label="Promo destacada" variant="featured" /> : null}
       {MENU_GROUPS.map(({ key, label }) => {
         const list = byGroup(key).sort((a, b) => a.sortOrder - b.sortOrder);
@@ -638,16 +646,16 @@ const MenuInfoDialog = ({ item, onClose, onChooseInFlow }: { item: MenuItem | nu
 
 const MainQuest = ({ categoryBanners, burgerItems, comboItems, garnishes, onBack, onBurgers, onCombos, onSideQuest }: { categoryBanners?: MenuV2Response["categoryBanners"]; burgerItems: MenuItem[]; comboItems: MenuItem[]; garnishes: MenuItem[]; onBack: () => void; onBurgers: () => void; onCombos: () => void; onSideQuest: () => void }) => {
   const routes: Array<{ key: "burgers" | "combos" | "side"; categoryKey: MenuCategory["key"]; number: string; title: string; description: string; cta: string; action: () => void; fallbackItem?: MenuItem }> = [
-    { key: "burgers", categoryKey: "burgers", number: "01", title: "Burgers", description: "Elige varios tipos y cantidades antes de personalizar.", cta: "Elegir burgers", action: onBurgers, fallbackItem: burgerItems[0] },
-    { key: "combos", categoryKey: "combos", number: "02", title: "Combos", description: "Arma una ruta completa con burger incluida y Side Quest opcional.", cta: "Armar combo", action: onCombos, fallbackItem: comboItems[0] },
-    { key: "side", categoryKey: "guarniciones", number: "03", title: "Guarniciones", description: "Ve directo a Side Quest si solo quieres papas, aros o extras.", cta: "Ver Side Quest", action: onSideQuest, fallbackItem: garnishes[0] },
+    { key: "burgers", categoryKey: "burgers", number: "01", title: "Burgers", description: "Elige tipos y cantidades; después puedes personalizar cada burger.", cta: "Elegir burgers", action: onBurgers, fallbackItem: burgerItems[0] },
+    { key: "combos", categoryKey: "combos", number: "02", title: "Combos", description: "Arma una ruta completa con burger incluida, guarnición y extras opcionales.", cta: "Armar combo", action: onCombos, fallbackItem: comboItems[0] },
+    { key: "side", categoryKey: "guarniciones", number: "03", title: "Guarniciones", description: "Guarniciones / Side Quest: ve directo por papas o aros sin armar burger.", cta: "Ver guarniciones", action: onSideQuest, fallbackItem: garnishes[0] },
   ];
   return (
     <section className="quest-panel main-quest-panel">
       <QuestButton className="back-button" onClick={onBack}>← Volver al menú</QuestButton>
-      <span className="eyebrow">Main Quest</span>
+      <span className="eyebrow">Main Quest · cómo pedir</span>
       <h2>Elige tu ruta</h2>
-      <p className="muted section-subcopy">Main ahora es el hub: entra a burgers, arma combos o ve directo por guarniciones.</p>
+      <p className="muted section-subcopy">Elige cómo quieres pedir: burgers, combos o guarniciones. La quest te guía paso a paso.</p>
       <div className="route-grid" role="list" aria-label="Rutas del pedido">
         {routes.map((route) => {
           const banner = categoryBanners?.find((entry) => entry.categoryKey === route.categoryKey);
@@ -821,7 +829,7 @@ const UnitEditor = ({ unit, index, item, extras, garnishes, onChange }: { unit: 
         <section className="builder-block upgrade-block custom-accordion-block" aria-labelledby={`upgrade-title-${unit.lineKey}`}>
           <button type="button" className="custom-accordion-trigger upgrade-accordion-trigger" aria-expanded={openPanels.upgrades} onClick={() => togglePanel("upgrades")}>
             <span>
-              <strong id={`upgrade-title-${unit.lineKey}`}>LEVEL UP de burger</strong>
+              <strong id={`upgrade-title-${unit.lineKey}`}>Extras / LEVEL UP de burger</strong>
               <em>{extrasSummaryText}</em>
             </span>
             <b aria-hidden="true">{openPanels.upgrades ? "−" : "+"}</b>
@@ -912,9 +920,9 @@ const Workbench = ({ builder, onBack, onQuantity, onContinue }: WorkbenchProps) 
   return (
     <section className="quest-panel workbench-panel">
       <QuestButton className="back-button" onClick={onBack}>← Volver a elegir</QuestButton>
-      <span className="eyebrow">Workbench</span>
+      <span className="eyebrow">Cantidad / Workbench</span>
       <h2>{builder ? builder.item.name : "Selecciona producto"}</h2>
-      <p className="muted section-subcopy">Elige cuántas quieres agregar.</p>
+      <p className="muted section-subcopy">Selecciona cuántas piezas quieres agregar antes de personalizar.</p>
       {builder ? <div className="workbench-summary-card">
         {src ? <img src={src} alt="" loading="lazy" decoding="async" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : null}
         <div className="workbench-summary-copy">
@@ -1141,9 +1149,9 @@ const ComboBuilder = ({ draft, allItems, extras, garnishes, drinks, onBack, onBu
 
         {includedDrinkRequired ? <section className="combo-builder-section" aria-labelledby="comboDrinkTitle"><div className="combo-section-heading"><span>Obligatorio</span><h3 id="comboDrinkTitle">Bebida incluida</h3><p>Elige una bebida activa. Todas cuentan como incluidas.</p></div><div className="side-option-grid">{drinks.map((drink) => <motion.button type="button" whileTap={reduce ? undefined : { scale: 0.98 }} className={draft.includedDrink?.sku === drink.sku ? "side-option-card active" : "side-option-card"} key={drink.sku} onClick={() => onDrink(drink)} aria-pressed={draft.includedDrink?.sku === drink.sku}><strong>{drink.name}</strong><span>Incluida</span></motion.button>)}</div></section> : null}
 
-        {(garnishes.length || drinks.length) ? <section className="combo-builder-section combo-side-extra-section" aria-labelledby="comboSideTitle"><div className="combo-section-heading"><span>Opcional</span><h3 id="comboSideTitle">¿Quieres subir de nivel tu combo?</h3><p>Side Quest extra: agrega guarniciones o bebidas aparte del combo.</p></div>{garnishes.length ? <div className="side-section-card"><h4>Guarniciones extra</h4><p>El acompañamiento que convierte tu burger en misión completa.</p><div className="side-option-grid">{garnishes.map((item) => <button type="button" className={selectedSideExtra(item) ? "side-option-card active" : "side-option-card"} key={item.sku} onClick={() => onSideExtraToggle(item)} aria-pressed={selectedSideExtra(item)}><strong>{item.name}</strong><span>Extra · {formatCurrency(item.price)}</span></button>)}</div></div> : null}{drinks.length ? <div className="side-section-card"><h4>Bebidas extra</h4><p>Cierra tu partida con algo frío.</p><div className="side-option-grid">{drinks.map((item) => <button type="button" className={selectedSideExtra(item) ? "side-option-card active" : "side-option-card"} key={item.sku} onClick={() => onSideExtraToggle(item)} aria-pressed={selectedSideExtra(item)}><strong>{item.name}</strong><span>Extra · {formatCurrency(item.price)}</span></button>)}</div></div> : null}</section> : null}
+        {(garnishes.length || drinks.length) ? <section className="combo-builder-section combo-side-extra-section" aria-labelledby="comboSideTitle"><div className="combo-section-heading"><span>Opcional</span><h3 id="comboSideTitle">¿Quieres subir de nivel tu combo?</h3><p>Guarnición extra / Side Quest: agrega acompañamientos o bebidas aparte del combo.</p></div>{garnishes.length ? <div className="side-section-card"><h4>Guarniciones extra</h4><p>El acompañamiento que convierte tu burger en misión completa.</p><div className="side-option-grid">{garnishes.map((item) => <button type="button" className={selectedSideExtra(item) ? "side-option-card active" : "side-option-card"} key={item.sku} onClick={() => onSideExtraToggle(item)} aria-pressed={selectedSideExtra(item)}><strong>{item.name}</strong><span>Extra · {formatCurrency(item.price)}</span></button>)}</div></div> : null}{drinks.length ? <div className="side-section-card"><h4>Bebidas extra</h4><p>Cierra tu partida con algo frío.</p><div className="side-option-grid">{drinks.map((item) => <button type="button" className={selectedSideExtra(item) ? "side-option-card active" : "side-option-card"} key={item.sku} onClick={() => onSideExtraToggle(item)} aria-pressed={selectedSideExtra(item)}><strong>{item.name}</strong><span>Extra · {formatCurrency(item.price)}</span></button>)}</div></div> : null}</section> : null}
 
-        <section className="combo-builder-section combo-confirm-card" aria-labelledby="comboConfirmTitle"><div className="combo-section-heading"><span>Confirmación combo</span><h3 id="comboConfirmTitle">Confirma tu combo antes de enviarlo a cocina.</h3></div><div className="combo-summary-list"><div><span>Combo</span><strong>{combo.name} · {formatCurrency(combo.price)}</strong></div>{draft.burgers.map((burger, index) => <div key={burger.lineKey}><span>Burger #{index + 1}</span><strong>{summarizeUnitCustomization(burger)}</strong></div>)}{includedGarnishRequired ? <div><span>Guarnición incluida</span><strong>{draft.includedGarnish ? `${draft.includedGarnish.name}${garnishUpcharge ? ` · +${formatCurrency(garnishUpcharge)}` : " · incluida"}` : "Pendiente"}</strong></div> : null}{includedDrinkRequired ? <div><span>Bebida incluida</span><strong>{draft.includedDrink?.name ?? "Pendiente"}</strong></div> : null}<div><span>Side Quest extra</span><strong>{draft.sideExtras.length ? `${draft.sideExtras.map((extra) => extra.name).join(", ")} · +${formatCurrency(sideQuestTotal)}` : "Sin extras opcionales"}</strong></div><div className="combo-total-row"><span>Total</span><strong>{formatCurrency(total)}</strong></div></div>{draft.error ? <p className="inline-error" role="alert">{draft.error}</p> : null}<div className="combo-confirm-actions"><QuestButton onClick={onReview}>Agregar combo</QuestButton><QuestButton className="ghost" onClick={onBack}>Volver</QuestButton></div></section>
+        <section className="combo-builder-section combo-confirm-card" aria-labelledby="comboConfirmTitle"><div className="combo-section-heading"><span>Confirmación combo</span><h3 id="comboConfirmTitle">Confirma tu combo antes de enviarlo a cocina.</h3></div><div className="combo-summary-list"><div><span>Combo</span><strong>{combo.name} · {formatCurrency(combo.price)}</strong></div>{draft.burgers.map((burger, index) => <div key={burger.lineKey}><span>Burger #{index + 1}</span><strong>{summarizeUnitCustomization(burger)}</strong></div>)}{includedGarnishRequired ? <div><span>Guarnición incluida</span><strong>{draft.includedGarnish ? `${draft.includedGarnish.name}${garnishUpcharge ? ` · +${formatCurrency(garnishUpcharge)}` : " · incluida"}` : "Pendiente"}</strong></div> : null}{includedDrinkRequired ? <div><span>Bebida incluida</span><strong>{draft.includedDrink?.name ?? "Pendiente"}</strong></div> : null}<div><span>Guarnición extra / Side Quest</span><strong>{draft.sideExtras.length ? `${draft.sideExtras.map((extra) => extra.name).join(", ")} · +${formatCurrency(sideQuestTotal)}` : "Sin extras opcionales"}</strong></div><div className="combo-total-row"><span>Total</span><strong>{formatCurrency(total)}</strong></div></div>{draft.error ? <p className="inline-error" role="alert">{draft.error}</p> : null}<div className="combo-confirm-actions"><QuestButton onClick={onReview}>Agregar combo</QuestButton><QuestButton className="ghost" onClick={onBack}>Volver</QuestButton></div></section>
       </> : null}
     </section>
   );
@@ -1258,13 +1266,13 @@ const SideQuest = ({ garnishes, drinks, selected, onQuantity, onBack, canSkip, e
   return (
     <section className="quest-panel side-quest-panel">
       <QuestButton className="back-button" onClick={onBack}>{backLabel}</QuestButton>
-      <span className="eyebrow">Side Quest</span>
-      <h2>Elige tu Side Quest</h2>
-      <p className="muted section-subcopy">Completa tu build con algo crujiente, fresco o extra brutal.</p>
+      <span className="eyebrow">Guarniciones / Side Quest</span>
+      <h2>Elige tus guarniciones</h2>
+      <p className="muted section-subcopy">Side Quest = acompañamientos opcionales. Completa tu pedido con algo crujiente, fresco o extra brutal.</p>
       {garnishes.length ? <section className="side-section-card" aria-labelledby="sideGarnishTitle"><div><span>Opcional</span><h3 id="sideGarnishTitle">Guarniciones</h3><p>El acompañamiento que convierte tu burger en misión completa.</p></div>{renderOptions(garnishes, "garnish")}</section> : null}
       {drinks.length ? <section className="side-section-card" aria-labelledby="sideDrinkTitle"><div><span>Opcional</span><h3 id="sideDrinkTitle">Bebidas</h3><p>Cierra tu partida con algo frío.</p></div>{renderOptions(drinks, "drink")}</section> : null}
-      {!garnishes.length && !drinks.length ? <div className="compact-empty"><EmptyState title="Sin Side Quest disponible" description={canSkip ? "Puedes continuar sin Side Quest." : "Vuelve a elegir otra opción del menú."} /></div> : null}
-      <p className="side-quest-cta-copy">{hasSelection ? "Continuar con mi build" : "Continuar sin Side Quest"}</p>
+      {!garnishes.length && !drinks.length ? <div className="compact-empty"><EmptyState title="Sin guarniciones disponibles" description={canSkip ? "Puedes continuar sin guarnición." : "Vuelve a elegir otra opción del menú."} /></div> : null}
+      <p className="side-quest-cta-copy">{hasSelection ? "Continuar con mi pedido" : "Continuar sin guarnición"}</p>
       {error ? <p className="inline-error" role="alert">{error}</p> : null}
     </section>
   );
@@ -1327,8 +1335,8 @@ const TicketList = ({ cart, items, onEdit, onDuplicate, onRemove }: { cart: Cart
           ) : null}
           {sideExtras.length || isCombo ? (
             <div className="ticket-item-detail-block ticket-item-side-block">
-              <span>Side Quest extra</span>
-              {sideExtras.length ? <ul>{sideExtras.map((extra, extraIndex) => <li key={`${extra.sku ?? extra.name}-side-${extraIndex}`}><span>{extra.name}</span><strong>+{formatCurrency(extra.price ?? 0)}</strong></li>)}</ul> : <p>Sin Side Quest extra</p>}
+              <span>Guarnición extra / Side Quest</span>
+              {sideExtras.length ? <ul>{sideExtras.map((extra, extraIndex) => <li key={`${extra.sku ?? extra.name}-side-${extraIndex}`}><span>{extra.name}</span><strong>+{formatCurrency(extra.price ?? 0)}</strong></li>)}</ul> : <p>Sin guarniciones extra</p>}
             </div>
           ) : null}
           {!isCombo && !hasAnyDetail ? <p>Sin cambios - precio unitario</p> : null}
@@ -1574,9 +1582,9 @@ const Checkout = ({ cart, items, total, customer, setCustomer, checkoutStep, set
             {fieldErrors.notes ? <span className="inline-error" id="checkoutNotesError" role="alert">{fieldErrors.notes}</span> : null}
           </label>
           <label className="field-label wide referral-code-field" htmlFor="checkoutReferralCode">
-            <span>Código de invitado <em>opcional</em></span>
+            <span>Código de referido <em>opcional</em></span>
             <input id="checkoutReferralCode" value={customer.referralCode} onChange={(event) => setCustomer({ ...customer, referralCode: event.target.value.toUpperCase() })} placeholder="CARLOS-BURGER-27" maxLength={32} aria-describedby="checkoutReferralHelp" />
-            <small id="checkoutReferralHelp">Opcional: si alguien te invitó, escribe su código.</small>
+            <small id="checkoutReferralHelp">Si alguien te compartió su código, escríbelo aquí. Puede sumar tickets o beneficios según la promo activa.</small>
           </label>
           <div className="builder-block location-block" id="checkoutLocation" tabIndex={-1} aria-describedby={`checkoutLocationHelp${fieldErrors.location ? " checkoutLocationError" : ""}`} aria-invalid={fieldErrors.location ? "true" : "false"}>
             <h4>Ubicación <em>obligatoria</em></h4>
@@ -1592,10 +1600,11 @@ const Checkout = ({ cart, items, total, customer, setCustomer, checkoutStep, set
         <div className="builder-block payment-block" id="checkoutPaymentMethod" tabIndex={-1}>
           <h4>Método de pago</h4>
           <div className="chip-grid payment-chip-grid">
-            <button type="button" className={customer.paymentMethod === "unknown" ? "chip active" : "chip"} onClick={() => updatePaymentMethod("unknown")}>Por confirmar</button>
+            <button type="button" className={customer.paymentMethod === "unknown" ? "chip active" : "chip"} onClick={() => updatePaymentMethod("unknown")}>Confirmar por WhatsApp</button>
             <button type="button" className={customer.paymentMethod === "cash" ? "chip active" : "chip"} onClick={() => updatePaymentMethod("cash")}>Efectivo</button>
             <button type="button" className={customer.paymentMethod === "transfer" ? "chip active" : "chip"} onClick={() => updatePaymentMethod("transfer")}>Transferencia</button>
           </div>
+          {customer.paymentMethod === "unknown" ? <p className="field-helper">No es un error: te confirmamos el método de pago por WhatsApp al recibir tu pedido.</p> : null}
           {fieldErrors.paymentMethod ? <p className="inline-error" id="checkoutPaymentMethodError" role="alert">{fieldErrors.paymentMethod}</p> : null}
           {customer.paymentMethod === "transfer" ? (
             <div className="payment-timing-panel" id="checkoutPaymentTiming" tabIndex={-1}>
@@ -2034,7 +2043,7 @@ export function PublicOrderApp() {
     const selectedGarnishes = garnishes.flatMap((item) => Array.from({ length: extraGarnishQuantities[item.sku] ?? 0 }, () => item));
     const selectedDrinks = drinks.flatMap((item) => Array.from({ length: extraGarnishQuantities[item.sku] ?? 0 }, () => item));
     if (!selectedGarnishes.length && !selectedDrinks.length && !cart.length) {
-      setSideQuestError("Agrega al menos una Side Quest para continuar.");
+      setSideQuestError("Agrega al menos una guarnición o vuelve a Main Quest para elegir burger o combo.");
       return;
     }
     setSideQuestError(null);
