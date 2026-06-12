@@ -3,6 +3,7 @@ import type {
   IngredientV2MutationResponse,
   IngredientsV2AdminResponse,
   KitchenSummaryKResponse,
+  OrderV2Environment,
   ProductIngredientRecipeV2,
   ProductIngredientRecipeV2Response,
 } from "@config/index";
@@ -75,8 +76,9 @@ export const saveProductRecipeV2Admin = async (sku: string, recipes: Array<Pick<
   return envelope.data?.recipes ?? [];
 };
 
-export const fetchKitchenSummaryK = async () => {
-  const res = await fetch("/api/kitchen-v2-admin/summary-k", withSession({ headers: { accept: "application/json" } }));
+export const fetchKitchenSummaryK = async (environment: OrderV2Environment = "production") => {
+  const params = new URLSearchParams({ environment });
+  const res = await fetch(`/api/kitchen-v2-admin/summary-k?${params.toString()}`, withSession({ headers: { accept: "application/json" } }));
   const envelope = await parseEnvelope<KitchenSummaryKResponse>(res);
   if (!envelope.data) throw new Error("No se devolvió Resumen K");
   return envelope.data;

@@ -31,6 +31,16 @@
 - [ ] Histórico.
 - [ ] Logout.
 
+## 4A. Smoke test Preview interno
+- [ ] Deploy de preview de Cloudflare Pages disponible.
+- [ ] Chekeo muestra selector Producción/Preview.
+- [ ] Preview muestra banner persistente.
+- [ ] `Abrir Public Preview` usa `https://burgers-exe-public-v2-preview.pages.dev/?env=preview`.
+- [ ] Pedido de prueba creado desde Public Preview aparece solo en Chekeo Preview.
+- [ ] Producción sigue mostrando solo `source = public-v2`.
+- [ ] No cambiar `BOG_ACTIVE_ENV`.
+- [ ] No cambiar bindings de D1/R2 ni variables productivas.
+
 ## 5. Rollback
 - [ ] Deshabilitar ruta Cloudflare o no usarla.
 - [ ] Usar Web App actual.

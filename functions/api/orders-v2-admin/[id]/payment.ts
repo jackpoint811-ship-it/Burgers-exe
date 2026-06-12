@@ -1,5 +1,15 @@
 import type { OrderV2PaymentStatus, UpdateOrderV2PaymentPayload } from '../../../../packages/config/src';
-import { errorResponse, fetchOrderBundle, generateId, json, parseJsonObject, requireAdminToken, type AdminEnv } from '../../_orders-v2-utils';
+import {
+  assertOrderMatchesEnvironment,
+  errorResponse,
+  fetchOrderBundle,
+  generateId,
+  json,
+  parseJsonObject,
+  parseOrderEnvironment,
+  requireAdminToken,
+  type AdminEnv
+} from '../../_orders-v2-utils';
 
 type Env = AdminEnv;
 
@@ -27,6 +37,9 @@ const parsePayload = (body: Record<string, unknown>): UpdateOrderV2PaymentPayloa
     if (reason.length > REASON_MAX_LENGTH) return errorResponse(400, 'INVALID_REASON', 'Razón excede el máximo permitido.');
     payload.reason = reason || undefined;
   }
+  const environment = parseOrderEnvironment(body.environment);
+  if (!environment) return errorResponse(400, 'INVALID_ENVIRONMENT', 'Ambiente de orden inválido.');
+  payload.environment = environment;
 
   return payload;
 };
@@ -47,6 +60,8 @@ export const onRequestPatch: PagesFunction<Env> = async ({ env, params, request 
   try {
     const currentRow = await env.BOG_MENU_DB.prepare('SELECT * FROM orders_v2 WHERE id = ? LIMIT 1').bind(id).first<any>();
     if (!currentRow) return errorResponse(404, 'ORDER_NOT_FOUND', 'Orden no encontrada.');
+    const environmentError = assertOrderMatchesEnvironment(currentRow, payload.environment ?? 'production');
+    if (environmentError) return environmentError;
 
     const now = new Date().toISOString();
     const eventId = generateId('evt');
@@ -58,7 +73,8 @@ export const onRequestPatch: PagesFunction<Env> = async ({ env, params, request 
       nextPaymentStatus: payload.paymentStatus,
       notesUpdated,
       reason: payload.reason ?? '',
-      source: 'internal-v2'
+      source: 'internal-v2',
+      environment: payload.environment ?? 'production'
     });
 
     const updateStatement = notesUpdated

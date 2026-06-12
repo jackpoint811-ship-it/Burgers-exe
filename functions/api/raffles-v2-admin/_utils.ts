@@ -280,7 +280,7 @@ export const calculateSummary = async (db: D1Database, campaign: RaffleCampaignV
   if (!campaign) {
     return { totalTickets: 0, totalParticipants: 0, topParticipants: [], participantResults: [] };
   }
-  const conditions = ["o.status IN ('new', 'preparing', 'ready', 'delivered')"];
+  const conditions = ["o.status IN ('new', 'preparing', 'ready', 'delivered')", "o.source = 'public-v2'"];
   const bindings: string[] = [];
   const startsAt = campaign.startsAt && /^\d{4}-\d{2}-\d{2}$/.test(campaign.startsAt) ? `${campaign.startsAt}T00:00:00.000Z` : campaign.startsAt;
   const endsAt = campaign.endsAt && /^\d{4}-\d{2}-\d{2}$/.test(campaign.endsAt) ? `${campaign.endsAt}T23:59:59.999Z` : campaign.endsAt;

@@ -4,6 +4,7 @@ import {
   type MenuItem,
   type MenuV2Response,
   type OrderV2Mode,
+  type OrderV2Environment,
   type OrderV2PaymentMethod,
   type PromoCard,
   type RaffleCampaignPublicV2,
@@ -55,6 +56,7 @@ type ComboBuilderDraft = {
 type OrderConfirmation = NonNullable<CreateOrderV2Response["data"]>["order"] & {
   paymentMethod: OrderV2PaymentMethod;
   location: CustomerDraft["location"];
+  environment?: OrderV2Environment;
   referralAccepted?: boolean;
   customerReferralCode?: string;
   activeRaffleTitle?: string;
@@ -70,6 +72,18 @@ const IDEMPOTENCY_DRAFT_STORAGE = "burgers-v2-order-draft-idempotency-fingerprin
 const LOCATIONS = ["Torre GGA", "Torre Valcob"] as const;
 const PAYMENT_METHODS = new Set<OrderV2PaymentMethod>(["cash", "transfer", "unknown"]);
 const orderModeForBackend: OrderV2Mode = "pickup";
+const resolvePublicOrderEnvironment = (): OrderV2Environment => {
+  if (typeof window === "undefined") return "production";
+  const params = new URLSearchParams(window.location.search);
+  const raw =
+    params.get("environment") ??
+    params.get("env") ??
+    params.get("preview") ??
+    "";
+  return raw.trim().toLowerCase() === "preview" || raw === "1"
+    ? "preview"
+    : "production";
+};
 const MENU_GROUPS: Array<{ key: MenuCategory["key"] | "combos"; label: string }> = [
   { key: "burgers", label: "Hamburguesas" },
   { key: "combos", label: "Combos" },
@@ -429,6 +443,13 @@ const AppHeader = ({ section, count, total, builder }: { section: QuestSection; 
     </header>
   );
 };
+
+const PublicPreviewBanner = () => (
+  <section className="public-preview-banner" role="status" aria-live="polite">
+    <strong>MODO PREVIEW</strong>
+    <span>Pedido de prueba. No preparar. No genera tickets ni referidos reales.</span>
+  </section>
+);
 
 const ticketLabel = (count: number) => `${count} ticket${count === 1 ? "" : "s"}`;
 
@@ -1706,6 +1727,7 @@ const ReferralShareModal = ({ code, raffleTitle, onClose }: { code: string; raff
 const Success = ({ order, campaign, onCreateAnother }: { order: OrderConfirmation; campaign: RaffleCampaignPublicV2 | null; onCreateAnother: () => void }) => {
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
   const [shareModalOpen, setShareModalOpen] = useState(false);
+  const isPreviewMode = order.environment === "preview";
   const earnedTickets = order.earnedTickets;
   const hasEarnedTickets = (earnedTickets?.totalTickets ?? 0) > 0;
   const raffleTitle = order.activeRaffleTitle ?? campaign?.title;
@@ -1726,9 +1748,11 @@ const Success = ({ order, campaign, onCreateAnother }: { order: OrderConfirmatio
   return (
     <section className="quest-panel success-panel" aria-live="polite">
       <section className="success-operational-block" aria-labelledby="successOrderTitle">
-        <span className="eyebrow">Confirmación operativa</span>
-        <h2 id="successOrderTitle">Pedido recibido</h2>
-        <p className="muted section-subcopy">Tu orden ya entró a cocina.</p>
+        <span className="eyebrow">{isPreviewMode ? "Preview operativo" : "Confirmación operativa"}</span>
+        <h2 id="successOrderTitle">{isPreviewMode ? "Pedido preview recibido" : "Pedido recibido"}</h2>
+        <p className="muted section-subcopy">
+          {isPreviewMode ? "Tu orden entró como prueba interna. No preparar." : "Tu orden ya entró a cocina."}
+        </p>
         <div className="success-folio-card">
           <span>Folio</span>
           <strong>{order.folio}</strong>
@@ -1740,12 +1764,15 @@ const Success = ({ order, campaign, onCreateAnother }: { order: OrderConfirmatio
           <div><dt>Estado</dt><dd>{statusLabels[order.status] ?? order.status}</dd></div>
           <div><dt>Tiempo estimado</dt><dd>15–25 min</dd></div>
         </dl>
-        <p className="success-whatsapp">Te avisaremos por WhatsApp cuando tu pedido esté listo.</p>
+        <p className="success-whatsapp">
+          {isPreviewMode ? "Modo preview: este folio es solo para validar cambios." : "Te avisaremos por WhatsApp cuando tu pedido esté listo."}
+        </p>
       </section>
       <section className="success-bonus-block" aria-labelledby="successBonusTitle">
         <span className="eyebrow">Bonus secundario</span>
         <h3 id="successBonusTitle">Tickets / referido</h3>
-      {hasEarnedTickets && earnedTickets ? <article className="success-reward-card">
+      {isPreviewMode ? <p className="success-note muted">Preview no genera tickets, referidos ni métricas reales.</p> : null}
+      {!isPreviewMode && hasEarnedTickets && earnedTickets ? <article className="success-reward-card">
         <span className="eyebrow">Loot desbloqueado</span>
         <strong className="success-ticket-total">+{earnedTickets.totalTickets} tickets</strong>
         {raffleTitle ? <p className="success-raffle-title">Van para: {raffleTitle}</p> : null}
@@ -1755,7 +1782,7 @@ const Success = ({ order, campaign, onCreateAnother }: { order: OrderConfirmatio
         </ul>
         {order.referralAccepted === true && earnedTickets.referralUsedTickets === 0 ? <p>Tu código invitado quedó aplicado. Los tickets de referido se asignan a quien te compartió el código.</p> : null}
       </article> : null}
-      {order.customerReferralCode ? <article className="success-referral-card">
+      {!isPreviewMode && order.customerReferralCode ? <article className="success-referral-card">
         <span className="eyebrow">Power-up de invitado</span>
         <p className="success-referral-lead">{referralLeadCopy}</p>
         <strong className="success-referral-code">{order.customerReferralCode}</strong>
@@ -1769,9 +1796,9 @@ const Success = ({ order, campaign, onCreateAnother }: { order: OrderConfirmatio
         {copyStatus === "error" ? <p className="success-copy-status error">No se pudo copiar automático. Mantén presionado el código para copiarlo manualmente.</p> : null}
         {shareModalOpen ? <ReferralShareModal code={order.customerReferralCode} raffleTitle={raffleTitle} onClose={() => setShareModalOpen(false)} /> : null}
       </article> : null}
-      {order.referralAccepted === true && !earnedTickets ? <p className="success-note">Código de invitado aplicado.</p> : null}
-      {order.referralAccepted === false ? <p className="success-note muted">Pedido recibido. El código de invitado no aplicó.</p> : null}
-        {!hasEarnedTickets && !order.customerReferralCode ? <p className="success-note muted">Tickets y referido quedan como bonus secundario cuando el sistema los confirme.</p> : null}
+      {!isPreviewMode && order.referralAccepted === true && !earnedTickets ? <p className="success-note">Código de invitado aplicado.</p> : null}
+      {!isPreviewMode && order.referralAccepted === false ? <p className="success-note muted">Pedido recibido. El código de invitado no aplicó.</p> : null}
+        {!isPreviewMode && !hasEarnedTickets && !order.customerReferralCode ? <p className="success-note muted">Tickets y referido quedan como bonus secundario cuando el sistema los confirme.</p> : null}
       </section>
       <QuestButton onClick={onCreateAnother}>Nuevo pedido</QuestButton>
     </section>
@@ -1801,6 +1828,8 @@ const PersistentCta = ({ section, count, total, disabled, submitting, onClick, b
 export function PublicOrderApp() {
   const reduce = useReducedMotion() ?? false;
   const submittingRef = useRef(false);
+  const orderEnvironment = useMemo(resolvePublicOrderEnvironment, []);
+  const isPreviewMode = orderEnvironment === "preview";
   const [section, setSection] = useState<QuestSection>("menu");
   const [cart, setCart] = useState<CartEntry[]>([]);
   const [builder, setBuilder] = useState<BuilderDraft | null>(null);
@@ -2103,10 +2132,10 @@ export function PublicOrderApp() {
     setSubmitting(true);
     try {
       const referralCode = customer.referralCode.trim().toUpperCase();
-      const response = await createOrderV2({ customer: { name: customer.name.trim(), phone: normalizePhoneDigits(customer.phone) }, orderMode: orderModeForBackend, paymentMethod: customer.paymentMethod, notes, items: payloadItems, ...(referralCode ? { referralCode } : {}) }, idempotencyKey);
+      const response = await createOrderV2({ customer: { name: customer.name.trim(), phone: normalizePhoneDigits(customer.phone) }, orderMode: orderModeForBackend, paymentMethod: customer.paymentMethod, notes, items: payloadItems, ...(referralCode ? { referralCode } : {}), ...(isPreviewMode ? { environment: orderEnvironment } : {}) }, idempotencyKey);
       const order = response.data?.order;
       if (!order) throw new Error("El backend no devolvió folio de confirmación.");
-      setOrderConfirmation({ ...order, paymentMethod: customer.paymentMethod, location: customer.location, referralAccepted: response.data?.referralAccepted, customerReferralCode: response.data?.customerReferralCode, activeRaffleTitle: response.data?.activeRaffleTitle, earnedTickets: response.data?.earnedTickets });
+      setOrderConfirmation({ ...order, paymentMethod: customer.paymentMethod, location: customer.location, environment: orderEnvironment, referralAccepted: response.data?.referralAccepted, customerReferralCode: response.data?.customerReferralCode, activeRaffleTitle: response.data?.activeRaffleTitle, earnedTickets: response.data?.earnedTickets });
       setCart([]);
       setCustomer(createEmptyCustomer());
       clearDraftIdempotencyKey();
@@ -2153,6 +2182,7 @@ export function PublicOrderApp() {
     <main className={`app-shell public-section-${section} ${showPersistentCta ? "has-persistent-cta" : ""}`}>
       <LoadingOverlay loading={showBoot || loadingMenu} />
       <AppHeader section={section} count={count} total={total} builder={builder} />
+      {isPreviewMode ? <PublicPreviewBanner /> : null}
       {section === "menu" ? <MenuSection menuData={menuData} raffleCampaign={raffleCampaign} onExplore={openInfoDialog} onStart={beginQuest} reduce={reduce} /> : null}
       {section === "main" ? <MainQuest categoryBanners={menuData.categoryBanners} burgerItems={availableBurgerItems} comboItems={availableComboItems} garnishes={garnishes} onBack={() => navigate("menu")} onBurgers={startBurgerSelection} onCombos={startComboSelection} onSideQuest={startDirectSideQuest} /> : null}
       {section === "burgers" ? <BurgerSelectionView items={availableBurgerItems} cart={cart} error={burgerSelectionError} onBack={() => navigate("main")} onAdd={(item) => setBurgerQuantity(item, (cart.filter((entry) => entry.sku === item.sku && entry.itemKind === "burger").length) + 1)} onQuantity={setBurgerQuantity} reduce={reduce} /> : null}

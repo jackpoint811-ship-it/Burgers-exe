@@ -2,6 +2,7 @@ import type {
   OrdersV2AdminResponse,
   ArchiveOrderV2Response,
   OrdersV2SummaryResponse,
+  OrderV2Environment,
   OrderV2PaymentStatus,
   OrderV2Status,
   UpdateKitchenItemPayload,
@@ -14,6 +15,7 @@ import type {
 type FetchOrdersV2AdminOptions = {
   includeTerminal?: boolean;
   limit?: number;
+  environment?: OrderV2Environment;
 };
 
 export type FetchOrdersV2SummaryOptions = {
@@ -22,6 +24,7 @@ export type FetchOrdersV2SummaryOptions = {
   includeTerminal?: boolean;
   limit?: number;
   topLimit?: number;
+  environment?: OrderV2Environment;
 };
 
 type ExportOrdersV2CsvOptions = {
@@ -30,6 +33,7 @@ type ExportOrdersV2CsvOptions = {
   from?: string;
   to?: string;
   limit?: number;
+  environment?: OrderV2Environment;
 };
 
 
@@ -71,6 +75,7 @@ export const fetchOrdersV2Admin = async (
 ) => {
 
   const params = new URLSearchParams();
+  params.set("environment", options.environment ?? "production");
   params.set("includeTerminal", String(Boolean(options.includeTerminal)));
   if (options.limit) params.set("limit", String(options.limit));
 
@@ -84,6 +89,7 @@ export const fetchOrdersV2Summary = async (
 ) => {
 
   const params = new URLSearchParams();
+  params.set("environment", options.environment ?? "production");
   if (options.from?.trim()) params.set("from", options.from.trim());
   if (options.to?.trim()) params.set("to", options.to.trim());
   if (typeof options.includeTerminal === "boolean")
@@ -107,6 +113,7 @@ export const fetchOrdersV2Summary = async (
 export const updateOrderV2Status = async (
   orderId: string,
   status: OrderV2Status,
+  environment: OrderV2Environment,
   reason?: string,
 ) => {
 
@@ -115,7 +122,7 @@ export const updateOrderV2Status = async (
     buildSessionFetchInit({
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status, reason }),
+      body: JSON.stringify({ status, reason, environment }),
     }),
   );
   const envelope = await parseJsonEnvelope<UpdateOrderV2StatusResponse>(res);
@@ -127,6 +134,7 @@ export const updateOrderV2Status = async (
 export const updateKitchenItemV2 = async (
   orderId: string,
   payload: UpdateKitchenItemPayload,
+  environment: OrderV2Environment,
 ) => {
 
   const res = await fetch(
@@ -134,7 +142,7 @@ export const updateKitchenItemV2 = async (
     buildSessionFetchInit({
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...payload, environment }),
     }),
   );
   const envelope = await parseJsonEnvelope<UpdateKitchenItemResponse>(res);
@@ -146,13 +154,15 @@ export const updateKitchenItemV2 = async (
 export const updateOrderV2Payment = async (
   orderId: string,
   payload: UpdateOrderV2PaymentPayload,
+  environment: OrderV2Environment,
 ) => {
 
   const body: {
     paymentStatus: OrderV2PaymentStatus;
     notes?: string;
     reason?: string;
-  } = { paymentStatus: payload.paymentStatus };
+    environment: OrderV2Environment;
+  } = { paymentStatus: payload.paymentStatus, environment };
   if (typeof payload.notes === "string") body.notes = payload.notes;
   if (typeof payload.reason === "string") body.reason = payload.reason;
 
@@ -170,9 +180,13 @@ export const updateOrderV2Payment = async (
   return envelope.data.order;
 };
 
-export const archiveCancelledOrderV2 = async (orderId: string) => {
+export const archiveCancelledOrderV2 = async (
+  orderId: string,
+  environment: OrderV2Environment,
+) => {
+  const params = new URLSearchParams({ environment });
   const res = await fetch(
-    `/api/orders-v2-admin/${encodeURIComponent(orderId)}/archive`,
+    `/api/orders-v2-admin/${encodeURIComponent(orderId)}/archive?${params.toString()}`,
     buildSessionFetchInit({ method: "PATCH" }),
   );
   const envelope = await parseJsonEnvelope<ArchiveOrderV2Response>(res);
@@ -186,6 +200,7 @@ export const exportOrdersV2Csv = async (
 ) => {
 
   const params = new URLSearchParams();
+  params.set("environment", options.environment ?? "production");
   if (typeof options.includeTerminal === "boolean")
     params.set("includeTerminal", String(options.includeTerminal));
   if (options.status) params.set("status", options.status);

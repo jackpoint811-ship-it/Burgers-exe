@@ -1,5 +1,15 @@
 import type { OrderV2Status } from '../../packages/config/src';
-import { errorResponse, json, mapD1OrderEventToOrderV2Event, mapD1OrderItemToOrderV2Item, mapD1OrderToOrderV2, requireAdminToken, type AdminEnv } from './_orders-v2-utils';
+import {
+  buildOrderEnvironmentCondition,
+  errorResponse,
+  json,
+  mapD1OrderEventToOrderV2Event,
+  mapD1OrderItemToOrderV2Item,
+  mapD1OrderToOrderV2,
+  parseOrderEnvironmentFromRequest,
+  requireAdminToken,
+  type AdminEnv
+} from './_orders-v2-utils';
 
 type Env = AdminEnv;
 
@@ -27,12 +37,17 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
   if (status && !ORDER_STATUSES.has(status)) return errorResponse(400, 'INVALID_STATUS', 'Estado inválido.');
   const includeTerminal = parseBoolean(params.get('includeTerminal'));
   const limit = parseLimit(params.get('limit'));
+  const environment = parseOrderEnvironmentFromRequest(request);
+  if (!environment) return errorResponse(400, 'INVALID_ENVIRONMENT', 'Ambiente de orden inválido.');
   const from = params.get('from')?.trim() ?? '';
   const to = params.get('to')?.trim() ?? '';
   if ((from && !isDateOnly(from)) || (to && !isDateOnly(to))) return errorResponse(400, 'INVALID_DATE', 'Fechas inválidas.');
 
   const conditions: string[] = ['archived_at IS NULL'];
   const bindings: Array<string | number> = [];
+  const environmentCondition = buildOrderEnvironmentCondition(environment);
+  conditions.push(environmentCondition.condition);
+  bindings.push(environmentCondition.binding);
   if (status) {
     conditions.push('status = ?');
     bindings.push(status);
