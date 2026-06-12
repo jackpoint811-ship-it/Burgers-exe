@@ -5245,3 +5245,348 @@ html {
     align-items: stretch;
   }
 }
+
+/* Stage 2 visual foundation: safer mobile CTA, richer fallbacks, quieter cards. */
+:root {
+  --card-surface: rgba(8, 17, 13, 0.9);
+  --card-surface-strong: rgba(10, 22, 17, 0.94);
+  --card-line: rgba(216, 255, 230, 0.13);
+  --card-line-active: rgba(57, 255, 136, 0.54);
+  --card-shadow: 0 16px 42px rgba(0, 0, 0, 0.32);
+}
+
+.quest-button {
+  transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease, color 180ms ease;
+}
+
+.quest-button:not(.ghost) {
+  box-shadow: 0 10px 30px rgba(57, 255, 136, 0.18);
+}
+
+.quest-button.ghost,
+.ticket-item footer button {
+  border-color: rgba(234, 255, 240, 0.2);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.hero-copy-block .hero-brand-title {
+  clip-path: inset(0 0 0 0);
+  animation: hero-brand-glitch 6.5s 1.8s infinite;
+}
+
+.kiosk-card,
+.route-card,
+.combo-card,
+.burger-pick-card,
+.side-section-card,
+.combo-builder-section,
+.combo-builder-hero,
+.unit-editor {
+  border-color: var(--card-line);
+  background:
+    radial-gradient(circle at 16% 0%, rgba(57, 255, 136, 0.08), transparent 34%),
+    linear-gradient(180deg, var(--card-surface-strong), rgba(3, 7, 5, 0.9));
+  box-shadow: var(--card-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+
+.kiosk-card,
+.route-card,
+.combo-card,
+.burger-pick-card,
+.side-card,
+.side-option-card {
+  transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+}
+
+.kiosk-card:hover,
+.kiosk-card:focus-visible,
+.route-card:focus-within,
+.combo-card:focus-within,
+.burger-pick-card:focus-within {
+  border-color: rgba(57, 255, 136, 0.34);
+}
+
+.burger-pick-card.active,
+.side-card.active,
+.side-option-card.active,
+.workbench-panel .chip.active,
+.combo-builder-panel .chip.active,
+.side-quest-panel .chip.active {
+  border-color: var(--card-line-active);
+  background:
+    linear-gradient(180deg, rgba(57, 255, 136, 0.13), rgba(57, 255, 136, 0.055)),
+    rgba(4, 12, 8, 0.92);
+  box-shadow: 0 0 0 1px rgba(57, 255, 136, 0.08), 0 12px 30px rgba(0, 0, 0, 0.28);
+}
+
+.eyebrow,
+.route-chip,
+.burger-count-badge,
+.product-chip,
+.status-badge,
+.combo-card-kickers span,
+.combo-builder-badges span,
+.combo-builder-badges strong,
+.combo-section-heading span,
+.side-section-card > div > span,
+.side-card-kind,
+.side-option-card span,
+.kiosk-body span {
+  letter-spacing: 0.1em;
+  box-shadow: none;
+}
+
+.status-badge,
+.product-chip {
+  box-shadow: none;
+}
+
+.kiosk-body em,
+.route-card .quest-button,
+.combo-card .quest-button {
+  box-shadow: none;
+}
+
+.kiosk-visual.no-image,
+.route-card-visual.no-image {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(57, 255, 136, 0.26), transparent 28%),
+    radial-gradient(circle at 18% 18%, rgba(255, 209, 102, 0.13), transparent 28%),
+    repeating-linear-gradient(135deg, rgba(216, 255, 230, 0.08) 0 1px, transparent 1px 13px),
+    linear-gradient(145deg, rgba(9, 27, 18, 0.96), rgba(3, 6, 5, 0.96));
+}
+
+.kiosk-visual.no-image::before,
+.route-card-visual.no-image::before {
+  content: "";
+  position: absolute;
+  inset: 14%;
+  z-index: -1;
+  border: 1px solid rgba(57, 255, 136, 0.2);
+  border-radius: 24px;
+  background:
+    linear-gradient(90deg, transparent 0 46%, rgba(57, 255, 136, 0.22) 46% 54%, transparent 54%),
+    linear-gradient(0deg, transparent 0 46%, rgba(57, 255, 136, 0.18) 46% 54%, transparent 54%);
+  opacity: 0.72;
+}
+
+.kiosk-visual.no-image::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  width: clamp(58px, 24vw, 96px);
+  height: clamp(38px, 14vw, 58px);
+  border: 2px solid rgba(57, 255, 136, 0.36);
+  border-radius: 999px 999px 28px 28px;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(255, 209, 102, 0.28), transparent 34%),
+    rgba(3, 10, 7, 0.72);
+  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.42));
+  opacity: 0.72;
+}
+
+.kiosk-visual.no-image-garnish::after {
+  height: clamp(34px, 12vw, 52px);
+  border-radius: 50% 50% 42% 42%;
+  background:
+    radial-gradient(ellipse at 50% 18%, rgba(255, 209, 102, 0.36), transparent 38%),
+    linear-gradient(180deg, rgba(57, 255, 136, 0.18), rgba(3, 10, 7, 0.78));
+}
+
+.kiosk-visual.no-image-extra::after,
+.kiosk-visual.no-image-drink::after {
+  width: clamp(44px, 18vw, 72px);
+  height: clamp(58px, 22vw, 92px);
+  border-radius: 18px;
+}
+
+.kiosk-visual.no-image span {
+  position: relative;
+  z-index: 1;
+  display: block;
+  max-width: min(82%, 18rem);
+  border: 1px solid rgba(57, 255, 136, 0.26);
+  border-radius: 999px;
+  background: rgba(2, 8, 5, 0.76);
+  color: #f2fff5;
+  padding: 0.46rem 0.72rem;
+  font-size: clamp(0.78rem, 3.2vw, 0.95rem);
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  line-height: 1.15;
+  text-align: center;
+  text-transform: uppercase;
+  white-space: normal;
+}
+
+.menu-cluster .kiosk-visual.no-image {
+  min-height: 132px;
+  aspect-ratio: 5 / 3.65;
+  padding: 18px;
+}
+
+.route-card {
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.34);
+}
+
+.route-card-visual.no-image {
+  gap: 10px;
+  min-height: clamp(158px, 44vw, 230px);
+  padding: 18px;
+}
+
+.route-card-visual.no-image::before {
+  inset: auto;
+  z-index: 0;
+  width: 88px;
+  height: 62px;
+  opacity: 0.9;
+}
+
+.route-card-burgers .route-card-visual.no-image::before {
+  border-radius: 999px 999px 28px 28px;
+}
+
+.route-card-combos .route-card-visual.no-image::before {
+  width: 104px;
+  height: 68px;
+  border-radius: 30px;
+  box-shadow: 34px 14px 0 -18px rgba(255, 209, 102, 0.42);
+}
+
+.route-card-side .route-card-visual.no-image::before {
+  width: 92px;
+  height: 58px;
+  border-radius: 50%;
+  box-shadow: inset 0 -16px 0 rgba(255, 209, 102, 0.12);
+}
+
+.route-card-visual.no-image span {
+  position: relative;
+  z-index: 1;
+  margin-top: 86px;
+  border: 1px solid rgba(57, 255, 136, 0.24);
+  border-radius: 999px;
+  background: rgba(2, 8, 5, 0.74);
+  padding: 0.5rem 0.84rem;
+  color: #f4fff7;
+  font-size: clamp(0.86rem, 4vw, 1.05rem);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.route-card-copy {
+  background:
+    linear-gradient(180deg, rgba(2, 8, 5, 0.82), rgba(2, 8, 5, 0.94));
+}
+
+.route-card-copy p {
+  min-height: 0;
+}
+
+.persistent-cta {
+  border-color: rgba(57, 255, 136, 0.34);
+  background:
+    linear-gradient(180deg, rgba(5, 15, 10, 0.94), rgba(1, 4, 3, 0.96));
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.58), 0 0 22px rgba(57, 255, 136, 0.1);
+}
+
+.workbench-panel .unit-editor {
+  gap: 10px;
+}
+
+.workbench-panel .upgrade-block {
+  border-color: rgba(255, 209, 102, 0.34);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(255, 209, 102, 0.13), transparent 32%),
+    rgba(10, 10, 3, 0.42);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+
+.upgrade-copy-block {
+  display: grid;
+  gap: 8px;
+}
+
+.upgrade-grid {
+  gap: 8px;
+}
+
+.upgrade-card {
+  border-color: rgba(255, 209, 102, 0.18);
+  background: rgba(255, 209, 102, 0.055);
+  padding: 8px;
+}
+
+.upgrade-card.active {
+  border-color: rgba(255, 209, 102, 0.52);
+  box-shadow: 0 0 0 1px rgba(255, 209, 102, 0.1);
+}
+
+.upgrade-chip {
+  min-height: 66px;
+  padding: 0.68rem;
+}
+
+.upgrade-chip-name {
+  font-size: 0.88rem;
+}
+
+.upgrade-chip-price {
+  min-height: 28px;
+  font-size: 0.82rem;
+}
+
+@media (max-width: 430px) {
+  .app-shell.has-persistent-cta,
+  .public-section-side.has-persistent-cta,
+  .public-section-menu.has-persistent-cta {
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  }
+
+  .persistent-cta {
+    position: sticky;
+    left: auto;
+    right: auto;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    width: 100%;
+    max-width: 100%;
+    margin: 14px 0 0;
+    grid-template-columns: minmax(0, 0.82fr) minmax(118px, auto);
+  }
+
+  .persistent-cta .quest-button {
+    white-space: normal;
+  }
+
+  .menu-cluster .kiosk-visual.no-image {
+    min-height: 124px;
+  }
+
+  .route-card-visual.no-image {
+    min-height: 150px;
+  }
+
+  .upgrade-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .upgrade-chip {
+    min-height: 82px;
+  }
+}
+
+@media (max-width: 360px) {
+  .persistent-cta {
+    grid-template-columns: minmax(0, 0.74fr) minmax(108px, auto);
+  }
+
+  .upgrade-grid {
+    grid-template-columns: 1fr;
+  }
+}
