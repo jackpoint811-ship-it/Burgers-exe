@@ -26,6 +26,7 @@ const KITCHEN_ITEM_KINDS = new Set<UpdateKitchenItemPayload["itemKind"]>([
   "combo",
   "garnish",
 ]);
+const SIDE_QUEST_LINE_KEY_PREFIX = "::sidequest-";
 
 const parsePayload = (
   body: Record<string, unknown>,
@@ -49,6 +50,40 @@ const parsePayload = (
 
 const getSnapshotString = (row: ItemRow) =>
   row.snapshot_json ?? row.snapshotJson ?? "";
+
+const getOptionalString = (value: unknown) =>
+  typeof value === "string" && value.trim() ? value.trim() : undefined;
+
+const asRecord = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+
+const isValidNestedSideQuestLineKey = (
+  snapshot: Record<string, unknown>,
+  payload: UpdateKitchenItemPayload,
+) => {
+  if (payload.itemKind !== "garnish") return false;
+  const parentLineKey = getOptionalString(snapshot.lineKey);
+  if (!parentLineKey) return false;
+
+  if (payload.lineKey === `${parentLineKey}${SIDE_QUEST_LINE_KEY_PREFIX}included-garnish`) {
+    return Boolean(getOptionalString(asRecord(snapshot.garnish)?.name));
+  }
+
+  const extraPrefix = `${parentLineKey}${SIDE_QUEST_LINE_KEY_PREFIX}extra-`;
+  if (!payload.lineKey.startsWith(extraPrefix)) return false;
+  const index = Number(payload.lineKey.slice(extraPrefix.length));
+  if (!Number.isInteger(index) || index < 0) return false;
+
+  const extras = Array.isArray(snapshot.sideQuestExtras)
+    ? snapshot.sideQuestExtras
+    : [];
+  const extra = asRecord(extras[index]);
+  if (!extra || !getOptionalString(extra.name)) return false;
+  const itemKind = getOptionalString(extra.itemKind) ?? "garnish";
+  return itemKind === "garnish";
+};
 
 export const onRequestPatch: PagesFunction<Env> = async ({
   env,
@@ -82,9 +117,14 @@ export const onRequestPatch: PagesFunction<Env> = async ({
     )
       .bind(id)
       .all<ItemRow>();
-    const matchingSnapshot = (itemsResult.results ?? [])
+    const snapshots = (itemsResult.results ?? [])
       .map((row) => parseJsonSnapshot(getSnapshotString(row)))
-      .find((snapshot) => snapshot?.lineKey === payload.lineKey);
+      .filter((snapshot): snapshot is Record<string, unknown> => Boolean(snapshot));
+    const exactSnapshot = snapshots.find((snapshot) => snapshot.lineKey === payload.lineKey);
+    const nestedSideQuestSnapshot = exactSnapshot
+      ? undefined
+      : snapshots.find((snapshot) => isValidNestedSideQuestLineKey(snapshot, payload));
+    const matchingSnapshot = exactSnapshot ?? nestedSideQuestSnapshot;
 
     if (!matchingSnapshot)
       return errorResponse(
@@ -93,20 +133,22 @@ export const onRequestPatch: PagesFunction<Env> = async ({
         "lineKey no existe en los items de esta orden.",
       );
 
-    const snapshotItemKind = matchingSnapshot.itemKind;
-    if (typeof snapshotItemKind === "string") {
-      if (snapshotItemKind !== payload.itemKind)
+    if (exactSnapshot) {
+      const snapshotItemKind = exactSnapshot.itemKind;
+      if (typeof snapshotItemKind === "string") {
+        if (snapshotItemKind !== payload.itemKind)
+          return errorResponse(
+            400,
+            "ITEM_KIND_MISMATCH",
+            "itemKind no coincide con el snapshot del item.",
+          );
+      } else if (snapshotItemKind !== undefined) {
         return errorResponse(
           400,
-          "ITEM_KIND_MISMATCH",
-          "itemKind no coincide con el snapshot del item.",
+          "INVALID_SNAPSHOT_ITEM_KIND",
+          "itemKind inválido en snapshot.",
         );
-    } else if (snapshotItemKind !== undefined) {
-      return errorResponse(
-        400,
-        "INVALID_SNAPSHOT_ITEM_KIND",
-        "itemKind inválido en snapshot.",
-      );
+      }
     }
 
     const now = new Date().toISOString();
