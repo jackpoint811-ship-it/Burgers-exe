@@ -106,6 +106,7 @@ const TRANSFER_BANK_DETAILS = {
 } as const;
 const CHECKOUT_NOTES_MAX_LENGTH = 500;
 const statusLabels: Record<string, string> = {
+  received: "Recibido por cocina",
   new: "Nuevo",
   preparing: "En preparación",
   ready: "Listo",
@@ -1340,7 +1341,7 @@ const TicketList = ({ cart, items, onEdit, onDuplicate, onRemove }: { cart: Cart
             <span className="ticket-item-kind">{isCombo ? "Combo" : entry.itemKind === "burger" ? "Burger" : "Item"}</span>
             <h3>{entry.name} #{entry.itemDisplayIndex}</h3>
           </div>
-          <strong>{formatCurrency(lineTotal)}</strong>
+          <div className="ticket-item-price-stack"><span>Subtotal</span><strong>{formatCurrency(lineTotal)}</strong></div>
         </div>
         <div className="ticket-item-breakdown">
           <div className="ticket-item-base-row"><span>{isCombo ? "Base del combo" : "Precio base"}</span><strong>{formatCurrency(price)}</strong></div>
@@ -1374,7 +1375,7 @@ const TicketList = ({ cart, items, onEdit, onDuplicate, onRemove }: { cart: Cart
           <div className="ticket-item-total-row"><span>Total</span><strong>{formatCurrency(lineTotal)}</strong></div>
         </div>
         {isCombo ? <p className="ticket-item-combo-note">Para cambiar este combo, elimínalo y vuelve a armarlo desde Main Quest.</p> : null}
-        <footer>{entry.itemKind === "burger" ? <button type="button" onClick={() => onEdit(entry.lineKey)}>Editar</button> : null}{entry.itemKind !== "combo" ? <button type="button" onClick={() => onDuplicate(entry.lineKey)}>Duplicar</button> : null}<button type="button" onClick={() => onRemove(entry.lineKey)}>Eliminar</button></footer>
+        <footer className="ticket-item-actions">{entry.itemKind === "burger" ? <button type="button" onClick={() => onEdit(entry.lineKey)}>Editar</button> : null}{entry.itemKind !== "combo" ? <button type="button" onClick={() => onDuplicate(entry.lineKey)}>Duplicar</button> : null}<button type="button" onClick={() => onRemove(entry.lineKey)}>Eliminar</button></footer>
       </article>;
     })}
   </div>
@@ -1525,18 +1526,24 @@ const TransferDetailsModal = ({ onClose }: { onClose: () => void }) => {
   return (
     <div className="transfer-modal-backdrop" role="presentation">
       <section className="transfer-modal" role="dialog" aria-modal="true" aria-labelledby="transfer-modal-title">
-        <span className="eyebrow">Transferencia</span>
-        <h3 id="transfer-modal-title">Datos para transferencia</h3>
-        <p>Copia el nombre y la cuenta para hacer tu transferencia. Después guarda tu comprobante.</p>
+        <header className="transfer-modal-header">
+          <span className="eyebrow">Transferencia</span>
+          <h3 id="transfer-modal-title">Datos para transferencia</h3>
+          <p>Copia los datos clave y guarda tu comprobante para mandarlo por WhatsApp.</p>
+        </header>
         <dl className="transfer-detail-list">
-          <div><dt>Banco</dt><dd>{TRANSFER_BANK_DETAILS.bank}</dd></div>
-          <div><dt>Nombre</dt><dd>{TRANSFER_BANK_DETAILS.name}</dd></div>
-          <div><dt>Cuenta</dt><dd>{TRANSFER_BANK_DETAILS.account}</dd></div>
+          <div className="transfer-detail-row"><dt>Banco</dt><dd>{TRANSFER_BANK_DETAILS.bank}</dd></div>
+          <div className="transfer-detail-row with-action">
+            <div><dt>Nombre</dt><dd>{TRANSFER_BANK_DETAILS.name}</dd></div>
+            <QuestButton className="ghost transfer-copy-button" onClick={() => copyDetail(TRANSFER_BANK_DETAILS.name, "copiedName")}>Copiar nombre</QuestButton>
+          </div>
+          <div className="transfer-detail-row with-action">
+            <div><dt>Cuenta</dt><dd>{TRANSFER_BANK_DETAILS.account}</dd></div>
+            <QuestButton className="ghost transfer-copy-button" onClick={() => copyDetail(TRANSFER_BANK_DETAILS.account, "copiedAccount")}>Copiar cuenta</QuestButton>
+          </div>
         </dl>
-        <small>Si pagas antes, puedes enviar tu comprobante por WhatsApp.</small>
+        <small className="transfer-modal-note">Si pagas antes, puedes enviar tu comprobante por WhatsApp.</small>
         <div className="transfer-modal-actions">
-          <QuestButton className="ghost" onClick={() => copyDetail(TRANSFER_BANK_DETAILS.name, "copiedName")}>Copiar nombre</QuestButton>
-          <QuestButton className="ghost" onClick={() => copyDetail(TRANSFER_BANK_DETAILS.account, "copiedAccount")}>Copiar cuenta</QuestButton>
           <QuestButton onClick={onClose}>Cerrar</QuestButton>
         </div>
         {status === "copiedName" ? <p className="success-copy-status">Nombre copiado.</p> : null}
@@ -1582,12 +1589,18 @@ const Checkout = ({ cart, items, total, customer, setCustomer, checkoutStep, set
       </nav>
       {checkoutStep === 0 ? <section className="checkout-step-panel" aria-labelledby="checkoutSummaryTitle">
         <div className="checkout-step-heading"><span>01</span><h3 id="checkoutSummaryTitle">Resumen del ticket</h3></div>
-        <div id="checkoutCartSummary" tabIndex={-1}>
+        <div className="checkout-summary-total" aria-label="Total del pedido">
+          <span>Total a confirmar</span>
+          <strong>{formatCurrency(total)}</strong>
+          <small>{cart.length} item{cart.length === 1 ? "" : "s"} en tu ticket</small>
+        </div>
+        <div className="checkout-summary-list" id="checkoutCartSummary" tabIndex={-1}>
           <TicketList cart={cart} items={items} onEdit={onEdit} onDuplicate={onDuplicate} onRemove={onRemove} />
         </div>
         {fieldErrors.cart ? <p className="inline-error" role="alert">{fieldErrors.cart}</p> : null}
-        <div className="checkout-total"><span>Total</span><strong>{formatCurrency(total)}</strong></div>
-        <QuestButton onClick={nextStep} disabled={!cart.length}>Continuar a datos</QuestButton>
+        <div className="checkout-summary-actions">
+          <QuestButton onClick={nextStep} disabled={!cart.length}>Continuar a datos</QuestButton>
+        </div>
       </section> : null}
       {checkoutStep === 1 ? <section className="checkout-step-panel" aria-labelledby="checkoutDataTitle">
         <div className="checkout-step-heading"><span>02</span><h3 id="checkoutDataTitle">Datos del pedido</h3></div>
@@ -1649,7 +1662,7 @@ const Checkout = ({ cart, items, total, customer, setCustomer, checkoutStep, set
             </div>
           ) : null}
         </div>
-        <div className="checkout-total"><span>Total</span><strong>{formatCurrency(total)}</strong></div>
+        <div className="checkout-total checkout-payment-total"><span>Total a pagar</span><strong>{formatCurrency(total)}</strong></div>
         <QuestButton onClick={onSubmit} disabled={submitting || !cart.length}>{submitting ? "Enviando pedido..." : "Confirmar pedido"}</QuestButton>
         {error ? <p className="inline-error" role="alert">{error}</p> : null}
       </section> : null}
@@ -1711,13 +1724,20 @@ const ReferralShareModal = ({ code, raffleTitle, onClose }: { code: string; raff
     <div className="referral-modal-backdrop" role="presentation">
       <section className="referral-modal" role="dialog" aria-modal="true" aria-labelledby="referral-share-title">
         <button type="button" className="referral-modal-close" onClick={onClose} aria-label="Cerrar modal de compartir">×</button>
-        <span className="eyebrow">Compartir código</span>
-        <h3 id="referral-share-title">Invita a tu crew</h3>
-        {raffleTitle ? <p className="success-raffle-title">Sorteo: {raffleTitle}</p> : null}
-        <strong className="referral-modal-code">{code}</strong>
-        <p>{REFERRAL_SHARE_TEXT}</p>
-        <label className="referral-manual-copy">Link de la página pública<textarea readOnly value={link} rows={2} /></label>
-        <label className="referral-manual-copy">Mensaje<textarea readOnly value={message} rows={5} /></label>
+        <header className="referral-modal-header">
+          <span className="eyebrow">Compartir código</span>
+          <h3 id="referral-share-title">Invita a tu crew</h3>
+          {raffleTitle ? <p className="success-raffle-title">Sorteo: {raffleTitle}</p> : null}
+        </header>
+        <div className="referral-code-panel">
+          <span>Código</span>
+          <strong className="referral-modal-code">{code}</strong>
+        </div>
+        <p className="referral-modal-lead">{REFERRAL_SHARE_TEXT}</p>
+        <div className="referral-share-fields">
+          <label className="referral-manual-copy">Link de la página pública<textarea readOnly value={link} rows={2} /></label>
+          <label className="referral-manual-copy">Mensaje<textarea readOnly value={message} rows={5} /></label>
+        </div>
         <div className="referral-modal-actions">
           <QuestButton className="ghost" onClick={copyLink}>Copiar link</QuestButton>
           <QuestButton className="ghost" onClick={copyMessage}>Copiar mensaje</QuestButton>
@@ -1741,6 +1761,7 @@ const Success = ({ order, campaign, onCreateAnother }: { order: OrderConfirmatio
   const earnedTickets = order.earnedTickets;
   const hasEarnedTickets = (earnedTickets?.totalTickets ?? 0) > 0;
   const raffleTitle = order.activeRaffleTitle ?? campaign?.title;
+  const statusLabel = statusLabels[order.status] ?? order.status;
   const referralRewardCopy = campaign ? `${ticketLabel(campaign.ticketPerReferral)} extra` : "tickets extra";
   const referralLeadCopy = hasEarnedTickets
     ? `Comparte este código. Si tu compa lo usa y ordena al menos 1 burger pagada, tú ganas ${referralRewardCopy}.`
@@ -1771,7 +1792,7 @@ const Success = ({ order, campaign, onCreateAnother }: { order: OrderConfirmatio
           <div><dt>Total</dt><dd>{formatCurrency(order.total)}</dd></div>
           <div><dt>Ubicación</dt><dd>{order.location}</dd></div>
           <div><dt>Pago</dt><dd>{paymentMethodLabels[order.paymentMethod]}</dd></div>
-          <div><dt>Estado</dt><dd>{statusLabels[order.status] ?? order.status}</dd></div>
+          <div><dt>Estado</dt><dd className="success-status-pill">{statusLabel}</dd></div>
           <div><dt>Tiempo estimado</dt><dd>15–25 min</dd></div>
         </dl>
         <p className="success-whatsapp">

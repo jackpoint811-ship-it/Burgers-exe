@@ -5612,3 +5612,297 @@ html {
     grid-template-columns: 1fr;
   }
 }
+
+/* Stage 2 Visual 2: conversion surfaces. */
+.checkout-panel {
+  gap: clamp(12px, 3vw, 16px);
+}
+
+.checkout-panel > h2,
+.checkout-panel > .section-subcopy {
+  max-width: 42rem;
+}
+
+.checkout-step-panel {
+  border: 1px solid rgba(234, 255, 240, 0.1);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(57, 255, 136, 0.08), transparent 32%),
+    rgba(1, 5, 3, 0.38);
+  padding: clamp(12px, 3.5vw, 16px);
+}
+
+.checkout-summary-total,
+.checkout-payment-total {
+  border: 1px solid rgba(255, 209, 102, 0.34);
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, rgba(255, 209, 102, 0.12), rgba(57, 255, 136, 0.06)),
+    rgba(4, 8, 5, 0.84);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+
+.checkout-summary-total {
+  display: grid;
+  gap: 2px;
+  padding: 14px;
+}
+
+.checkout-summary-total span,
+.checkout-summary-total small,
+.ticket-item-price-stack span {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.checkout-summary-total strong {
+  color: #fff7d6;
+  font-size: clamp(2.1rem, 13vw, 3.8rem);
+  font-weight: 950;
+  letter-spacing: -0.07em;
+  line-height: 0.96;
+}
+
+.checkout-summary-list {
+  min-width: 0;
+}
+
+.checkout-summary-actions,
+.checkout-summary-actions .quest-button {
+  width: 100%;
+}
+
+.checkout-panel .ticket-list {
+  gap: 10px;
+}
+
+.checkout-panel .ticket-item {
+  border-color: rgba(234, 255, 240, 0.12);
+  background:
+    linear-gradient(180deg, rgba(10, 20, 16, 0.9), rgba(2, 6, 4, 0.82));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+
+.ticket-item-head {
+  gap: 12px;
+}
+
+.ticket-item-price-stack {
+  display: grid;
+  gap: 2px;
+  justify-items: end;
+  min-width: max-content;
+}
+
+.ticket-item-price-stack strong {
+  color: var(--amber);
+  font-size: clamp(1.08rem, 5vw, 1.35rem);
+  line-height: 1;
+}
+
+.ticket-item-breakdown {
+  border-color: rgba(234, 255, 240, 0.08);
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.ticket-item-actions {
+  border-top: 1px solid rgba(234, 255, 240, 0.08);
+  padding-top: 10px;
+}
+
+.checkout-payment-total {
+  position: static;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 13px 14px;
+}
+
+.payment-block,
+.payment-timing-panel {
+  border-color: rgba(234, 255, 240, 0.12);
+  background:
+    linear-gradient(180deg, rgba(10, 20, 16, 0.86), rgba(2, 6, 4, 0.72));
+}
+
+.payment-block h4 {
+  margin-bottom: 10px;
+}
+
+.transfer-modal-backdrop,
+.referral-modal-backdrop {
+  padding: max(0.75rem, env(safe-area-inset-top)) 0.75rem max(0.75rem, env(safe-area-inset-bottom));
+}
+
+.transfer-modal,
+.referral-modal {
+  max-height: calc(100dvh - 24px);
+  overscroll-behavior: contain;
+  border-color: rgba(234, 255, 240, 0.16);
+  background:
+    linear-gradient(180deg, rgba(13, 24, 20, 0.98), rgba(2, 6, 4, 0.98));
+  box-shadow:
+    0 -18px 60px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(57, 255, 136, 0.08);
+}
+
+.transfer-modal-header,
+.referral-modal-header {
+  display: grid;
+  gap: 6px;
+  padding-right: 46px;
+}
+
+.transfer-detail-list {
+  gap: 0.55rem;
+}
+
+.transfer-detail-list .transfer-detail-row {
+  min-width: 0;
+  display: grid;
+  gap: 0.35rem;
+  border: 1px solid rgba(234, 255, 240, 0.1);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.035);
+  padding: 0.72rem;
+}
+
+.transfer-detail-list .transfer-detail-row.with-action {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.transfer-detail-list .transfer-detail-row > div {
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.transfer-copy-button {
+  min-height: 40px;
+  padding: 0.58rem 0.72rem;
+  box-shadow: none !important;
+}
+
+.transfer-modal-note {
+  border: 1px solid rgba(255, 209, 102, 0.18);
+  border-radius: 14px;
+  background: rgba(255, 209, 102, 0.055);
+  padding: 0.68rem;
+}
+
+.transfer-modal-actions {
+  grid-template-columns: 1fr;
+}
+
+.referral-code-panel {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  border: 1px solid rgba(255, 209, 102, 0.24);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 209, 102, 0.18), transparent 58%),
+    rgba(255, 209, 102, 0.045);
+  padding: 0.85rem;
+  text-align: center;
+}
+
+.referral-code-panel > span {
+  color: var(--amber);
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.referral-modal-lead {
+  color: #e5fff0;
+  font-weight: 850;
+  line-height: 1.45;
+}
+
+.referral-share-fields {
+  display: grid;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+.referral-manual-copy textarea {
+  min-height: 58px;
+  max-height: 36dvh;
+}
+
+.referral-modal-actions {
+  align-items: stretch;
+}
+
+.success-operational-block {
+  border-color: rgba(57, 255, 136, 0.22);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(57, 255, 136, 0.11), transparent 42%),
+    rgba(7, 15, 11, 0.72);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+
+.success-status-pill {
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid rgba(57, 255, 136, 0.3);
+  border-radius: 999px;
+  background: rgba(57, 255, 136, 0.1);
+  color: #caffdc !important;
+  padding: 0.34rem 0.62rem;
+  text-align: right;
+}
+
+.success-bonus-block {
+  border-style: solid;
+  background:
+    linear-gradient(180deg, rgba(255, 209, 102, 0.065), rgba(57, 255, 136, 0.035)),
+    rgba(3, 7, 5, 0.66);
+}
+
+@media (min-width: 560px) {
+  .transfer-detail-list .transfer-detail-row.with-action {
+    grid-template-columns: minmax(0, 1fr) minmax(136px, auto);
+    align-items: center;
+  }
+}
+
+@media (max-width: 430px) {
+  .checkout-step-panel {
+    margin-inline: -2px;
+  }
+
+  .ticket-item-price-stack {
+    justify-items: start;
+    min-width: 0;
+  }
+
+  .ticket-item-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ticket-item-actions button:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
+  .referral-modal,
+  .transfer-modal {
+    border-radius: 22px 22px 16px 16px;
+    padding: 0.92rem;
+  }
+
+  .success-status-pill {
+    text-align: left;
+  }
+}

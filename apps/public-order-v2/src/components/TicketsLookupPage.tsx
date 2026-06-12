@@ -130,15 +130,20 @@ export const TicketsLookupPage = () => {
   return (
     <main className="tickets-page app-shell" aria-labelledby="ticketsPageTitle">
       <section className="terminal-window tickets-hero-card">
-        <span className="terminal-path">Burgers.exe campaign module</span>
-        <h1 id="ticketsPageTitle">🎟️ Consulta tus tickets</h1>
+        <div className="tickets-hero-lockup">
+          <span className="terminal-path">Burgers.exe campaign module</span>
+          <h1 id="ticketsPageTitle">Consulta tus tickets</h1>
+        </div>
         <p className="hero-copy">Busca con tu teléfono o código referido. La consulta es privada: solo mostramos teléfonos enmascarados.</p>
+        <div className="tickets-hero-signal" aria-hidden="true"><span>Tickets</span><strong>Referral loop</strong></div>
         <a className="tickets-back-link" href="/">← Volver al menú</a>
       </section>
 
       <section className="terminal-window tickets-lookup-card" aria-labelledby="lookupTitle">
-        <span className="terminal-path">Lookup seguro</span>
-        <h2 id="lookupTitle">Buscar tickets</h2>
+        <div className="tickets-module-heading">
+          <span className="terminal-path">Lookup seguro</span>
+          <h2 id="lookupTitle">Buscar tickets</h2>
+        </div>
         <form onSubmit={handleLookup} noValidate>
           <label className="terminal-label" htmlFor="ticketPhoneInput">
             Teléfono
@@ -182,8 +187,10 @@ export const TicketsLookupPage = () => {
 
       {participant ? (
         <section className="terminal-window tickets-result-card" aria-labelledby="ticketsResultTitle" aria-live="polite">
-          <span className="terminal-path">Resultado encontrado</span>
-          <h2 id="ticketsResultTitle">Tus oportunidades</h2>
+          <div className="tickets-module-heading">
+            <span className="terminal-path">Resultado encontrado</span>
+            <h2 id="ticketsResultTitle">Tus oportunidades</h2>
+          </div>
           <div className="tickets-count-card" aria-label="Total tickets"><strong>{participant.totalTickets}</strong><span>total tickets</span></div>
           <dl className="tickets-result-list">
             <div><dt>Tickets por burgers</dt><dd>{participant.burgerTickets}</dd></div>
@@ -213,8 +220,10 @@ export const TicketsLookupPage = () => {
         </section>
       ) : referralCode && result?.found ? (
         <section className="terminal-window tickets-result-card" aria-labelledby="ticketsCodeTitle" aria-live="polite">
-          <span className="terminal-path">Código encontrado</span>
-          <h2 id="ticketsCodeTitle">Código referido</h2>
+          <div className="tickets-module-heading">
+            <span className="terminal-path">Código encontrado</span>
+            <h2 id="ticketsCodeTitle">Código referido</h2>
+          </div>
           <div className="tickets-count-card compact" aria-label="Código referido"><strong>{referralCode.code}</strong><span>{referralCode.isActive ? 'activo' : 'inactivo'}</span></div>
           <dl className="tickets-result-list">
             <div><dt>Teléfono enmascarado</dt><dd>{referralCode.ownerPhoneMasked}</dd></div>
