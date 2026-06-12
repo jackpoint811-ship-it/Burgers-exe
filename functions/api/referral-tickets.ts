@@ -116,6 +116,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
        JOIN order_items_v2 oi ON oi.order_id = o.id
        WHERE ${normalizePhoneSql('o.customer_phone')} = ?
          AND o.status IN ('new', 'preparing', 'ready', 'delivered')
+         AND o.source = 'public-v2'
          AND (? IS NULL OR o.created_at >= ?)
          AND (? IS NULL OR o.created_at <= ?)`
     ).bind(phone, startsAt, startsAt, endsAt, endsAt).all<OrderTicketRow>();

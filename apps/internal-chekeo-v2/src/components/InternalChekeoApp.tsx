@@ -17,6 +17,7 @@ import {
   type OrdersV2SummaryResponse,
   type OrderStatus,
   type OrderV2,
+  type OrderV2Environment,
   type OrderV2Event,
   type OrderV2ItemKind,
   type OrderV2PaymentStatus,
@@ -117,6 +118,7 @@ type NewOrderNotice = {
   orderFolios: string[];
 } | null;
 type OrdersRuntime = {
+  environment: OrderV2Environment;
   source: OrdersSource;
   loading: boolean;
   actionOrderId: string | null;
@@ -128,6 +130,24 @@ type OrdersRuntime = {
   reload: (includeTerminal?: boolean) => void;
   lastUpdated: string | null;
 };
+
+const ORDER_ENVIRONMENT_STORAGE_KEY = "burgers-chekeo-order-environment";
+const PUBLIC_PREVIEW_URL =
+  "https://burgers-exe-public-v2-preview.pages.dev/?env=preview";
+
+const readStoredOrderEnvironment = (): OrderV2Environment => {
+  if (typeof window === "undefined") return "production";
+  return window.localStorage.getItem(ORDER_ENVIRONMENT_STORAGE_KEY) === "preview"
+    ? "preview"
+    : "production";
+};
+
+const orderEnvironmentLabel: Record<OrderV2Environment, string> = {
+  production: "Producción",
+  preview: "Preview",
+};
+
+const isPreviewOrderSource = (source?: string) => source === "public-v2-preview";
 
 const statusLabel: Record<OrderStatus, string> = {
   new: "Nuevo",
@@ -542,9 +562,11 @@ const orderStatusOptions: Array<{ value: OrderV2Status | ""; label: string }> =
 const OrdersExportControls = ({
   sessionActive,
   defaultIncludeTerminal,
+  environment,
 }: {
   sessionActive: boolean;
   defaultIncludeTerminal: boolean;
+  environment: OrderV2Environment;
 }) => {
   const [includeTerminal, setIncludeTerminal] = useState(
     defaultIncludeTerminal,
@@ -590,6 +612,7 @@ const OrdersExportControls = ({
         from,
         to,
         limit: parsedLimit,
+        environment,
       });
       const url = window.URL.createObjectURL(blob);
       const anchor = document.createElement("a");
@@ -778,6 +801,7 @@ const SourcePanel = ({
     <OrdersExportControls
       sessionActive={runtime.sessionActive}
       defaultIncludeTerminal={includeTerminal}
+      environment={runtime.environment}
     />
     {runtime.error ? (
       <p className="mt-2 rounded bg-rose-500/10 px-2 py-1 text-xs text-rose-200">
@@ -885,10 +909,14 @@ const InternalLogin = ({
 };
 const OperatorHeader = ({
   active,
+  environment,
+  onEnvironmentChange,
   onLogout,
   source,
 }: {
   active: number;
+  environment: OrderV2Environment;
+  onEnvironmentChange: (environment: OrderV2Environment) => void;
   onLogout: () => void;
   source: OrdersSource;
 }) => (
@@ -898,17 +926,60 @@ const OperatorHeader = ({
         Chekeo Burgers.exe
       </h1>
       <p className="text-[11px] text-zinc-400">
-        Activos {active} · {source === "d1" ? "Live" : "Vista local"} ·{" "}
+        Activos {active} · {orderEnvironmentLabel[environment]} ·{" "}
+        {source === "d1" ? "Live" : "Vista local"} ·{" "}
         {new Date().toLocaleTimeString()}
       </p>
     </div>
-    <Button
-      className="border border-zinc-700 bg-zinc-900 px-2 py-1 text-[11px]"
-      onClick={onLogout}
-    >
-      Cerrar sesión
-    </Button>
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      <div
+        className="flex rounded-lg border border-zinc-700 bg-zinc-950 p-1"
+        role="group"
+        aria-label="Ambiente de pedidos"
+      >
+        {(["production", "preview"] as const).map((value) => (
+          <button
+            key={value}
+            type="button"
+            className={`min-h-8 rounded-md px-2 text-[11px] font-black ${
+              environment === value
+                ? value === "preview"
+                  ? "bg-amber-300 text-amber-950"
+                  : "bg-cyan-300 text-cyan-950"
+                : "text-zinc-400"
+            }`}
+            onClick={() => onEnvironmentChange(value)}
+            aria-pressed={environment === value}
+          >
+            {orderEnvironmentLabel[value]}
+          </button>
+        ))}
+      </div>
+      <a
+        className="min-h-8 rounded-lg border border-amber-400/50 bg-amber-500/10 px-2 py-1 text-[11px] font-black text-amber-100"
+        href={PUBLIC_PREVIEW_URL}
+        target="_blank"
+        rel="noreferrer"
+      >
+        Abrir Public Preview
+      </a>
+      <Button
+        className="border border-zinc-700 bg-zinc-900 px-2 py-1 text-[11px]"
+        onClick={onLogout}
+      >
+        Cerrar sesión
+      </Button>
+    </div>
   </header>
+);
+
+const PreviewModeBanner = () => (
+  <section className="rounded-xl border border-amber-400/60 bg-amber-500/15 px-3 py-2 text-sm text-amber-50 shadow-[0_0_22px_rgba(251,191,36,0.16)]">
+    <strong className="font-black">MODO PREVIEW ACTIVO</strong>
+    <span className="ml-2 text-amber-100/90">
+      Solo pedidos de prueba desde Public Preview. No preparar ni mezclar con operación real.
+    </span>
+  </section>
 );
 const DashboardHome = ({
   orders,
@@ -1392,12 +1463,19 @@ const CompactRow = ({
 }: {
   order: InternalOrder;
   onOpen: () => void;
-}) => (
+}) => {
+  const previewOrder = isPreviewOrderSource(order.source);
+  return (
   <Card className="p-2.5">
     <div className="flex items-start justify-between gap-2">
       <div>
-        <p className="text-sm font-bold">
-          {order.folio} · {order.customer}
+        <p className="flex flex-wrap items-center gap-2 text-sm font-bold">
+          <span>{order.folio} · {order.customer}</span>
+          {previewOrder ? (
+            <span className="rounded-full bg-amber-300 px-2 py-0.5 text-[10px] font-black text-amber-950">
+              PREVIEW
+            </span>
+          ) : null}
         </p>
         <p className="text-[11px] text-zinc-400">
           {order.createdAt} · {order.channel} · {order.paymentMethod}/
@@ -1426,7 +1504,8 @@ const CompactRow = ({
     </div>
     <WhatsappOrderActions order={order} />
   </Card>
-);
+  );
+};
 
 const OrdersBoard = ({
   orders,
@@ -1778,7 +1857,11 @@ const SideQuestItemCard = ({
 };
 
 
-const KitchenSummaryKPanel = () => {
+const KitchenSummaryKPanel = ({
+  environment,
+}: {
+  environment: OrderV2Environment;
+}) => {
   const [summary, setSummary] = useState<KitchenSummaryK | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -1787,7 +1870,7 @@ const KitchenSummaryKPanel = () => {
     setLoading(true);
     setError(null);
     try {
-      setSummary(await fetchKitchenSummaryK());
+      setSummary(await fetchKitchenSummaryK(environment));
     } catch {
       setError("No se pudo cargar Resumen K. Cocina sigue funcionando normalmente.");
     } finally {
@@ -1797,7 +1880,7 @@ const KitchenSummaryKPanel = () => {
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [environment]);
 
   if (loading) return <Card className="border-cyan-500/20 bg-zinc-950 p-4"><p className="text-sm font-semibold text-cyan-100">Cargando Resumen K…</p></Card>;
 
@@ -1812,8 +1895,8 @@ const KitchenSummaryKPanel = () => {
       {[["Burgers totales", summary.totals.burgers], ["Guarniciones totales", summary.totals.garnishes], ["Ingredientes estimados", summary.totals.ingredients], ["Costo estimado", costText]].map(([label, value]) => <Card key={label} className="border-cyan-500/20 bg-zinc-950 p-4"><p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-400">{label}</p><p className="mt-2 text-3xl font-black text-cyan-100">{value}</p></Card>)}
     </div>
     <div className="grid gap-4 lg:grid-cols-2">
-      <Card className="border-emerald-500/20 bg-zinc-950 p-4"><h3 className="text-sm font-black uppercase tracking-[0.2em] text-emerald-200">Producción · burgers</h3><div className="mt-3 space-y-2">{summary.burgers.length ? summary.burgers.map((item) => <div key={item.sku} className="flex items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900/70 p-3"><span className="font-bold text-zinc-100">{item.name}</span><span className="text-xl font-black text-emerald-200">{item.quantity}</span></div>) : <EmptyOrdersState title="Sin burgers del día." />}</div></Card>
-      <Card className="border-amber-500/20 bg-zinc-950 p-4"><h3 className="text-sm font-black uppercase tracking-[0.2em] text-amber-200">Producción · guarniciones</h3><div className="mt-3 space-y-2">{summary.garnishes.length ? summary.garnishes.map((item) => <div key={item.sku} className="flex items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900/70 p-3"><span className="font-bold text-zinc-100">{item.name}</span><span className="text-xl font-black text-amber-200">{item.quantity}</span></div>) : <EmptyOrdersState title="Sin guarniciones del día." />}</div></Card>
+      <Card className="border-emerald-500/20 bg-zinc-950 p-4"><h3 className="text-sm font-black uppercase tracking-[0.2em] text-emerald-200">{orderEnvironmentLabel[environment]} · burgers</h3><div className="mt-3 space-y-2">{summary.burgers.length ? summary.burgers.map((item) => <div key={item.sku} className="flex items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900/70 p-3"><span className="font-bold text-zinc-100">{item.name}</span><span className="text-xl font-black text-emerald-200">{item.quantity}</span></div>) : <EmptyOrdersState title="Sin burgers del día." />}</div></Card>
+      <Card className="border-amber-500/20 bg-zinc-950 p-4"><h3 className="text-sm font-black uppercase tracking-[0.2em] text-amber-200">{orderEnvironmentLabel[environment]} · guarniciones</h3><div className="mt-3 space-y-2">{summary.garnishes.length ? summary.garnishes.map((item) => <div key={item.sku} className="flex items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900/70 p-3"><span className="font-bold text-zinc-100">{item.name}</span><span className="text-xl font-black text-amber-200">{item.quantity}</span></div>) : <EmptyOrdersState title="Sin guarniciones del día." />}</div></Card>
     </div>
     <Card className="border-cyan-500/20 bg-zinc-950 p-4"><h3 className="text-sm font-black uppercase tracking-[0.2em] text-cyan-200">Ingredientes estimados</h3><div className="mt-3 space-y-2">{summary.ingredients.length ? summary.ingredients.map((ingredient) => <div key={ingredient.ingredientId} className="grid gap-1 rounded-xl border border-zinc-800 bg-zinc-900/70 p-3 sm:grid-cols-[1fr_auto_auto] sm:items-center"><div><p className="font-bold text-zinc-100">{ingredient.name}</p><p className="text-xs text-zinc-400">Precio unitario: {ingredient.unitPriceCents == null ? "—" : formatCurrency(ingredient.unitPriceCents / 100)}</p></div><p className="font-black text-cyan-100">{ingredient.quantity.toFixed(2)} {ingredient.unit}</p><p className="font-black text-emerald-200">{ingredient.estimatedCostCents == null ? "—" : formatCurrency(ingredient.estimatedCostCents / 100)}</p></div>) : <EmptyOrdersState title="Sin ingredientes estimados." />}</div></Card>
   </section>;
@@ -1908,7 +1991,7 @@ const KitchenQueue = ({
       </div>
 
       {mode === "summaryK" ? (
-        <KitchenSummaryKPanel />
+        <KitchenSummaryKPanel environment={runtime.environment} />
       ) : mode === "burgers" ? (
         <div className="space-y-5">
           <section>
@@ -2046,7 +2129,13 @@ const EmptyCloseState = () => (
   </Card>
 );
 
-const OperationalClosePanel = ({ sessionActive }: { sessionActive: boolean }) => {
+const OperationalClosePanel = ({
+  environment,
+  sessionActive,
+}: {
+  environment: OrderV2Environment;
+  sessionActive: boolean;
+}) => {
   const [from, setFrom] = useState(todayDateInput());
   const [to, setTo] = useState(todayDateInput());
   const [includeTerminal, setIncludeTerminal] = useState(true);
@@ -2074,6 +2163,7 @@ const OperationalClosePanel = ({ sessionActive }: { sessionActive: boolean }) =>
         includeTerminal,
         limit: 1000,
         topLimit: 10,
+        environment,
       });
       setSummary(data);
       setNotice("Cierre actualizado");
@@ -2087,7 +2177,7 @@ const OperationalClosePanel = ({ sessionActive }: { sessionActive: boolean }) =>
     } finally {
       setLoading(false);
     }
-  }, [from, includeTerminal, sessionActive, to]);
+  }, [environment, from, includeTerminal, sessionActive, to]);
 
   useEffect(() => {
     if (sessionActive) void loadSummary();
@@ -2111,6 +2201,7 @@ const OperationalClosePanel = ({ sessionActive }: { sessionActive: boolean }) =>
         to,
         includeTerminal,
         limit: 1000,
+        environment,
       });
       const url = window.URL.createObjectURL(blob);
       const anchor = document.createElement("a");
@@ -2946,6 +3037,8 @@ export function InternalChekeoApp() {
   );
   const [actionOrderId, setActionOrderId] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [orderEnvironment, setOrderEnvironment] =
+    useState<OrderV2Environment>(readStoredOrderEnvironment);
   const reduce = useReducedMotion();
   const orderKeysRef = useRef<Set<string> | null>(null);
   const loggedRef = useRef(logged);
@@ -2973,6 +3066,27 @@ export function InternalChekeoApp() {
   useEffect(() => {
     checkingSessionRef.current = checkingSession;
   }, [checkingSession]);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      ORDER_ENVIRONMENT_STORAGE_KEY,
+      orderEnvironment,
+    );
+  }, [orderEnvironment]);
+
+  const changeOrderEnvironment = useCallback(
+    (nextEnvironment: OrderV2Environment) => {
+      setOrderEnvironment(nextEnvironment);
+      setSelected(null);
+      cancellationRequestRef.current = null;
+      setCancellationRequest(null);
+      setNewOrderNotice(null);
+      setHighlightedOrderIds(new Set());
+      orderKeysRef.current = null;
+      setOrdersNotice(`Modo ${orderEnvironmentLabel[nextEnvironment]} activo`);
+    },
+    [],
+  );
 
   const expireSession = useCallback(() => {
     setLogged(false);
@@ -3056,6 +3170,7 @@ export function InternalChekeoApp() {
         const liveOrders = await fetchOrdersV2Admin({
           includeTerminal,
           limit: includeTerminal ? 50 : 25,
+          environment: orderEnvironment,
         });
         if (isAutoRefresh && isRefreshBlocked()) return;
 
@@ -3094,7 +3209,7 @@ export function InternalChekeoApp() {
         setLoadingOrders(false);
       }
     },
-    [expireSession, isRefreshBlocked, registerLoadedOrders, tab],
+    [expireSession, isRefreshBlocked, orderEnvironment, registerLoadedOrders, tab],
   );
 
   useEffect(() => {
@@ -3207,6 +3322,7 @@ export function InternalChekeoApp() {
       const updated = await updateOrderV2Status(
         id,
         s,
+        orderEnvironment,
         reason ?? `Internal V2 ${tab}`,
       );
       const mapped = mapOrderV2ToInternalOrder(updated);
@@ -3263,7 +3379,7 @@ export function InternalChekeoApp() {
         paymentStatus,
         notes,
         reason,
-      });
+      }, orderEnvironment);
       const mapped = mapOrderV2ToInternalOrder(updated);
       setOrders((p) => p.map((o) => (o.id === id ? mapped : o)));
       setSelected((current) => (current?.id === id ? mapped : current));
@@ -3314,7 +3430,7 @@ export function InternalChekeoApp() {
     setActionOrderId(order.id);
     setOrdersError(null);
     try {
-      const updated = await archiveCancelledOrderV2(order.id);
+      const updated = await archiveCancelledOrderV2(order.id, orderEnvironment);
       setOrders((current) => current.filter((entry) => entry.id !== updated.id));
       setSelected((current) => (current?.id === updated.id ? null : current));
       setOrdersNotice(`${updated.folio}: orden cancelada oculta del historial operativo`);
@@ -3365,7 +3481,7 @@ export function InternalChekeoApp() {
         lineKey,
         itemKind,
         done,
-      });
+      }, orderEnvironment);
       const mapped = mapOrderV2ToInternalOrder(updated);
       setOrders((current) =>
         current.map((order) => (order.id === orderId ? mapped : order)),
@@ -3389,6 +3505,7 @@ export function InternalChekeoApp() {
   };
 
   const runtime: OrdersRuntime = {
+    environment: orderEnvironment,
     source: ordersSource,
     loading: loadingOrders,
     actionOrderId,
@@ -3438,11 +3555,16 @@ export function InternalChekeoApp() {
             onArchiveCancelled={archiveCancelledOrder}
           />
         ),
-        cierre: <OperationalClosePanel sessionActive={logged} />,
+        cierre: (
+          <OperationalClosePanel
+            environment={orderEnvironment}
+            sessionActive={logged}
+          />
+        ),
         catalogo: <CatalogAdminPanel />,
         sorteos: <RafflesAdminPanel />,
       })[tab],
-    [orders, ordersSource, tab, runtime, toggleKitchenItemDone],
+    [logged, orderEnvironment, orders, ordersSource, tab, runtime, toggleKitchenItemDone],
   );
   if (!logged)
     return (
@@ -3459,6 +3581,8 @@ export function InternalChekeoApp() {
     <main className="shell">
       <OperatorHeader
         active={active.length}
+        environment={orderEnvironment}
+        onEnvironmentChange={changeOrderEnvironment}
         source={ordersSource}
         onLogout={() => {
           void logoutInternal();
@@ -3474,6 +3598,7 @@ export function InternalChekeoApp() {
           orderKeysRef.current = null;
         }}
       />
+      {orderEnvironment === "preview" ? <PreviewModeBanner /> : null}
       <NewOrderBanner
         notice={newOrderNotice}
         onDismiss={() => setNewOrderNotice(null)}

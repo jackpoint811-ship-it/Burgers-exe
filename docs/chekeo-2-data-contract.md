@@ -23,6 +23,22 @@ Google Sheets permanece como backend/base de datos, y Apps Script puede existir 
 - Imágenes de productos: se insertan directamente en la celda del producto correspondiente.
 - `COSTOS_PRECIOS` calcula precio sugerido; el precio público final se aprueba manualmente en `MENU_LIVE`.
 
+## Contrato Orders V2: Producción vs Preview interno
+
+Para el flujo actual en Cloudflare/D1, Chekeo puede alternar entre dos ambientes operativos sin cambiar `BOG_ACTIVE_ENV` ni bindings:
+
+- `production`: pedidos reales creados con `orders_v2.source = public-v2`.
+- `preview`: pedidos de prueba creados con `orders_v2.source = public-v2-preview`.
+
+Reglas:
+- Producción es el ambiente por defecto si el cliente no manda `environment`.
+- Public Preview activa preview con `?env=preview` y envía `environment: "preview"` al crear pedido.
+- Chekeo filtra listados, cierre, CSV y Resumen K por el source correspondiente al ambiente activo.
+- Las mutaciones internas de Chekeo envían `environment` y el backend rechaza la orden si el `source` no coincide.
+- Los folios preview usan prefijo `PVW-`.
+- Pedidos preview no descuentan stock y no escriben referidos/sorteos reales.
+- Consultas de tickets/sorteos reales cuentan únicamente pedidos `source = public-v2`.
+
 ## Estados operativos estandarizados
 
 ### Estado de pedido (`PEDIDOS.estado`)

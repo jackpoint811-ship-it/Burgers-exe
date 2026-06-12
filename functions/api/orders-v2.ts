@@ -1,5 +1,16 @@
-import type { OrderV2PaymentMethod, OrderV2Mode, OrderV2 } from '../../packages/config/src';
-import { errorResponse, fetchOrderBundle, generateFolio, generateId, json, normalizePhone, parseJsonObject } from './_orders-v2-utils';
+import type { OrderV2PaymentMethod, OrderV2Mode, OrderV2, OrderV2Environment } from '../../packages/config/src';
+import {
+  errorResponse,
+  fetchOrderBundle,
+  generateFolio,
+  generateId,
+  generatePreviewFolio,
+  getOrderSourceForEnvironment,
+  json,
+  normalizePhone,
+  parseJsonObject,
+  parseOrderEnvironment
+} from './_orders-v2-utils';
 import { buildReferralCodeText, normalizeReferralCode, REFERRAL_BURGER_WORDS, type RaffleCampaignRow, type ReferralCodeRow } from './raffles-v2-admin/_utils';
 
 type Env = { BOG_MENU_DB?: D1Database; ORDERS_V2_WRITE_ENABLED?: string };
@@ -50,6 +61,7 @@ type NormalizedPayload = {
   items: Array<{ sku: string; qty: number } & ItemCustomization>;
   idempotencyKey: string;
   referralCode: string | null;
+  environment: OrderV2Environment;
 };
 
 const ORDER_MODES = new Set<OrderV2Mode>(['pickup', 'delivery']);
@@ -151,6 +163,8 @@ const validatePayload = (body: Record<string, unknown>, request: Request): Norma
 
   const paymentMethod = (normalizeString(body.paymentMethod) || 'unknown') as OrderV2PaymentMethod;
   if (!PAYMENT_METHODS.has(paymentMethod)) return errorResponse(400, 'INVALID_PAYMENT_METHOD', 'Método de pago inválido.');
+  const environment = parseOrderEnvironment(body.environment);
+  if (!environment) return errorResponse(400, 'INVALID_ENVIRONMENT', 'Ambiente de orden inválido.');
 
   const notesRaw = normalizeString(body.notes);
   if (notesRaw.length > 500) return errorResponse(400, 'INVALID_CUSTOMER', 'Notas exceden el máximo permitido.');
@@ -218,7 +232,8 @@ const validatePayload = (body: Record<string, unknown>, request: Request): Norma
     notes: notesRaw || null,
     items: normalizedItems,
     idempotencyKey: normalizeIdempotencyKey(request, body),
-    referralCode: normalizeReferralCode(body.referralCode) || null
+    referralCode: normalizeReferralCode(body.referralCode) || null,
+    environment
   };
 };
 
@@ -424,13 +439,15 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
 
   const parsed = validatePayload(body, request);
   if (parsed instanceof Response) return parsed;
+  const orderSource = getOrderSourceForEnvironment(parsed.environment);
+  const isPreviewOrder = parsed.environment === 'preview';
 
   try {
-    const existingRow = await env.BOG_MENU_DB.prepare('SELECT id FROM orders_v2 WHERE idempotency_key = ? LIMIT 1').bind(parsed.idempotencyKey).first<{ id: string }>();
+    const existingRow = await env.BOG_MENU_DB.prepare('SELECT id FROM orders_v2 WHERE idempotency_key = ? AND source = ? LIMIT 1').bind(parsed.idempotencyKey, orderSource).first<{ id: string }>();
     if (existingRow?.id) {
       const existingOrder = await fetchOrderBundle(env.BOG_MENU_DB, existingRow.id);
       if (!existingOrder) return errorResponse(500, 'INTERNAL_ERROR', 'No se pudo recuperar la orden idempotente.');
-      const raffleData = await buildRaffleSuccessData(env.BOG_MENU_DB, { order: existingOrder, orderId: existingOrder.id, ownerName: existingOrder.customerName || parsed.customerName, ownerPhone: existingOrder.customerPhone || parsed.customerPhone, now: new Date().toISOString() });
+      const raffleData = isPreviewOrder ? {} : await buildRaffleSuccessData(env.BOG_MENU_DB, { order: existingOrder, orderId: existingOrder.id, ownerName: existingOrder.customerName || parsed.customerName, ownerPhone: existingOrder.customerPhone || parsed.customerPhone, now: new Date().toISOString() });
       return json(200, { ok: true, data: { order: buildOrderSummary(existingOrder, parsed.idempotencyKey), idempotent: true, ...raffleData } });
     }
 
@@ -535,7 +552,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
 
     const now = new Date().toISOString();
     const orderId = generateId('ord');
-    const folio = generateFolio(new Date(now));
+    const folio = isPreviewOrder ? generatePreviewFolio(new Date(now)) : generateFolio(new Date(now));
     const orderItems = parsed.items.map((item) => {
       const catalogItem = catalogBySku.get(item.sku)!;
       const unitPriceCents = Number(catalogItem.price_cents);
@@ -585,7 +602,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
       if (row && Number(row.stock_managed) === 1) stockBySku.set(sku, qty);
     }
 
-    if (stockBySku.size > 0) {
+    if (!isPreviewOrder && stockBySku.size > 0) {
       const stockEntries = [...stockBySku.entries()];
       const stockStatements = stockEntries.map(([sku, qty]) => env.BOG_MENU_DB!.prepare(
         `UPDATE menu_items
@@ -617,21 +634,21 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
     const orderStatements: D1PreparedStatement[] = [
       env.BOG_MENU_DB.prepare(
         `INSERT INTO orders_v2 (id, folio, idempotency_key, customer_name, customer_phone, order_mode, payment_method, payment_status, notes, subtotal_cents, total_cents, status, source, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, 'new', 'public-v2', ?, ?)`
-      ).bind(orderId, folio, parsed.idempotencyKey, parsed.customerName, parsed.customerPhone, parsed.orderMode, parsed.paymentMethod, parsed.notes, subtotalCents, totalCents, now, now),
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, 'new', ?, ?, ?)`
+      ).bind(orderId, folio, parsed.idempotencyKey, parsed.customerName, parsed.customerPhone, parsed.orderMode, parsed.paymentMethod, parsed.notes, subtotalCents, totalCents, orderSource, now, now),
       ...orderItems.map((item) => env.BOG_MENU_DB!.prepare(
         `INSERT INTO order_items_v2 (id, order_id, sku, name, qty, unit_price_cents, line_total_cents, snapshot_json, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).bind(item.id, item.orderId, item.sku, item.name, item.qty, item.unitPriceCents, item.lineTotalCents, item.snapshotJson, now)),
       env.BOG_MENU_DB.prepare(
         `INSERT INTO order_events_v2 (id, order_id, type, previous_status, next_status, detail_json, actor, created_at)
-         VALUES (?, ?, 'ORDER_CREATED', NULL, 'new', ?, 'public-v2', ?)`
-      ).bind(eventId, orderId, JSON.stringify({ source: 'public-v2', itemCount: orderItems.length, idempotencyKey: parsed.idempotencyKey }), now)
+         VALUES (?, ?, 'ORDER_CREATED', NULL, 'new', ?, ?, ?)`
+      ).bind(eventId, orderId, JSON.stringify({ source: orderSource, environment: parsed.environment, itemCount: orderItems.length, idempotencyKey: parsed.idempotencyKey }), orderSource, now)
     ];
 
     const orderResult = await env.BOG_MENU_DB.batch(orderStatements);
     if (!orderResult.every((entry) => entry.success)) {
-      if (stockBySku.size > 0) {
+      if (!isPreviewOrder && stockBySku.size > 0) {
         await env.BOG_MENU_DB.batch([...stockBySku.entries()].map(([sku, qty]) => env.BOG_MENU_DB!.prepare(
           `UPDATE menu_items
            SET stock_remaining = COALESCE(stock_remaining, 0) + ?,
@@ -643,11 +660,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
       return errorResponse(500, 'INTERNAL_ERROR', 'No se pudo crear la orden.');
     }
 
-    const referralAccepted = await applyReferralCode(env.BOG_MENU_DB, { referralCode: parsed.referralCode, orderId, customerPhone: parsed.customerPhone, customerName: parsed.customerName, eligibleForReferral: orderHasReferralEligibleItem(parsed.items), now });
+    const referralAccepted = isPreviewOrder ? undefined : await applyReferralCode(env.BOG_MENU_DB, { referralCode: parsed.referralCode, orderId, customerPhone: parsed.customerPhone, customerName: parsed.customerName, eligibleForReferral: orderHasReferralEligibleItem(parsed.items), now });
 
     const createdOrder = await fetchOrderBundle(env.BOG_MENU_DB, orderId);
     if (!createdOrder) return errorResponse(500, 'INTERNAL_ERROR', 'No se pudo recuperar la orden creada.');
-    const raffleData = await buildRaffleSuccessData(env.BOG_MENU_DB, { order: createdOrder, orderId, ownerName: parsed.customerName, ownerPhone: parsed.customerPhone, now });
+    const raffleData = isPreviewOrder ? {} : await buildRaffleSuccessData(env.BOG_MENU_DB, { order: createdOrder, orderId, ownerName: parsed.customerName, ownerPhone: parsed.customerPhone, now });
     return json(201, { ok: true, data: { order: buildOrderSummary(createdOrder, parsed.idempotencyKey), ...(referralAccepted === undefined ? {} : { referralAccepted }), ...raffleData } });
   } catch {
     return errorResponse(500, 'INTERNAL_ERROR', 'No se pudo crear la orden.');

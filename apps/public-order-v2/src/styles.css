@@ -968,6 +968,28 @@ p {
 }
 .quest-header strong { color: #fff; font-size: 1rem; letter-spacing: -0.03em; }
 .quest-header span { color: var(--neon); font-size: 0.88rem; font-weight: 900; text-align: right; }
+.public-preview-banner {
+  display: grid;
+  gap: 0.2rem;
+  border: 1px solid rgba(250, 204, 21, 0.55);
+  border-radius: 16px;
+  background: rgba(113, 63, 18, 0.32);
+  color: #fef3c7;
+  padding: 0.8rem 0.95rem;
+  box-shadow: 0 0 18px rgba(250, 204, 21, 0.12);
+}
+.public-preview-banner strong {
+  color: #facc15;
+  font-size: 0.78rem;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+}
+.public-preview-banner span {
+  color: #fde68a;
+  font-size: 0.86rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
 .quest-panel {
   position: relative;
   overflow: hidden;

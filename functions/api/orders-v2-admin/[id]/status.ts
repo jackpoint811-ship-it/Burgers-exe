@@ -1,5 +1,16 @@
 import type { OrderV2Status, UpdateOrderV2StatusPayload } from '../../../../packages/config/src';
-import { errorResponse, fetchOrderBundle, generateId, json, parseJsonObject, requireAdminToken, validateStatusTransition, type AdminEnv } from '../../_orders-v2-utils';
+import {
+  assertOrderMatchesEnvironment,
+  errorResponse,
+  fetchOrderBundle,
+  generateId,
+  json,
+  parseJsonObject,
+  parseOrderEnvironment,
+  requireAdminToken,
+  validateStatusTransition,
+  type AdminEnv
+} from '../../_orders-v2-utils';
 
 type Env = AdminEnv;
 
@@ -10,7 +21,9 @@ const parsePayload = (body: Record<string, unknown>): UpdateOrderV2StatusPayload
   if (!ORDER_STATUSES.has(status)) return errorResponse(400, 'INVALID_STATUS', 'Estado inválido.');
   const reason = typeof body.reason === 'string' ? body.reason.trim() : undefined;
   if (reason && reason.length > 500) return errorResponse(400, 'INVALID_REASON', 'Razón excede el máximo permitido.');
-  return { status, reason: reason || undefined };
+  const environment = parseOrderEnvironment(body.environment);
+  if (!environment) return errorResponse(400, 'INVALID_ENVIRONMENT', 'Ambiente de orden inválido.');
+  return { status, reason: reason || undefined, environment };
 };
 
 export const onRequestPatch: PagesFunction<Env> = async ({ env, params, request }) => {
@@ -29,6 +42,8 @@ export const onRequestPatch: PagesFunction<Env> = async ({ env, params, request 
   try {
     const currentRow = await env.BOG_MENU_DB.prepare('SELECT * FROM orders_v2 WHERE id = ? LIMIT 1').bind(id).first<any>();
     if (!currentRow) return errorResponse(404, 'NOT_FOUND', 'Orden no encontrada.');
+    const environmentError = assertOrderMatchesEnvironment(currentRow, payload.environment ?? 'production');
+    if (environmentError) return environmentError;
     const currentStatus = String(currentRow.status) as OrderV2Status;
     if (!validateStatusTransition(currentStatus, payload.status)) {
       return errorResponse(400, 'INVALID_STATUS_TRANSITION', 'Transición de estado inválida.');
@@ -37,7 +52,7 @@ export const onRequestPatch: PagesFunction<Env> = async ({ env, params, request 
     const now = new Date().toISOString();
     const eventId = generateId('evt');
     const eventType = payload.status === 'cancelled' ? 'ORDER_CANCELLED' : 'STATUS_CHANGED';
-    const detail = JSON.stringify({ reason: payload.reason ?? '', source: 'internal-v2' });
+    const detail = JSON.stringify({ reason: payload.reason ?? '', source: 'internal-v2', environment: payload.environment ?? 'production' });
     const batchResult = await env.BOG_MENU_DB.batch([
       env.BOG_MENU_DB.prepare('UPDATE orders_v2 SET status = ?, updated_at = ? WHERE id = ?').bind(payload.status, now, id),
       env.BOG_MENU_DB.prepare(

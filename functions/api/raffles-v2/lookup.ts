@@ -114,7 +114,7 @@ const loadParticipant = async (db: D1Database, campaign: RaffleCampaignRow, phon
   const ticketPerBurger = Number(campaign.ticket_per_burger) || 1;
   const ticketPerReferral = Number(campaign.ticket_per_referral) || 2;
   const { startsAt, endsAt } = campaignDateBounds(campaign);
-  const orderConditions = ["o.status IN ('new', 'preparing', 'ready', 'delivered')", 'o.customer_phone = ?'];
+  const orderConditions = ["o.status IN ('new', 'preparing', 'ready', 'delivered')", "o.source = 'public-v2'", 'o.customer_phone = ?'];
   const orderBindings: string[] = [phone];
   if (startsAt) { orderConditions.push('o.created_at >= ?'); orderBindings.push(startsAt); }
   if (endsAt) { orderConditions.push('o.created_at <= ?'); orderBindings.push(endsAt); }
