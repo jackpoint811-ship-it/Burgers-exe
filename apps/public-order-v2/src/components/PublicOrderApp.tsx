@@ -4,9 +4,11 @@ import {
   type MenuItem,
   type MenuV2Response,
   type OrderV2Mode,
+  type OrderV2Environment,
   type OrderV2PaymentMethod,
   type PromoCard,
   type RaffleCampaignPublicV2,
+  getPublicOrderEnvironment,
 } from "@config/index";
 import { EmptyState } from "@ui/index";
 import { motion, useReducedMotion } from "framer-motion";
@@ -55,6 +57,7 @@ type ComboBuilderDraft = {
 type OrderConfirmation = NonNullable<CreateOrderV2Response["data"]>["order"] & {
   paymentMethod: OrderV2PaymentMethod;
   location: CustomerDraft["location"];
+  environment?: OrderV2Environment;
   referralAccepted?: boolean;
   customerReferralCode?: string;
   activeRaffleTitle?: string;
@@ -92,6 +95,7 @@ const TRANSFER_BANK_DETAILS = {
 } as const;
 const CHECKOUT_NOTES_MAX_LENGTH = 500;
 const statusLabels: Record<string, string> = {
+  received: "Recibido por cocina",
   new: "Nuevo",
   preparing: "En preparación",
   ready: "Listo",
@@ -430,6 +434,13 @@ const AppHeader = ({ section, count, total, builder }: { section: QuestSection; 
   );
 };
 
+const PublicPreviewBanner = () => (
+  <section className="public-preview-banner" role="status" aria-live="polite">
+    <strong>MODO PREVIEW</strong>
+    <span>Pedido de prueba. No preparar. No genera tickets ni referidos reales.</span>
+  </section>
+);
+
 const ticketLabel = (count: number) => `${count} ticket${count === 1 ? "" : "s"}`;
 
 const RaffleBanner = ({ campaign }: { campaign: RaffleCampaignPublicV2 | null }) => {
@@ -491,6 +502,7 @@ const ProductCard = ({ item, mode, onClick, reduce, descriptionMode = "paragraph
   const showImage = Boolean(src) && !imageFailed;
   const kind = inferItemKind(item);
   const ingredientBullets = descriptionMode === "ingredients" ? getProductIngredientBullets(item) : [];
+  const visualClassName = showImage ? "kiosk-visual" : `kiosk-visual no-image no-image-${kind}`;
   return (
     <motion.button
       type="button"
@@ -500,7 +512,7 @@ const ProductCard = ({ item, mode, onClick, reduce, descriptionMode = "paragraph
       aria-label={`${mode === "info" ? "Ver información de" : "Elegir"} ${item.name}`}
       disabled={mode === "select" && !item.isAvailable}
     >
-      <div className={showImage ? "kiosk-visual" : "kiosk-visual no-image"}>
+      <div className={visualClassName}>
         {showImage && src ? <img src={src} alt="" loading="lazy" decoding="async" onError={() => setImageFailed(true)} /> : <span>{item.name}</span>}
       </div>
       <div className="kiosk-body">
@@ -531,6 +543,17 @@ const TicketsLookupCta = () => (
     <a href="/tickets" aria-label="Consulta tus tickets en una página dedicada">Consulta tus tickets</a>
   </section>
 );
+
+const RouteVisual = ({ title, src }: { title: string; src?: string }) => {
+  const [imageFailed, setImageFailed] = useState(false);
+  const showImage = Boolean(src) && !imageFailed;
+
+  return (
+    <div className={showImage ? "route-card-visual" : "route-card-visual no-image"} aria-hidden="true">
+      {showImage && src ? <img src={src} alt="" loading="lazy" decoding="async" onError={() => setImageFailed(true)} /> : <span>{title}</span>}
+    </div>
+  );
+};
 
 const MenuSection = ({ menuData, raffleCampaign, onExplore, onStart, reduce }: { menuData: MenuV2Response; raffleCampaign: RaffleCampaignPublicV2 | null; onExplore: (item: MenuItem) => void; onStart: () => void; reduce: boolean }) => {
   const bonusZoneRef = useRef<HTMLElement | null>(null);
@@ -662,9 +685,7 @@ const MainQuest = ({ categoryBanners, burgerItems, comboItems, garnishes, onBack
           const src = resolveAssetUrl(banner?.imageUrl ?? route.fallbackItem?.imageUrl, banner?.imageKey ?? route.fallbackItem?.imageKey);
           return (
             <article className={`route-card route-card-${route.key}`} key={route.key} role="listitem">
-              <div className={src ? "route-card-visual" : "route-card-visual no-image"} aria-hidden="true">
-                {src ? <img src={src} alt="" loading="lazy" decoding="async" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : <span>{route.title}</span>}
-              </div>
+              <RouteVisual title={route.title} src={src} />
               <div className="route-card-copy">
                 <span className="route-chip">{route.number}</span>
                 <h3>{route.title}</h3>
@@ -1309,7 +1330,7 @@ const TicketList = ({ cart, items, onEdit, onDuplicate, onRemove }: { cart: Cart
             <span className="ticket-item-kind">{isCombo ? "Combo" : entry.itemKind === "burger" ? "Burger" : "Item"}</span>
             <h3>{entry.name} #{entry.itemDisplayIndex}</h3>
           </div>
-          <strong>{formatCurrency(lineTotal)}</strong>
+          <div className="ticket-item-price-stack"><span>Subtotal</span><strong>{formatCurrency(lineTotal)}</strong></div>
         </div>
         <div className="ticket-item-breakdown">
           <div className="ticket-item-base-row"><span>{isCombo ? "Base del combo" : "Precio base"}</span><strong>{formatCurrency(price)}</strong></div>
@@ -1343,7 +1364,7 @@ const TicketList = ({ cart, items, onEdit, onDuplicate, onRemove }: { cart: Cart
           <div className="ticket-item-total-row"><span>Total</span><strong>{formatCurrency(lineTotal)}</strong></div>
         </div>
         {isCombo ? <p className="ticket-item-combo-note">Para cambiar este combo, elimínalo y vuelve a armarlo desde Main Quest.</p> : null}
-        <footer>{entry.itemKind === "burger" ? <button type="button" onClick={() => onEdit(entry.lineKey)}>Editar</button> : null}{entry.itemKind !== "combo" ? <button type="button" onClick={() => onDuplicate(entry.lineKey)}>Duplicar</button> : null}<button type="button" onClick={() => onRemove(entry.lineKey)}>Eliminar</button></footer>
+        <footer className="ticket-item-actions">{entry.itemKind === "burger" ? <button type="button" onClick={() => onEdit(entry.lineKey)}>Editar</button> : null}{entry.itemKind !== "combo" ? <button type="button" onClick={() => onDuplicate(entry.lineKey)}>Duplicar</button> : null}<button type="button" onClick={() => onRemove(entry.lineKey)}>Eliminar</button></footer>
       </article>;
     })}
   </div>
@@ -1494,18 +1515,24 @@ const TransferDetailsModal = ({ onClose }: { onClose: () => void }) => {
   return (
     <div className="transfer-modal-backdrop" role="presentation">
       <section className="transfer-modal" role="dialog" aria-modal="true" aria-labelledby="transfer-modal-title">
-        <span className="eyebrow">Transferencia</span>
-        <h3 id="transfer-modal-title">Datos para transferencia</h3>
-        <p>Copia el nombre y la cuenta para hacer tu transferencia. Después guarda tu comprobante.</p>
+        <header className="transfer-modal-header">
+          <span className="eyebrow">Transferencia</span>
+          <h3 id="transfer-modal-title">Datos para transferencia</h3>
+          <p>Copia los datos clave y guarda tu comprobante para mandarlo por WhatsApp.</p>
+        </header>
         <dl className="transfer-detail-list">
-          <div><dt>Banco</dt><dd>{TRANSFER_BANK_DETAILS.bank}</dd></div>
-          <div><dt>Nombre</dt><dd>{TRANSFER_BANK_DETAILS.name}</dd></div>
-          <div><dt>Cuenta</dt><dd>{TRANSFER_BANK_DETAILS.account}</dd></div>
+          <div className="transfer-detail-row"><dt>Banco</dt><dd>{TRANSFER_BANK_DETAILS.bank}</dd></div>
+          <div className="transfer-detail-row with-action">
+            <div><dt>Nombre</dt><dd>{TRANSFER_BANK_DETAILS.name}</dd></div>
+            <QuestButton className="ghost transfer-copy-button" onClick={() => copyDetail(TRANSFER_BANK_DETAILS.name, "copiedName")}>Copiar nombre</QuestButton>
+          </div>
+          <div className="transfer-detail-row with-action">
+            <div><dt>Cuenta</dt><dd>{TRANSFER_BANK_DETAILS.account}</dd></div>
+            <QuestButton className="ghost transfer-copy-button" onClick={() => copyDetail(TRANSFER_BANK_DETAILS.account, "copiedAccount")}>Copiar cuenta</QuestButton>
+          </div>
         </dl>
-        <small>Si pagas antes, puedes enviar tu comprobante por WhatsApp.</small>
+        <small className="transfer-modal-note">Si pagas antes, puedes enviar tu comprobante por WhatsApp.</small>
         <div className="transfer-modal-actions">
-          <QuestButton className="ghost" onClick={() => copyDetail(TRANSFER_BANK_DETAILS.name, "copiedName")}>Copiar nombre</QuestButton>
-          <QuestButton className="ghost" onClick={() => copyDetail(TRANSFER_BANK_DETAILS.account, "copiedAccount")}>Copiar cuenta</QuestButton>
           <QuestButton onClick={onClose}>Cerrar</QuestButton>
         </div>
         {status === "copiedName" ? <p className="success-copy-status">Nombre copiado.</p> : null}
@@ -1551,12 +1578,18 @@ const Checkout = ({ cart, items, total, customer, setCustomer, checkoutStep, set
       </nav>
       {checkoutStep === 0 ? <section className="checkout-step-panel" aria-labelledby="checkoutSummaryTitle">
         <div className="checkout-step-heading"><span>01</span><h3 id="checkoutSummaryTitle">Resumen del ticket</h3></div>
-        <div id="checkoutCartSummary" tabIndex={-1}>
+        <div className="checkout-summary-total" aria-label="Total del pedido">
+          <span>Total a confirmar</span>
+          <strong>{formatCurrency(total)}</strong>
+          <small>{cart.length} item{cart.length === 1 ? "" : "s"} en tu ticket</small>
+        </div>
+        <div className="checkout-summary-list" id="checkoutCartSummary" tabIndex={-1}>
           <TicketList cart={cart} items={items} onEdit={onEdit} onDuplicate={onDuplicate} onRemove={onRemove} />
         </div>
         {fieldErrors.cart ? <p className="inline-error" role="alert">{fieldErrors.cart}</p> : null}
-        <div className="checkout-total"><span>Total</span><strong>{formatCurrency(total)}</strong></div>
-        <QuestButton onClick={nextStep} disabled={!cart.length}>Continuar a datos</QuestButton>
+        <div className="checkout-summary-actions">
+          <QuestButton onClick={nextStep} disabled={!cart.length}>Continuar a datos</QuestButton>
+        </div>
       </section> : null}
       {checkoutStep === 1 ? <section className="checkout-step-panel" aria-labelledby="checkoutDataTitle">
         <div className="checkout-step-heading"><span>02</span><h3 id="checkoutDataTitle">Datos del pedido</h3></div>
@@ -1618,7 +1651,7 @@ const Checkout = ({ cart, items, total, customer, setCustomer, checkoutStep, set
             </div>
           ) : null}
         </div>
-        <div className="checkout-total"><span>Total</span><strong>{formatCurrency(total)}</strong></div>
+        <div className="checkout-total checkout-payment-total"><span>Total a pagar</span><strong>{formatCurrency(total)}</strong></div>
         <QuestButton onClick={onSubmit} disabled={submitting || !cart.length}>{submitting ? "Enviando pedido..." : "Confirmar pedido"}</QuestButton>
         {error ? <p className="inline-error" role="alert">{error}</p> : null}
       </section> : null}
@@ -1680,13 +1713,20 @@ const ReferralShareModal = ({ code, raffleTitle, onClose }: { code: string; raff
     <div className="referral-modal-backdrop" role="presentation">
       <section className="referral-modal" role="dialog" aria-modal="true" aria-labelledby="referral-share-title">
         <button type="button" className="referral-modal-close" onClick={onClose} aria-label="Cerrar modal de compartir">×</button>
-        <span className="eyebrow">Compartir código</span>
-        <h3 id="referral-share-title">Invita a tu crew</h3>
-        {raffleTitle ? <p className="success-raffle-title">Sorteo: {raffleTitle}</p> : null}
-        <strong className="referral-modal-code">{code}</strong>
-        <p>{REFERRAL_SHARE_TEXT}</p>
-        <label className="referral-manual-copy">Link de la página pública<textarea readOnly value={link} rows={2} /></label>
-        <label className="referral-manual-copy">Mensaje<textarea readOnly value={message} rows={5} /></label>
+        <header className="referral-modal-header">
+          <span className="eyebrow">Compartir código</span>
+          <h3 id="referral-share-title">Invita a tu crew</h3>
+          {raffleTitle ? <p className="success-raffle-title">Sorteo: {raffleTitle}</p> : null}
+        </header>
+        <div className="referral-code-panel">
+          <span>Código</span>
+          <strong className="referral-modal-code">{code}</strong>
+        </div>
+        <p className="referral-modal-lead">{REFERRAL_SHARE_TEXT}</p>
+        <div className="referral-share-fields">
+          <label className="referral-manual-copy">Link de la página pública<textarea readOnly value={link} rows={2} /></label>
+          <label className="referral-manual-copy">Mensaje<textarea readOnly value={message} rows={5} /></label>
+        </div>
         <div className="referral-modal-actions">
           <QuestButton className="ghost" onClick={copyLink}>Copiar link</QuestButton>
           <QuestButton className="ghost" onClick={copyMessage}>Copiar mensaje</QuestButton>
@@ -1706,9 +1746,11 @@ const ReferralShareModal = ({ code, raffleTitle, onClose }: { code: string; raff
 const Success = ({ order, campaign, onCreateAnother }: { order: OrderConfirmation; campaign: RaffleCampaignPublicV2 | null; onCreateAnother: () => void }) => {
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
   const [shareModalOpen, setShareModalOpen] = useState(false);
+  const isPreviewMode = order.environment === "preview";
   const earnedTickets = order.earnedTickets;
   const hasEarnedTickets = (earnedTickets?.totalTickets ?? 0) > 0;
   const raffleTitle = order.activeRaffleTitle ?? campaign?.title;
+  const statusLabel = statusLabels[order.status] ?? order.status;
   const referralRewardCopy = campaign ? `${ticketLabel(campaign.ticketPerReferral)} extra` : "tickets extra";
   const referralLeadCopy = hasEarnedTickets
     ? `Comparte este código. Si tu compa lo usa y ordena al menos 1 burger pagada, tú ganas ${referralRewardCopy}.`
@@ -1726,9 +1768,11 @@ const Success = ({ order, campaign, onCreateAnother }: { order: OrderConfirmatio
   return (
     <section className="quest-panel success-panel" aria-live="polite">
       <section className="success-operational-block" aria-labelledby="successOrderTitle">
-        <span className="eyebrow">Confirmación operativa</span>
-        <h2 id="successOrderTitle">Pedido recibido</h2>
-        <p className="muted section-subcopy">Tu orden ya entró a cocina.</p>
+        <span className="eyebrow">{isPreviewMode ? "Preview operativo" : "Confirmación operativa"}</span>
+        <h2 id="successOrderTitle">{isPreviewMode ? "Pedido preview recibido" : "Pedido recibido"}</h2>
+        <p className="muted section-subcopy">
+          {isPreviewMode ? "Tu orden entró como prueba interna. No preparar." : "Tu orden ya entró a cocina."}
+        </p>
         <div className="success-folio-card">
           <span>Folio</span>
           <strong>{order.folio}</strong>
@@ -1737,15 +1781,18 @@ const Success = ({ order, campaign, onCreateAnother }: { order: OrderConfirmatio
           <div><dt>Total</dt><dd>{formatCurrency(order.total)}</dd></div>
           <div><dt>Ubicación</dt><dd>{order.location}</dd></div>
           <div><dt>Pago</dt><dd>{paymentMethodLabels[order.paymentMethod]}</dd></div>
-          <div><dt>Estado</dt><dd>{statusLabels[order.status] ?? order.status}</dd></div>
+          <div><dt>Estado</dt><dd className="success-status-pill">{statusLabel}</dd></div>
           <div><dt>Tiempo estimado</dt><dd>15–25 min</dd></div>
         </dl>
-        <p className="success-whatsapp">Te avisaremos por WhatsApp cuando tu pedido esté listo.</p>
+        <p className="success-whatsapp">
+          {isPreviewMode ? "Modo preview: este folio es solo para validar cambios." : "Te avisaremos por WhatsApp cuando tu pedido esté listo."}
+        </p>
       </section>
       <section className="success-bonus-block" aria-labelledby="successBonusTitle">
         <span className="eyebrow">Bonus secundario</span>
         <h3 id="successBonusTitle">Tickets / referido</h3>
-      {hasEarnedTickets && earnedTickets ? <article className="success-reward-card">
+      {isPreviewMode ? <p className="success-note muted">Preview no genera tickets, referidos ni métricas reales.</p> : null}
+      {!isPreviewMode && hasEarnedTickets && earnedTickets ? <article className="success-reward-card">
         <span className="eyebrow">Loot desbloqueado</span>
         <strong className="success-ticket-total">+{earnedTickets.totalTickets} tickets</strong>
         {raffleTitle ? <p className="success-raffle-title">Van para: {raffleTitle}</p> : null}
@@ -1755,7 +1802,7 @@ const Success = ({ order, campaign, onCreateAnother }: { order: OrderConfirmatio
         </ul>
         {order.referralAccepted === true && earnedTickets.referralUsedTickets === 0 ? <p>Tu código invitado quedó aplicado. Los tickets de referido se asignan a quien te compartió el código.</p> : null}
       </article> : null}
-      {order.customerReferralCode ? <article className="success-referral-card">
+      {!isPreviewMode && order.customerReferralCode ? <article className="success-referral-card">
         <span className="eyebrow">Power-up de invitado</span>
         <p className="success-referral-lead">{referralLeadCopy}</p>
         <strong className="success-referral-code">{order.customerReferralCode}</strong>
@@ -1769,9 +1816,9 @@ const Success = ({ order, campaign, onCreateAnother }: { order: OrderConfirmatio
         {copyStatus === "error" ? <p className="success-copy-status error">No se pudo copiar automático. Mantén presionado el código para copiarlo manualmente.</p> : null}
         {shareModalOpen ? <ReferralShareModal code={order.customerReferralCode} raffleTitle={raffleTitle} onClose={() => setShareModalOpen(false)} /> : null}
       </article> : null}
-      {order.referralAccepted === true && !earnedTickets ? <p className="success-note">Código de invitado aplicado.</p> : null}
-      {order.referralAccepted === false ? <p className="success-note muted">Pedido recibido. El código de invitado no aplicó.</p> : null}
-        {!hasEarnedTickets && !order.customerReferralCode ? <p className="success-note muted">Tickets y referido quedan como bonus secundario cuando el sistema los confirme.</p> : null}
+      {!isPreviewMode && order.referralAccepted === true && !earnedTickets ? <p className="success-note">Código de invitado aplicado.</p> : null}
+      {!isPreviewMode && order.referralAccepted === false ? <p className="success-note muted">Pedido recibido. El código de invitado no aplicó.</p> : null}
+        {!isPreviewMode && !hasEarnedTickets && !order.customerReferralCode ? <p className="success-note muted">Tickets y referido quedan como bonus secundario cuando el sistema los confirme.</p> : null}
       </section>
       <QuestButton onClick={onCreateAnother}>Nuevo pedido</QuestButton>
     </section>
@@ -1801,6 +1848,8 @@ const PersistentCta = ({ section, count, total, disabled, submitting, onClick, b
 export function PublicOrderApp() {
   const reduce = useReducedMotion() ?? false;
   const submittingRef = useRef(false);
+  const orderEnvironment = useMemo(getPublicOrderEnvironment, []);
+  const isPreviewMode = orderEnvironment === "preview";
   const [section, setSection] = useState<QuestSection>("menu");
   const [cart, setCart] = useState<CartEntry[]>([]);
   const [builder, setBuilder] = useState<BuilderDraft | null>(null);
@@ -2103,10 +2152,10 @@ export function PublicOrderApp() {
     setSubmitting(true);
     try {
       const referralCode = customer.referralCode.trim().toUpperCase();
-      const response = await createOrderV2({ customer: { name: customer.name.trim(), phone: normalizePhoneDigits(customer.phone) }, orderMode: orderModeForBackend, paymentMethod: customer.paymentMethod, notes, items: payloadItems, ...(referralCode ? { referralCode } : {}) }, idempotencyKey);
+      const response = await createOrderV2({ customer: { name: customer.name.trim(), phone: normalizePhoneDigits(customer.phone) }, orderMode: orderModeForBackend, paymentMethod: customer.paymentMethod, notes, items: payloadItems, ...(referralCode ? { referralCode } : {}), ...(isPreviewMode ? { environment: orderEnvironment } : {}) }, idempotencyKey);
       const order = response.data?.order;
       if (!order) throw new Error("El backend no devolvió folio de confirmación.");
-      setOrderConfirmation({ ...order, paymentMethod: customer.paymentMethod, location: customer.location, referralAccepted: response.data?.referralAccepted, customerReferralCode: response.data?.customerReferralCode, activeRaffleTitle: response.data?.activeRaffleTitle, earnedTickets: response.data?.earnedTickets });
+      setOrderConfirmation({ ...order, paymentMethod: customer.paymentMethod, location: customer.location, environment: orderEnvironment, referralAccepted: response.data?.referralAccepted, customerReferralCode: response.data?.customerReferralCode, activeRaffleTitle: response.data?.activeRaffleTitle, earnedTickets: response.data?.earnedTickets });
       setCart([]);
       setCustomer(createEmptyCustomer());
       clearDraftIdempotencyKey();
@@ -2153,6 +2202,7 @@ export function PublicOrderApp() {
     <main className={`app-shell public-section-${section} ${showPersistentCta ? "has-persistent-cta" : ""}`}>
       <LoadingOverlay loading={showBoot || loadingMenu} />
       <AppHeader section={section} count={count} total={total} builder={builder} />
+      {isPreviewMode ? <PublicPreviewBanner /> : null}
       {section === "menu" ? <MenuSection menuData={menuData} raffleCampaign={raffleCampaign} onExplore={openInfoDialog} onStart={beginQuest} reduce={reduce} /> : null}
       {section === "main" ? <MainQuest categoryBanners={menuData.categoryBanners} burgerItems={availableBurgerItems} comboItems={availableComboItems} garnishes={garnishes} onBack={() => navigate("menu")} onBurgers={startBurgerSelection} onCombos={startComboSelection} onSideQuest={startDirectSideQuest} /> : null}
       {section === "burgers" ? <BurgerSelectionView items={availableBurgerItems} cart={cart} error={burgerSelectionError} onBack={() => navigate("main")} onAdd={(item) => setBurgerQuantity(item, (cart.filter((entry) => entry.sku === item.sku && entry.itemKind === "burger").length) + 1)} onQuantity={setBurgerQuantity} reduce={reduce} /> : null}

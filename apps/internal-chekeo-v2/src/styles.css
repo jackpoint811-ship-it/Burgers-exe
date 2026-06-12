@@ -14,6 +14,16 @@ body{font-family:Inter,system-ui,sans-serif;background:#050507;color:#f4f4f5;min
 .tab{@apply min-h-11 shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-[11px] text-zinc-300 data-[state=active]:bg-cyan-500/20 data-[state=active]:font-semibold data-[state=active]:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400}
 .row{@apply flex items-center justify-between gap-2 rounded-lg border border-zinc-800 bg-zinc-900/60 p-2 text-left}
 .chip{@apply rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-1 text-xs text-cyan-200}
+.environment-badge{@apply inline-flex min-h-8 items-center rounded-md border px-2.5 py-1 text-[11px] font-black uppercase tracking-[0.18em]}
+.environment-badge--preview{@apply border-amber-300 bg-amber-300 text-amber-950 shadow-[0_0_18px_rgba(251,191,36,0.24)]}
+.environment-badge--production{@apply border-rose-300 bg-rose-300 text-rose-950 shadow-[0_0_18px_rgba(251,113,133,0.24)]}
+.environment-badge--local{@apply border-sky-300 bg-sky-300 text-sky-950 shadow-[0_0_18px_rgba(125,211,252,0.18)]}
+.runtime-environment-banner{@apply flex flex-col gap-3 rounded-xl border px-3 py-3 shadow-xl md:flex-row md:items-center md:justify-between}
+.runtime-environment-banner--preview{@apply border-amber-400/60 bg-amber-500/15 shadow-[0_0_22px_rgba(251,191,36,0.16)]}
+.runtime-environment-banner--production{@apply border-rose-400/60 bg-rose-500/15 shadow-[0_0_22px_rgba(251,113,133,0.16)]}
+.runtime-environment-banner--local{@apply border-sky-400/50 bg-sky-500/10 shadow-[0_0_22px_rgba(56,189,248,0.12)]}
+.runtime-environment-link{@apply inline-flex min-h-10 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs font-black text-zinc-50 hover:bg-zinc-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400}
+.runtime-login-notice{@apply mb-4 rounded-xl border border-zinc-800 bg-zinc-900/65 p-3 text-left}
 .overlay{@apply fixed inset-0 z-40 overflow-y-auto bg-black/70}
 .modal{@apply fixed left-1/2 top-1/2 z-50 w-[calc(100%-1rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-xl border border-zinc-700 bg-zinc-950 p-4}
 .modal{max-height:calc(100dvh - 1rem)}

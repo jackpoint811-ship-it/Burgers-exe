@@ -17,6 +17,9 @@ const safeText = (value: string | undefined, fallback = "—") => {
   return trimmed || fallback;
 };
 
+const isPreviewOrder = (order: OrderTicketImageData) =>
+  order.source === "public-v2-preview";
+
 const truncate = (value: string, maxLength: number) =>
   value.length > maxLength
     ? `${value.slice(0, Math.max(0, maxLength - 1))}…`
@@ -88,6 +91,7 @@ const canvasToBlob = (canvas: HTMLCanvasElement) =>
   });
 
 export const buildOrderTicketSummaryText = (order: OrderTicketImageData) => [
+  ...(isPreviewOrder(order) ? ["PEDIDO DE PRUEBA — NO PREPARAR", ""] : []),
   "🍔 Burgers.exe — Ticket operativo",
   `Folio: ${safeText(order.folio)}`,
   `Cliente: ${safeText(order.customer ?? order.customerName)}`,
@@ -117,6 +121,17 @@ export const generateOrderTicketImage = async (
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, IMAGE_WIDTH, IMAGE_HEIGHT);
 
+  if (isPreviewOrder(order)) {
+    ctx.save();
+    ctx.translate(IMAGE_WIDTH / 2, IMAGE_HEIGHT / 2);
+    ctx.rotate(-0.45);
+    ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(250, 204, 21, 0.16)";
+    ctx.font = "900 150px Inter, Arial, sans-serif";
+    ctx.fillText("PREVIEW", 0, 0);
+    ctx.restore();
+  }
+
   ctx.fillStyle = "rgba(34, 197, 94, 0.16)";
   for (let x = -IMAGE_HEIGHT; x < IMAGE_WIDTH; x += 68) {
     ctx.fillRect(x, 0, 2, IMAGE_HEIGHT * 1.7);
@@ -143,15 +158,20 @@ export const generateOrderTicketImage = async (
   ctx.fillStyle = "#34d399";
   ctx.font = "900 58px Inter, Arial, sans-serif";
   ctx.fillText("Burgers.exe", IMAGE_WIDTH / 2, 172);
+  if (isPreviewOrder(order)) {
+    ctx.fillStyle = "#facc15";
+    ctx.font = "900 30px Inter, Arial, sans-serif";
+    ctx.fillText("PEDIDO DE PRUEBA — NO PREPARAR", IMAGE_WIDTH / 2, 218);
+  }
   ctx.fillStyle = "#facc15";
   ctx.font = "900 72px Inter, Arial, sans-serif";
-  ctx.fillText(safeText(order.folio), IMAGE_WIDTH / 2, 262);
+  ctx.fillText(safeText(order.folio), IMAGE_WIDTH / 2, isPreviewOrder(order) ? 296 : 262);
   ctx.fillStyle = "#e5e7eb";
   ctx.font = "700 32px Inter, Arial, sans-serif";
   ctx.fillText(
     truncate(safeText(order.customer ?? order.customerName), 38),
     IMAGE_WIDTH / 2,
-    318,
+    isPreviewOrder(order) ? 348 : 318,
   );
 
   const panelX = 126;

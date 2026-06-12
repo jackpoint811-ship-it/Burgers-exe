@@ -179,6 +179,25 @@ Definir una migración segura hacia la arquitectura Burgers.exe + Chekeo 2.0 sin
 
 ---
 
+## Issue 271 – Modo Preview interno en Chekeo
+**Objetivo:** permitir validación de Public Preview con pedidos de prueba visibles solo en Chekeo Preview.
+
+**Alcance seguro:**
+- Selector Producción/Preview dentro de Chekeo.
+- Persistencia local del modo activo en el navegador interno.
+- Public Preview abre con `?env=preview`.
+- Separación por `orders_v2.source`: `public-v2` para producción y `public-v2-preview` para preview.
+- Folios preview con prefijo `PVW-`.
+- Cierre, CSV, Resumen K y listados filtrados por ambiente.
+- Mutaciones internas protegidas contra mismatch de ambiente.
+- Pedidos preview sin stock decrement, referidos ni tickets reales.
+
+**Fuera de alcance:**
+- Cambios de `BOG_ACTIVE_ENV`.
+- Cambios de bindings D1/R2.
+- Reescritura de Chekeo.
+- Refactor completo de sorteo, corte o WhatsApp.
+
 
 ## Phase 10B – Final normalized production audit (pendiente de sign-off manual)
 **Objetivo:** ejecutar checklist final de producción en modo normalizado antes del cierre funcional de migración.

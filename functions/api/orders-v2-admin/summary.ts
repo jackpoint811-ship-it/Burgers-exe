@@ -1,4 +1,12 @@
-import { errorResponse, json, requireAdminToken, type AdminEnv } from '../_orders-v2-utils';
+import {
+  buildOrderEnvironmentCondition,
+  errorResponse,
+  json,
+  parseOrderEnvironmentFromRequest,
+  requireAdminToken,
+  type AdminEnv
+} from '../_orders-v2-utils';
+import type { OrderV2Environment } from '../../../packages/config/src';
 
 type Env = AdminEnv;
 
@@ -45,11 +53,14 @@ const secondsOrNull = (value: unknown) => {
   return Number.isFinite(seconds) ? seconds : null;
 };
 
-const buildWhereClause = (includeTerminal: boolean, fromUtc: string, toUtc: string) => {
+const buildWhereClause = (includeTerminal: boolean, fromUtc: string, toUtc: string, environment: OrderV2Environment) => {
   const conditions: string[] = [];
   const bindings: Array<string | number> = [];
 
   conditions.push('o.archived_at IS NULL');
+  const environmentCondition = buildOrderEnvironmentCondition(environment, 'o');
+  conditions.push(environmentCondition.condition);
+  bindings.push(environmentCondition.binding);
   if (!includeTerminal) conditions.push("o.status NOT IN ('delivered', 'cancelled')");
   if (fromUtc) {
     conditions.push('o.created_at >= ?');
@@ -81,6 +92,8 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
   if (from && to && from > to) return errorResponse(400, 'INVALID_DATE_RANGE', 'El rango de fechas es inválido.');
 
   const includeTerminal = parseBoolean(params.get('includeTerminal'), true);
+  const environment = parseOrderEnvironmentFromRequest(request);
+  if (!environment) return errorResponse(400, 'INVALID_ENVIRONMENT', 'Ambiente de orden inválido.');
   const limit = parseBoundedInteger(params.get('limit'), 1000, 5000, 'INVALID_LIMIT', 'Limit inválido. Usa un entero entre 1 y 5000.');
   if (limit instanceof Response) return limit;
   const topLimit = parseBoundedInteger(params.get('topLimit'), 10, 50, 'INVALID_TOP_LIMIT', 'Top limit inválido. Usa un entero entre 1 y 50.');
@@ -88,7 +101,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
 
   const fromUtc = from ? `${from}T00:00:00.000Z` : '';
   const toUtc = to ? `${to}T23:59:59.999Z` : '';
-  const { where, bindings } = buildWhereClause(includeTerminal, fromUtc, toUtc);
+  const { where, bindings } = buildWhereClause(includeTerminal, fromUtc, toUtc, environment);
 
   try {
     const byStatusSql = `

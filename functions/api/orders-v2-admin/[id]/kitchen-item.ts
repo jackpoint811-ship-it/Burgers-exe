@@ -4,12 +4,14 @@ import type {
   UpdateKitchenItemPayload,
 } from "../../../../packages/config/src";
 import {
+  assertOrderMatchesEnvironment,
   errorResponse,
   fetchOrderBundle,
   generateId,
   json,
   parseJsonObject,
   parseJsonSnapshot,
+  parseOrderEnvironment,
   requireAdminToken,
   type AdminEnv,
 } from "../../_orders-v2-utils";
@@ -47,8 +49,11 @@ const parsePayload = (
 
   if (typeof body.done !== "boolean")
     return errorResponse(400, "INVALID_DONE", "done debe ser boolean.");
+  const environment = parseOrderEnvironment(body.environment);
+  if (!environment)
+    return errorResponse(400, "INVALID_ENVIRONMENT", "Ambiente de orden inválido.");
 
-  return { lineKey, itemKind, done: body.done };
+  return { lineKey, itemKind, done: body.done, environment };
 };
 
 const getSnapshotString = (row: ItemRow) =>
@@ -199,12 +204,14 @@ export const onRequestPatch: PagesFunction<Env> = async ({
 
   try {
     const currentRow = await env.BOG_MENU_DB.prepare(
-      "SELECT status FROM orders_v2 WHERE id = ? LIMIT 1",
+      "SELECT status, source FROM orders_v2 WHERE id = ? LIMIT 1",
     )
       .bind(id)
-      .first<{ status: string }>();
+      .first<{ status: string; source: string }>();
     if (!currentRow)
       return errorResponse(404, "ORDER_NOT_FOUND", "Orden no encontrada.");
+    const environmentError = assertOrderMatchesEnvironment(currentRow, payload.environment ?? "production");
+    if (environmentError) return environmentError;
 
     const itemsResult = await env.BOG_MENU_DB.prepare(
       "SELECT id, snapshot_json FROM order_items_v2 WHERE order_id = ?",
@@ -254,6 +261,7 @@ export const onRequestPatch: PagesFunction<Env> = async ({
       lineKey: payload.lineKey,
       itemKind: payload.itemKind,
       source: "internal-v2",
+      environment: payload.environment ?? "production",
     });
 
     const result = await env.BOG_MENU_DB.prepare(

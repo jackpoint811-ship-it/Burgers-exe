@@ -1,4 +1,13 @@
-import { errorResponse, fetchOrderBundle, generateId, json, requireAdminToken, type AdminEnv } from '../../_orders-v2-utils';
+import {
+  assertOrderMatchesEnvironment,
+  errorResponse,
+  fetchOrderBundle,
+  generateId,
+  json,
+  parseOrderEnvironmentFromRequest,
+  requireAdminToken,
+  type AdminEnv
+} from '../../_orders-v2-utils';
 
 export const onRequestPatch: PagesFunction<AdminEnv> = async ({ env, request, params }) => {
   if (!env.BOG_MENU_DB) return errorResponse(503, 'MISSING_DB', 'BOG_MENU_DB no está configurado.');
@@ -7,16 +16,20 @@ export const onRequestPatch: PagesFunction<AdminEnv> = async ({ env, request, pa
 
   const id = String(params.id ?? '').trim();
   if (!id) return errorResponse(400, 'INVALID_ORDER_ID', 'Order id requerido.');
+  const environment = parseOrderEnvironmentFromRequest(request);
+  if (!environment) return errorResponse(400, 'INVALID_ENVIRONMENT', 'Ambiente de orden inválido.');
 
   try {
     const currentRow = await env.BOG_MENU_DB.prepare('SELECT * FROM orders_v2 WHERE id = ? LIMIT 1').bind(id).first<any>();
     if (!currentRow) return errorResponse(404, 'NOT_FOUND', 'Orden no encontrada.');
+    const environmentError = assertOrderMatchesEnvironment(currentRow, environment);
+    if (environmentError) return environmentError;
     if (String(currentRow.status) !== 'cancelled') return errorResponse(400, 'ORDER_NOT_CANCELLED', 'Solo se pueden ocultar órdenes canceladas.');
     if (currentRow.archived_at) return errorResponse(409, 'ORDER_ALREADY_ARCHIVED', 'La orden cancelada ya está oculta.');
 
     const now = new Date().toISOString();
     const eventId = generateId('evt');
-    const detail = JSON.stringify({ source: 'internal-v2', archiveType: 'soft' });
+    const detail = JSON.stringify({ source: 'internal-v2', archiveType: 'soft', environment });
     const result = await env.BOG_MENU_DB.batch([
       env.BOG_MENU_DB.prepare('UPDATE orders_v2 SET archived_at = ?, updated_at = ? WHERE id = ? AND status = \'cancelled\' AND archived_at IS NULL').bind(now, now, id),
       env.BOG_MENU_DB.prepare(

@@ -1,4 +1,11 @@
-import { errorResponse, json, requireAdminToken, type AdminEnv } from '../_orders-v2-utils';
+import {
+  buildOrderEnvironmentCondition,
+  errorResponse,
+  json,
+  parseOrderEnvironmentFromRequest,
+  requireAdminToken,
+  type AdminEnv
+} from '../_orders-v2-utils';
 
 type Env = AdminEnv;
 type ItemRow = { sku: string; name: string; qty: number; snapshot_json: string };
@@ -43,9 +50,12 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
 
   const url = new URL(request.url);
   const date = url.searchParams.get('date')?.trim() || new Date().toISOString().slice(0, 10);
+  const environment = parseOrderEnvironmentFromRequest(request);
+  if (!environment) return errorResponse(400, 'INVALID_ENVIRONMENT', 'Ambiente de orden inválido.');
   if (!DATE_ONLY_RE.test(date)) return errorResponse(400, 'INVALID_DATE', 'Fecha inválida. Usa YYYY-MM-DD.');
   const fromUtc = `${date}T00:00:00.000Z`;
   const toUtc = `${date}T23:59:59.999Z`;
+  const environmentCondition = buildOrderEnvironmentCondition(environment, 'o');
 
   try {
     const recipeCountRow = await env.BOG_MENU_DB.prepare('SELECT COUNT(*) AS count FROM product_ingredient_recipes_v2').first<{ count: number }>();
@@ -59,9 +69,10 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
         AND o.status IN ${SUMMARY_STATUSES}
         AND o.status != 'cancelled'
         AND o.archived_at IS NULL
+        AND ${environmentCondition.condition}
       GROUP BY i.sku, i.name, i.snapshot_json`;
 
-    const itemsResult = await env.BOG_MENU_DB.prepare(itemsSql).bind(fromUtc, toUtc).all<ItemRow>();
+    const itemsResult = await env.BOG_MENU_DB.prepare(itemsSql).bind(fromUtc, toUtc, environmentCondition.binding).all<ItemRow>();
 
     const burgers = new Map<string, { sku: string; name: string; quantity: number }>();
     const garnishes = new Map<string, { sku: string; name: string; quantity: number }>();

@@ -22,6 +22,7 @@ export type WhatsappOrderMessageInput = {
   total?: number;
   items?: WhatsappOrderItemInput[];
   note?: string;
+  source?: string;
 };
 
 const formatWhatsappCurrency = (value?: number) => `$${(Number.isFinite(value) ? value ?? 0 : 0).toFixed(2)}`;
@@ -35,6 +36,7 @@ const getCustomerName = (order: WhatsappOrderMessageInput) => order.customer?.tr
 const getFolio = (order: WhatsappOrderMessageInput) => order.folio?.trim() || 'tu pedido';
 const getPaymentMethod = (order: WhatsappOrderMessageInput) => order.paymentMethod?.trim() || 'no especificado';
 const getPaymentStatus = (order: WhatsappOrderMessageInput) => order.paymentState?.trim() || order.paymentStatus?.trim() || 'pendiente';
+const isPreviewOrder = (order: WhatsappOrderMessageInput) => order.source === 'public-v2-preview';
 
 const buildItemModifierText = (item: WhatsappOrderItemInput): string[] => {
   const modifiers: string[] = [];
@@ -83,6 +85,7 @@ export const buildWhatsappOrderMessage = (
   const note = safeText(order.note, '');
 
   return [
+    ...(isPreviewOrder(order) ? ['PEDIDO DE PRUEBA — NO PREPARAR', ''] : []),
     `🍔 Burgers.exe — ${statusLine}`,
     '',
     `Folio: ${folio}`,

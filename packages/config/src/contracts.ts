@@ -140,7 +140,13 @@ export type OrderV2Status =
 export type OrderV2Mode = "pickup" | "delivery";
 export type OrderV2PaymentMethod = "cash" | "transfer" | "card" | "unknown";
 export type OrderV2PaymentStatus = "pending" | "paid" | "cancelled";
-export type OrderV2Source = "public-v2" | "internal-v2" | "seed" | "import";
+export type OrderV2Environment = "production" | "preview";
+export type OrderV2Source =
+  | "public-v2"
+  | "public-v2-preview"
+  | "internal-v2"
+  | "seed"
+  | "import";
 
 export type OrderV2ItemKind =
   | "burger"
@@ -224,6 +230,7 @@ export type CreateOrderV2Payload = {
   items: Array<{ sku: string; qty: number } & OrderV2ItemCustomization>;
   idempotencyKey?: string;
   referralCode?: string;
+  environment?: OrderV2Environment;
 };
 
 export type OrderV2EarnedTickets = {
@@ -307,6 +314,7 @@ export type OrdersV2SummaryResponse = {
 export type UpdateOrderV2StatusPayload = {
   status: OrderV2Status;
   reason?: string;
+  environment?: OrderV2Environment;
 };
 
 export type UpdateOrderV2StatusResponse = {
@@ -325,6 +333,7 @@ export type UpdateOrderV2PaymentPayload = {
   paymentStatus: OrderV2PaymentStatus;
   notes?: string;
   reason?: string;
+  environment?: OrderV2Environment;
 };
 
 export type UpdateOrderV2PaymentResponse = {
@@ -337,6 +346,7 @@ export type UpdateKitchenItemPayload = {
   lineKey: string;
   itemKind: Extract<OrderV2ItemKind, "burger" | "combo" | "garnish">;
   done: boolean;
+  environment?: OrderV2Environment;
 };
 
 export type UpdateKitchenItemResponse = {

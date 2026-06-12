@@ -1,4 +1,11 @@
-import type { OrderV2, OrderV2Event, OrderV2Item, OrderV2Status } from '../../packages/config/src';
+import type {
+  OrderV2,
+  OrderV2Environment,
+  OrderV2Event,
+  OrderV2Item,
+  OrderV2Source,
+  OrderV2Status
+} from '../../packages/config/src';
 
 export type ErrorEnvelope = { ok: false; error: { code: string; message: string } };
 export type AdminEnv = { BOG_MENU_DB?: D1Database; BOG_INTERNAL_PIN?: string };
@@ -19,6 +26,51 @@ export const json = (status: number, payload: unknown) =>
   });
 
 export const errorResponse = (status: number, code: string, message: string) => json(status, { ok: false, error: { code, message } });
+
+export const PUBLIC_ORDER_SOURCE = 'public-v2' satisfies OrderV2Source;
+export const PREVIEW_ORDER_SOURCE = 'public-v2-preview' satisfies OrderV2Source;
+export const ORDER_SOURCE_BY_ENVIRONMENT: Record<OrderV2Environment, typeof PUBLIC_ORDER_SOURCE | typeof PREVIEW_ORDER_SOURCE> = {
+  production: PUBLIC_ORDER_SOURCE,
+  preview: PREVIEW_ORDER_SOURCE
+};
+
+export const parseOrderEnvironment = (value: unknown, fallback: OrderV2Environment = 'production'): OrderV2Environment | null => {
+  const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  if (!normalized) return fallback;
+  if (normalized === 'production' || normalized === 'prod') return 'production';
+  if (normalized === 'preview' || normalized === 'test') return 'preview';
+  return null;
+};
+
+export const parseOrderEnvironmentFromRequest = (request: Request, fallback: OrderV2Environment = 'production'): OrderV2Environment | null => {
+  const url = new URL(request.url);
+  return parseOrderEnvironment(
+    url.searchParams.get('environment') ?? url.searchParams.get('env') ?? request.headers.get('X-BOG-Order-Environment'),
+    fallback
+  );
+};
+
+export const getOrderSourceForEnvironment = (environment: OrderV2Environment) => ORDER_SOURCE_BY_ENVIRONMENT[environment];
+
+export const getOrderEnvironmentFromSource = (source: unknown): OrderV2Environment =>
+  String(source) === PREVIEW_ORDER_SOURCE ? 'preview' : 'production';
+
+export const buildOrderEnvironmentCondition = (
+  environment: OrderV2Environment,
+  alias = ''
+): { condition: string; binding: string } => ({
+  condition: `${alias ? `${alias}.` : ''}source = ?`,
+  binding: getOrderSourceForEnvironment(environment)
+});
+
+export const assertOrderMatchesEnvironment = (
+  row: { source?: unknown },
+  environment: OrderV2Environment
+): Response | null => {
+  const expectedSource = getOrderSourceForEnvironment(environment);
+  if (String(row.source) === expectedSource) return null;
+  return errorResponse(409, 'ENVIRONMENT_MISMATCH', 'La orden pertenece a otro ambiente operativo.');
+};
 
 export const parseJsonObject = async (request: Request): Promise<Record<string, unknown> | null> => {
   try {
@@ -61,6 +113,8 @@ export const generateFolio = (now = new Date()) => {
   const timeCode = secondsSinceMidnight.toString(36).padStart(4, '0').toUpperCase();
   return `BX-${dayCode}${timeCode}${randomFolioSuffix()}`;
 };
+
+export const generatePreviewFolio = (now = new Date()) => `PVW-${generateFolio(now).replace(/^BX-/, '')}`;
 
 export const normalizePhone = (value: unknown) => String(value ?? '').replace(/\D/g, '');
 
