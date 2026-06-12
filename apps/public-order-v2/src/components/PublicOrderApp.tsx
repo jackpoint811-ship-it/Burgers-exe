@@ -491,6 +491,7 @@ const ProductCard = ({ item, mode, onClick, reduce, descriptionMode = "paragraph
   const showImage = Boolean(src) && !imageFailed;
   const kind = inferItemKind(item);
   const ingredientBullets = descriptionMode === "ingredients" ? getProductIngredientBullets(item) : [];
+  const visualClassName = showImage ? "kiosk-visual" : `kiosk-visual no-image no-image-${kind}`;
   return (
     <motion.button
       type="button"
@@ -500,7 +501,7 @@ const ProductCard = ({ item, mode, onClick, reduce, descriptionMode = "paragraph
       aria-label={`${mode === "info" ? "Ver información de" : "Elegir"} ${item.name}`}
       disabled={mode === "select" && !item.isAvailable}
     >
-      <div className={showImage ? "kiosk-visual" : "kiosk-visual no-image"}>
+      <div className={visualClassName}>
         {showImage && src ? <img src={src} alt="" loading="lazy" decoding="async" onError={() => setImageFailed(true)} /> : <span>{item.name}</span>}
       </div>
       <div className="kiosk-body">
@@ -531,6 +532,17 @@ const TicketsLookupCta = () => (
     <a href="/tickets" aria-label="Consulta tus tickets en una página dedicada">Consulta tus tickets</a>
   </section>
 );
+
+const RouteVisual = ({ title, src }: { title: string; src?: string }) => {
+  const [imageFailed, setImageFailed] = useState(false);
+  const showImage = Boolean(src) && !imageFailed;
+
+  return (
+    <div className={showImage ? "route-card-visual" : "route-card-visual no-image"} aria-hidden="true">
+      {showImage && src ? <img src={src} alt="" loading="lazy" decoding="async" onError={() => setImageFailed(true)} /> : <span>{title}</span>}
+    </div>
+  );
+};
 
 const MenuSection = ({ menuData, raffleCampaign, onExplore, onStart, reduce }: { menuData: MenuV2Response; raffleCampaign: RaffleCampaignPublicV2 | null; onExplore: (item: MenuItem) => void; onStart: () => void; reduce: boolean }) => {
   const bonusZoneRef = useRef<HTMLElement | null>(null);
@@ -662,9 +674,7 @@ const MainQuest = ({ categoryBanners, burgerItems, comboItems, garnishes, onBack
           const src = resolveAssetUrl(banner?.imageUrl ?? route.fallbackItem?.imageUrl, banner?.imageKey ?? route.fallbackItem?.imageKey);
           return (
             <article className={`route-card route-card-${route.key}`} key={route.key} role="listitem">
-              <div className={src ? "route-card-visual" : "route-card-visual no-image"} aria-hidden="true">
-                {src ? <img src={src} alt="" loading="lazy" decoding="async" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : <span>{route.title}</span>}
-              </div>
+              <RouteVisual title={route.title} src={src} />
               <div className="route-card-copy">
                 <span className="route-chip">{route.number}</span>
                 <h3>{route.title}</h3>
