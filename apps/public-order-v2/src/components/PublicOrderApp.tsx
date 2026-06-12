@@ -8,6 +8,7 @@ import {
   type OrderV2PaymentMethod,
   type PromoCard,
   type RaffleCampaignPublicV2,
+  getPublicOrderEnvironment,
 } from "@config/index";
 import { EmptyState } from "@ui/index";
 import { motion, useReducedMotion } from "framer-motion";
@@ -72,18 +73,6 @@ const IDEMPOTENCY_DRAFT_STORAGE = "burgers-v2-order-draft-idempotency-fingerprin
 const LOCATIONS = ["Torre GGA", "Torre Valcob"] as const;
 const PAYMENT_METHODS = new Set<OrderV2PaymentMethod>(["cash", "transfer", "unknown"]);
 const orderModeForBackend: OrderV2Mode = "pickup";
-const resolvePublicOrderEnvironment = (): OrderV2Environment => {
-  if (typeof window === "undefined") return "production";
-  const params = new URLSearchParams(window.location.search);
-  const raw =
-    params.get("environment") ??
-    params.get("env") ??
-    params.get("preview") ??
-    "";
-  return raw.trim().toLowerCase() === "preview" || raw === "1"
-    ? "preview"
-    : "production";
-};
 const MENU_GROUPS: Array<{ key: MenuCategory["key"] | "combos"; label: string }> = [
   { key: "burgers", label: "Hamburguesas" },
   { key: "combos", label: "Combos" },
@@ -1859,7 +1848,7 @@ const PersistentCta = ({ section, count, total, disabled, submitting, onClick, b
 export function PublicOrderApp() {
   const reduce = useReducedMotion() ?? false;
   const submittingRef = useRef(false);
-  const orderEnvironment = useMemo(resolvePublicOrderEnvironment, []);
+  const orderEnvironment = useMemo(getPublicOrderEnvironment, []);
   const isPreviewMode = orderEnvironment === "preview";
   const [section, setSection] = useState<QuestSection>("menu");
   const [cart, setCart] = useState<CartEntry[]>([]);
