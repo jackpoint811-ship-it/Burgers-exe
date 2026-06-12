@@ -1,10 +1,14 @@
-import type { OrderV2Status } from '../../packages/config/src';
+import type { OrderV2Item, OrderV2Status } from '../../packages/config/src';
 import { errorResponse, json, mapD1OrderEventToOrderV2Event, mapD1OrderItemToOrderV2Item, mapD1OrderToOrderV2, requireAdminToken, type AdminEnv } from './_orders-v2-utils';
 
 type Env = AdminEnv;
 
 const ORDER_STATUSES = new Set<OrderV2Status>(['new', 'preparing', 'ready', 'delivered', 'cancelled']);
 const TERMINAL_STATUSES = new Set<OrderV2Status>(['delivered', 'cancelled']);
+const SIDE_QUEST_LINE_KEY_PREFIX = '::sidequest-';
+
+type SnapshotRecord = Record<string, unknown>;
+type SideQuestSource = 'included-garnish' | 'sidequest-extra';
 
 const parseBoolean = (value: string | null) => value === 'true' || value === '1';
 
@@ -15,6 +19,98 @@ const parseLimit = (value: string | null) => {
 };
 
 const isDateOnly = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
+
+const asRecord = (value: unknown): SnapshotRecord | null =>
+  value && typeof value === 'object' && !Array.isArray(value) ? value as SnapshotRecord : null;
+
+const getOptionalString = (value: unknown) =>
+  typeof value === 'string' && value.trim() ? value.trim() : undefined;
+
+const getOptionalNumber = (value: unknown) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+const getParentLineKey = (item: OrderV2Item) =>
+  getOptionalString(item.snapshot?.lineKey) ?? item.id;
+
+const buildSideQuestLineKey = (
+  parentLineKey: string,
+  source: SideQuestSource,
+  index = 0,
+) => `${parentLineKey}${SIDE_QUEST_LINE_KEY_PREFIX}${source === 'included-garnish' ? 'included-garnish' : `extra-${index}`}`;
+
+const createKitchenSideQuestItem = (
+  parent: OrderV2Item,
+  entry: SnapshotRecord,
+  source: SideQuestSource,
+  index = 0,
+): OrderV2Item | null => {
+  const name = getOptionalString(entry.name);
+  if (!name) return null;
+
+  const parentLineKey = getParentLineKey(parent);
+  const lineKey = buildSideQuestLineKey(parentLineKey, source, index);
+  const sku = getOptionalString(entry.sku) ?? `${parent.sku}-${source}-${index}`;
+  const suffix = lineKey.slice(lineKey.indexOf(SIDE_QUEST_LINE_KEY_PREFIX) + 2);
+
+  return {
+    id: `${parent.id}-${suffix}`,
+    orderId: parent.orderId,
+    sku,
+    name,
+    qty: parent.qty,
+    unitPrice: 0,
+    lineTotal: 0,
+    createdAt: parent.createdAt,
+    snapshot: {
+      sku,
+      name,
+      priceCents: 0,
+      category: 'guarniciones',
+      lineKey,
+      itemDisplayIndex: getOptionalNumber(parent.snapshot?.itemDisplayIndex),
+      itemKind: 'garnish',
+      removedIngredients: [],
+      extras: [],
+      burgerNote: undefined,
+      garnish: null,
+      includedDrink: null,
+      sideQuestExtras: [],
+      comboBurgers: [],
+      parentLineKey,
+      parentItemKind: getOptionalString(parent.snapshot?.itemKind),
+      parentItemName: parent.name,
+      sideQuestSource: source,
+      upcharge: getOptionalNumber(entry.upcharge),
+      price: getOptionalNumber(entry.price),
+    },
+  };
+};
+
+const appendKitchenSideQuestItems = (items: OrderV2Item[]) =>
+  items.flatMap((item) => {
+    const snapshot = item.snapshot ?? {};
+    const syntheticItems: OrderV2Item[] = [];
+    const garnish = asRecord(snapshot.garnish);
+    if (garnish) {
+      const sideQuestItem = createKitchenSideQuestItem(item, garnish, 'included-garnish');
+      if (sideQuestItem) syntheticItems.push(sideQuestItem);
+    }
+
+    if (Array.isArray(snapshot.sideQuestExtras)) {
+      snapshot.sideQuestExtras.forEach((extra, index) => {
+        const extraRecord = asRecord(extra);
+        if (!extraRecord) return;
+        const itemKind = getOptionalString(extraRecord.itemKind) ?? 'garnish';
+        if (itemKind !== 'garnish') return;
+        const sideQuestItem = createKitchenSideQuestItem(item, extraRecord, 'sidequest-extra', index);
+        if (sideQuestItem) syntheticItems.push(sideQuestItem);
+      });
+    }
+
+    return [item, ...syntheticItems];
+  });
 
 export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
   if (!env.BOG_MENU_DB) return errorResponse(503, 'MISSING_DB', 'BOG_MENU_DB no está configurado.');
@@ -81,7 +177,10 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
 
     const orders = orderRows
       .filter((row: any) => includeTerminal || status || !TERMINAL_STATUSES.has(String(row.status) as OrderV2Status))
-      .map((row: any) => mapD1OrderToOrderV2(row, itemsByOrder.get(String(row.id)) ?? [], eventsByOrder.get(String(row.id)) ?? []));
+      .map((row: any) => {
+        const items = appendKitchenSideQuestItems(itemsByOrder.get(String(row.id)) ?? []);
+        return mapD1OrderToOrderV2(row, items, eventsByOrder.get(String(row.id)) ?? []);
+      });
 
     return json(200, { ok: true, data: { orders, source: 'd1' } });
   } catch {
