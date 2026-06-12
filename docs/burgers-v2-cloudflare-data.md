@@ -47,6 +47,20 @@ Not required:
 - Authorization Bearer
 - Apps Script secrets
 
+### Internal preview environment safety
+
+Chekeo V2 muestra el ambiente actual desde hostname y no desde un selector manual:
+
+- `localhost`, `127.0.0.1` o `*.localhost`: `LOCAL`
+- hostnames con `preview`, `internal-v2-preview` o `public-v2-preview`: `PREVIEW`
+- otros hostnames, incluido `chekeo2-0.pages.dev`: `PRODUCCION`
+
+En `PREVIEW`, el CTA visible debe decir `Ver Burgers.exe Preview` y abrir <https://burgers-exe-public-v2-preview.pages.dev/>. En `PRODUCCION`, debe decir `Ver Burgers.exe Produccion` y abrir <https://burgers-exe.pages.dev/>.
+
+El proyecto Pages `burgers-exe-internal-v2-preview` necesita `BOG_MENU_DB`, `BOG_MENU_ASSETS` y `BOG_INTERNAL_PIN`. La fuente real de datos sigue siendo el binding del deployment; el ambiente derivado del hostname solo evita que la UI filtre u opere ordenes `public-v2` y `public-v2-preview` de forma cruzada.
+
+Validacion detallada: [`chekeo-v2-preview-environment.md`](chekeo-v2-preview-environment.md).
+
 ## D1 recomendado
 
 - Nombre: `burgers-exe-menu-v2-preview`

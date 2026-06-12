@@ -22,6 +22,11 @@ import {
   type OrderV2ItemKind,
   type OrderV2PaymentStatus,
   type OrderV2Status,
+  type ChekeoRuntimeEnvironment,
+  getChekeoRuntimeEnvironment,
+  getOrderEnvironmentForChekeoRuntime,
+  getPublicOrderLabelForEnvironment,
+  getPublicOrderUrlForEnvironment,
 } from "@config/index";
 import { Button, Card, StatusPill } from "@ui/index";
 import {
@@ -131,20 +136,33 @@ type OrdersRuntime = {
   lastUpdated: string | null;
 };
 
-const ORDER_ENVIRONMENT_STORAGE_KEY = "burgers-chekeo-order-environment";
-const PUBLIC_PREVIEW_URL =
-  "https://burgers-exe-public-v2-preview.pages.dev/?env=preview";
-
-const readStoredOrderEnvironment = (): OrderV2Environment => {
-  if (typeof window === "undefined") return "production";
-  return window.localStorage.getItem(ORDER_ENVIRONMENT_STORAGE_KEY) === "preview"
-    ? "preview"
-    : "production";
-};
-
 const orderEnvironmentLabel: Record<OrderV2Environment, string> = {
   production: "Producción",
   preview: "Preview",
+};
+
+const runtimeEnvironmentLabel: Record<ChekeoRuntimeEnvironment, string> = {
+  production: "PRODUCCIÓN",
+  preview: "PREVIEW",
+  local: "LOCAL",
+};
+
+const runtimeEnvironmentCopy: Record<
+  ChekeoRuntimeEnvironment,
+  { primary: string; secondary: string }
+> = {
+  preview: {
+    primary: "Estás editando datos de prueba / preview.",
+    secondary: "Puedes validar cambios sin afectar producción. Los cambios aquí son para pruebas.",
+  },
+  production: {
+    primary: "Producción: los cambios pueden afectar el menú real.",
+    secondary: "Estás operando el menú real.",
+  },
+  local: {
+    primary: "Local: entorno de desarrollo.",
+    secondary: "La fuente de datos la define el binding local de este servidor.",
+  },
 };
 
 const isPreviewOrderSource = (source?: string) => source === "public-v2-preview";
@@ -819,13 +837,18 @@ const SourcePanel = ({
 const InternalLogin = ({
   onLogin,
   checkingSession,
+  runtimeEnvironment,
 }: {
   onLogin: () => void;
   checkingSession: boolean;
+  runtimeEnvironment: ChekeoRuntimeEnvironment;
 }) => {
   const [pin, setPin] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const copy = runtimeEnvironmentCopy[runtimeEnvironment];
+  const publicOrderUrl = getPublicOrderUrlForEnvironment(runtimeEnvironment);
+  const publicOrderLabel = getPublicOrderLabelForEnvironment(runtimeEnvironment);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -859,12 +882,25 @@ const InternalLogin = ({
     <main className="shell flex items-center justify-center py-8">
       <section className="login card w-full max-w-md border-cyan-400/20 bg-zinc-950/95 p-5 shadow-cyan-950/30">
         <div className="mb-6 text-center">
+          <EnvironmentBadge environment={runtimeEnvironment} className="mx-auto mb-3" />
           <p className="text-2xl font-black tracking-tight text-zinc-50">
             Burgers<span className="text-cyan-300">.exe</span>
           </p>
           <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.35em] text-cyan-200">
             Chekeo
           </p>
+        </div>
+        <div className="runtime-login-notice">
+          <p className="text-sm font-semibold text-zinc-50">{copy.primary}</p>
+          <p className="mt-1 text-xs text-zinc-300">{copy.secondary}</p>
+          <a
+            className="runtime-environment-link mt-3 w-full"
+            href={publicOrderUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {publicOrderLabel}
+          </a>
         </div>
         <form className="space-y-4" onSubmit={(event) => void submit(event)}>
           <label className="block text-sm font-bold text-zinc-100" htmlFor="pin">
@@ -907,80 +943,103 @@ const InternalLogin = ({
     </main>
   );
 };
+
+const EnvironmentBadge = ({
+  environment,
+  className = "",
+}: {
+  environment: ChekeoRuntimeEnvironment;
+  className?: string;
+}) => (
+  <span className={`environment-badge environment-badge--${environment} ${className}`}>
+    {runtimeEnvironmentLabel[environment]}
+  </span>
+);
+
 const OperatorHeader = ({
   active,
   environment,
-  onEnvironmentChange,
+  runtimeEnvironment,
   onLogout,
   source,
 }: {
   active: number;
   environment: OrderV2Environment;
-  onEnvironmentChange: (environment: OrderV2Environment) => void;
+  runtimeEnvironment: ChekeoRuntimeEnvironment;
   onLogout: () => void;
   source: OrdersSource;
-}) => (
-  <header className="card header-compact">
-    <div>
-      <h1 className="text-sm font-bold md:text-base">
-        Chekeo Burgers.exe
-      </h1>
-      <p className="text-[11px] text-zinc-400">
-        Activos {active} · {orderEnvironmentLabel[environment]} ·{" "}
-        {source === "d1" ? "Live" : "Vista local"} ·{" "}
-        {new Date().toLocaleTimeString()}
-      </p>
-    </div>
-    <div className="flex flex-wrap items-center justify-end gap-2">
-      <div
-        className="flex rounded-lg border border-zinc-700 bg-zinc-950 p-1"
-        role="group"
-        aria-label="Ambiente de pedidos"
-      >
-        {(["production", "preview"] as const).map((value) => (
-          <button
-            key={value}
-            type="button"
-            className={`min-h-8 rounded-md px-2 text-[11px] font-black ${
-              environment === value
-                ? value === "preview"
-                  ? "bg-amber-300 text-amber-950"
-                  : "bg-cyan-300 text-cyan-950"
-                : "text-zinc-400"
-            }`}
-            onClick={() => onEnvironmentChange(value)}
-            aria-pressed={environment === value}
-          >
-            {orderEnvironmentLabel[value]}
-          </button>
-        ))}
+}) => {
+  const publicOrderUrl = getPublicOrderUrlForEnvironment(runtimeEnvironment);
+  const publicOrderLabel = getPublicOrderLabelForEnvironment(runtimeEnvironment);
+
+  return (
+    <header className="card header-compact">
+      <div>
+        <h1 className="text-sm font-bold md:text-base">
+          Chekeo Burgers.exe
+        </h1>
+        <p className="text-[11px] text-zinc-400">
+          Activos {active} · {orderEnvironmentLabel[environment]} ·{" "}
+          {source === "d1" ? "Live" : "Vista local"} ·{" "}
+          {new Date().toLocaleTimeString()}
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <EnvironmentBadge environment={runtimeEnvironment} />
+        <a
+          className="min-h-8 rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1 text-[11px] font-black text-zinc-100 hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400"
+          href={publicOrderUrl}
+          target="_blank"
+          rel="noreferrer"
+        >
+          {publicOrderLabel}
+        </a>
+        <Button
+          className="border border-zinc-700 bg-zinc-900 px-2 py-1 text-[11px]"
+          onClick={onLogout}
+        >
+          Cerrar sesión
+        </Button>
+      </div>
+    </header>
+  );
+};
+
+const RuntimeEnvironmentBanner = ({
+  environment,
+}: {
+  environment: ChekeoRuntimeEnvironment;
+}) => {
+  const copy = runtimeEnvironmentCopy[environment];
+  const publicOrderUrl = getPublicOrderUrlForEnvironment(environment);
+  const publicOrderLabel = getPublicOrderLabelForEnvironment(environment);
+
+  return (
+    <section
+      className={`runtime-environment-banner runtime-environment-banner--${environment}`}
+      aria-label={`Ambiente actual: ${runtimeEnvironmentLabel[environment]}`}
+    >
+      <div>
+        <div className="flex flex-wrap items-center gap-2">
+          <EnvironmentBadge environment={environment} />
+          <strong className="text-sm font-black text-zinc-50">
+            Ambiente actual
+          </strong>
+        </div>
+        <p className="mt-1 text-sm font-semibold text-zinc-50">{copy.primary}</p>
+        <p className="text-xs text-zinc-200/85">{copy.secondary}</p>
       </div>
       <a
-        className="min-h-8 rounded-lg border border-amber-400/50 bg-amber-500/10 px-2 py-1 text-[11px] font-black text-amber-100"
-        href={PUBLIC_PREVIEW_URL}
+        className="runtime-environment-link"
+        href={publicOrderUrl}
         target="_blank"
         rel="noreferrer"
       >
-        Abrir Public Preview
+        {publicOrderLabel}
       </a>
-      <Button
-        className="border border-zinc-700 bg-zinc-900 px-2 py-1 text-[11px]"
-        onClick={onLogout}
-      >
-        Cerrar sesión
-      </Button>
-    </div>
-  </header>
-);
-
-const PreviewModeBanner = () => (
-  <section className="rounded-xl border border-amber-400/60 bg-amber-500/15 px-3 py-2 text-sm text-amber-50 shadow-[0_0_22px_rgba(251,191,36,0.16)]">
-    <strong className="font-black">MODO PREVIEW ACTIVO</strong>
-    <span className="ml-2 text-amber-100/90">
-      Solo pedidos de prueba desde Public Preview. No preparar ni mezclar con operación real.
-    </span>
-  </section>
-);
+    </section>
+  );
+};
 const DashboardHome = ({
   orders,
   source,
@@ -3037,8 +3096,11 @@ export function InternalChekeoApp() {
   );
   const [actionOrderId, setActionOrderId] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-  const [orderEnvironment, setOrderEnvironment] =
-    useState<OrderV2Environment>(readStoredOrderEnvironment);
+  const runtimeEnvironment = useMemo(getChekeoRuntimeEnvironment, []);
+  const orderEnvironment = useMemo(
+    () => getOrderEnvironmentForChekeoRuntime(runtimeEnvironment),
+    [runtimeEnvironment],
+  );
   const reduce = useReducedMotion();
   const orderKeysRef = useRef<Set<string> | null>(null);
   const loggedRef = useRef(logged);
@@ -3066,27 +3128,6 @@ export function InternalChekeoApp() {
   useEffect(() => {
     checkingSessionRef.current = checkingSession;
   }, [checkingSession]);
-
-  useEffect(() => {
-    window.localStorage.setItem(
-      ORDER_ENVIRONMENT_STORAGE_KEY,
-      orderEnvironment,
-    );
-  }, [orderEnvironment]);
-
-  const changeOrderEnvironment = useCallback(
-    (nextEnvironment: OrderV2Environment) => {
-      setOrderEnvironment(nextEnvironment);
-      setSelected(null);
-      cancellationRequestRef.current = null;
-      setCancellationRequest(null);
-      setNewOrderNotice(null);
-      setHighlightedOrderIds(new Set());
-      orderKeysRef.current = null;
-      setOrdersNotice(`Modo ${orderEnvironmentLabel[nextEnvironment]} activo`);
-    },
-    [],
-  );
 
   const expireSession = useCallback(() => {
     setLogged(false);
@@ -3570,6 +3611,7 @@ export function InternalChekeoApp() {
     return (
       <InternalLogin
         checkingSession={checkingSession}
+        runtimeEnvironment={runtimeEnvironment}
         onLogin={() => {
           loggedRef.current = true;
           setLogged(true);
@@ -3582,7 +3624,7 @@ export function InternalChekeoApp() {
       <OperatorHeader
         active={active.length}
         environment={orderEnvironment}
-        onEnvironmentChange={changeOrderEnvironment}
+        runtimeEnvironment={runtimeEnvironment}
         source={ordersSource}
         onLogout={() => {
           void logoutInternal();
@@ -3598,7 +3640,7 @@ export function InternalChekeoApp() {
           orderKeysRef.current = null;
         }}
       />
-      {orderEnvironment === "preview" ? <PreviewModeBanner /> : null}
+      <RuntimeEnvironmentBanner environment={runtimeEnvironment} />
       <NewOrderBanner
         notice={newOrderNotice}
         onDismiss={() => setNewOrderNotice(null)}
