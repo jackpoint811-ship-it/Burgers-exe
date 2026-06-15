@@ -160,17 +160,17 @@ const runtimeEnvironmentCopy: Record<
     secondary: "Estás operando el menú real.",
   },
   local: {
-    primary: "Local: entorno de desarrollo.",
-    secondary: "La fuente de datos la define el binding local de este servidor.",
+    primary: "Local: vista para pruebas internas.",
+    secondary: "Úsala para revisar la pantalla sin afectar pedidos reales.",
   },
 };
 
 const isPreviewOrderSource = (source?: string) => source === "public-v2-preview";
 
 const statusLabel: Record<OrderStatus, string> = {
-  new: "Nuevo",
+  new: "Pedido listo para revisar",
   preparing: "En preparación",
-  ready: "Listo",
+  ready: "Listo para entregar",
   delivered: "Entregado",
   cancelled: "Cancelado",
 };
@@ -182,8 +182,8 @@ const statusTone: Record<OrderStatus, string> = {
   cancelled: "border-rose-500/40 text-rose-300",
 };
 const paymentStatusLabel: Record<OrderV2PaymentStatus, string> = {
-  pending: "Pendiente",
-  paid: "Pagado",
+  pending: "Falta confirmar pago",
+  paid: "Pago confirmado",
   cancelled: "Cancelado",
 };
 const paymentStatusTone: Record<OrderV2PaymentStatus, string> = {
@@ -194,6 +194,42 @@ const paymentStatusTone: Record<OrderV2PaymentStatus, string> = {
 const isOrderV2PaymentStatus = (value: string): value is OrderV2PaymentStatus =>
   value === "pending" || value === "paid" || value === "cancelled";
 const terminalStatuses = new Set<OrderStatus>(["delivered", "cancelled"]);
+const channelLabel: Record<InternalOrder["channel"], string> = {
+  "walk-in": "Mostrador",
+  pickup: "Para recoger",
+  delivery: "Entrega",
+};
+const paymentMethodLabel: Record<string, string> = {
+  cash: "Efectivo",
+  transfer: "Transferencia",
+  card: "Tarjeta",
+  unknown: "Por confirmar",
+};
+const sourceLabel = (source?: string) =>
+  source === "d1" || source === "public-v2"
+    ? "Pedidos reales"
+    : source === "public-v2-preview"
+      ? "Pedidos de prueba"
+      : "Vista local";
+const getPaymentStatusLabel = (status: string) =>
+  isOrderV2PaymentStatus(status) ? paymentStatusLabel[status] : status || "Por confirmar";
+const getPaymentMethodLabel = (method: string) =>
+  paymentMethodLabel[method] ?? (method || "Por confirmar");
+const getOrderItemCount = (order: InternalOrder) =>
+  order.items.reduce((total, item) => total + item.qty, 0);
+const getOperationalSummary = (orders: InternalOrder[]) => {
+  const visibleOrders = orders.filter((order) => !terminalStatuses.has(order.status));
+  const participants = new Set(
+    orders.map((order) => (order.customerPhone || order.customer).trim().toLowerCase()).filter(Boolean),
+  );
+  return {
+    pendingOrders: visibleOrders.filter((order) => order.status === "new").length,
+    confirmedOrders: orders.filter((order) => order.status !== "new" && order.status !== "cancelled").length,
+    participants: participants.size,
+    totalTickets: orders.length,
+    paymentsToReview: visibleOrders.filter((order) => order.paymentState === "pending").length,
+  };
+};
 const whatsappTemplateLabels: Array<{
   value: Exclude<WhatsappOrderMessageType, "custom">;
   label: string;
@@ -555,15 +591,18 @@ const StatusBadge = ({ status }: { status: OrderStatus }) => (
 const EmptyOrdersState = ({
   title,
   description,
+  action,
 }: {
   title: string;
   description?: string;
+  action?: ReactNode;
 }) => (
-  <Card className="p-4 text-center">
-    <p className="font-bold text-zinc-100">{title}</p>
+  <Card className="border-dashed border-zinc-700/90 p-5 text-center">
+    <p className="text-base font-black text-zinc-100">{title}</p>
     {description ? (
-      <p className="mt-1 text-sm text-zinc-400">{description}</p>
+      <p className="mx-auto mt-1 max-w-md text-sm text-zinc-400">{description}</p>
     ) : null}
+    {action ? <div className="mt-3">{action}</div> : null}
   </Card>
 );
 
@@ -640,12 +679,12 @@ const OrdersExportControls = ({
       anchor.click();
       anchor.remove();
       window.URL.revokeObjectURL(url);
-      setSuccess("CSV descargado");
+      setSuccess("Reporte descargado");
     } catch (downloadError) {
       setError(
         downloadError instanceof Error
           ? downloadError.message
-          : "No se pudo exportar CSV",
+          : "No se pudo descargar el reporte. Inténtalo de nuevo.",
       );
     } finally {
       setExporting(false);
@@ -656,11 +695,9 @@ const OrdersExportControls = ({
     <div className="mt-3 rounded-lg border border-zinc-800 bg-zinc-950/70 p-2">
       <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-xs font-bold text-zinc-100">
-            Exportar reporte
-          </p>
+          <p className="text-xs font-bold text-zinc-100">Descargar reporte</p>
           <p className="text-[11px] text-zinc-400">
-            Descarga pedidos filtrados para revisión administrativa.
+            Baja los pedidos filtrados para revisión o cierre.
           </p>
         </div>
         {!sessionActive ? (
@@ -676,7 +713,7 @@ const OrdersExportControls = ({
             checked={includeTerminal}
             onChange={(event) => setIncludeTerminal(event.target.checked)}
           />
-          Incluir entregados/cancelados
+          Incluir entregados y cancelados
         </label>
         <label className="text-[11px] text-zinc-400">
           Estado
@@ -695,7 +732,7 @@ const OrdersExportControls = ({
           </select>
         </label>
         <label className="text-[11px] text-zinc-400">
-          Límite
+          Máximo de registros
           <input
             className="input mt-1 text-xs"
             inputMode="numeric"
@@ -746,7 +783,7 @@ const OrdersExportControls = ({
         onClick={() => void downloadCsv()}
         disabled={disabled}
       >
-        {exporting ? "Exportando…" : "Exportar CSV"}
+          {exporting ? "Preparando…" : "Descargar reporte"}
       </Button>
     </div>
   );
@@ -793,14 +830,18 @@ const SourcePanel = ({
     <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
       <div>
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-200">
-          Sesión activa
+          Lista de pedidos
         </p>
-        <p className="text-[11px] text-zinc-400">Órdenes</p>
+        <p className="text-[11px] text-zinc-400">
+          {runtime.source === "d1"
+            ? "Datos actualizados desde operación"
+            : "Vista de apoyo para revisar la pantalla"}
+        </p>
       </div>
       <div className="flex flex-col gap-2 md:flex-row">
         {runtime.lastUpdated ? (
           <span className="self-center text-[11px] text-zinc-500">
-            Última actualización: {runtime.lastUpdated}
+            Actualizado: {runtime.lastUpdated}
           </span>
         ) : null}
         <Button
@@ -808,13 +849,13 @@ const SourcePanel = ({
           onClick={() => runtime.reload(includeTerminal)}
           disabled={runtime.loading || !runtime.sessionActive}
         >
-          {runtime.loading ? "Cargando…" : "Recargar órdenes"}
+          {runtime.loading ? "Actualizando…" : "Actualizar lista"}
         </Button>
       </div>
     </div>
     <div className="mt-3 flex flex-wrap items-center gap-2">
       <span className="chip">Sesión activa</span>
-      <span className="chip">Órdenes</span>
+      <span className="chip">{runtime.sessionActive ? "Listo para operar" : "Inicia sesión"}</span>
     </div>
     <OrdersExportControls
       sessionActive={runtime.sessionActive}
@@ -979,15 +1020,15 @@ const OperatorHeader = ({
           Chekeo Burgers.exe
         </h1>
         <p className="text-[11px] text-zinc-400">
-          Activos {active} · {orderEnvironmentLabel[environment]} ·{" "}
-          {source === "d1" ? "Live" : "Vista local"} ·{" "}
+          {active} pedidos activos · {orderEnvironmentLabel[environment]} ·{" "}
+          {source === "d1" ? "Datos reales" : "Vista local"} ·{" "}
           {new Date().toLocaleTimeString()}
         </p>
       </div>
       <div className="flex flex-wrap items-center justify-end gap-2">
         <EnvironmentBadge environment={runtimeEnvironment} />
         <a
-          className="min-h-8 rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1 text-[11px] font-black text-zinc-100 hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400"
+          className="inline-flex min-h-11 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-[11px] font-black text-zinc-100 hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400"
           href={publicOrderUrl}
           target="_blank"
           rel="noreferrer"
@@ -995,13 +1036,75 @@ const OperatorHeader = ({
           {publicOrderLabel}
         </a>
         <Button
-          className="border border-zinc-700 bg-zinc-900 px-2 py-1 text-[11px]"
+          className="min-h-11 border border-zinc-700 bg-zinc-900 px-3 py-2 text-[11px]"
           onClick={onLogout}
         >
           Cerrar sesión
         </Button>
       </div>
     </header>
+  );
+};
+
+const OperationalSummary = ({
+  orders,
+  source,
+}: {
+  orders: InternalOrder[];
+  source: OrdersSource;
+}) => {
+  const summary = getOperationalSummary(orders);
+  const cards = [
+    {
+      label: "Pedidos pendientes",
+      value: summary.pendingOrders,
+      hint: "Requieren primera revisión",
+    },
+    {
+      label: "Pedidos confirmados",
+      value: summary.confirmedOrders,
+      hint: "En proceso o cerrados",
+    },
+    {
+      label: "Participantes",
+      value: summary.participants,
+      hint: "Personas únicas visibles",
+    },
+    {
+      label: "Tickets totales",
+      value: summary.totalTickets,
+      hint: "Folios cargados",
+    },
+    {
+      label: "Pagos por revisar",
+      value: summary.paymentsToReview,
+      hint: "Falta confirmar pago",
+    },
+  ];
+
+  return (
+    <section className="summary-grid" aria-label="Resumen operativo de Chekeo">
+      <div className="summary-intro">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
+          Resumen operativo
+        </p>
+        <h2 className="mt-1 text-lg font-black text-zinc-50">
+          Qué necesita revisión ahora
+        </h2>
+        <p className="mt-1 text-xs text-zinc-400">
+          {source === "d1"
+            ? "Calculado con los pedidos cargados en esta pantalla."
+            : "Vista local para validar la experiencia sin afectar datos reales."}
+        </p>
+      </div>
+      {cards.map((card) => (
+        <Card key={card.label} className="summary-card">
+          <p className="text-[11px] font-semibold text-zinc-400">{card.label}</p>
+          <p className="mt-1 text-2xl font-black text-zinc-50">{card.value}</p>
+          <p className="mt-1 text-[11px] text-zinc-500">{card.hint}</p>
+        </Card>
+      ))}
+    </section>
   );
 };
 
@@ -1047,43 +1150,57 @@ const DashboardHome = ({
   orders: InternalOrder[];
   source: OrdersSource;
 }) => {
-  const active = orders.filter((o) => !terminalStatuses.has(o.status)).length;
-  const pending = orders.filter((o) => o.status === "new").length;
+  const active = orders.filter((o) => !terminalStatuses.has(o.status));
+  const urgent = active
+    .filter((o) => o.priority === "urgent" || o.status === "new" || o.paymentState === "pending")
+    .slice(0, 4);
   return (
-    <section className="grid gap-2.5 md:grid-cols-3">
-      <Card className="p-2.5">
-        <p className="muted">Órdenes activas</p>
-        <p className="text-xl font-black">
-          {source === "d1" ? active : operatorStats.activeOrders}
+    <section className="grid gap-2.5 lg:grid-cols-[1.4fr_0.8fr]">
+      <Card className="p-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-200">
+              Prioridad
+            </p>
+            <h3 className="mt-1 text-lg font-black">Pedidos que piden acción</h3>
+          </div>
+          <StatusPill className="border-cyan-400/40 text-cyan-100">
+            {urgent.length} por revisar
+          </StatusPill>
+        </div>
+        <div className="mt-3 space-y-2">
+          {urgent.length ? (
+            urgent.map((o) => (
+              <div key={o.id} className="row items-start">
+                <div className="min-w-0">
+                  <p className="break-words text-sm font-bold">
+                    {o.folio} · {o.customer}
+                  </p>
+                  <p className="text-[11px] text-zinc-400">
+                    {channelLabel[o.channel]} · {getPaymentStatusLabel(o.paymentState)} ·{" "}
+                    {formatCurrency(o.total)}
+                  </p>
+                </div>
+                <StatusBadge status={o.status} />
+              </div>
+            ))
+          ) : (
+            <p className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3 text-sm text-zinc-400">
+              Sin pedidos pendientes. Cuando entre uno nuevo aparecerá aquí.
+            </p>
+          )}
+        </div>
+      </Card>
+      <Card className="p-3">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-200">
+          Estado del turno
         </p>
-      </Card>
-      <Card className="p-2.5">
-        <p className="muted">Pendientes</p>
-        <p className="text-xl font-black">
-          {source === "d1" ? pending : operatorStats.pendingOrders}
+        <p className="mt-2 text-2xl font-black">
+          {source === "d1" ? active.length : operatorStats.activeOrders}
         </p>
-      </Card>
-      <Card className="p-2.5">
-        <p className="muted">Carga cocina</p>
-        <p className="text-xl font-black">{operatorStats.kitchenLoad}%</p>
-      </Card>
-      <Card className="md:col-span-2 p-2.5">
-        <h3 className="mb-2 font-bold">Urgentes ahora</h3>
-        {orders
-          .filter((o) => o.priority === "urgent" || o.status === "new")
-          .slice(0, 4)
-          .map((o) => (
-            <div key={o.id} className="row">
-              {o.folio} · {o.customer} · {o.createdAt}
-            </div>
-          ))}
-      </Card>
-      <Card className="p-2.5">
-        <h3 className="font-bold">Estado del turno</h3>
-        <p className="muted">
-          {source === "d1"
-            ? "Órdenes"
-            : "Vista operativa local"}
+        <p className="text-sm text-zinc-400">pedidos activos cargados</p>
+        <p className="mt-3 rounded-lg border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-xs text-emerald-100">
+          Carga de cocina estimada: {operatorStats.kitchenLoad}%.
         </p>
       </Card>
     </section>
@@ -1103,12 +1220,12 @@ const getPedidoActions = (status: OrderStatus): StatusAction[] =>
                 : "delivered",
           label:
             status === "new"
-              ? "Iniciar preparación"
+              ? "Confirmar e iniciar"
               : status === "preparing"
-                ? "Marcar listo"
-                : "Entregar",
+                ? "Marcar como listo"
+                : "Marcar entregado",
         },
-        { status: "cancelled", label: "Cancelar", tone: "danger" },
+        { status: "cancelled", label: "Cancelar pedido", tone: "danger" },
       ];
 const getKitchenActions = (status: OrderStatus): StatusAction[] =>
   status === "new"
@@ -1134,13 +1251,14 @@ const ActionButtons = ({
 }) => {
   const busy = actionOrderId === order.id;
   return (
-    <div className="flex flex-wrap gap-1">
+    <div className="flex flex-wrap gap-2">
       {actions.map((action) => {
         const isCancellation = action.status === "cancelled";
         return (
           <button
             key={action.status}
-            className={`btn-sm ${action.tone === "danger" ? "danger" : ""}`}
+            type="button"
+            className={`btn-sm ${action.tone === "danger" ? "danger" : "border-cyan-500/50 bg-cyan-500/10 text-cyan-100"}`}
             onClick={() =>
               isCancellation
                 ? onCancel(order)
@@ -1524,45 +1642,56 @@ const CompactRow = ({
   onOpen: () => void;
 }) => {
   const previewOrder = isPreviewOrderSource(order.source);
+  const itemCount = getOrderItemCount(order);
   return (
-  <Card className="p-2.5">
-    <div className="flex items-start justify-between gap-2">
-      <div>
-        <p className="flex flex-wrap items-center gap-2 text-sm font-bold">
-          <span>{order.folio} · {order.customer}</span>
+  <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="min-w-0">
+        <p className="flex flex-wrap items-center gap-2 text-base font-black text-zinc-50">
+          <span>{order.folio}</span>
           {previewOrder ? (
             <span className="rounded-full bg-amber-300 px-2 py-0.5 text-[10px] font-black text-amber-950">
-              PREVIEW
+              Prueba
             </span>
           ) : null}
         </p>
-        <p className="text-[11px] text-zinc-400">
-          {order.createdAt} · {order.channel} · {order.paymentMethod}/
-          {order.paymentState}
+        <p className="mt-1 break-words text-sm font-semibold text-zinc-100">
+          {order.customer}
+        </p>
+        <p className="text-xs text-zinc-400">
+          {order.createdAt} · {channelLabel[order.channel]} · {sourceLabel(order.source)}
         </p>
         {order.customerPhone ? (
-          <p className="text-[11px] text-zinc-500">
+          <p className="text-xs text-zinc-500">
             Tel: {order.customerPhone}
           </p>
         ) : null}
       </div>
-      <StatusBadge status={order.status} />
+      <div className="flex flex-wrap gap-1 sm:justify-end">
+        <StatusBadge status={order.status} />
+        <PaymentStatusBadge status={order.paymentState} />
+      </div>
+    </div>
+    <div className="mt-3 grid gap-2 text-xs text-zinc-300 min-[420px]:grid-cols-2 lg:grid-cols-4">
+      <span className="info-pill">Total: <strong>{formatCurrency(order.total)}</strong></span>
+      <span className="info-pill">Pago: {getPaymentMethodLabel(order.paymentMethod)}</span>
+      <span className="info-pill">Items: {itemCount}</span>
+      <span className="info-pill">Ticket: {order.folio}</span>
     </div>
     {order.note ? (
       <p className="mt-1.5 rounded bg-amber-500/10 px-2 py-1 text-[11px] text-amber-200">
-        Nota crítica: {order.note}
+        Nota para revisar: {order.note}
       </p>
     ) : null}
-    <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+    <div className="mt-3 flex flex-col gap-2 sm:flex-row">
       <Button
-        className="border border-zinc-700 bg-zinc-900 py-1 text-[11px]"
+        className="w-full border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs sm:w-auto"
         onClick={onOpen}
       >
-        Abrir ticket
+        Ver detalle
       </Button>
     </div>
-    <WhatsappOrderActions order={order} />
-  </Card>
+  </div>
   );
 };
 
@@ -1586,7 +1715,7 @@ const OrdersBoard = ({
     <SourcePanel runtime={runtime} />
     {runtime.source === "d1" && orders.length === 0 ? (
       <EmptyOrdersState
-        title="No hay pedidos activos."
+        title="Todavía no hay pedidos para revisar."
         description="Cuando entre un pedido nuevo, aparecerá aquí."
       />
     ) : null}
@@ -1594,19 +1723,11 @@ const OrdersBoard = ({
       {orders.map((o) => {
         const highlighted = runtime.highlightedOrderIds.has(o.id);
         return (
-          <Card
-            key={o.id}
-            className={`p-3 transition-colors ${highlighted ? "border-cyan-300/70 bg-cyan-400/10 shadow-lg shadow-cyan-950/30" : ""}`}
-          >
-            <CompactRow order={o} onOpen={() => setSelected(o)} />
-            <div className="mt-2 grid gap-1 text-xs text-zinc-300 md:grid-cols-2">
-              <span>Modo entrega: {o.channel}</span>
-              <span>Método de pago: {o.paymentMethod}</span>
-              <span>Estado de pago: {o.paymentState}</span>
-              <span>Total: {formatCurrency(o.total)}</span>
-              <span>Origen: {o.source === "d1" ? "Operativo" : "Local"}</span>
-              <span>Creado: {o.createdAt}</span>
-            </div>
+            <Card
+              key={o.id}
+              className={`p-2.5 transition-colors ${highlighted ? "border-cyan-300/70 bg-cyan-400/10 shadow-lg shadow-cyan-950/30" : ""}`}
+            >
+              <CompactRow order={o} onOpen={() => setSelected(o)} />
             <OrderItems order={o} />
             <div className="mt-2">
               <ActionButtons
@@ -2270,12 +2391,12 @@ const OperationalClosePanel = ({
       anchor.click();
       anchor.remove();
       window.URL.revokeObjectURL(url);
-      setNotice("CSV del rango descargado");
+      setNotice("Reporte del rango descargado");
     } catch (csvError) {
       setError(
         csvError instanceof Error
           ? csvError.message
-          : "No se pudo exportar CSV del rango",
+            : "No se pudo descargar el reporte del rango",
       );
     } finally {
       setExporting(false);
@@ -2300,7 +2421,7 @@ const OperationalClosePanel = ({
             onClick={() => void downloadRangeCsv()}
             disabled={exporting || !sessionActive}
           >
-            {exporting ? "Exportando…" : "Exportar CSV del rango"}
+            {exporting ? "Preparando…" : "Descargar reporte"}
           </Button>
         </div>
         <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -2355,7 +2476,7 @@ const OperationalClosePanel = ({
         ) : null}
         {summary ? (
           <p className="mt-2 text-[11px] text-zinc-500">
-            Rango UTC: {summary.range.fromUtc || "inicio"} →{" "}
+            Rango calculado: {summary.range.fromUtc || "inicio"} a{" "}
             {summary.range.toUtc || "ahora"} · generado{" "}
             {formatDateTime(summary.generatedAt)}
           </p>
@@ -2403,7 +2524,7 @@ const OperationalClosePanel = ({
 
           <section className="grid gap-3 lg:grid-cols-2">
             <Card className="p-3">
-              <h3 className="mb-2 font-bold">Por status</h3>
+              <h3 className="mb-2 font-bold">Por estado</h3>
               <div className="grid gap-2 sm:grid-cols-2">
                 {Object.entries(summary.byStatus).map(([status, count]) => (
                   <div key={status} className="row">
@@ -2417,11 +2538,11 @@ const OperationalClosePanel = ({
               <h3 className="mb-2 font-bold">Tiempos promedio</h3>
               <div className="grid gap-2 sm:grid-cols-2">
                 <CloseMetricCard
-                  label="Nuevo → listo"
+                  label="Nuevo a listo"
                   value={formatDuration(summary.durations.newToReadyAvgSeconds)}
                 />
                 <CloseMetricCard
-                  label="Nuevo → entregado"
+                  label="Nuevo a entregado"
                   value={formatDuration(
                     summary.durations.newToDeliveredAvgSeconds,
                   )}
@@ -2540,8 +2661,8 @@ type PaymentPanelNotice = { tone: "success" | "error"; message: string };
 
 const paymentFilters: Array<{ value: PaymentFilter; label: string }> = [
   { value: "all", label: "Todos" },
-  { value: "pending", label: "Pendientes" },
-  { value: "paid", label: "Pagados" },
+  { value: "pending", label: "Por revisar" },
+  { value: "paid", label: "Confirmados" },
   { value: "cancelled", label: "Cancelados" },
 ];
 
@@ -2627,8 +2748,13 @@ const PaymentNotesPanel = ({
       setInlineNotice((current) => ({
         ...current,
         [order.id]: {
-          tone: "success",
-          message: `${order.folio}: estado de pago actualizado.`,
+            tone: "success",
+            message:
+              paymentStatus === "paid"
+                ? `${order.folio}: pago confirmado.`
+                : paymentStatus === "pending"
+                  ? `${order.folio}: falta confirmar pago.`
+                  : `${order.folio}: pago marcado como cancelado.`,
         },
       }));
     } catch (paymentError) {
@@ -2639,7 +2765,7 @@ const PaymentNotesPanel = ({
           message:
             paymentError instanceof Error
               ? paymentError.message
-              : "No se pudo actualizar el pago operativo",
+              : "No se pudo actualizar el pago. Revisa la sesión e inténtalo de nuevo.",
         },
       }));
     }
@@ -2652,12 +2778,11 @@ const PaymentNotesPanel = ({
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-200">
-              Control de pagos
+              Revisión de pagos
             </p>
-            <h3 className="text-lg font-black">Pagos y notas</h3>
+            <h3 className="text-lg font-black">Pagos por confirmar</h3>
             <p className="text-sm text-zinc-400">
-              No se realiza ningún cobro en línea. Estado de pago declarado por
-              operador.
+              Marca pagos confirmados y deja una nota si el pedido necesita seguimiento.
             </p>
           </div>
           <Button
@@ -2665,7 +2790,7 @@ const PaymentNotesPanel = ({
             onClick={() => runtime.reload(true)}
             disabled={runtime.loading || !runtime.sessionActive}
           >
-            {runtime.loading ? "Cargando…" : "Recargar órdenes"}
+            {runtime.loading ? "Actualizando…" : "Actualizar lista"}
           </Button>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-2 min-[360px]:grid-cols-4">
@@ -2680,15 +2805,33 @@ const PaymentNotesPanel = ({
           ))}
         </div>
         {!runtime.sessionActive ? (
-          <p className="mt-3 rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-100">
-            Inicia sesión para declarar pagos.
-          </p>
+            <p className="mt-3 rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-100">
+              Inicia sesión para confirmar pagos.
+            </p>
         ) : null}
       </Card>
       {runtime.source === "d1" && paymentOrders.length === 0 ? (
         <EmptyOrdersState
-          title="Sin órdenes para este filtro."
-          description="Usa Recargar órdenes o cambia el filtro de estado de pago."
+          title={
+            filter === "all"
+              ? "Todavía no hay pagos para revisar."
+              : "No hay coincidencias con este filtro."
+          }
+          description={
+            filter === "all"
+              ? "Cuando entre un pedido aparecerá aquí."
+              : "Limpia los filtros para ver todos los registros."
+          }
+          action={
+            filter !== "all" ? (
+              <Button
+                className="border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs"
+                onClick={() => setFilter("all")}
+              >
+                Limpiar filtros
+              </Button>
+            ) : undefined
+          }
         />
       ) : null}
       <div className="grid gap-2">
@@ -2704,8 +2847,8 @@ const PaymentNotesPanel = ({
                     {order.folio} · {order.customer}
                   </p>
                   <p className="text-[11px] text-zinc-400">
-                    {order.createdAt} · {order.channel} ·{" "}
-                    {order.source === "d1" ? "Operativo" : "Local"}
+                    {order.createdAt} · {channelLabel[order.channel]} ·{" "}
+                    {sourceLabel(order.source)}
                   </p>
                   {order.customerPhone ? (
                     <p className="text-[11px] text-zinc-500">
@@ -2722,14 +2865,14 @@ const PaymentNotesPanel = ({
                 <span>
                   Total: <strong>{formatCurrency(order.total)}</strong>
                 </span>
-                <span>Método de pago: {order.paymentMethod}</span>
-                <span>Estado de pago: {order.paymentState}</span>
+                <span>Método de pago: {getPaymentMethodLabel(order.paymentMethod)}</span>
+                <span>Pago: {getPaymentStatusLabel(order.paymentState)}</span>
                 <span>Estado del pedido: {statusLabel[order.status]}</span>
               </div>
               <OrderItems order={order} />
               <WhatsappOrderActions order={order} template="received" showHint />
               <label className="mt-2 block text-[11px] text-zinc-400">
-                Notas operativas
+                Nota para el equipo
                 <textarea
                   className="input mt-1 min-h-20 text-xs"
                   maxLength={500}
@@ -2740,11 +2883,11 @@ const PaymentNotesPanel = ({
                       [order.id]: event.target.value,
                     }))
                   }
-                  placeholder="Sin nota operativa"
+                  placeholder="Ej. falta comprobante, cliente avisa por WhatsApp"
                 />
               </label>
               <p className="mt-1 text-[11px] text-amber-200">
-                Editar notas puede reemplazar la nota operativa actual.
+                Guardar nota reemplaza la nota actual del pedido.
               </p>
               <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 <Button
@@ -2752,21 +2895,21 @@ const PaymentNotesPanel = ({
                   onClick={() => void runPaymentAction(order, "paid")}
                   disabled={busy || !runtime.sessionActive}
                 >
-                  {busy ? "Actualizando…" : "Marcar pagado"}
+                  {busy ? "Actualizando…" : "Confirmar pago"}
                 </Button>
                 <Button
                   className="border border-amber-700 bg-amber-950/50 px-3 py-1.5 text-xs text-amber-100 disabled:opacity-40"
                   onClick={() => void runPaymentAction(order, "pending")}
                   disabled={busy || !runtime.sessionActive}
                 >
-                  {busy ? "Actualizando…" : "Marcar pendiente"}
+                  {busy ? "Actualizando…" : "Falta confirmar"}
                 </Button>
                 <Button
                   className="border border-rose-700 bg-rose-950/50 px-3 py-1.5 text-xs text-rose-100 disabled:opacity-40"
                   onClick={() => void runPaymentAction(order, "cancelled")}
                   disabled={busy || !runtime.sessionActive}
                 >
-                  {busy ? "Actualizando…" : "Marcar pago cancelado"}
+                  {busy ? "Actualizando…" : "Cancelar pago"}
                 </Button>
                 <Button
                   className="border border-cyan-700 bg-cyan-950/50 px-3 py-1.5 text-xs text-cyan-100 disabled:opacity-40"
@@ -2813,11 +2956,11 @@ const HistoryPanel = ({
       <SourcePanel runtime={runtime} includeTerminal />
       <Card className="p-3">
         <h3 className="mb-2">
-          Historial {runtime.source === "d1" ? "Live" : "local"}
+          Historial {runtime.source === "d1" ? "de pedidos" : "de esta vista"}
         </h3>
         {runtime.source === "d1" && terminalOrders.length === 0 ? (
           <p className="text-sm text-zinc-400">
-            Aún no hay historial de órdenes terminales.
+            Aún no hay pedidos entregados o cancelados.
           </p>
         ) : null}
         <div className="space-y-2">
@@ -2850,7 +2993,7 @@ const HistoryPanel = ({
                       disabled={runtime.actionOrderId === o.id}
                       onClick={() => void onArchiveCancelled(o)}
                     >
-                      {runtime.actionOrderId === o.id ? "Ocultando…" : "Ocultar"}
+                      {runtime.actionOrderId === o.id ? "Ocultando…" : "Ocultar del historial"}
                     </Button>
                   ) : null}
                 </div>
@@ -2909,6 +3052,7 @@ const OrderDetailModal = ({
     (action) => action.status !== "cancelled",
   );
   const busy = actionOrderId === selected.id;
+  const itemCount = getOrderItemCount(selected);
   const runAction = async (next: OrderStatus) => {
     if (busy) return;
     await onMove(selected.id, next);
@@ -2926,13 +3070,16 @@ const OrderDetailModal = ({
         className="modal max-h-[calc(100vh-1rem)] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between">
-          <div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
             <h2 id="order-title" className="text-lg font-black">
               {selected.folio}
             </h2>
+            <p className="break-words text-sm font-semibold text-zinc-100">
+              {selected.customer}
+            </p>
             <p className="text-xs text-zinc-400">
-              {selected.customer} · {selected.createdAt} · {selected.channel}
+              {selected.createdAt} · {channelLabel[selected.channel]} · {sourceLabel(selected.source)}
             </p>
             {selected.customerPhone ? (
               <p className="text-xs text-zinc-500">
@@ -2946,20 +3093,21 @@ const OrderDetailModal = ({
               </p>
             ) : null}
           </div>
-          <StatusBadge status={selected.status} />
+          <div className="flex flex-wrap gap-1 sm:justify-end">
+            <StatusBadge status={selected.status} />
+            <PaymentStatusBadge status={selected.paymentState} />
+          </div>
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-          <p>
-            Pago: {selected.paymentMethod}/{selected.paymentState}
-          </p>
-          <p>Total: {formatCurrency(selected.total)}</p>
-          <p>Origen: {selected.source === "d1" ? "Operativo" : "Local"}</p>
-          <p>Estación: {selected.kitchenStation}</p>
+        <div className="mt-3 grid gap-2 text-sm min-[420px]:grid-cols-2">
+          <p className="info-pill">Pago: {getPaymentMethodLabel(selected.paymentMethod)}</p>
+          <p className="info-pill">Total: {formatCurrency(selected.total)}</p>
+          <p className="info-pill">Items: {itemCount}</p>
+          <p className="info-pill">Ticket: {selected.folio}</p>
         </div>
         <OrderItems order={selected} />
         {selected.note ? (
           <p className="mt-2 rounded bg-amber-500/10 px-2 py-1 text-xs text-amber-200">
-            Notas: {selected.note}
+            Nota para revisar: {selected.note}
           </p>
         ) : null}
         <p className="mt-2 text-right text-sm font-bold">
@@ -2967,7 +3115,7 @@ const OrderDetailModal = ({
         </p>
         <div className="mt-3 rounded-lg border border-cyan-400/20 bg-cyan-400/5 p-2">
           <label className="text-[11px] font-semibold text-cyan-100">
-            Template WhatsApp manual
+            Mensaje para WhatsApp
             <select
               className="input mt-1 text-xs"
               value={whatsappTemplate}
@@ -2993,7 +3141,8 @@ const OrderDetailModal = ({
             showHint
           />
         </div>
-        <div className="mt-3 space-y-1 rounded-lg border border-zinc-800 bg-zinc-900/60 p-2 text-xs text-zinc-300">
+        <div className="mt-3 space-y-2 rounded-lg border border-zinc-800 bg-zinc-900/60 p-2 text-xs text-zinc-300">
+          <p className="font-bold text-zinc-100">Actividad del pedido</p>
           {selected.timeline.map((t) => (
             <div key={t.id}>
               <p>
@@ -3002,8 +3151,8 @@ const OrderDetailModal = ({
               </p>
               {t.previousStatus || t.nextStatus ? (
                 <p className="text-zinc-500">
-                  {t.previousStatus ? statusLabel[t.previousStatus] : "—"} →{" "}
-                  {t.nextStatus ? statusLabel[t.nextStatus] : "—"}
+                  Antes: {t.previousStatus ? statusLabel[t.previousStatus] : "Sin dato"} ·{" "}
+                  Ahora: {t.nextStatus ? statusLabel[t.nextStatus] : "Sin dato"}
                 </p>
               ) : null}
               {t.reason ? (
@@ -3031,7 +3180,7 @@ const OrderDetailModal = ({
               className="flex-1 border border-rose-700 bg-rose-950/50 px-3 py-1.5 text-xs text-rose-200 disabled:opacity-40"
               disabled={busy}
             >
-              {busy ? "Cancelando…" : "Cancelar"}
+              {busy ? "Cancelando…" : "Cancelar pedido"}
             </Button>
           ) : null}
         </div>
@@ -3171,12 +3320,12 @@ export function InternalChekeoApp() {
       setNewOrderNotice({
         message:
           newOrders.length === 1
-            ? "Entró 1 orden nueva"
-            : `Entraron ${newOrders.length} órdenes nuevas`,
+            ? "Entró 1 pedido nuevo"
+            : `Entraron ${newOrders.length} pedidos nuevos`,
         orderFolios: newOrders.map((order) => order.folio),
       });
       setOrdersNotice(
-        `${newOrders.length === 1 ? "Nueva orden" : "Nuevas órdenes"}: ${newOrders
+        `${newOrders.length === 1 ? "Pedido nuevo" : "Pedidos nuevos"}: ${newOrders
           .map((order) => order.folio)
           .join(", ")}`,
       );
@@ -3227,13 +3376,13 @@ export function InternalChekeoApp() {
         setLastUpdated(formatOrderRefreshTime(reason));
         registerLoadedOrders(mappedOrders);
         if (reason !== "auto") {
-          setOrdersNotice("Órdenes actualizadas");
+          setOrdersNotice("Pedidos actualizados");
         }
       } catch (error) {
         const message =
           error instanceof Error
             ? error.message
-            : "No se pudieron cargar órdenes";
+            : "No se pudieron cargar pedidos. Actualiza la lista e inténtalo de nuevo.";
         if (/UNAUTHORIZED|401/i.test(message)) {
           expireSession();
           return;
@@ -3351,8 +3500,8 @@ export function InternalChekeoApp() {
       });
       setOrdersNotice(
         s === "cancelled"
-          ? "Cancelación actualizada localmente"
-          : "Estado actualizado localmente",
+          ? "Cancelación actualizada en esta vista"
+          : "Estado actualizado en esta vista",
       );
       return;
     }
@@ -3364,7 +3513,7 @@ export function InternalChekeoApp() {
         id,
         s,
         orderEnvironment,
-        reason ?? `Internal V2 ${tab}`,
+        reason ?? `Chekeo ${tab}`,
       );
       const mapped = mapOrderV2ToInternalOrder(updated);
       setOrders((p) => {
@@ -3381,7 +3530,7 @@ export function InternalChekeoApp() {
       const message =
         error instanceof Error
           ? error.message
-          : "No se pudo actualizar el estado live";
+          : "No se pudo actualizar el pedido. Revisa la sesión e inténtalo de nuevo.";
       setOrdersError(message);
       if (/UNAUTHORIZED|401/i.test(message)) expireSession();
       throw error instanceof Error ? error : new Error(message);
@@ -3409,7 +3558,7 @@ export function InternalChekeoApp() {
             : o,
         ),
       );
-      setOrdersNotice("Pago operativo actualizado localmente");
+      setOrdersNotice("Pago actualizado en esta vista");
       return;
     }
     actionOrderIdRef.current = id;
@@ -3429,7 +3578,7 @@ export function InternalChekeoApp() {
       const message =
         error instanceof Error
           ? error.message
-          : "No se pudo actualizar el pago operativo";
+          : "No se pudo actualizar el pago. Revisa la sesión e inténtalo de nuevo.";
       setOrdersError(message);
       if (/UNAUTHORIZED|401/i.test(message)) expireSession();
       throw error instanceof Error ? error : new Error(message);
@@ -3455,15 +3604,15 @@ export function InternalChekeoApp() {
 
   const archiveCancelledOrder = async (order: InternalOrder) => {
     if (ordersSource !== "d1") {
-      setOrdersError("Solo puedes ocultar órdenes live desde Chekeo.");
+      setOrdersError("Solo puedes ocultar pedidos reales desde Chekeo.");
       return;
     }
     if (order.status !== "cancelled") {
-      setOrdersError("Solo se pueden ocultar órdenes canceladas.");
+      setOrdersError("Solo se pueden ocultar pedidos cancelados.");
       return;
     }
     const confirmed = window.confirm(
-      "Esta orden cancelada dejará de aparecer en historial operativo y métricas. No borra el registro interno.",
+      "Este pedido cancelado dejará de aparecer en historial y métricas. No borra el registro.",
     );
     if (!confirmed) return;
 
@@ -3474,12 +3623,12 @@ export function InternalChekeoApp() {
       const updated = await archiveCancelledOrderV2(order.id, orderEnvironment);
       setOrders((current) => current.filter((entry) => entry.id !== updated.id));
       setSelected((current) => (current?.id === updated.id ? null : current));
-      setOrdersNotice(`${updated.folio}: orden cancelada oculta del historial operativo`);
+      setOrdersNotice(`${updated.folio}: pedido cancelado oculto del historial`);
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
-          : "No se pudo ocultar la orden cancelada";
+          : "No se pudo ocultar el pedido cancelado.";
       setOrdersError(message);
       if (/UNAUTHORIZED|401/i.test(message)) expireSession();
       throw error instanceof Error ? error : new Error(message);
@@ -3510,7 +3659,7 @@ export function InternalChekeoApp() {
             : order,
         ),
       );
-      setOrdersNotice("Checklist operativo actualizado localmente");
+      setOrdersNotice("Checklist actualizado en esta vista");
       return;
     }
 
@@ -3641,6 +3790,7 @@ export function InternalChekeoApp() {
         }}
       />
       <RuntimeEnvironmentBanner environment={runtimeEnvironment} />
+      <OperationalSummary orders={orders} source={ordersSource} />
       <NewOrderBanner
         notice={newOrderNotice}
         onDismiss={() => setNewOrderNotice(null)}
