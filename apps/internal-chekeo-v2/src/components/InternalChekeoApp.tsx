@@ -211,6 +211,15 @@ const sourceLabel = (source?: string) =>
     : source === "public-v2-preview"
       ? "Pedidos de prueba"
       : "Vista local";
+const getOrdersDataLabel = (
+  source: OrdersSource,
+  environment: OrderV2Environment,
+) =>
+  source === "d1"
+    ? environment === "production"
+      ? "Datos reales"
+      : "Datos de preview"
+    : "Vista local";
 const getPaymentStatusLabel = (status: string) =>
   isOrderV2PaymentStatus(status) ? paymentStatusLabel[status] : status || "Por confirmar";
 const getPaymentMethodLabel = (method: string) =>
@@ -1021,7 +1030,7 @@ const OperatorHeader = ({
         </h1>
         <p className="text-[11px] text-zinc-400">
           {active} pedidos activos · {orderEnvironmentLabel[environment]} ·{" "}
-          {source === "d1" ? "Datos reales" : "Vista local"} ·{" "}
+          {getOrdersDataLabel(source, environment)} ·{" "}
           {new Date().toLocaleTimeString()}
         </p>
       </div>
@@ -3513,7 +3522,7 @@ export function InternalChekeoApp() {
         id,
         s,
         orderEnvironment,
-        reason ?? `Chekeo ${tab}`,
+        reason ?? `Internal V2 ${tab}`,
       );
       const mapped = mapOrderV2ToInternalOrder(updated);
       setOrders((p) => {
