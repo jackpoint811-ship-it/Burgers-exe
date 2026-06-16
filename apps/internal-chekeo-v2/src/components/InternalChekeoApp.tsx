@@ -2533,7 +2533,7 @@ const KitchenBurgerCard = ({
           </div>
           {!item.lineKey ? (
             <p className="mt-2 text-xs text-amber-200">
-              Sin lineKey en snapshot; no se puede persistir en D1.
+              No se puede marcar este item todavía. Revisa el detalle del pedido.
             </p>
           ) : null}
         </div>
