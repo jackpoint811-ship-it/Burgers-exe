@@ -38,9 +38,52 @@ button{min-height:44px}
 .runtime-environment-banner--local{@apply border-sky-400/50 bg-sky-500/10 shadow-[0_0_22px_rgba(56,189,248,0.12)]}
 .runtime-environment-link{@apply inline-flex min-h-11 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs font-black text-zinc-50 hover:bg-zinc-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400}
 .runtime-login-notice{@apply mb-4 rounded-xl border border-zinc-800 bg-zinc-900/65 p-3 text-left}
-.kitchen-lanes{@apply grid gap-2 min-[520px]:grid-cols-2 xl:grid-cols-5}
-.kitchen-lane{@apply rounded-2xl border border-zinc-800 bg-zinc-900/60 p-3 text-left}
-.kitchen-lane--active{@apply border-cyan-300/50 bg-cyan-400/10}
+.kitchen-production{@apply space-y-3}
+.kitchen-hero{@apply rounded-2xl border border-zinc-800 bg-zinc-950/95 p-3 shadow-xl md:p-4}
+.kitchen-hero__actions{@apply flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end}
+.kitchen-command-strip{@apply mt-4 grid grid-cols-2 gap-2 md:grid-cols-4}
+.kitchen-command-strip>div{@apply rounded-xl border border-zinc-800 bg-zinc-900/65 p-3}
+.kitchen-command-strip span{@apply block text-2xl font-black text-zinc-50}
+.kitchen-command-strip p{@apply mt-1 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500}
+.kitchen-command-strip__hot{@apply border-rose-400/50 bg-rose-500/10}
+.kitchen-lanes{@apply mt-4 grid gap-2 min-[520px]:grid-cols-2 xl:grid-cols-5}
+.kitchen-lane{@apply cursor-pointer rounded-xl border border-zinc-800 bg-zinc-900/60 p-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-lime-300}
+.kitchen-lane--active{@apply border-lime-300/60 bg-lime-300/10}
+.kitchen-board{@apply grid gap-3 xl:grid-cols-4}
+.kitchen-board-lane{@apply min-w-0 rounded-2xl border border-zinc-800 bg-zinc-950/70 p-2}
+.kitchen-board-lane__header{@apply mb-2 flex items-start justify-between gap-2 px-1}
+.kitchen-board-lane__header h3{@apply text-sm font-black uppercase tracking-[0.16em] text-zinc-100}
+.kitchen-board-lane__header p{@apply mt-1 text-[11px] text-zinc-500}
+.kitchen-board-lane__header span{@apply rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1 text-sm font-black text-zinc-100}
+.kitchen-board-lane__body{@apply space-y-2}
+.kitchen-focused-list{@apply grid gap-3 lg:grid-cols-2}
+.kitchen-ticket{@apply overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 p-3 shadow-xl}
+.kitchen-ticket--late{@apply border-amber-400/45 bg-amber-950/10}
+.kitchen-ticket--critical{@apply border-rose-400/55 bg-rose-950/20}
+.kitchen-ticket--highlighted{@apply border-lime-300/70 bg-lime-300/10 shadow-lime-950/30}
+.kitchen-ticket__topline{@apply flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between}
+.kitchen-ticket__timer{@apply inline-flex w-fit items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 py-1.5 text-sm font-black text-zinc-100}
+.kitchen-ticket__meta{@apply mt-3 flex flex-wrap gap-1.5 text-[11px] font-bold text-zinc-300}
+.kitchen-ticket__meta span{@apply inline-flex min-h-8 items-center gap-1 rounded-lg border border-zinc-800 bg-zinc-900/70 px-2.5 py-1}
+.kitchen-ticket__progress-row{@apply mt-3 grid gap-2 rounded-xl border border-zinc-800 bg-zinc-900/55 p-3 sm:grid-cols-[1fr_120px] sm:items-center}
+.kitchen-progress{@apply h-2 overflow-hidden rounded-full bg-zinc-800}
+.kitchen-progress span{@apply block h-full rounded-full bg-lime-300}
+.kitchen-alert{@apply mt-3 flex items-start gap-2 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-sm font-bold text-amber-100}
+.kitchen-critical-note{@apply mt-3 rounded-xl border border-rose-400/25 bg-rose-400/10 px-3 py-2 text-sm font-bold text-rose-50}
+.kitchen-ticket__items{@apply mt-3 space-y-2}
+.kitchen-ticket-item{@apply grid gap-3 rounded-xl border border-zinc-800 bg-zinc-900/65 p-3 sm:grid-cols-[1fr_auto] sm:items-center}
+.kitchen-ticket-item--done{@apply border-emerald-400/30 bg-emerald-500/10}
+.kitchen-item-kind{@apply rounded-md border border-zinc-700 bg-zinc-950 px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-zinc-400}
+.kitchen-dot{@apply rounded-full bg-amber-300 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-amber-950}
+.kitchen-dot--done{@apply bg-emerald-300 text-emerald-950}
+.kitchen-note-chip{@apply rounded-md border border-zinc-700 bg-zinc-950 px-2 py-1 text-[11px] font-bold text-zinc-300}
+.kitchen-item-action{@apply inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-400 px-3 py-2 text-sm font-black text-emerald-950 disabled:opacity-50 sm:w-auto}
+.kitchen-item-action--done{@apply border border-zinc-700 bg-zinc-950 text-zinc-100}
+.kitchen-ticket__actions{@apply mt-3 grid gap-2 sm:grid-cols-[1fr_auto]}
+.kitchen-primary-action{@apply inline-flex w-full items-center justify-center gap-2 rounded-lg bg-lime-300 px-3 py-3 text-sm font-black text-lime-950 disabled:opacity-60}
+.kitchen-primary-action--muted{@apply border border-zinc-700 bg-zinc-900 text-zinc-300}
+.kitchen-secondary-action{@apply inline-flex items-center justify-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm font-black text-zinc-100 disabled:opacity-50}
+.kitchen-secondary-action--active{@apply border-lime-300/50 bg-lime-300/10 text-lime-100}
 .admin-nav{@apply grid grid-cols-2 gap-2 sm:flex sm:flex-wrap}
 .admin-nav__button{@apply min-h-11 rounded-xl border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-sm font-semibold text-zinc-300}
 .admin-nav__button--active{@apply border-cyan-300/50 bg-cyan-400/10 text-cyan-100}
@@ -53,12 +96,12 @@ button{min-height:44px}
 .image-preview{@apply flex h-28 w-full shrink-0 items-center justify-center overflow-hidden rounded-xl border border-zinc-700 bg-zinc-900 text-xs uppercase tracking-widest text-zinc-500 sm:w-32}
 .image-preview img{@apply h-full w-full object-cover}
 @media (hover: hover) and (pointer: fine){
-  .btn,.btn-sm,.tab,.runtime-environment-link,.summary-card,.row,.kitchen-lane,.admin-nav__button{transition-property:transform,border-color,background-color,opacity;transition-duration:180ms;transition-timing-function:cubic-bezier(0.23,1,0.32,1)}
-  .btn:hover,.btn-sm:hover,.runtime-environment-link:hover{transform:translateY(-1px)}
-  .summary-card:hover,.row:hover,.kitchen-lane:hover,.admin-nav__button:hover{border-color:rgb(34 211 238 / .35)}
+  .btn,.btn-sm,.tab,.runtime-environment-link,.summary-card,.row,.kitchen-lane,.admin-nav__button,.kitchen-ticket,.kitchen-secondary-action,.kitchen-primary-action,.kitchen-item-action{transition-property:transform,border-color,background-color,opacity;transition-duration:180ms;transition-timing-function:cubic-bezier(0.23,1,0.32,1)}
+  .btn:hover,.btn-sm:hover,.runtime-environment-link:hover,.kitchen-secondary-action:hover,.kitchen-primary-action:hover,.kitchen-item-action:hover{transform:translateY(-1px)}
+  .summary-card:hover,.row:hover,.kitchen-lane:hover,.admin-nav__button:hover,.kitchen-ticket:hover{border-color:rgb(163 230 53 / .45)}
 }
-.btn:active,.btn-sm:active,.runtime-environment-link:active{transform:scale(.98)}
+.btn:active,.btn-sm:active,.runtime-environment-link:active,.kitchen-secondary-action:active,.kitchen-primary-action:active,.kitchen-item-action:active{transform:scale(.98)}
 @media (prefers-reduced-motion: reduce){
   *,::before,::after{scroll-behavior:auto!important}
-  .btn,.btn-sm,.tab,.runtime-environment-link,.summary-card,.row,.kitchen-lane,.admin-nav__button{transition:none!important;transform:none!important}
+  .btn,.btn-sm,.tab,.runtime-environment-link,.summary-card,.row,.kitchen-lane,.admin-nav__button,.kitchen-ticket,.kitchen-secondary-action,.kitchen-primary-action,.kitchen-item-action{transition:none!important;transform:none!important}
 }

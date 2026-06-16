@@ -10,6 +10,17 @@ import {
 import * as Tabs from "@radix-ui/react-tabs";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
+  AlertTriangle,
+  CheckCircle2,
+  ChefHat,
+  Clock3,
+  Eye,
+  MapPin,
+  PackageCheck,
+  Play,
+  RefreshCw,
+} from "lucide-react";
+import {
   mockOrders,
   operatorStats,
   type KitchenSummaryKResponse,
@@ -120,6 +131,8 @@ type InternalOrder = Omit<
   customerPhone?: string;
   source?: string;
   updatedAt?: string;
+  createdAtMs?: number;
+  updatedAtMs?: number;
   items: InternalOrderItem[];
   timeline: InternalTimelineEvent[];
   archivedAt?: string;
@@ -350,6 +363,7 @@ const normalizeMockOrderItem = (
 const asInternalOrders = (orders: MockOrder[]): InternalOrder[] =>
   orders.map((order) => ({
     ...order,
+    createdAtMs: parseOrderTimestamp(order.createdAt),
     items: order.items.map(normalizeMockOrderItem),
   }));
 const AUTO_REFRESH_INTERVAL_MS = 25_000;
@@ -365,6 +379,16 @@ const getOrderKey = (order: Pick<InternalOrder, "id" | "folio">) =>
   `${order.id}::${order.folio}`;
 const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
 const todayDateInput = () => new Date().toISOString().slice(0, 10);
+const parseOrderTimestamp = (value?: string) => {
+  if (!value) return undefined;
+  const parsed = new Date(value);
+  if (!Number.isNaN(parsed.getTime())) return parsed.getTime();
+  const clock = value.match(/^(\d{1,2}):(\d{2})$/);
+  if (!clock) return undefined;
+  const today = new Date();
+  today.setHours(Number(clock[1]), Number(clock[2]), 0, 0);
+  return today.getTime();
+};
 const formatDuration = (seconds: number | null) => {
   if (seconds === null) return "—";
   const rounded = Math.max(0, Math.round(seconds));
@@ -620,6 +644,8 @@ const mapOrderV2ToInternalOrder = (order: OrderV2): InternalOrder => {
     channel: order.orderMode,
     createdAt: formatDateTime(order.createdAt),
     updatedAt: formatDateTime(order.updatedAt),
+    createdAtMs: parseOrderTimestamp(order.createdAt),
+    updatedAtMs: parseOrderTimestamp(order.updatedAt),
     archivedAt: order.archivedAt,
     status: order.status,
     priority: "normal",
@@ -2011,6 +2037,392 @@ const KitchenItemModifiers = ({ item }: { item: InternalOrderItem }) => (
   </div>
 );
 
+type KitchenFocus = "all" | "new" | "preparing" | "attention" | "ready";
+type KitchenUrgency = "normal" | "late" | "critical";
+type KitchenOrderMeta = {
+  order: InternalOrder;
+  kitchenItems: InternalOrderItem[];
+  burgerItems: InternalOrderItem[];
+  garnishItems: InternalOrderItem[];
+  pendingItems: InternalOrderItem[];
+  doneItems: InternalOrderItem[];
+  elapsedMinutes: number | null;
+  urgency: KitchenUrgency;
+  needsAttention: boolean;
+  readyNeedsReview: boolean;
+  progressLabel: string;
+  progressPercent: number;
+  nextAction: string;
+};
+
+const KITCHEN_LATE_MINUTES = 12;
+const KITCHEN_CRITICAL_MINUTES = 20;
+
+const formatKitchenElapsed = (minutes: number | null) => {
+  if (minutes === null) return "Tiempo sin confirmar";
+  if (minutes < 1) return "Ahora";
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest ? `${hours}h ${rest}m` : `${hours}h`;
+};
+
+const getKitchenItemLabel = (item: InternalOrderItem) => {
+  const kind = getKitchenItemKind(item);
+  if (kind === "combo") return "Combo";
+  if (kind === "garnish") return "Guarnición";
+  if (kind === "drink") return "Bebida";
+  return "Burger";
+};
+
+const getKitchenItemNotes = (item: InternalOrderItem) => {
+  const notes: string[] = [];
+  if (item.removedIngredients.length)
+    notes.push(`Sin: ${item.removedIngredients.join(", ")}`);
+  if (item.extras.length)
+    notes.push(`Extras: ${item.extras.map((extra) => extra.name).join(", ")}`);
+  if (item.garnish) notes.push(`Guarnición: ${item.garnish.name}`);
+  if (item.includedDrink) notes.push(`Bebida: ${item.includedDrink.name}`);
+  if (item.sideQuestExtras.length)
+    notes.push(
+      `Extras de guarnición: ${item.sideQuestExtras.map((extra) => extra.name).join(", ")}`,
+    );
+  if (item.comboBurgers.length)
+    notes.push(
+      `Combo: ${item.comboBurgers.map((burger) => burger.name).join(", ")}`,
+    );
+  if (item.burgerNote) notes.push(`Nota: ${item.burgerNote}`);
+  return notes;
+};
+
+const buildKitchenOrderMeta = (
+  order: InternalOrder,
+  nowMs: number,
+): KitchenOrderMeta => {
+  const kitchenItems = order.items.filter((item) => {
+    const kind = getKitchenItemKind(item);
+    return kind === "burger" || kind === "combo" || kind === "garnish";
+  });
+  const burgerItems = kitchenItems.filter(isBurgerOrCombo);
+  const garnishItems = kitchenItems.filter(isStandaloneGarnish);
+  const pendingItems = kitchenItems.filter((item) => !item.kitchenDone);
+  const doneItems = kitchenItems.filter((item) => item.kitchenDone);
+  const elapsedMinutes =
+    typeof order.createdAtMs === "number"
+      ? Math.max(0, Math.floor((nowMs - order.createdAtMs) / 60000))
+      : null;
+  const urgency: KitchenUrgency =
+    elapsedMinutes !== null && elapsedMinutes >= KITCHEN_CRITICAL_MINUTES
+      ? "critical"
+      : elapsedMinutes !== null && elapsedMinutes >= KITCHEN_LATE_MINUTES
+        ? "late"
+        : "normal";
+  const progressPercent = kitchenItems.length
+    ? Math.round((doneItems.length / kitchenItems.length) * 100)
+    : 100;
+  const readyNeedsReview = order.status === "ready" && pendingItems.length > 0;
+  const needsAttention =
+    order.priority === "urgent" ||
+    order.paymentState === "pending" ||
+    readyNeedsReview ||
+    urgency === "critical";
+  const nextAction =
+    order.paymentState === "pending"
+      ? "Revisar pago"
+      : readyNeedsReview
+        ? "Completar checklist"
+        : order.status === "new"
+          ? "Iniciar preparación"
+          : order.status === "preparing" && pendingItems.length === 0
+            ? "Marcar listo"
+            : order.status === "preparing"
+              ? "Terminar pendientes"
+              : order.status === "ready"
+                ? "Salida"
+                : "Revisar pedido";
+
+  return {
+    order,
+    kitchenItems,
+    burgerItems,
+    garnishItems,
+    pendingItems,
+    doneItems,
+    elapsedMinutes,
+    urgency,
+    needsAttention,
+    readyNeedsReview,
+    progressLabel: `${doneItems.length}/${kitchenItems.length || 0}`,
+    progressPercent,
+    nextAction,
+  };
+};
+
+const getKitchenSortRank = (meta: KitchenOrderMeta) => {
+  if (meta.order.priority === "urgent") return 0;
+  if (meta.urgency === "critical") return 1;
+  if (meta.needsAttention) return 2;
+  if (meta.urgency === "late") return 3;
+  if (meta.order.status === "new") return 4;
+  if (meta.order.status === "preparing") return 5;
+  if (meta.order.status === "ready") return 6;
+  return 7;
+};
+
+const sortKitchenOrders = (a: KitchenOrderMeta, b: KitchenOrderMeta) => {
+  const rankDiff = getKitchenSortRank(a) - getKitchenSortRank(b);
+  if (rankDiff !== 0) return rankDiff;
+  const aTime = a.order.createdAtMs ?? Number.MAX_SAFE_INTEGER;
+  const bTime = b.order.createdAtMs ?? Number.MAX_SAFE_INTEGER;
+  return aTime - bTime;
+};
+
+const matchesKitchenFocus = (meta: KitchenOrderMeta, focus: KitchenFocus) => {
+  if (focus === "all") return true;
+  if (focus === "attention") return meta.needsAttention;
+  return meta.order.status === focus;
+};
+
+const getKitchenLane = (meta: KitchenOrderMeta): Exclude<KitchenFocus, "all"> => {
+  if (meta.needsAttention) return "attention";
+  if (meta.order.status === "new") return "new";
+  if (meta.order.status === "preparing") return "preparing";
+  return "ready";
+};
+
+const KitchenProgressBar = ({ meta }: { meta: KitchenOrderMeta }) => (
+  <div className="kitchen-progress" aria-label={`Checklist ${meta.progressLabel}`}>
+    <span style={{ width: `${meta.progressPercent}%` }} />
+  </div>
+);
+
+const KitchenTicketItem = ({
+  order,
+  item,
+  index,
+  busy,
+  onToggleKitchenItem,
+}: {
+  order: InternalOrder;
+  item: InternalOrderItem;
+  index: number;
+  busy: boolean;
+  onToggleKitchenItem: ToggleKitchenItemDone;
+}) => {
+  const done = Boolean(item.kitchenDone);
+  const lineKey = getKitchenLineKey(order, item, index);
+  const kind = getKitchenItemKind(item) as KitchenItemKind;
+  const notes = getKitchenItemNotes(item);
+  return (
+    <div className={`kitchen-ticket-item ${done ? "kitchen-ticket-item--done" : ""}`}>
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="kitchen-item-kind">{getKitchenItemLabel(item)}</span>
+          <p className="break-words text-sm font-black text-zinc-50">
+            {item.name} #{item.itemDisplayIndex ?? index + 1}
+          </p>
+          <span className={done ? "kitchen-dot kitchen-dot--done" : "kitchen-dot"}>
+            {done ? "Hecho" : "Pendiente"}
+          </span>
+        </div>
+        {notes.length ? (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {notes.slice(0, 4).map((note) => (
+              <span key={note} className="kitchen-note-chip">
+                {note}
+              </span>
+            ))}
+          </div>
+        ) : null}
+        {!item.lineKey ? (
+          <p className="mt-2 text-xs font-bold text-amber-200">
+            No se puede marcar este item todavía. Revisa el detalle del pedido.
+          </p>
+        ) : null}
+      </div>
+      <Button
+        className={`kitchen-item-action ${done ? "kitchen-item-action--done" : ""}`}
+        disabled={busy || !item.lineKey}
+        onClick={() => {
+          if (!item.lineKey) return;
+          void onToggleKitchenItem(order.id, item.lineKey, kind, !done);
+        }}
+      >
+        {done ? (
+          <>
+            <RefreshCw size={15} aria-hidden="true" /> Reabrir
+          </>
+        ) : (
+          <>
+            <CheckCircle2 size={16} aria-hidden="true" /> Hecho
+          </>
+        )}
+      </Button>
+    </div>
+  );
+};
+
+const KitchenPrimaryAction = ({
+  meta,
+  onMove,
+  actionOrderId,
+}: {
+  meta: KitchenOrderMeta;
+  onMove: MoveOrderStatus;
+  actionOrderId: string | null;
+}) => {
+  const busy = actionOrderId === meta.order.id;
+  if (meta.order.status === "new") {
+    return (
+      <Button
+        className="kitchen-primary-action"
+        disabled={busy}
+        onClick={() => void onMove(meta.order.id, "preparing")}
+      >
+        <Play size={16} aria-hidden="true" />
+        {busy ? "Iniciando..." : "Iniciar preparación"}
+      </Button>
+    );
+  }
+  if (meta.order.status === "preparing" && meta.pendingItems.length === 0) {
+    return (
+      <Button
+        className="kitchen-primary-action"
+        disabled={busy}
+        onClick={() => void onMove(meta.order.id, "ready")}
+      >
+        <PackageCheck size={16} aria-hidden="true" />
+        {busy ? "Marcando..." : "Marcar listo"}
+      </Button>
+    );
+  }
+  return (
+    <Button className="kitchen-primary-action kitchen-primary-action--muted" disabled>
+      <ChefHat size={16} aria-hidden="true" />
+      {meta.nextAction}
+    </Button>
+  );
+};
+
+const KitchenTicket = ({
+  meta,
+  busyLineKey,
+  highlighted,
+  onToggleKitchenItem,
+  onMove,
+  onOpen,
+  actionOrderId,
+}: {
+  meta: KitchenOrderMeta;
+  busyLineKey: string | null;
+  highlighted: boolean;
+  onToggleKitchenItem: ToggleKitchenItemDone;
+  onMove: MoveOrderStatus;
+  onOpen: (order: InternalOrder) => void;
+  actionOrderId: string | null;
+}) => {
+  const { order } = meta;
+  const generalNote = stripLocationFromNotes(order.note);
+  const urgencyLabel =
+    meta.urgency === "critical"
+      ? "Crítico"
+      : meta.urgency === "late"
+        ? "Tardando"
+        : "A tiempo";
+  return (
+    <article
+      className={`kitchen-ticket kitchen-ticket--${meta.urgency} ${highlighted ? "kitchen-ticket--highlighted" : ""}`}
+    >
+      <div className="kitchen-ticket__topline">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-2xl font-black text-zinc-50">{order.folio}</p>
+            <StatusBadge status={order.status} />
+            <PaymentStatusBadge status={order.paymentState} />
+          </div>
+          <p className="mt-1 break-words text-base font-extrabold text-zinc-100">
+            {order.customer}
+          </p>
+        </div>
+        <div className="kitchen-ticket__timer">
+          <Clock3 size={16} aria-hidden="true" />
+          <span>{formatKitchenElapsed(meta.elapsedMinutes)}</span>
+        </div>
+      </div>
+
+      <div className="kitchen-ticket__meta">
+        <span>
+          <MapPin size={14} aria-hidden="true" />
+          {extractKitchenLocation(order.note)}
+        </span>
+        <span>Items {getOrderItemCount(order)}</span>
+        <span>Burgers {meta.burgerItems.length}</span>
+        <span>Guarniciones {meta.garnishItems.length}</span>
+        <span>{urgencyLabel}</span>
+      </div>
+
+      <div className="kitchen-ticket__progress-row">
+        <div>
+          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500">
+            Checklist
+          </p>
+          <p className="mt-1 text-sm font-black text-zinc-100">
+            {meta.progressLabel} hecho · {meta.pendingItems.length} pendiente
+          </p>
+        </div>
+        <KitchenProgressBar meta={meta} />
+      </div>
+
+      {meta.needsAttention ? (
+        <div className="kitchen-alert">
+          <AlertTriangle size={16} aria-hidden="true" />
+          <span>
+            {order.paymentState === "pending"
+              ? "Pago pendiente antes de salida."
+              : meta.readyNeedsReview
+                ? "Pedido listo con checklist pendiente."
+                : "Revisar prioridad operativa."}
+          </span>
+        </div>
+      ) : null}
+
+      {generalNote ? (
+        <p className="kitchen-critical-note">Nota: {generalNote}</p>
+      ) : null}
+
+      <div className="kitchen-ticket__items">
+        {meta.kitchenItems.length ? (
+          meta.kitchenItems.map((item, index) => (
+            <KitchenTicketItem
+              key={getKitchenLineKey(order, item, index)}
+              order={order}
+              item={item}
+              index={index}
+              busy={busyLineKey === getKitchenLineKey(order, item, index)}
+              onToggleKitchenItem={onToggleKitchenItem}
+            />
+          ))
+        ) : (
+          <p className="rounded-lg border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-sm font-bold text-amber-100">
+            Sin items de cocina. Revisa el detalle antes de cerrar el pedido.
+          </p>
+        )}
+      </div>
+
+      <div className="kitchen-ticket__actions">
+        <KitchenPrimaryAction
+          meta={meta}
+          onMove={onMove}
+          actionOrderId={actionOrderId}
+        />
+        <Button className="kitchen-secondary-action" onClick={() => onOpen(order)}>
+          <Eye size={16} aria-hidden="true" /> Ver detalle
+        </Button>
+      </div>
+    </article>
+  );
+};
+
 const KitchenBurgerCard = ({
   order,
   item,
@@ -2083,7 +2495,7 @@ const KitchenBurgerCard = ({
           ) : null}
           {item.sideQuestExtras.length ? (
             <div className="mb-3 rounded-xl border border-fuchsia-400/20 bg-fuchsia-400/5 p-3 text-xs font-semibold text-zinc-200">
-              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-fuchsia-200">Side Quest extra</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-fuchsia-200">Extras de guarnición</p>
               <ul className="mt-2 space-y-1">
                 {item.sideQuestExtras.map((extra, index) => <li key={`${extra.sku ?? extra.name}-${index}`}>{extra.itemKind === "drink" ? "Bebida" : "Guarnición"}: {extra.name}</li>)}
               </ul>
@@ -2121,7 +2533,7 @@ const KitchenBurgerCard = ({
           </div>
           {!item.lineKey ? (
             <p className="mt-2 text-xs text-amber-200">
-              Sin lineKey en snapshot; no se puede persistir en D1.
+              No se puede marcar este item todavía. Revisa el detalle del pedido.
             </p>
           ) : null}
         </div>
@@ -2259,7 +2671,7 @@ const SideQuestItemCard = ({
             {item.name} #{item.itemDisplayIndex ?? itemIndex + 1}
           </p>
           <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-zinc-500">
-            Side Quest · {done ? "Hecha" : "Pendiente"}
+            Guarnición · {done ? "Hecha" : "Pendiente"}
           </p>
         </div>
         <span
@@ -2332,126 +2744,87 @@ const KitchenQueue = ({
   orders,
   runtime,
   onToggleKitchenItem,
+  onMove,
+  onOpenOrder,
 }: {
   orders: InternalOrder[];
   runtime: OrdersRuntime;
   onToggleKitchenItem: ToggleKitchenItemDone;
+  onMove: MoveOrderStatus;
+  onOpenOrder: (order: InternalOrder) => void;
 }) => {
-  const [mode, setMode] = useState<"burgers" | "sidequest" | "summaryK">("burgers");
-  const [focus, setFocus] = useState<
-    "all" | "new" | "preparing" | "attention" | "ready"
-  >("all");
+  const [view, setView] = useState<"board" | "summaryK">("board");
+  const [focus, setFocus] = useState<KitchenFocus>("all");
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const [busyLineKey, setBusyLineKey] = useState<string | null>(null);
   const activeOrders = orders.filter((o) => !terminalStatuses.has(o.status));
   const fallback = runtime.source !== "d1";
-  const readyFocus = focus === "ready";
-  const showReadyOrdersForReview =
-    focus === "all" || focus === "attention";
-  const matchesFocus = (order: InternalOrder) => {
-    if (focus === "all") return true;
-    if (focus === "attention")
-      return order.priority === "urgent" || order.paymentState === "pending";
-    return order.status === focus;
-  };
-  const scopedOrders = activeOrders.filter(matchesFocus);
+  const orderMetas = activeOrders
+    .map((order) => buildKitchenOrderMeta(order, nowMs))
+    .sort(sortKitchenOrders);
+  const scopedOrders = orderMetas.filter((meta) =>
+    matchesKitchenFocus(meta, focus),
+  );
+  const boardLanes: Array<{
+    key: Exclude<KitchenFocus, "all">;
+    title: string;
+    hint: string;
+  }> = [
+    { key: "attention", title: "Atención", hint: "Pago, checklist o tiempo crítico" },
+    { key: "new", title: "Nuevos", hint: "Entraron y falta iniciar" },
+    { key: "preparing", title: "En preparación", hint: "Trabajo activo" },
+    { key: "ready", title: "Listos", hint: "Salida y revisión final" },
+  ];
+  const laneOrders = boardLanes.map((lane) => ({
+    ...lane,
+    orders: orderMetas.filter((meta) => getKitchenLane(meta) === lane.key),
+  }));
   const focusCards = [
     {
       key: "all" as const,
       label: "Todos",
-      value: activeOrders.length,
+      value: orderMetas.length,
       hint: "Vista completa",
     },
     {
       key: "new" as const,
       label: "Nuevos",
-      value: activeOrders.filter((order) => order.status === "new").length,
+      value: orderMetas.filter((meta) => meta.order.status === "new").length,
       hint: "Entraron y falta arrancarlos",
     },
     {
       key: "preparing" as const,
       label: "En preparación",
-      value: activeOrders.filter((order) => order.status === "preparing").length,
+      value: orderMetas.filter((meta) => meta.order.status === "preparing")
+        .length,
       hint: "Trabajo activo",
     },
     {
       key: "attention" as const,
       label: "Atención",
-      value: activeOrders.filter(
-        (order) =>
-          order.priority === "urgent" || order.paymentState === "pending",
-      ).length,
-      hint: "Urgentes o con pago pendiente",
+      value: orderMetas.filter((meta) => meta.needsAttention).length,
+      hint: "Urgentes, pago o checklist",
     },
     {
       key: "ready" as const,
       label: "Listos",
-      value: activeOrders.filter((order) => order.status === "ready").length,
+      value: orderMetas.filter((meta) => meta.order.status === "ready").length,
       hint: "Listos para salida",
     },
   ];
-
-  const withBurgerItems = scopedOrders
-    .map((order) => ({ order, items: order.items.filter(isBurgerOrCombo) }))
-    .filter(({ items }) => items.length > 0);
-  const readyBurgerOrders = withBurgerItems.filter(
-    ({ order }) => order.status === "ready",
-  );
-  const pendingBurgerOrders = withBurgerItems.filter(
-    ({ order, items }) =>
-      order.status !== "ready" && items.some((item) => !item.kitchenDone),
-  );
-  const readyBurgerOrdersForReview = readyBurgerOrders.filter(({ items }) =>
-    items.some((item) => !item.kitchenDone),
-  );
-  const doneBurgerOrders = withBurgerItems.filter(({ items }) =>
-    items.every((item) => item.kitchenDone),
+  const lateOrders = orderMetas.filter((meta) => meta.urgency === "late").length;
+  const criticalOrders = orderMetas.filter(
+    (meta) => meta.urgency === "critical",
+  ).length;
+  const pendingKitchenItems = orderMetas.reduce(
+    (acc, meta) => acc + meta.pendingItems.length,
+    0,
   );
 
-  const withGarnishItems = scopedOrders
-    .map((order) => ({ order, items: order.items.filter(isStandaloneGarnish) }))
-    .filter(({ items }) => items.length > 0);
-  const readyGarnishOrders = withGarnishItems.filter(
-    ({ order }) => order.status === "ready",
-  );
-  const pendingGarnishOrders = withGarnishItems
-    .map(({ order, items }) => ({
-      order,
-      items: items.filter((item) => !item.kitchenDone),
-    }))
-    .filter(({ order, items }) => order.status !== "ready" && items.length > 0);
-  const readyGarnishOrdersForReview = readyGarnishOrders
-    .map(({ order, items }) => ({
-      order,
-      items: items.filter((item) => !item.kitchenDone),
-    }))
-    .filter(({ items }) => items.length > 0);
-  const readyGarnishOrdersForReviewIds = new Set(
-    readyGarnishOrdersForReview.map(({ order }) => order.id),
-  );
-  const doneGarnishOrders = withGarnishItems
-    .map(({ order, items }) => ({
-      order,
-      items: items.filter((item) => item.kitchenDone),
-    }))
-    .filter(({ items }) => items.length > 0);
-  const primaryBurgerOrders = readyFocus
-    ? readyBurgerOrders
-    : showReadyOrdersForReview
-      ? [...pendingBurgerOrders, ...readyBurgerOrdersForReview]
-      : pendingBurgerOrders;
-  const primaryGarnishOrders = readyFocus
-    ? readyGarnishOrders
-    : showReadyOrdersForReview
-      ? [...pendingGarnishOrders, ...readyGarnishOrdersForReview]
-      : pendingGarnishOrders;
-  const primaryGarnishCount = readyFocus
-    ? readyGarnishOrders.length
-    : primaryGarnishOrders.reduce((acc, entry) => acc + entry.items.length, 0);
-  const secondaryGarnishOrders = showReadyOrdersForReview
-    ? doneGarnishOrders.filter(
-        ({ order }) => !readyGarnishOrdersForReviewIds.has(order.id),
-      )
-    : doneGarnishOrders;
+  useEffect(() => {
+    const interval = window.setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   const toggleKitchenItem: ToggleKitchenItemDone = async (
     orderId,
@@ -2468,36 +2841,61 @@ const KitchenQueue = ({
   };
 
   return (
-    <section className="space-y-3">
-      <Card className="p-4">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+    <section className="kitchen-production">
+      <div className="kitchen-hero">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
-              Cocina primero
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-lime-200">
+              Cocina operativa
             </p>
-            <h2 className="mt-1 text-xl font-black text-zinc-50">
-              Superficie operativa de producción
+            <h2 className="mt-1 text-2xl font-black text-zinc-50 md:text-3xl">
+              Producción en vivo
             </h2>
             <p className="mt-1 max-w-3xl text-sm text-zinc-400">
-              Esta base ya separa nuevos, en preparación, atención y listos sin reescribir todavía toda la lógica de items.
+              Ordenado por urgencia, pago, antigüedad y estado para decidir el siguiente pedido sin leer campos técnicos.
             </p>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="kitchen-hero__actions">
             {runtime.lastUpdated ? (
               <span className="text-[11px] text-zinc-500">
                 Actualizado: {runtime.lastUpdated}
               </span>
             ) : null}
             <Button
-              className="border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs disabled:opacity-40"
+              className="kitchen-secondary-action"
               onClick={() => runtime.reload(false)}
               disabled={runtime.loading || !runtime.sessionActive}
             >
-              {runtime.loading ? "Actualizando…" : "Actualizar cocina"}
+              <RefreshCw size={16} aria-hidden="true" />
+              {runtime.loading ? "Actualizando..." : "Actualizar"}
+            </Button>
+            <Button
+              className={`kitchen-secondary-action ${view === "summaryK" ? "kitchen-secondary-action--active" : ""}`}
+              onClick={() => setView((current) => (current === "board" ? "summaryK" : "board"))}
+            >
+              {view === "board" ? "Resumen K" : "Tablero"}
             </Button>
           </div>
         </div>
-        <div className="mt-4 kitchen-lanes">
+        <div className="kitchen-command-strip">
+          <div>
+            <span>{orderMetas.length}</span>
+            <p>Pedidos activos</p>
+          </div>
+          <div>
+            <span>{pendingKitchenItems}</span>
+            <p>Items pendientes</p>
+          </div>
+          <div>
+            <span>{lateOrders}</span>
+            <p>Tardando</p>
+          </div>
+          <div className={criticalOrders ? "kitchen-command-strip__hot" : ""}>
+            <span>{criticalOrders}</span>
+            <p>Críticos</p>
+          </div>
+        </div>
+        <div className="kitchen-lanes">
           {focusCards.map((card) => (
             <button
               key={card.key}
@@ -2515,7 +2913,7 @@ const KitchenQueue = ({
             </button>
           ))}
         </div>
-      </Card>
+      </div>
       {runtime.limitWarning ? (
         <p className="rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs font-semibold text-amber-100">
           {runtime.limitWarning}
@@ -2531,155 +2929,58 @@ const KitchenQueue = ({
           {runtime.error}
         </p>
       ) : null}
-      <div className="grid grid-cols-3 gap-2 rounded-2xl border border-zinc-800 bg-zinc-950 p-2">
-        <Button
-          className={`py-3 text-base font-black ${mode === "burgers" ? "bg-cyan-300 text-cyan-950" : "bg-zinc-900 text-zinc-300"}`}
-          onClick={() => setMode("burgers")}
-        >
-          Burgers
-        </Button>
-        <Button
-          className={`py-3 text-base font-black ${mode === "sidequest" ? "bg-cyan-300 text-cyan-950" : "bg-zinc-900 text-zinc-300"}`}
-          onClick={() => setMode("sidequest")}
-        >
-          Guarniciones
-        </Button>
-        <Button
-          className={`py-3 text-base font-black ${mode === "summaryK" ? "bg-cyan-300 text-cyan-950" : "bg-zinc-900 text-zinc-300"}`}
-          onClick={() => setMode("summaryK")}
-        >
-          Resumen K
-        </Button>
-      </div>
 
-      {mode === "summaryK" ? (
+      {view === "summaryK" ? (
         <KitchenSummaryKPanel environment={runtime.environment} />
-      ) : mode === "burgers" ? (
-        <div className="space-y-5">
-          <section>
-            <h3
-              className={`mb-2 text-sm font-black uppercase tracking-[0.2em] ${readyFocus ? "text-cyan-200" : "text-amber-200"}`}
-            >
-              {readyFocus ? "Listos para salida" : "Por hacer"} ·{" "}
-              {primaryBurgerOrders.length}
-            </h3>
-            <div className="space-y-3">
-              {primaryBurgerOrders.length ? (
-                primaryBurgerOrders.map(({ order, items }) => (
-                  <KitchenBurgerOrder
-                    key={order.id}
-                    order={order}
-                    items={items}
-                    busyLineKey={busyLineKey}
-                    highlighted={runtime.highlightedOrderIds.has(order.id)}
-                    onToggleKitchenItem={toggleKitchenItem}
-                  />
-                ))
-              ) : (
-                <EmptyOrdersState
-                  title={
-                    readyFocus
-                      ? "Sin burgers listas para salida."
-                      : "Sin burgers pendientes."
-                  }
-                />
-              )}
-            </div>
-          </section>
-          {readyFocus ? null : (
-            <section>
-              <h3 className="mb-2 text-sm font-black uppercase tracking-[0.2em] text-emerald-200">
-                Checklist hecho · {doneBurgerOrders.length}
-              </h3>
-              <div className="space-y-3">
-                {doneBurgerOrders.map(({ order, items }) => (
-                  <KitchenBurgerOrder
-                    key={`done-${order.id}`}
-                    order={order}
-                    items={items}
-                    busyLineKey={busyLineKey}
-                    highlighted={runtime.highlightedOrderIds.has(order.id)}
-                    onToggleKitchenItem={toggleKitchenItem}
-                  />
-                ))}
+      ) : focus === "all" ? (
+        <div className="kitchen-board" data-lanes={boardLanes.length}>
+          {laneOrders.map((lane) => (
+            <section key={lane.key} className="kitchen-board-lane">
+              <div className="kitchen-board-lane__header">
+                <div>
+                  <h3>{lane.title}</h3>
+                  <p>{lane.hint}</p>
+                </div>
+                <span>{lane.orders.length}</span>
+              </div>
+              <div className="kitchen-board-lane__body">
+                {lane.orders.length ? (
+                  lane.orders.map((meta) => (
+                    <KitchenTicket
+                      key={meta.order.id}
+                      meta={meta}
+                      busyLineKey={busyLineKey}
+                      highlighted={runtime.highlightedOrderIds.has(meta.order.id)}
+                      onToggleKitchenItem={toggleKitchenItem}
+                      onMove={onMove}
+                      onOpen={onOpenOrder}
+                      actionOrderId={runtime.actionOrderId}
+                    />
+                  ))
+                ) : (
+                  <EmptyOrdersState title={`Sin pedidos en ${lane.title.toLowerCase()}.`} />
+                )}
               </div>
             </section>
-          )}
+          ))}
         </div>
       ) : (
-        <div className="space-y-5">
-          <section>
-            <h3
-              className={`mb-2 text-sm font-black uppercase tracking-[0.2em] ${readyFocus ? "text-cyan-200" : "text-amber-200"}`}
-            >
-              {readyFocus ? "Listos para salida" : "Por hacer"} ·{" "}
-              {primaryGarnishCount}
-            </h3>
-            <div className="space-y-3">
-              {primaryGarnishOrders.length ? (
-                primaryGarnishOrders.map(({ order, items }) => (
-                  <KitchenOrderShell
-                    key={order.id}
-                    order={order}
-                    highlighted={runtime.highlightedOrderIds.has(order.id)}
-                  >
-                    {items.map((item, index) => (
-                      <SideQuestItemCard
-                        key={getKitchenLineKey(order, item, index)}
-                        order={order}
-                        item={item}
-                        itemIndex={index}
-                        busy={
-                          busyLineKey === getKitchenLineKey(order, item, index)
-                        }
-                        onToggleKitchenItem={toggleKitchenItem}
-                      />
-                    ))}
-                  </KitchenOrderShell>
-                ))
-              ) : (
-                <EmptyOrdersState
-                  title={
-                    readyFocus
-                      ? "Sin guarniciones listas para salida."
-                      : "Sin guarniciones pendientes."
-                  }
-                />
-              )}
-            </div>
-          </section>
-          {readyFocus ? null : (
-            <section>
-              <h3 className="mb-2 text-sm font-black uppercase tracking-[0.2em] text-emerald-200">
-                Checklist hecho ·{" "}
-                {secondaryGarnishOrders.reduce(
-                  (acc, entry) => acc + entry.items.length,
-                  0,
-                )}
-              </h3>
-              <div className="space-y-3">
-                {secondaryGarnishOrders.map(({ order, items }) => (
-                  <KitchenOrderShell
-                    key={`done-garnish-${order.id}`}
-                    order={order}
-                    highlighted={runtime.highlightedOrderIds.has(order.id)}
-                  >
-                    {items.map((item, index) => (
-                      <SideQuestItemCard
-                        key={getKitchenLineKey(order, item, index)}
-                        order={order}
-                        item={item}
-                        itemIndex={index}
-                        busy={
-                          busyLineKey === getKitchenLineKey(order, item, index)
-                        }
-                        onToggleKitchenItem={toggleKitchenItem}
-                      />
-                    ))}
-                  </KitchenOrderShell>
-                ))}
-              </div>
-            </section>
+        <div className="kitchen-focused-list">
+          {scopedOrders.length ? (
+            scopedOrders.map((meta) => (
+              <KitchenTicket
+                key={meta.order.id}
+                meta={meta}
+                busyLineKey={busyLineKey}
+                highlighted={runtime.highlightedOrderIds.has(meta.order.id)}
+                onToggleKitchenItem={toggleKitchenItem}
+                onMove={onMove}
+                onOpen={onOpenOrder}
+                actionOrderId={runtime.actionOrderId}
+              />
+            ))
+          ) : (
+            <EmptyOrdersState title="Sin pedidos en este filtro." />
           )}
         </div>
       )}
@@ -4149,6 +4450,8 @@ export function InternalChekeoApp() {
             orders={orders}
             runtime={runtime}
             onToggleKitchenItem={toggleKitchenItemDone}
+            onMove={move}
+            onOpenOrder={setSelected}
           />
         ),
         pagos: (
