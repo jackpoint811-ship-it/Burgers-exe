@@ -2345,6 +2345,8 @@ const KitchenQueue = ({
   const activeOrders = orders.filter((o) => !terminalStatuses.has(o.status));
   const fallback = runtime.source !== "d1";
   const readyFocus = focus === "ready";
+  const showReadyOrdersForReview =
+    focus === "all" || focus === "attention";
   const matchesFocus = (order: InternalOrder) => {
     if (focus === "all") return true;
     if (focus === "attention")
@@ -2398,6 +2400,9 @@ const KitchenQueue = ({
     ({ order, items }) =>
       order.status !== "ready" && items.some((item) => !item.kitchenDone),
   );
+  const readyBurgerOrdersForReview = readyBurgerOrders.filter(({ items }) =>
+    items.some((item) => !item.kitchenDone),
+  );
   const doneBurgerOrders = withBurgerItems.filter(({ items }) =>
     items.every((item) => item.kitchenDone),
   );
@@ -2414,6 +2419,15 @@ const KitchenQueue = ({
       items: items.filter((item) => !item.kitchenDone),
     }))
     .filter(({ order, items }) => order.status !== "ready" && items.length > 0);
+  const readyGarnishOrdersForReview = readyGarnishOrders
+    .map(({ order, items }) => ({
+      order,
+      items: items.filter((item) => !item.kitchenDone),
+    }))
+    .filter(({ items }) => items.length > 0);
+  const readyGarnishOrdersForReviewIds = new Set(
+    readyGarnishOrdersForReview.map(({ order }) => order.id),
+  );
   const doneGarnishOrders = withGarnishItems
     .map(({ order, items }) => ({
       order,
@@ -2422,13 +2436,22 @@ const KitchenQueue = ({
     .filter(({ items }) => items.length > 0);
   const primaryBurgerOrders = readyFocus
     ? readyBurgerOrders
-    : pendingBurgerOrders;
+    : showReadyOrdersForReview
+      ? [...pendingBurgerOrders, ...readyBurgerOrdersForReview]
+      : pendingBurgerOrders;
   const primaryGarnishOrders = readyFocus
     ? readyGarnishOrders
-    : pendingGarnishOrders;
+    : showReadyOrdersForReview
+      ? [...pendingGarnishOrders, ...readyGarnishOrdersForReview]
+      : pendingGarnishOrders;
   const primaryGarnishCount = readyFocus
     ? readyGarnishOrders.length
-    : pendingGarnishOrders.reduce((acc, entry) => acc + entry.items.length, 0);
+    : primaryGarnishOrders.reduce((acc, entry) => acc + entry.items.length, 0);
+  const secondaryGarnishOrders = showReadyOrdersForReview
+    ? doneGarnishOrders.filter(
+        ({ order }) => !readyGarnishOrdersForReviewIds.has(order.id),
+      )
+    : doneGarnishOrders;
 
   const toggleKitchenItem: ToggleKitchenItemDone = async (
     orderId,
@@ -2629,13 +2652,13 @@ const KitchenQueue = ({
             <section>
               <h3 className="mb-2 text-sm font-black uppercase tracking-[0.2em] text-emerald-200">
                 Checklist hecho ·{" "}
-                {doneGarnishOrders.reduce(
+                {secondaryGarnishOrders.reduce(
                   (acc, entry) => acc + entry.items.length,
                   0,
                 )}
               </h3>
               <div className="space-y-3">
-                {doneGarnishOrders.map(({ order, items }) => (
+                {secondaryGarnishOrders.map(({ order, items }) => (
                   <KitchenOrderShell
                     key={`done-garnish-${order.id}`}
                     order={order}
