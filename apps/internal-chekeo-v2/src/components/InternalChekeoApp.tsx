@@ -2344,6 +2344,7 @@ const KitchenQueue = ({
   const [busyLineKey, setBusyLineKey] = useState<string | null>(null);
   const activeOrders = orders.filter((o) => !terminalStatuses.has(o.status));
   const fallback = runtime.source !== "d1";
+  const readyFocus = focus === "ready";
   const matchesFocus = (order: InternalOrder) => {
     if (focus === "all") return true;
     if (focus === "attention")
@@ -2390,6 +2391,9 @@ const KitchenQueue = ({
   const withBurgerItems = scopedOrders
     .map((order) => ({ order, items: order.items.filter(isBurgerOrCombo) }))
     .filter(({ items }) => items.length > 0);
+  const readyBurgerOrders = withBurgerItems.filter(
+    ({ order }) => order.status === "ready",
+  );
   const pendingBurgerOrders = withBurgerItems.filter(
     ({ order, items }) =>
       order.status !== "ready" && items.some((item) => !item.kitchenDone),
@@ -2401,6 +2405,9 @@ const KitchenQueue = ({
   const withGarnishItems = scopedOrders
     .map((order) => ({ order, items: order.items.filter(isStandaloneGarnish) }))
     .filter(({ items }) => items.length > 0);
+  const readyGarnishOrders = withGarnishItems.filter(
+    ({ order }) => order.status === "ready",
+  );
   const pendingGarnishOrders = withGarnishItems
     .map(({ order, items }) => ({
       order,
@@ -2413,6 +2420,15 @@ const KitchenQueue = ({
       items: items.filter((item) => item.kitchenDone),
     }))
     .filter(({ items }) => items.length > 0);
+  const primaryBurgerOrders = readyFocus
+    ? readyBurgerOrders
+    : pendingBurgerOrders;
+  const primaryGarnishOrders = readyFocus
+    ? readyGarnishOrders
+    : pendingGarnishOrders;
+  const primaryGarnishCount = readyFocus
+    ? readyGarnishOrders.length
+    : pendingGarnishOrders.reduce((acc, entry) => acc + entry.items.length, 0);
 
   const toggleKitchenItem: ToggleKitchenItemDone = async (
     orderId,
@@ -2518,12 +2534,15 @@ const KitchenQueue = ({
       ) : mode === "burgers" ? (
         <div className="space-y-5">
           <section>
-            <h3 className="mb-2 text-sm font-black uppercase tracking-[0.2em] text-amber-200">
-              Por hacer · {pendingBurgerOrders.length}
+            <h3
+              className={`mb-2 text-sm font-black uppercase tracking-[0.2em] ${readyFocus ? "text-cyan-200" : "text-amber-200"}`}
+            >
+              {readyFocus ? "Listos para salida" : "Por hacer"} ·{" "}
+              {primaryBurgerOrders.length}
             </h3>
             <div className="space-y-3">
-              {pendingBurgerOrders.length ? (
-                pendingBurgerOrders.map(({ order, items }) => (
+              {primaryBurgerOrders.length ? (
+                primaryBurgerOrders.map(({ order, items }) => (
                   <KitchenBurgerOrder
                     key={order.id}
                     order={order}
@@ -2534,41 +2553,48 @@ const KitchenQueue = ({
                   />
                 ))
               ) : (
-                <EmptyOrdersState title="Sin burgers pendientes." />
+                <EmptyOrdersState
+                  title={
+                    readyFocus
+                      ? "Sin burgers listas para salida."
+                      : "Sin burgers pendientes."
+                  }
+                />
               )}
             </div>
           </section>
-          <section>
-            <h3 className="mb-2 text-sm font-black uppercase tracking-[0.2em] text-emerald-200">
-              Checklist hecho · {doneBurgerOrders.length}
-            </h3>
-            <div className="space-y-3">
-              {doneBurgerOrders.map(({ order, items }) => (
-                <KitchenBurgerOrder
-                  key={`done-${order.id}`}
-                  order={order}
-                  items={items}
-                  busyLineKey={busyLineKey}
-                  highlighted={runtime.highlightedOrderIds.has(order.id)}
-                  onToggleKitchenItem={toggleKitchenItem}
-                />
-              ))}
-            </div>
-          </section>
+          {readyFocus ? null : (
+            <section>
+              <h3 className="mb-2 text-sm font-black uppercase tracking-[0.2em] text-emerald-200">
+                Checklist hecho · {doneBurgerOrders.length}
+              </h3>
+              <div className="space-y-3">
+                {doneBurgerOrders.map(({ order, items }) => (
+                  <KitchenBurgerOrder
+                    key={`done-${order.id}`}
+                    order={order}
+                    items={items}
+                    busyLineKey={busyLineKey}
+                    highlighted={runtime.highlightedOrderIds.has(order.id)}
+                    onToggleKitchenItem={toggleKitchenItem}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       ) : (
         <div className="space-y-5">
           <section>
-            <h3 className="mb-2 text-sm font-black uppercase tracking-[0.2em] text-amber-200">
-              Por hacer ·{" "}
-              {pendingGarnishOrders.reduce(
-                (acc, entry) => acc + entry.items.length,
-                0,
-              )}
+            <h3
+              className={`mb-2 text-sm font-black uppercase tracking-[0.2em] ${readyFocus ? "text-cyan-200" : "text-amber-200"}`}
+            >
+              {readyFocus ? "Listos para salida" : "Por hacer"} ·{" "}
+              {primaryGarnishCount}
             </h3>
             <div className="space-y-3">
-              {pendingGarnishOrders.length ? (
-                pendingGarnishOrders.map(({ order, items }) => (
+              {primaryGarnishOrders.length ? (
+                primaryGarnishOrders.map(({ order, items }) => (
                   <KitchenOrderShell
                     key={order.id}
                     order={order}
@@ -2589,41 +2615,49 @@ const KitchenQueue = ({
                   </KitchenOrderShell>
                 ))
               ) : (
-                <EmptyOrdersState title="Sin guarniciones pendientes." />
+                <EmptyOrdersState
+                  title={
+                    readyFocus
+                      ? "Sin guarniciones listas para salida."
+                      : "Sin guarniciones pendientes."
+                  }
+                />
               )}
             </div>
           </section>
-          <section>
-            <h3 className="mb-2 text-sm font-black uppercase tracking-[0.2em] text-emerald-200">
-              Checklist hecho ·{" "}
-              {doneGarnishOrders.reduce(
-                (acc, entry) => acc + entry.items.length,
-                0,
-              )}
-            </h3>
-            <div className="space-y-3">
-              {doneGarnishOrders.map(({ order, items }) => (
-                <KitchenOrderShell
-                  key={`done-garnish-${order.id}`}
-                  order={order}
-                  highlighted={runtime.highlightedOrderIds.has(order.id)}
-                >
-                  {items.map((item, index) => (
-                    <SideQuestItemCard
-                      key={getKitchenLineKey(order, item, index)}
-                      order={order}
-                      item={item}
-                      itemIndex={index}
-                      busy={
-                        busyLineKey === getKitchenLineKey(order, item, index)
-                      }
-                      onToggleKitchenItem={toggleKitchenItem}
-                    />
-                  ))}
-                </KitchenOrderShell>
-              ))}
-            </div>
-          </section>
+          {readyFocus ? null : (
+            <section>
+              <h3 className="mb-2 text-sm font-black uppercase tracking-[0.2em] text-emerald-200">
+                Checklist hecho ·{" "}
+                {doneGarnishOrders.reduce(
+                  (acc, entry) => acc + entry.items.length,
+                  0,
+                )}
+              </h3>
+              <div className="space-y-3">
+                {doneGarnishOrders.map(({ order, items }) => (
+                  <KitchenOrderShell
+                    key={`done-garnish-${order.id}`}
+                    order={order}
+                    highlighted={runtime.highlightedOrderIds.has(order.id)}
+                  >
+                    {items.map((item, index) => (
+                      <SideQuestItemCard
+                        key={getKitchenLineKey(order, item, index)}
+                        order={order}
+                        item={item}
+                        itemIndex={index}
+                        busy={
+                          busyLineKey === getKitchenLineKey(order, item, index)
+                        }
+                        onToggleKitchenItem={toggleKitchenItem}
+                      />
+                    ))}
+                  </KitchenOrderShell>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       )}
     </section>
