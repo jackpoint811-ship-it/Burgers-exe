@@ -67,8 +67,16 @@ type TabKey =
   | "pagos"
   | "historial"
   | "cierre"
+  | "mas"
   | "catalogo"
   | "sorteos";
+type PrimaryTabKey =
+  | "cocina"
+  | "pedidos"
+  | "pagos"
+  | "historial"
+  | "cierre"
+  | "mas";
 type OrdersSource = "d1" | "mock" | "fallback";
 type OrdersV2Summary = NonNullable<OrdersV2SummaryResponse["data"]>;
 type KitchenSummaryK = NonNullable<KitchenSummaryKResponse["data"]>;
@@ -134,6 +142,7 @@ type OrdersRuntime = {
   onSessionExpired: () => void;
   reload: (includeTerminal?: boolean) => void;
   lastUpdated: string | null;
+  limitWarning: string | null;
 };
 
 const orderEnvironmentLabel: Record<OrderV2Environment, string> = {
@@ -164,6 +173,29 @@ const runtimeEnvironmentCopy: Record<
     secondary: "Úsala para revisar la pantalla sin afectar pedidos reales.",
   },
 };
+const primaryTabs: Array<{
+  key: PrimaryTabKey;
+  label: string;
+  shortLabel?: string;
+}> = [
+  { key: "cocina", label: "Cocina" },
+  { key: "pedidos", label: "Pedidos" },
+  { key: "pagos", label: "Pagos" },
+  { key: "historial", label: "Historial" },
+  { key: "cierre", label: "Cierre" },
+  { key: "mas", label: "Más", shortLabel: "Admin" },
+];
+const adminTabs = new Set<TabKey>(["mas", "inicio", "catalogo", "sorteos"]);
+const LIVE_ACTIVE_ORDERS_LIMIT = 100;
+const LIVE_TERMINAL_ORDERS_LIMIT = 100;
+const getPrimaryTab = (tab: TabKey): PrimaryTabKey => {
+  if (adminTabs.has(tab)) return "mas";
+  return tab as PrimaryTabKey;
+};
+const shouldIncludeTerminalOrders = (tab: TabKey) =>
+  tab === "historial" || tab === "pagos";
+const shouldKeepOrdersLoaded = (tab: TabKey) =>
+  tab !== "catalogo" && tab !== "sorteos" && tab !== "cierre";
 
 const isPreviewOrderSource = (source?: string) => source === "public-v2-preview";
 
@@ -211,6 +243,24 @@ const sourceLabel = (source?: string) =>
     : source === "public-v2-preview"
       ? "Pedidos de prueba"
       : "Vista local";
+const getSourcePanelCopy = (runtime: OrdersRuntime) => {
+  if (runtime.source === "d1" && runtime.environment === "production") {
+    return {
+      badge: "Operación en vivo",
+      message: "La lista se está leyendo desde D1 de producción.",
+    };
+  }
+  if (runtime.source === "d1" && runtime.environment === "preview") {
+    return {
+      badge: "Datos de preview",
+      message: "La lista se está leyendo desde D1 preview. Esta operación es de prueba.",
+    };
+  }
+  return {
+    badge: "Modo respaldo",
+    message: "Esta vista sigue operable, pero no está escribiendo contra datos reales.",
+  };
+};
 const getOrdersDataLabel = (
   source: OrdersSource,
   environment: OrderV2Environment,
@@ -231,9 +281,16 @@ const getOperationalSummary = (orders: InternalOrder[]) => {
   const participants = new Set(
     orders.map((order) => (order.customerPhone || order.customer).trim().toLowerCase()).filter(Boolean),
   );
+  const attentionOrders = visibleOrders.filter(
+    (order) =>
+      order.priority === "urgent" || order.paymentState === "pending",
+  );
   return {
+    activeOrders: visibleOrders.length,
     pendingOrders: visibleOrders.filter((order) => order.status === "new").length,
-    confirmedOrders: orders.filter((order) => order.status !== "new" && order.status !== "cancelled").length,
+    preparingOrders: visibleOrders.filter((order) => order.status === "preparing").length,
+    readyOrders: visibleOrders.filter((order) => order.status === "ready").length,
+    attentionOrders: attentionOrders.length,
     participants: participants.size,
     totalTickets: orders.length,
     paymentsToReview: visibleOrders.filter((order) => order.paymentState === "pending").length,
@@ -834,55 +891,59 @@ const SourcePanel = ({
 }: {
   runtime: OrdersRuntime;
   includeTerminal?: boolean;
-}) => (
-  <Card className="mb-2.5 p-3">
-    <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-      <div>
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-200">
-          Lista de pedidos
-        </p>
-        <p className="text-[11px] text-zinc-400">
-          {runtime.source === "d1"
-            ? "Datos actualizados desde operación"
-            : "Vista de apoyo para revisar la pantalla"}
-        </p>
+}) => {
+  const copy = getSourcePanelCopy(runtime);
+  return (
+    <Card className="mb-2.5 p-3">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0 space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="chip">{copy.badge}</span>
+            <span className="chip">
+              {runtime.sessionActive ? "Sesión activa" : "Inicia sesión"}
+            </span>
+            {includeTerminal ? (
+              <span className="chip">Incluye entregados y cancelados</span>
+            ) : null}
+          </div>
+          <p className="text-sm font-bold text-zinc-100">{copy.message}</p>
+          <p className="text-[11px] text-zinc-400">
+            Usa esta superficie para refrescar rápido y validar si la sesión sigue lista para operar.
+          </p>
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          {runtime.lastUpdated ? (
+            <span className="text-[11px] text-zinc-500">
+              Actualizado: {runtime.lastUpdated}
+            </span>
+          ) : null}
+          <Button
+            className="border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs disabled:opacity-40"
+            onClick={() => runtime.reload(includeTerminal)}
+            disabled={runtime.loading || !runtime.sessionActive}
+          >
+            {runtime.loading ? "Actualizando…" : "Actualizar lista"}
+          </Button>
+        </div>
       </div>
-      <div className="flex flex-col gap-2 md:flex-row">
-        {runtime.lastUpdated ? (
-          <span className="self-center text-[11px] text-zinc-500">
-            Actualizado: {runtime.lastUpdated}
-          </span>
-        ) : null}
-        <Button
-          className="border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs disabled:opacity-40"
-          onClick={() => runtime.reload(includeTerminal)}
-          disabled={runtime.loading || !runtime.sessionActive}
-        >
-          {runtime.loading ? "Actualizando…" : "Actualizar lista"}
-        </Button>
-      </div>
-    </div>
-    <div className="mt-3 flex flex-wrap items-center gap-2">
-      <span className="chip">Sesión activa</span>
-      <span className="chip">{runtime.sessionActive ? "Listo para operar" : "Inicia sesión"}</span>
-    </div>
-    <OrdersExportControls
-      sessionActive={runtime.sessionActive}
-      defaultIncludeTerminal={includeTerminal}
-      environment={runtime.environment}
-    />
-    {runtime.error ? (
-      <p className="mt-2 rounded bg-rose-500/10 px-2 py-1 text-xs text-rose-200">
-        {runtime.error}
-      </p>
-    ) : null}
-    {runtime.notice ? (
-      <p className="mt-2 rounded bg-emerald-500/10 px-2 py-1 text-xs text-emerald-200">
-        {runtime.notice}
-      </p>
-    ) : null}
-  </Card>
-);
+      {runtime.limitWarning ? (
+        <p className="mt-3 rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-100">
+          {runtime.limitWarning}
+        </p>
+      ) : null}
+      {runtime.error ? (
+        <p className="mt-2 rounded bg-rose-500/10 px-2 py-1 text-xs text-rose-200">
+          {runtime.error}
+        </p>
+      ) : null}
+      {runtime.notice ? (
+        <p className="mt-2 rounded bg-emerald-500/10 px-2 py-1 text-xs text-emerald-200">
+          {runtime.notice}
+        </p>
+      ) : null}
+    </Card>
+  );
+};
 
 const InternalLogin = ({
   onLogin,
@@ -1012,44 +1073,69 @@ const OperatorHeader = ({
   runtimeEnvironment,
   onLogout,
   source,
+  lastUpdated,
 }: {
   active: number;
   environment: OrderV2Environment;
   runtimeEnvironment: ChekeoRuntimeEnvironment;
   onLogout: () => void;
   source: OrdersSource;
+  lastUpdated: string | null;
 }) => {
+  const copy = runtimeEnvironmentCopy[runtimeEnvironment];
   const publicOrderUrl = getPublicOrderUrlForEnvironment(runtimeEnvironment);
   const publicOrderLabel = getPublicOrderLabelForEnvironment(runtimeEnvironment);
 
   return (
-    <header className="card header-compact">
-      <div>
-        <h1 className="text-sm font-bold md:text-base">
-          Chekeo Burgers.exe
-        </h1>
-        <p className="text-[11px] text-zinc-400">
-          {active} pedidos activos · {orderEnvironmentLabel[environment]} ·{" "}
-          {getOrdersDataLabel(source, environment)} ·{" "}
-          {new Date().toLocaleTimeString()}
-        </p>
-      </div>
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <EnvironmentBadge environment={runtimeEnvironment} />
-        <a
-          className="inline-flex min-h-11 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-[11px] font-black text-zinc-100 hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400"
-          href={publicOrderUrl}
-          target="_blank"
-          rel="noreferrer"
-        >
-          {publicOrderLabel}
-        </a>
-        <Button
-          className="min-h-11 border border-zinc-700 bg-zinc-900 px-3 py-2 text-[11px]"
-          onClick={onLogout}
-        >
-          Cerrar sesión
-        </Button>
+    <header className={`card shell-header shell-header--${runtimeEnvironment}`}>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-cyan-200">
+              Chekeo operativo
+            </p>
+            <EnvironmentBadge environment={runtimeEnvironment} />
+          </div>
+          <h1 className="mt-2 text-xl font-black tracking-tight text-zinc-50 md:text-2xl">
+            Chekeo Burgers.exe
+          </h1>
+          <p className="mt-1 max-w-3xl text-sm text-zinc-300">
+            {copy.primary}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className="info-pill">
+              {active} activos
+            </span>
+            <span className="info-pill">
+              {orderEnvironmentLabel[environment]}
+            </span>
+            <span className="info-pill">
+              {getOrdersDataLabel(source, environment)}
+            </span>
+            <span className="info-pill">
+              {lastUpdated ? `Sync ${lastUpdated}` : "Esperando sync"}
+            </span>
+          </div>
+        </div>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[220px]">
+          <a
+            className="runtime-environment-link w-full"
+            href={publicOrderUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {publicOrderLabel}
+          </a>
+          <Button
+            className="min-h-11 border border-zinc-700 bg-zinc-900 px-3 py-2 text-[11px]"
+            onClick={onLogout}
+          >
+            Cerrar sesión
+          </Button>
+          <p className="text-[11px] text-zinc-500 sm:text-right">
+            {copy.secondary}
+          </p>
+        </div>
       </div>
     </header>
   );
@@ -1058,61 +1144,72 @@ const OperatorHeader = ({
 const OperationalSummary = ({
   orders,
   source,
+  onOpenTab,
 }: {
   orders: InternalOrder[];
   source: OrdersSource;
+  onOpenTab: (tab: TabKey) => void;
 }) => {
   const summary = getOperationalSummary(orders);
   const cards = [
     {
-      label: "Pedidos pendientes",
+      label: "Nuevos",
       value: summary.pendingOrders,
-      hint: "Requieren primera revisión",
+      hint: "Entraron y falta arrancarlos",
+      tab: "cocina" as TabKey,
     },
     {
-      label: "Pedidos confirmados",
-      value: summary.confirmedOrders,
-      hint: "En proceso o cerrados",
+      label: "En preparación",
+      value: summary.preparingOrders,
+      hint: "Ya están corriendo en cocina",
+      tab: "cocina" as TabKey,
     },
     {
-      label: "Participantes",
-      value: summary.participants,
-      hint: "Personas únicas visibles",
+      label: "Atención",
+      value: summary.attentionOrders,
+      hint: "Urgentes o con pago pendiente",
+      tab: "cocina" as TabKey,
     },
     {
-      label: "Tickets totales",
-      value: summary.totalTickets,
-      hint: "Folios cargados",
+      label: "Listos",
+      value: summary.readyOrders,
+      hint: "Pueden pasar a entrega",
+      tab: "pedidos" as TabKey,
     },
     {
       label: "Pagos por revisar",
       value: summary.paymentsToReview,
-      hint: "Falta confirmar pago",
+      hint: "Sigue accesible en Pagos",
+      tab: "pagos" as TabKey,
     },
   ];
 
   return (
-    <section className="summary-grid" aria-label="Resumen operativo de Chekeo">
-      <div className="summary-intro">
+    <section className="summary-strip" aria-label="Resumen operativo de Chekeo">
+      <div className="summary-strip__meta">
         <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
-          Resumen operativo
+          Prioridades del turno
         </p>
-        <h2 className="mt-1 text-lg font-black text-zinc-50">
-          Qué necesita revisión ahora
-        </h2>
-        <p className="mt-1 text-xs text-zinc-400">
+        <p className="text-[11px] text-zinc-400">
           {source === "d1"
-            ? "Calculado con los pedidos cargados en esta pantalla."
-            : "Vista local para validar la experiencia sin afectar datos reales."}
+            ? `${summary.activeOrders} pedidos activos visibles · ${summary.totalTickets} folios cargados`
+            : "Vista local para validar flujo sin afectar datos reales."}
         </p>
       </div>
-      {cards.map((card) => (
-        <Card key={card.label} className="summary-card">
-          <p className="text-[11px] font-semibold text-zinc-400">{card.label}</p>
-          <p className="mt-1 text-2xl font-black text-zinc-50">{card.value}</p>
-          <p className="mt-1 text-[11px] text-zinc-500">{card.hint}</p>
-        </Card>
-      ))}
+      <div className="summary-strip__grid">
+        {cards.map((card) => (
+          <button
+            key={card.label}
+            type="button"
+            className="summary-card text-left"
+            onClick={() => onOpenTab(card.tab)}
+          >
+            <p className="text-[11px] font-semibold text-zinc-400">{card.label}</p>
+            <p className="mt-1 text-2xl font-black text-zinc-50">{card.value}</p>
+            <p className="mt-1 text-[11px] text-zinc-500">{card.hint}</p>
+          </button>
+        ))}
+      </div>
     </section>
   );
 };
@@ -1212,6 +1309,131 @@ const DashboardHome = ({
           Carga de cocina estimada: {operatorStats.kitchenLoad}%.
         </p>
       </Card>
+    </section>
+  );
+};
+
+const AdminWorkspace = ({
+  tab,
+  setTab,
+  orders,
+  source,
+  runtime,
+}: {
+  tab: TabKey;
+  setTab: (tab: TabKey) => void;
+  orders: InternalOrder[];
+  source: OrdersSource;
+  runtime: OrdersRuntime;
+}) => {
+  const adminNav: Array<{ key: TabKey; label: string }> = [
+    { key: "mas", label: "Panel" },
+    { key: "inicio", label: "Resumen" },
+    { key: "catalogo", label: "Catálogo" },
+    { key: "sorteos", label: "Sorteos" },
+  ];
+
+  const content =
+    tab === "catalogo" ? (
+      <CatalogAdminPanel />
+    ) : tab === "sorteos" ? (
+      <RafflesAdminPanel />
+    ) : tab === "inicio" ? (
+      <DashboardHome orders={orders} source={source} />
+    ) : (
+      <div className="grid gap-3 xl:grid-cols-[1.1fr_0.9fr]">
+        <Card className="p-4">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
+            Admin secundario
+          </p>
+          <h3 className="mt-2 text-xl font-black text-zinc-50">
+            Herramientas fuera del flujo de operación viva
+          </h3>
+          <p className="mt-2 text-sm text-zinc-400">
+            Catálogo, sorteos, reportes y el resumen viven aquí para que Cocina y Pedidos no compitan con tareas administrativas.
+          </p>
+          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            <button
+              type="button"
+              className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3 text-left transition hover:border-cyan-300/40"
+              onClick={() => setTab("inicio")}
+            >
+              <p className="text-sm font-bold text-zinc-50">Resumen</p>
+              <p className="mt-1 text-[11px] text-zinc-400">
+                Señales del turno y prioridades visibles.
+              </p>
+            </button>
+            <button
+              type="button"
+              className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3 text-left transition hover:border-cyan-300/40"
+              onClick={() => setTab("catalogo")}
+            >
+              <p className="text-sm font-bold text-zinc-50">Catálogo</p>
+              <p className="mt-1 text-[11px] text-zinc-400">
+                Ajustes de menú y stock sin interferir con cocina.
+              </p>
+            </button>
+            <button
+              type="button"
+              className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3 text-left transition hover:border-cyan-300/40"
+              onClick={() => setTab("sorteos")}
+            >
+              <p className="text-sm font-bold text-zinc-50">Sorteos</p>
+              <p className="mt-1 text-[11px] text-zinc-400">
+                Tickets y campañas disponibles a un toque.
+              </p>
+            </button>
+          </div>
+        </Card>
+        <Card className="p-4">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-200">
+            Reportes
+          </p>
+          <h3 className="mt-2 text-lg font-black text-zinc-50">
+            Exportes y revisión manual
+          </h3>
+          <p className="mt-2 text-sm text-zinc-400">
+            Mantén los reportes accesibles, pero fuera de Pedidos y Cocina para no robar foco operativo.
+          </p>
+          <OrdersExportControls
+            sessionActive={runtime.sessionActive}
+            defaultIncludeTerminal
+            environment={runtime.environment}
+          />
+        </Card>
+      </div>
+    );
+
+  return (
+    <section className="space-y-3">
+      <Card className="p-3">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
+              Más / Admin
+            </p>
+            <h2 className="mt-1 text-lg font-black text-zinc-50">
+              Superficies secundarias de Chekeo
+            </h2>
+            <p className="mt-1 text-sm text-zinc-400">
+              Aquí viven el resumen, el catálogo, sorteos y los reportes.
+            </p>
+          </div>
+          <div className="admin-nav">
+            {adminNav.map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                className={`admin-nav__button ${tab === option.key ? "admin-nav__button--active" : ""}`}
+                onClick={() => setTab(option.key)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </Card>
+      {content}
     </section>
   );
 };
@@ -1923,13 +2145,28 @@ const KitchenOrderShell = ({
       className={`overflow-hidden border-zinc-700 bg-zinc-950/70 p-0 transition-colors ${highlighted ? "border-cyan-300/70 bg-cyan-400/10 shadow-lg shadow-cyan-950/30" : ""}`}
     >
       <div className="border-b border-zinc-800 bg-zinc-900/80 p-4">
-        <p className="text-3xl font-black text-zinc-50">{order.folio}</p>
-        <p className="mt-1 text-xl font-extrabold text-zinc-100">
-          {order.customer}
-        </p>
-        <p className="mt-2 inline-flex rounded-full bg-cyan-300 px-3 py-1 text-sm font-black text-cyan-950">
-          {extractKitchenLocation(order.note)}
-        </p>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <p className="text-3xl font-black text-zinc-50">{order.folio}</p>
+            <p className="mt-1 text-xl font-extrabold text-zinc-100">
+              {order.customer}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <p className="inline-flex rounded-full bg-cyan-300 px-3 py-1 text-sm font-black text-cyan-950">
+                {extractKitchenLocation(order.note)}
+              </p>
+              <span className="info-pill">Entró {order.createdAt}</span>
+              <span className="info-pill">Items {getOrderItemCount(order)}</span>
+              <span className="info-pill">
+                Pago {getPaymentStatusLabel(order.paymentState)}
+              </span>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <StatusBadge status={order.status} />
+            <PaymentStatusBadge status={order.paymentState} />
+          </div>
+        </div>
         {generalNote ? (
           <p className="mt-3 rounded-xl bg-amber-400/10 px-3 py-2 text-sm font-bold text-amber-100">
             Nota general: {generalNote}
@@ -2101,36 +2338,120 @@ const KitchenQueue = ({
   onToggleKitchenItem: ToggleKitchenItemDone;
 }) => {
   const [mode, setMode] = useState<"burgers" | "sidequest" | "summaryK">("burgers");
+  const [focus, setFocus] = useState<
+    "all" | "new" | "preparing" | "attention" | "ready"
+  >("all");
   const [busyLineKey, setBusyLineKey] = useState<string | null>(null);
   const activeOrders = orders.filter((o) => !terminalStatuses.has(o.status));
   const fallback = runtime.source !== "d1";
+  const readyFocus = focus === "ready";
+  const showReadyOrdersForReview =
+    focus === "all" || focus === "attention";
+  const matchesFocus = (order: InternalOrder) => {
+    if (focus === "all") return true;
+    if (focus === "attention")
+      return order.priority === "urgent" || order.paymentState === "pending";
+    return order.status === focus;
+  };
+  const scopedOrders = activeOrders.filter(matchesFocus);
+  const focusCards = [
+    {
+      key: "all" as const,
+      label: "Todos",
+      value: activeOrders.length,
+      hint: "Vista completa",
+    },
+    {
+      key: "new" as const,
+      label: "Nuevos",
+      value: activeOrders.filter((order) => order.status === "new").length,
+      hint: "Entraron y falta arrancarlos",
+    },
+    {
+      key: "preparing" as const,
+      label: "En preparación",
+      value: activeOrders.filter((order) => order.status === "preparing").length,
+      hint: "Trabajo activo",
+    },
+    {
+      key: "attention" as const,
+      label: "Atención",
+      value: activeOrders.filter(
+        (order) =>
+          order.priority === "urgent" || order.paymentState === "pending",
+      ).length,
+      hint: "Urgentes o con pago pendiente",
+    },
+    {
+      key: "ready" as const,
+      label: "Listos",
+      value: activeOrders.filter((order) => order.status === "ready").length,
+      hint: "Listos para salida",
+    },
+  ];
 
-  const withBurgerItems = activeOrders
+  const withBurgerItems = scopedOrders
     .map((order) => ({ order, items: order.items.filter(isBurgerOrCombo) }))
     .filter(({ items }) => items.length > 0);
+  const readyBurgerOrders = withBurgerItems.filter(
+    ({ order }) => order.status === "ready",
+  );
   const pendingBurgerOrders = withBurgerItems.filter(
     ({ order, items }) =>
       order.status !== "ready" && items.some((item) => !item.kitchenDone),
+  );
+  const readyBurgerOrdersForReview = readyBurgerOrders.filter(({ items }) =>
+    items.some((item) => !item.kitchenDone),
   );
   const doneBurgerOrders = withBurgerItems.filter(({ items }) =>
     items.every((item) => item.kitchenDone),
   );
 
-  const withGarnishItems = activeOrders
+  const withGarnishItems = scopedOrders
     .map((order) => ({ order, items: order.items.filter(isStandaloneGarnish) }))
     .filter(({ items }) => items.length > 0);
+  const readyGarnishOrders = withGarnishItems.filter(
+    ({ order }) => order.status === "ready",
+  );
   const pendingGarnishOrders = withGarnishItems
     .map(({ order, items }) => ({
       order,
       items: items.filter((item) => !item.kitchenDone),
     }))
     .filter(({ order, items }) => order.status !== "ready" && items.length > 0);
+  const readyGarnishOrdersForReview = readyGarnishOrders
+    .map(({ order, items }) => ({
+      order,
+      items: items.filter((item) => !item.kitchenDone),
+    }))
+    .filter(({ items }) => items.length > 0);
+  const readyGarnishOrdersForReviewIds = new Set(
+    readyGarnishOrdersForReview.map(({ order }) => order.id),
+  );
   const doneGarnishOrders = withGarnishItems
     .map(({ order, items }) => ({
       order,
       items: items.filter((item) => item.kitchenDone),
     }))
     .filter(({ items }) => items.length > 0);
+  const primaryBurgerOrders = readyFocus
+    ? readyBurgerOrders
+    : showReadyOrdersForReview
+      ? [...pendingBurgerOrders, ...readyBurgerOrdersForReview]
+      : pendingBurgerOrders;
+  const primaryGarnishOrders = readyFocus
+    ? readyGarnishOrders
+    : showReadyOrdersForReview
+      ? [...pendingGarnishOrders, ...readyGarnishOrdersForReview]
+      : pendingGarnishOrders;
+  const primaryGarnishCount = readyFocus
+    ? readyGarnishOrders.length
+    : primaryGarnishOrders.reduce((acc, entry) => acc + entry.items.length, 0);
+  const secondaryGarnishOrders = showReadyOrdersForReview
+    ? doneGarnishOrders.filter(
+        ({ order }) => !readyGarnishOrdersForReviewIds.has(order.id),
+      )
+    : doneGarnishOrders;
 
   const toggleKitchenItem: ToggleKitchenItemDone = async (
     orderId,
@@ -2148,6 +2469,58 @@ const KitchenQueue = ({
 
   return (
     <section className="space-y-3">
+      <Card className="p-4">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
+              Cocina primero
+            </p>
+            <h2 className="mt-1 text-xl font-black text-zinc-50">
+              Superficie operativa de producción
+            </h2>
+            <p className="mt-1 max-w-3xl text-sm text-zinc-400">
+              Esta base ya separa nuevos, en preparación, atención y listos sin reescribir todavía toda la lógica de items.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+            {runtime.lastUpdated ? (
+              <span className="text-[11px] text-zinc-500">
+                Actualizado: {runtime.lastUpdated}
+              </span>
+            ) : null}
+            <Button
+              className="border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs disabled:opacity-40"
+              onClick={() => runtime.reload(false)}
+              disabled={runtime.loading || !runtime.sessionActive}
+            >
+              {runtime.loading ? "Actualizando…" : "Actualizar cocina"}
+            </Button>
+          </div>
+        </div>
+        <div className="mt-4 kitchen-lanes">
+          {focusCards.map((card) => (
+            <button
+              key={card.key}
+              type="button"
+              className={`kitchen-lane ${focus === card.key ? "kitchen-lane--active" : ""}`}
+              onClick={() => setFocus(card.key)}
+            >
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400">
+                {card.label}
+              </p>
+              <p className="mt-2 text-2xl font-black text-zinc-50">
+                {card.value}
+              </p>
+              <p className="mt-1 text-[11px] text-zinc-500">{card.hint}</p>
+            </button>
+          ))}
+        </div>
+      </Card>
+      {runtime.limitWarning ? (
+        <p className="rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs font-semibold text-amber-100">
+          {runtime.limitWarning}
+        </p>
+      ) : null}
       {fallback ? (
         <p className="rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs font-semibold text-amber-100">
           Fallback visual: estados de cocina no se guardan en D1.
@@ -2169,7 +2542,7 @@ const KitchenQueue = ({
           className={`py-3 text-base font-black ${mode === "sidequest" ? "bg-cyan-300 text-cyan-950" : "bg-zinc-900 text-zinc-300"}`}
           onClick={() => setMode("sidequest")}
         >
-          Side Quest
+          Guarniciones
         </Button>
         <Button
           className={`py-3 text-base font-black ${mode === "summaryK" ? "bg-cyan-300 text-cyan-950" : "bg-zinc-900 text-zinc-300"}`}
@@ -2184,12 +2557,15 @@ const KitchenQueue = ({
       ) : mode === "burgers" ? (
         <div className="space-y-5">
           <section>
-            <h3 className="mb-2 text-sm font-black uppercase tracking-[0.2em] text-amber-200">
-              Pendientes · {pendingBurgerOrders.length}
+            <h3
+              className={`mb-2 text-sm font-black uppercase tracking-[0.2em] ${readyFocus ? "text-cyan-200" : "text-amber-200"}`}
+            >
+              {readyFocus ? "Listos para salida" : "Por hacer"} ·{" "}
+              {primaryBurgerOrders.length}
             </h3>
             <div className="space-y-3">
-              {pendingBurgerOrders.length ? (
-                pendingBurgerOrders.map(({ order, items }) => (
+              {primaryBurgerOrders.length ? (
+                primaryBurgerOrders.map(({ order, items }) => (
                   <KitchenBurgerOrder
                     key={order.id}
                     order={order}
@@ -2200,41 +2576,48 @@ const KitchenQueue = ({
                   />
                 ))
               ) : (
-                <EmptyOrdersState title="Sin burgers pendientes." />
+                <EmptyOrdersState
+                  title={
+                    readyFocus
+                      ? "Sin burgers listas para salida."
+                      : "Sin burgers pendientes."
+                  }
+                />
               )}
             </div>
           </section>
-          <section>
-            <h3 className="mb-2 text-sm font-black uppercase tracking-[0.2em] text-emerald-200">
-              Hechas · {doneBurgerOrders.length}
-            </h3>
-            <div className="space-y-3">
-              {doneBurgerOrders.map(({ order, items }) => (
-                <KitchenBurgerOrder
-                  key={`done-${order.id}`}
-                  order={order}
-                  items={items}
-                  busyLineKey={busyLineKey}
-                  highlighted={runtime.highlightedOrderIds.has(order.id)}
-                  onToggleKitchenItem={toggleKitchenItem}
-                />
-              ))}
-            </div>
-          </section>
+          {readyFocus ? null : (
+            <section>
+              <h3 className="mb-2 text-sm font-black uppercase tracking-[0.2em] text-emerald-200">
+                Checklist hecho · {doneBurgerOrders.length}
+              </h3>
+              <div className="space-y-3">
+                {doneBurgerOrders.map(({ order, items }) => (
+                  <KitchenBurgerOrder
+                    key={`done-${order.id}`}
+                    order={order}
+                    items={items}
+                    busyLineKey={busyLineKey}
+                    highlighted={runtime.highlightedOrderIds.has(order.id)}
+                    onToggleKitchenItem={toggleKitchenItem}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       ) : (
         <div className="space-y-5">
           <section>
-            <h3 className="mb-2 text-sm font-black uppercase tracking-[0.2em] text-amber-200">
-              Pendientes ·{" "}
-              {pendingGarnishOrders.reduce(
-                (acc, entry) => acc + entry.items.length,
-                0,
-              )}
+            <h3
+              className={`mb-2 text-sm font-black uppercase tracking-[0.2em] ${readyFocus ? "text-cyan-200" : "text-amber-200"}`}
+            >
+              {readyFocus ? "Listos para salida" : "Por hacer"} ·{" "}
+              {primaryGarnishCount}
             </h3>
             <div className="space-y-3">
-              {pendingGarnishOrders.length ? (
-                pendingGarnishOrders.map(({ order, items }) => (
+              {primaryGarnishOrders.length ? (
+                primaryGarnishOrders.map(({ order, items }) => (
                   <KitchenOrderShell
                     key={order.id}
                     order={order}
@@ -2255,41 +2638,49 @@ const KitchenQueue = ({
                   </KitchenOrderShell>
                 ))
               ) : (
-                <EmptyOrdersState title="Sin Side Quest pendiente." />
+                <EmptyOrdersState
+                  title={
+                    readyFocus
+                      ? "Sin guarniciones listas para salida."
+                      : "Sin guarniciones pendientes."
+                  }
+                />
               )}
             </div>
           </section>
-          <section>
-            <h3 className="mb-2 text-sm font-black uppercase tracking-[0.2em] text-emerald-200">
-              Hechas ·{" "}
-              {doneGarnishOrders.reduce(
-                (acc, entry) => acc + entry.items.length,
-                0,
-              )}
-            </h3>
-            <div className="space-y-3">
-              {doneGarnishOrders.map(({ order, items }) => (
-                <KitchenOrderShell
-                  key={`done-garnish-${order.id}`}
-                  order={order}
-                  highlighted={runtime.highlightedOrderIds.has(order.id)}
-                >
-                  {items.map((item, index) => (
-                    <SideQuestItemCard
-                      key={getKitchenLineKey(order, item, index)}
-                      order={order}
-                      item={item}
-                      itemIndex={index}
-                      busy={
-                        busyLineKey === getKitchenLineKey(order, item, index)
-                      }
-                      onToggleKitchenItem={toggleKitchenItem}
-                    />
-                  ))}
-                </KitchenOrderShell>
-              ))}
-            </div>
-          </section>
+          {readyFocus ? null : (
+            <section>
+              <h3 className="mb-2 text-sm font-black uppercase tracking-[0.2em] text-emerald-200">
+                Checklist hecho ·{" "}
+                {secondaryGarnishOrders.reduce(
+                  (acc, entry) => acc + entry.items.length,
+                  0,
+                )}
+              </h3>
+              <div className="space-y-3">
+                {secondaryGarnishOrders.map(({ order, items }) => (
+                  <KitchenOrderShell
+                    key={`done-garnish-${order.id}`}
+                    order={order}
+                    highlighted={runtime.highlightedOrderIds.has(order.id)}
+                  >
+                    {items.map((item, index) => (
+                      <SideQuestItemCard
+                        key={getKitchenLineKey(order, item, index)}
+                        order={order}
+                        item={item}
+                        itemIndex={index}
+                        busy={
+                          busyLineKey === getKitchenLineKey(order, item, index)
+                        }
+                        onToggleKitchenItem={toggleKitchenItem}
+                      />
+                    ))}
+                  </KitchenOrderShell>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       )}
     </section>
@@ -3213,20 +3604,17 @@ const OperatorTabs = ({
   setTab: (v: TabKey) => void;
   content: ReactNode;
 }) => (
-  <Tabs.Root value={tab} onValueChange={(v) => setTab(v as TabKey)}>
+  <Tabs.Root
+    value={getPrimaryTab(tab)}
+    onValueChange={(v) => setTab(v as TabKey)}
+  >
     <Tabs.List className="tabs">
-      {[
-        ["inicio", "Inicio"],
-        ["pedidos", "Pedidos"],
-        ["cocina", "Cocina"],
-        ["pagos", "Pagos"],
-        ["historial", "Historial"],
-        ["cierre", "Cierre"],
-        ["catalogo", "Catálogo"],
-        ["sorteos", "Sorteos"],
-      ].map(([k, l]) => (
-        <Tabs.Trigger key={k} value={k} className="tab">
-          {l}
+      {primaryTabs.map(({ key, label, shortLabel }) => (
+        <Tabs.Trigger key={key} value={key} className="tab">
+          <span className="tab__label">{label}</span>
+          {shortLabel ? (
+            <span className="tab__hint">{shortLabel}</span>
+          ) : null}
         </Tabs.Trigger>
       ))}
     </Tabs.List>
@@ -3236,7 +3624,7 @@ const OperatorTabs = ({
 
 export function InternalChekeoApp() {
   const [logged, setLogged] = useState(false);
-  const [tab, setTab] = useState<TabKey>("inicio");
+  const [tab, setTab] = useState<TabKey>("cocina");
   const [orders, setOrders] = useState<InternalOrder[]>(
     asInternalOrders(mockOrders),
   );
@@ -3254,6 +3642,7 @@ export function InternalChekeoApp() {
   );
   const [actionOrderId, setActionOrderId] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [limitWarning, setLimitWarning] = useState<string | null>(null);
   const runtimeEnvironment = useMemo(getChekeoRuntimeEnvironment, []);
   const orderEnvironment = useMemo(
     () => getOrderEnvironmentForChekeoRuntime(runtimeEnvironment),
@@ -3292,12 +3681,15 @@ export function InternalChekeoApp() {
     setOrders(asInternalOrders(mockOrders));
     setOrdersSource("mock");
     setOrdersError("Sesión expirada. Vuelve a iniciar sesión.");
+    setOrdersNotice(null);
     setSelected(null);
     cancellationRequestRef.current = null;
     setCancellationRequest(null);
     setNewOrderNotice(null);
     setHighlightedOrderIds(new Set());
     orderKeysRef.current = null;
+    setLastUpdated(null);
+    setLimitWarning(null);
   }, []);
 
   const isRefreshBlocked = useCallback(
@@ -3351,7 +3743,7 @@ export function InternalChekeoApp() {
 
   const loadLiveOrders = useCallback(
     async (
-      includeTerminal = tab === "historial" || tab === "pagos",
+      includeTerminal = shouldIncludeTerminalOrders(tab),
       reason: "manual" | "auto" | "session" = "manual",
     ) => {
       const isAutoRefresh = reason === "auto";
@@ -3366,9 +3758,12 @@ export function InternalChekeoApp() {
       setLoadingOrders(true);
       setOrdersError(null);
       try {
+        const requestedLimit = includeTerminal
+          ? LIVE_TERMINAL_ORDERS_LIMIT
+          : LIVE_ACTIVE_ORDERS_LIMIT;
         const liveOrders = await fetchOrdersV2Admin({
           includeTerminal,
-          limit: includeTerminal ? 50 : 25,
+          limit: requestedLimit,
           environment: orderEnvironment,
         });
         if (isAutoRefresh && isRefreshBlocked()) return;
@@ -3383,6 +3778,13 @@ export function InternalChekeoApp() {
         });
         setOrdersSource("d1");
         setLastUpdated(formatOrderRefreshTime(reason));
+        setLimitWarning(
+          mappedOrders.length >= requestedLimit
+            ? includeTerminal
+              ? `Mostrando los primeros ${requestedLimit} registros con estados terminales. Si necesitas el corte completo, exporta desde Más / Admin o ajusta filtros en Cierre.`
+              : `Mostrando los primeros ${requestedLimit} pedidos activos. En hora pico puede haber más pedidos fuera de esta carga.`
+            : null,
+        );
         registerLoadedOrders(mappedOrders);
         if (reason !== "auto") {
           setOrdersNotice("Pedidos actualizados");
@@ -3402,6 +3804,7 @@ export function InternalChekeoApp() {
         }
         setOrders(asInternalOrders(mockOrders));
         setOrdersSource("fallback");
+        setLimitWarning(null);
         setOrdersError(message);
       } finally {
         loadingOrdersRef.current = false;
@@ -3419,8 +3822,7 @@ export function InternalChekeoApp() {
         const authenticated = await fetchInternalAuthStatus();
         if (cancelled) return;
         setLogged(authenticated);
-        if (authenticated)
-          void loadLiveOrders(tab === "historial" || tab === "pagos");
+        if (authenticated) void loadLiveOrders(shouldIncludeTerminalOrders(tab));
       } catch {
         if (!cancelled) setLogged(false);
       } finally {
@@ -3434,15 +3836,15 @@ export function InternalChekeoApp() {
   }, []);
 
   useEffect(() => {
-    if (logged && tab !== "catalogo" && tab !== "cierre")
-      void loadLiveOrders(tab === "historial" || tab === "pagos");
+    if (logged && shouldKeepOrdersLoaded(tab))
+      void loadLiveOrders(shouldIncludeTerminalOrders(tab));
   }, [logged, tab, loadLiveOrders]);
 
   useEffect(() => {
-    if (!logged || tab === "catalogo" || tab === "cierre") return;
+    if (!logged || !shouldKeepOrdersLoaded(tab)) return;
 
     const refresh = () => {
-      void loadLiveOrders(tab === "historial" || tab === "pagos", "auto");
+      void loadLiveOrders(shouldIncludeTerminalOrders(tab), "auto");
     };
     const interval = window.setInterval(refresh, AUTO_REFRESH_INTERVAL_MS);
 
@@ -3717,13 +4119,22 @@ export function InternalChekeoApp() {
       void loadLiveOrders(Boolean(includeTerminal));
     },
     lastUpdated,
+    limitWarning,
   };
 
   const active = orders.filter((o) => !terminalStatuses.has(o.status));
   const content = useMemo(
     () =>
       ({
-        inicio: <DashboardHome orders={orders} source={ordersSource} />,
+        inicio: (
+          <AdminWorkspace
+            tab={tab}
+            setTab={setTab}
+            orders={orders}
+            source={ordersSource}
+            runtime={runtime}
+          />
+        ),
         pedidos: (
           <OrdersBoard
             orders={orders.filter((o) => !terminalStatuses.has(o.status))}
@@ -3760,8 +4171,33 @@ export function InternalChekeoApp() {
             sessionActive={logged}
           />
         ),
-        catalogo: <CatalogAdminPanel />,
-        sorteos: <RafflesAdminPanel />,
+        mas: (
+          <AdminWorkspace
+            tab={tab}
+            setTab={setTab}
+            orders={orders}
+            source={ordersSource}
+            runtime={runtime}
+          />
+        ),
+        catalogo: (
+          <AdminWorkspace
+            tab={tab}
+            setTab={setTab}
+            orders={orders}
+            source={ordersSource}
+            runtime={runtime}
+          />
+        ),
+        sorteos: (
+          <AdminWorkspace
+            tab={tab}
+            setTab={setTab}
+            orders={orders}
+            source={ordersSource}
+            runtime={runtime}
+          />
+        ),
       })[tab],
     [logged, orderEnvironment, orders, ordersSource, tab, runtime, toggleKitchenItemDone],
   );
@@ -3773,7 +4209,7 @@ export function InternalChekeoApp() {
         onLogin={() => {
           loggedRef.current = true;
           setLogged(true);
-          void loadLiveOrders(tab === "historial" || tab === "pagos");
+          void loadLiveOrders(shouldIncludeTerminalOrders(tab));
         }}
       />
     );
@@ -3784,22 +4220,30 @@ export function InternalChekeoApp() {
         environment={orderEnvironment}
         runtimeEnvironment={runtimeEnvironment}
         source={ordersSource}
+        lastUpdated={lastUpdated}
         onLogout={() => {
           void logoutInternal();
           loggedRef.current = false;
           setLogged(false);
           setOrdersSource("mock");
           setOrders(asInternalOrders(mockOrders));
+          setOrdersNotice(null);
+          setOrdersError(null);
           setSelected(null);
           cancellationRequestRef.current = null;
           setCancellationRequest(null);
           setNewOrderNotice(null);
           setHighlightedOrderIds(new Set());
           orderKeysRef.current = null;
+          setLastUpdated(null);
+          setLimitWarning(null);
         }}
       />
-      <RuntimeEnvironmentBanner environment={runtimeEnvironment} />
-      <OperationalSummary orders={orders} source={ordersSource} />
+      <OperationalSummary
+        orders={orders}
+        source={ordersSource}
+        onOpenTab={setTab}
+      />
       <NewOrderBanner
         notice={newOrderNotice}
         onDismiss={() => setNewOrderNotice(null)}

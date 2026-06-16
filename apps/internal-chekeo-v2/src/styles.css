@@ -3,7 +3,7 @@
 @tailwind utilities;
 body{font-family:Inter,system-ui,sans-serif;background:#050507;color:#f4f4f5;min-width:320px}
 button{min-height:44px}
-.shell{@apply mx-auto min-h-screen max-w-6xl space-y-2 p-2 md:p-3}
+.shell{@apply mx-auto min-h-screen max-w-7xl space-y-3 p-2 md:p-4}
 .card{@apply rounded-xl border border-zinc-800 bg-zinc-950/90 p-3 shadow-xl}
 .header-compact{@apply flex items-center justify-between gap-2 py-1.5}
 .muted{@apply text-xs text-zinc-400}
@@ -11,14 +11,23 @@ button{min-height:44px}
 .btn-sm{@apply min-h-11 rounded-lg border border-zinc-700 px-3 py-2 text-[11px] font-bold}
 .danger{@apply border-rose-700 text-rose-300}
 .input{@apply mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2}
-.tabs{@apply flex gap-1 overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-950 p-1}
-.tab{@apply min-h-11 shrink-0 whitespace-nowrap rounded-lg px-3 py-2 text-[11px] text-zinc-300 data-[state=active]:bg-cyan-500/20 data-[state=active]:font-semibold data-[state=active]:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400}
+.tabs{@apply grid grid-cols-2 gap-1 rounded-2xl border border-zinc-800 bg-zinc-950/95 p-1 min-[520px]:grid-cols-3 xl:grid-cols-6}
+.tab{@apply flex min-h-[54px] w-full flex-col items-start justify-center gap-0.5 rounded-xl px-3 py-2 text-left text-[11px] text-zinc-300 data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400}
+.tab__label{@apply text-sm font-semibold text-zinc-100}
+.tab__hint{@apply text-[10px] uppercase tracking-[0.18em] text-zinc-500}
 .row{@apply flex items-center justify-between gap-2 rounded-lg border border-zinc-800 bg-zinc-900/60 p-2 text-left}
 .chip{@apply rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-1 text-xs text-cyan-200}
 .summary-grid{@apply grid gap-2 rounded-xl border border-zinc-800 bg-zinc-950/70 p-2 min-[520px]:grid-cols-2 lg:grid-cols-6}
 .summary-intro{@apply rounded-lg border border-cyan-500/20 bg-cyan-500/10 p-3 min-[520px]:col-span-2 lg:col-span-1}
-.summary-card{@apply rounded-lg border-zinc-800 bg-zinc-900/65 p-3}
+.summary-strip{@apply space-y-2 rounded-2xl border border-zinc-800 bg-zinc-950/80 p-2}
+.summary-strip__meta{@apply flex flex-col gap-1 px-1 py-1 sm:flex-row sm:items-center sm:justify-between}
+.summary-strip__grid{@apply grid gap-2 min-[560px]:grid-cols-2 xl:grid-cols-5}
+.summary-card{@apply rounded-xl border border-zinc-800 bg-zinc-900/65 p-3}
 .info-pill{@apply rounded-lg border border-zinc-800 bg-zinc-950/70 px-3 py-2}
+.shell-header{@apply rounded-2xl border border-zinc-800 bg-zinc-950/95 p-4 shadow-xl}
+.shell-header--preview{@apply border-amber-400/50 bg-amber-500/10}
+.shell-header--production{@apply border-rose-400/50 bg-rose-500/10}
+.shell-header--local{@apply border-sky-400/40 bg-sky-500/10}
 .environment-badge{@apply inline-flex min-h-8 items-center rounded-md border px-2.5 py-1 text-[11px] font-black uppercase tracking-[0.18em]}
 .environment-badge--preview{@apply border-amber-300 bg-amber-300 text-amber-950 shadow-[0_0_18px_rgba(251,191,36,0.24)]}
 .environment-badge--production{@apply border-rose-300 bg-rose-300 text-rose-950 shadow-[0_0_18px_rgba(251,113,133,0.24)]}
@@ -29,6 +38,12 @@ button{min-height:44px}
 .runtime-environment-banner--local{@apply border-sky-400/50 bg-sky-500/10 shadow-[0_0_22px_rgba(56,189,248,0.12)]}
 .runtime-environment-link{@apply inline-flex min-h-11 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs font-black text-zinc-50 hover:bg-zinc-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400}
 .runtime-login-notice{@apply mb-4 rounded-xl border border-zinc-800 bg-zinc-900/65 p-3 text-left}
+.kitchen-lanes{@apply grid gap-2 min-[520px]:grid-cols-2 xl:grid-cols-5}
+.kitchen-lane{@apply rounded-2xl border border-zinc-800 bg-zinc-900/60 p-3 text-left}
+.kitchen-lane--active{@apply border-cyan-300/50 bg-cyan-400/10}
+.admin-nav{@apply grid grid-cols-2 gap-2 sm:flex sm:flex-wrap}
+.admin-nav__button{@apply min-h-11 rounded-xl border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-sm font-semibold text-zinc-300}
+.admin-nav__button--active{@apply border-cyan-300/50 bg-cyan-400/10 text-cyan-100}
 .overlay{@apply fixed inset-0 z-40 overflow-y-auto bg-black/70}
 .modal{@apply fixed left-1/2 top-1/2 z-50 w-[calc(100%-1rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-xl border border-zinc-700 bg-zinc-950 p-4}
 .modal{max-height:calc(100dvh - 1rem)}
@@ -38,12 +53,12 @@ button{min-height:44px}
 .image-preview{@apply flex h-28 w-full shrink-0 items-center justify-center overflow-hidden rounded-xl border border-zinc-700 bg-zinc-900 text-xs uppercase tracking-widest text-zinc-500 sm:w-32}
 .image-preview img{@apply h-full w-full object-cover}
 @media (hover: hover) and (pointer: fine){
-  .btn,.btn-sm,.tab,.runtime-environment-link,.summary-card,.row{transition-property:transform,border-color,background-color,opacity;transition-duration:180ms;transition-timing-function:cubic-bezier(0.23,1,0.32,1)}
+  .btn,.btn-sm,.tab,.runtime-environment-link,.summary-card,.row,.kitchen-lane,.admin-nav__button{transition-property:transform,border-color,background-color,opacity;transition-duration:180ms;transition-timing-function:cubic-bezier(0.23,1,0.32,1)}
   .btn:hover,.btn-sm:hover,.runtime-environment-link:hover{transform:translateY(-1px)}
-  .summary-card:hover,.row:hover{border-color:rgb(34 211 238 / .35)}
+  .summary-card:hover,.row:hover,.kitchen-lane:hover,.admin-nav__button:hover{border-color:rgb(34 211 238 / .35)}
 }
 .btn:active,.btn-sm:active,.runtime-environment-link:active{transform:scale(.98)}
 @media (prefers-reduced-motion: reduce){
   *,::before,::after{scroll-behavior:auto!important}
-  .btn,.btn-sm,.tab,.runtime-environment-link,.summary-card,.row{transition:none!important;transform:none!important}
+  .btn,.btn-sm,.tab,.runtime-environment-link,.summary-card,.row,.kitchen-lane,.admin-nav__button{transition:none!important;transform:none!important}
 }
