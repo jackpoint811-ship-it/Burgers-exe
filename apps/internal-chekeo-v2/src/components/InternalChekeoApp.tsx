@@ -152,10 +152,34 @@ type OrdersRuntime = {
   notice: string | null;
   highlightedOrderIds: Set<string>;
   sessionActive: boolean;
+  sessionState: SessionState;
   onSessionExpired: () => void;
   reload: (includeTerminal?: boolean) => void;
   lastUpdated: string | null;
   limitWarning: string | null;
+};
+type SessionState = "checking" | "active" | "inactive" | "expired";
+type TruthTone = "system" | "success" | "warning" | "danger" | "neutral";
+type TruthItem = { label: string; value: string; tone: TruthTone };
+type TruthBanner = { title: string; message: string; tone: TruthTone };
+type TruthAction = { label: string; helper: string; tone: TruthTone };
+type OperationalTruth = {
+  headline: string;
+  summary: string;
+  environment: TruthItem;
+  session: TruthItem;
+  data: TruthItem;
+  capability: TruthItem;
+  activity: TruthItem;
+  freshness: TruthItem;
+  action: TruthAction;
+  banner: TruthBanner | null;
+  sourceBadge: string;
+  sourceMessage: string;
+  sourceHint: string;
+  kitchenTitle: string;
+  kitchenHint: string;
+  summaryHint: string;
 };
 
 const orderEnvironmentLabel: Record<OrderV2Environment, string> = {
@@ -174,16 +198,16 @@ const runtimeEnvironmentCopy: Record<
   { primary: string; secondary: string }
 > = {
   preview: {
-    primary: "Estás editando datos de prueba / preview.",
-    secondary: "Puedes validar cambios sin afectar producción. Los cambios aquí son para pruebas.",
+    primary: "Preview: valida sin tocar producción.",
+    secondary: "No asumas datos reales hasta ver D1 activo.",
   },
   production: {
-    primary: "Producción: los cambios pueden afectar el menú real.",
-    secondary: "Estás operando el menú real.",
+    primary: "Producción: cualquier cambio impacta pedidos reales.",
+    secondary: "Confirma sesión y datos antes de operar.",
   },
   local: {
-    primary: "Local: vista para pruebas internas.",
-    secondary: "Úsala para revisar la pantalla sin afectar pedidos reales.",
+    primary: "Local: UI para pruebas internas.",
+    secondary: "No cambia pedidos reales.",
   },
 };
 const primaryTabs: Array<{
@@ -256,33 +280,208 @@ const sourceLabel = (source?: string) =>
     : source === "public-v2-preview"
       ? "Pedidos de prueba"
       : "Vista local";
-const getSourcePanelCopy = (runtime: OrdersRuntime) => {
-  if (runtime.source === "d1" && runtime.environment === "production") {
-    return {
-      badge: "Operación en vivo",
-      message: "La lista se está leyendo desde D1 de producción.",
+const truthToneClassName: Record<TruthTone, string> = {
+  system: "truth-pill truth-pill--system",
+  success: "truth-pill truth-pill--success",
+  warning: "truth-pill truth-pill--warning",
+  danger: "truth-pill truth-pill--danger",
+  neutral: "truth-pill truth-pill--neutral",
+};
+const truthBannerClassName: Record<TruthTone, string> = {
+  system: "truth-banner truth-banner--system",
+  success: "truth-banner truth-banner--success",
+  warning: "truth-banner truth-banner--warning",
+  danger: "truth-banner truth-banner--danger",
+  neutral: "truth-banner truth-banner--neutral",
+};
+const truthActionClassName: Record<TruthTone, string> = {
+  system: "truth-action truth-action--system",
+  success: "truth-action truth-action--success",
+  warning: "truth-action truth-action--warning",
+  danger: "truth-action truth-action--danger",
+  neutral: "truth-action truth-action--neutral",
+};
+const sessionStateLabel: Record<SessionState, TruthItem> = {
+  checking: { label: "Sesión", value: "Verificando", tone: "system" },
+  active: { label: "Sesión", value: "Activa", tone: "success" },
+  inactive: { label: "Sesión", value: "No activa", tone: "neutral" },
+  expired: { label: "Sesión", value: "Expirada", tone: "danger" },
+};
+const getOperationalTruth = ({
+  runtime,
+  runtimeEnvironment,
+  activeCount,
+}: {
+  runtime: OrdersRuntime;
+  runtimeEnvironment: ChekeoRuntimeEnvironment;
+  activeCount: number;
+}): OperationalTruth => {
+  const environment: TruthItem = {
+    label: "Entorno",
+    value: runtimeEnvironmentLabel[runtimeEnvironment],
+    tone: "system",
+  };
+  const session = sessionStateLabel[runtime.sessionState];
+  const isLiveD1 = runtime.source === "d1" && runtime.environment === "production";
+  const isPreviewD1 = runtime.source === "d1" && runtime.environment === "preview";
+  const data: TruthItem = isLiveD1
+    ? { label: "Datos", value: "D1 real", tone: "success" }
+    : isPreviewD1
+      ? { label: "Datos", value: "Preview D1", tone: "system" }
+      : runtime.source === "fallback"
+        ? { label: "Datos", value: "Fallback", tone: "warning" }
+        : { label: "Datos", value: "Mock local", tone: "warning" };
+  const capability: TruthItem =
+    runtime.sessionState !== "active"
+      ? { label: "Capacidad", value: "Entrar para operar", tone: "danger" }
+      : runtime.error && runtime.source !== "d1"
+        ? { label: "Capacidad", value: "Sin backend", tone: "danger" }
+        : runtime.source === "d1"
+          ? {
+              label: "Capacidad",
+              value: runtime.environment === "preview" ? "Operable en preview" : "Operable",
+              tone: "success",
+            }
+          : { label: "Capacidad", value: "Solo revisión", tone: "warning" };
+  const activity: TruthItem = {
+    label: "Carga",
+    value: `${activeCount} activos`,
+    tone: activeCount > 0 ? "neutral" : "system",
+  };
+  const freshness: TruthItem = {
+    label: "Actualización",
+    value: runtime.lastUpdated ? runtime.lastUpdated : "Pendiente",
+    tone: runtime.lastUpdated ? "neutral" : runtime.source === "d1" ? "warning" : "neutral",
+  };
+
+  let headline = "Chekeo listo para revisar";
+  let summary = "Confirma entorno, sesión y datos antes de mover pedidos.";
+  let action: TruthAction = {
+    label: runtime.loading ? "Actualizando..." : "Actualizar",
+    helper: "Refresca el estado actual.",
+    tone: "system",
+  };
+  let banner: TruthBanner | null = null;
+  let sourceBadge = data.value;
+  let sourceMessage = "Revisa esta superficie antes de operar.";
+  let sourceHint = "Reintenta si dudas del backend.";
+  let kitchenTitle = "Cocina conectada";
+  let kitchenHint = "Ordenado por urgencia y pago para decidir rápido.";
+  let summaryHint = "Solo referencia visual.";
+
+  if (runtime.sessionState === "expired") {
+    headline = "Sesión expirada";
+    summary = "Vuelve a entrar antes de operar.";
+    action = { label: "Entrar de nuevo", helper: "Recupera la sesión.", tone: "danger" };
+    banner = {
+      title: "Sesión vencida",
+      message: "Chekeo salió de la sesión activa. Vuelve a entrar para recuperar D1.",
+      tone: "danger",
+    };
+  } else if (runtime.sessionState !== "active") {
+    headline = "Sin sesión operativa";
+    summary = "Entra para consultar D1 y habilitar acciones.";
+    action = { label: "Entrar", helper: "Activa la sesión primero.", tone: "neutral" };
+  } else if (isLiveD1) {
+    headline = "Operando con datos reales";
+    summary = "Cada acción impacta pedidos reales.";
+    action = {
+      label: runtime.loading ? "Actualizando..." : "Actualizar",
+      helper: "Confirma que la lista siga al día.",
+      tone: "success",
+    };
+    sourceMessage = "Lee y escribe sobre D1 real.";
+    sourceHint = "Si algo falla, revisa sesión o backend antes de seguir.";
+    kitchenTitle = "Cocina conectada a D1 real";
+    summaryHint = `${activeCount} pedidos activos visibles.`;
+  } else if (isPreviewD1) {
+    headline = "Operando en preview";
+    summary = "Puedes validar flujo sin tocar producción.";
+    action = {
+      label: runtime.loading ? "Actualizando..." : "Actualizar",
+      helper: "Refresca preview antes de validar.",
+      tone: "system",
+    };
+    banner = {
+      title: "Preview D1",
+      message: "Los datos vienen del backend de prueba. No asumas producción.",
+      tone: "system",
+    };
+    sourceMessage = "Lee y escribe sobre D1 preview.";
+    sourceHint = "Úsalo para validar flujos y copy.";
+    kitchenTitle = "Cocina conectada a preview";
+    kitchenHint = "Valida orden y prioridad sin tratarlo como producción.";
+    summaryHint = `${activeCount} pedidos activos visibles en preview.`;
+  } else if (runtime.source === "fallback") {
+    headline = "Chekeo está en fallback";
+    summary = "Puedes revisar pedidos, pero no confiar en escritura real.";
+    action = {
+      label: runtime.loading ? "Reconectando..." : "Reintentar",
+      helper: "Busca volver a D1.",
+      tone: "warning",
+    };
+    banner = {
+      title: "Solo revisión",
+      message: runtime.error
+        ? "El backend falló y Chekeo cayó a fallback. Reintenta antes de operar."
+        : "Los cambios quedan en esta vista hasta recuperar D1.",
+      tone: runtime.error ? "danger" : "warning",
+    };
+    sourceMessage = "Solo lectura mientras el backend no responde.";
+    sourceHint = "No confirmes pagos o estados como definitivos.";
+    kitchenTitle = "Cocina en fallback";
+    kitchenHint = "Referencia visual. Reintenta para volver a D1.";
+  } else {
+    headline = runtimeEnvironment === "local" ? "Chekeo corre en local" : "Chekeo está en mock";
+    summary = "Úsalo para revisar UI; no hay backend real activo.";
+    action = {
+      label: runtime.loading ? "Reintentando..." : "Reintentar",
+      helper: "Intenta recuperar D1 o sesión.",
+      tone: "warning",
+    };
+    banner = {
+      title: runtimeEnvironment === "local" ? "Mock local" : "Modo mock",
+      message: "Solo valida la interfaz. Los cambios no llegan a datos reales.",
+      tone: "warning",
+    };
+    sourceMessage = "Vista aislada del backend real.";
+    sourceHint = "Úsala para revisar layout y flujo base.";
+    kitchenTitle = "Cocina en vista local";
+    kitchenHint = "Solo referencia visual hasta volver a D1.";
+  }
+
+  if (runtime.error && runtime.source === "d1") {
+    banner = {
+      title: "Backend con error",
+      message: "La última solicitud falló. Reintenta antes de asumir que todo está al día.",
+      tone: "warning",
+    };
+    action = {
+      label: runtime.loading ? "Reintentando..." : "Reintentar",
+      helper: "Confirma que D1 siga respondiendo.",
+      tone: "warning",
     };
   }
-  if (runtime.source === "d1" && runtime.environment === "preview") {
-    return {
-      badge: "Datos de preview",
-      message: "La lista se está leyendo desde D1 preview. Esta operación es de prueba.",
-    };
-  }
+
   return {
-    badge: "Modo respaldo",
-    message: "Esta vista sigue operable, pero no está escribiendo contra datos reales.",
+    headline,
+    summary,
+    environment,
+    session,
+    data,
+    capability,
+    activity,
+    freshness,
+    action,
+    banner,
+    sourceBadge,
+    sourceMessage,
+    sourceHint,
+    kitchenTitle,
+    kitchenHint,
+    summaryHint,
   };
 };
-const getOrdersDataLabel = (
-  source: OrdersSource,
-  environment: OrderV2Environment,
-) =>
-  source === "d1"
-    ? environment === "production"
-      ? "Datos reales"
-      : "Datos de preview"
-    : "Vista local";
 const getPaymentStatusLabel = (status: string) =>
   isOrderV2PaymentStatus(status) ? paymentStatusLabel[status] : status || "Por confirmar";
 const getPaymentMethodLabel = (method: string) =>
@@ -913,42 +1112,51 @@ const NewOrderBanner = ({
 
 const SourcePanel = ({
   runtime,
+  runtimeEnvironment,
   includeTerminal = false,
 }: {
   runtime: OrdersRuntime;
+  runtimeEnvironment: ChekeoRuntimeEnvironment;
   includeTerminal?: boolean;
 }) => {
-  const copy = getSourcePanelCopy(runtime);
+  const truth = getOperationalTruth({
+    runtime,
+    runtimeEnvironment,
+    activeCount: 0,
+  });
   return (
     <Card className="mb-2.5 p-3">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="min-w-0 space-y-1">
+      <div className="surface-status">
+        <div className="surface-status__copy">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="chip">{copy.badge}</span>
-            <span className="chip">
-              {runtime.sessionActive ? "Sesión activa" : "Inicia sesión"}
-            </span>
+            <StatusPill className={truthToneClassName[truth.data.tone]}>
+              {truth.sourceBadge}
+            </StatusPill>
+            <StatusPill className={truthToneClassName[truth.session.tone]}>
+              {truth.session.value}
+            </StatusPill>
+            <StatusPill className={truthToneClassName[truth.capability.tone]}>
+              {truth.capability.value}
+            </StatusPill>
             {includeTerminal ? (
-              <span className="chip">Incluye entregados y cancelados</span>
+              <StatusPill className={truthToneClassName.neutral}>
+                Incluye terminales
+              </StatusPill>
             ) : null}
           </div>
-          <p className="text-sm font-bold text-zinc-100">{copy.message}</p>
-          <p className="text-[11px] text-zinc-400">
-            Usa esta superficie para refrescar rápido y validar si la sesión sigue lista para operar.
-          </p>
+          <p className="text-sm font-bold text-zinc-100">{truth.sourceMessage}</p>
+          <p className="text-[11px] text-zinc-400">{truth.sourceHint}</p>
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-          {runtime.lastUpdated ? (
-            <span className="text-[11px] text-zinc-500">
-              Actualizado: {runtime.lastUpdated}
-            </span>
-          ) : null}
+        <div className="surface-status__meta">
+          <span className="text-[11px] text-zinc-500">
+            {runtime.lastUpdated ? `Actualizado ${runtime.lastUpdated}` : "Sin sync confirmado"}
+          </span>
           <Button
             className="border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs disabled:opacity-40"
             onClick={() => runtime.reload(includeTerminal)}
-            disabled={runtime.loading || !runtime.sessionActive}
+            disabled={runtime.loading || runtime.sessionState !== "active"}
           >
-            {runtime.loading ? "Actualizando…" : "Actualizar lista"}
+            {runtime.loading ? "Actualizando..." : truth.action.label}
           </Button>
         </div>
       </div>
@@ -975,10 +1183,14 @@ const InternalLogin = ({
   onLogin,
   checkingSession,
   runtimeEnvironment,
+  sessionState,
+  sessionMessage,
 }: {
   onLogin: () => void;
   checkingSession: boolean;
   runtimeEnvironment: ChekeoRuntimeEnvironment;
+  sessionState: SessionState;
+  sessionMessage?: string | null;
 }) => {
   const [pin, setPin] = useState("");
   const [loading, setLoading] = useState(false);
@@ -1029,7 +1241,15 @@ const InternalLogin = ({
         </div>
         <div className="runtime-login-notice">
           <p className="text-sm font-semibold text-zinc-50">{copy.primary}</p>
-          <p className="mt-1 text-xs text-zinc-300">{copy.secondary}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <StatusPill className={truthToneClassName.system}>
+              {runtimeEnvironmentLabel[runtimeEnvironment]}
+            </StatusPill>
+            <StatusPill className={truthToneClassName[sessionStateLabel[sessionState].tone]}>
+              {sessionStateLabel[sessionState].value}
+            </StatusPill>
+          </div>
+          <p className="mt-2 text-xs text-zinc-300">{copy.secondary}</p>
           <a
             className="runtime-environment-link mt-3 w-full"
             href={publicOrderUrl}
@@ -1069,11 +1289,16 @@ const InternalLogin = ({
               {error}
             </p>
           ) : null}
+          {!error && sessionMessage ? (
+            <p className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
+              {sessionMessage}
+            </p>
+          ) : null}
           <Button
             className="w-full bg-cyan-400 py-3 text-base font-black text-black disabled:opacity-50"
             disabled={loading || checkingSession}
           >
-            {loading || checkingSession ? "Entrando…" : "Entrar"}
+            {loading || checkingSession ? "Entrando..." : "Entrar"}
           </Button>
         </form>
       </section>
@@ -1094,21 +1319,14 @@ const EnvironmentBadge = ({
 );
 
 const OperatorHeader = ({
-  active,
-  environment,
   runtimeEnvironment,
   onLogout,
-  source,
-  lastUpdated,
+  truth,
 }: {
-  active: number;
-  environment: OrderV2Environment;
   runtimeEnvironment: ChekeoRuntimeEnvironment;
   onLogout: () => void;
-  source: OrdersSource;
-  lastUpdated: string | null;
+  truth: OperationalTruth;
 }) => {
-  const copy = runtimeEnvironmentCopy[runtimeEnvironment];
   const publicOrderUrl = getPublicOrderUrlForEnvironment(runtimeEnvironment);
   const publicOrderLabel = getPublicOrderLabelForEnvironment(runtimeEnvironment);
 
@@ -1126,22 +1344,8 @@ const OperatorHeader = ({
             Chekeo Burgers.exe
           </h1>
           <p className="mt-1 max-w-3xl text-sm text-zinc-300">
-            {copy.primary}
+            {truth.headline}
           </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <span className="info-pill">
-              {active} activos
-            </span>
-            <span className="info-pill">
-              {orderEnvironmentLabel[environment]}
-            </span>
-            <span className="info-pill">
-              {getOrdersDataLabel(source, environment)}
-            </span>
-            <span className="info-pill">
-              {lastUpdated ? `Sync ${lastUpdated}` : "Esperando sync"}
-            </span>
-          </div>
         </div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[220px]">
           <a
@@ -1156,10 +1360,10 @@ const OperatorHeader = ({
             className="min-h-11 border border-zinc-700 bg-zinc-900 px-3 py-2 text-[11px]"
             onClick={onLogout}
           >
-            Cerrar sesión
+            Cerrar sesion
           </Button>
           <p className="text-[11px] text-zinc-500 sm:text-right">
-            {copy.secondary}
+            {truth.summary}
           </p>
         </div>
       </div>
@@ -1167,13 +1371,70 @@ const OperatorHeader = ({
   );
 };
 
+const OperationalStatusBar = ({
+  truth,
+  onPrimaryAction,
+  disabled,
+}: {
+  truth: OperationalTruth;
+  onPrimaryAction: () => void;
+  disabled: boolean;
+}) => {
+  const items = [
+    truth.environment,
+    truth.session,
+    truth.data,
+    truth.capability,
+    truth.activity,
+    truth.freshness,
+  ];
+
+  return (
+    <section className="truth-shell" aria-label="Estado operativo actual">
+      <div className="truth-shell__top">
+        <div className="truth-shell__intro">
+          <p className="truth-shell__eyebrow">Estado operativo</p>
+          <h2 className="truth-shell__title">{truth.headline}</h2>
+          <p className="truth-shell__summary">{truth.summary}</p>
+        </div>
+        <div className="truth-shell__action">
+          <Button
+            className={`${truthActionClassName[truth.action.tone]} disabled:opacity-40`}
+            onClick={onPrimaryAction}
+            disabled={disabled}
+          >
+            {truth.action.label}
+          </Button>
+          <p className="text-[11px] text-zinc-500">{truth.action.helper}</p>
+        </div>
+      </div>
+      <div className="truth-shell__grid">
+        {items.map((item) => (
+          <div key={item.label} className="truth-shell__card">
+            <p className="truth-shell__label">{item.label}</p>
+            <StatusPill className={truthToneClassName[item.tone]}>
+              {item.value}
+            </StatusPill>
+          </div>
+        ))}
+      </div>
+      {truth.banner ? (
+        <div className={truthBannerClassName[truth.banner.tone]}>
+          <strong>{truth.banner.title}</strong>
+          <span>{truth.banner.message}</span>
+        </div>
+      ) : null}
+    </section>
+  );
+};
+
 const OperationalSummary = ({
   orders,
-  source,
+  truth,
   onOpenTab,
 }: {
   orders: InternalOrder[];
-  source: OrdersSource;
+  truth: OperationalTruth;
   onOpenTab: (tab: TabKey) => void;
 }) => {
   const summary = getOperationalSummary(orders);
@@ -1217,9 +1478,7 @@ const OperationalSummary = ({
           Prioridades del turno
         </p>
         <p className="text-[11px] text-zinc-400">
-          {source === "d1"
-            ? `${summary.activeOrders} pedidos activos visibles · ${summary.totalTickets} folios cargados`
-            : "Vista local para validar flujo sin afectar datos reales."}
+          {truth.summaryHint}
         </p>
       </div>
       <div className="summary-strip__grid">
@@ -1240,41 +1499,6 @@ const OperationalSummary = ({
   );
 };
 
-const RuntimeEnvironmentBanner = ({
-  environment,
-}: {
-  environment: ChekeoRuntimeEnvironment;
-}) => {
-  const copy = runtimeEnvironmentCopy[environment];
-  const publicOrderUrl = getPublicOrderUrlForEnvironment(environment);
-  const publicOrderLabel = getPublicOrderLabelForEnvironment(environment);
-
-  return (
-    <section
-      className={`runtime-environment-banner runtime-environment-banner--${environment}`}
-      aria-label={`Ambiente actual: ${runtimeEnvironmentLabel[environment]}`}
-    >
-      <div>
-        <div className="flex flex-wrap items-center gap-2">
-          <EnvironmentBadge environment={environment} />
-          <strong className="text-sm font-black text-zinc-50">
-            Ambiente actual
-          </strong>
-        </div>
-        <p className="mt-1 text-sm font-semibold text-zinc-50">{copy.primary}</p>
-        <p className="text-xs text-zinc-200/85">{copy.secondary}</p>
-      </div>
-      <a
-        className="runtime-environment-link"
-        href={publicOrderUrl}
-        target="_blank"
-        rel="noreferrer"
-      >
-        {publicOrderLabel}
-      </a>
-    </section>
-  );
-};
 const DashboardHome = ({
   orders,
   source,
@@ -1372,12 +1596,12 @@ const AdminWorkspace = ({
           <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
             Admin secundario
           </p>
-          <h3 className="mt-2 text-xl font-black text-zinc-50">
-            Herramientas fuera del flujo de operación viva
-          </h3>
-          <p className="mt-2 text-sm text-zinc-400">
-            Catálogo, sorteos, reportes y el resumen viven aquí para que Cocina y Pedidos no compitan con tareas administrativas.
-          </p>
+            <h3 className="mt-2 text-xl font-black text-zinc-50">
+              Herramientas fuera del flujo principal
+            </h3>
+            <p className="mt-2 text-sm text-zinc-400">
+              Catálogo, sorteos y reportes quedan aquí para no quitar foco a Cocina y Pedidos.
+            </p>
           <div className="mt-4 grid gap-2 sm:grid-cols-3">
             <button
               type="button"
@@ -1442,7 +1666,7 @@ const AdminWorkspace = ({
               Superficies secundarias de Chekeo
             </h2>
             <p className="mt-1 text-sm text-zinc-400">
-              Aquí viven el resumen, el catálogo, sorteos y los reportes.
+              Resumen, catálogo, sorteos y reportes viven fuera del flujo operativo principal.
             </p>
           </div>
           <div className="admin-nav">
@@ -1956,12 +2180,14 @@ const OrdersBoard = ({
   orders,
   setSelected,
   runtime,
+  runtimeEnvironment,
   move,
   requestCancellation,
 }: {
   orders: InternalOrder[];
   setSelected: (o: InternalOrder) => void;
   runtime: OrdersRuntime;
+  runtimeEnvironment: ChekeoRuntimeEnvironment;
   move: MoveOrderStatus;
   requestCancellation: (
     order: InternalOrder,
@@ -1969,7 +2195,7 @@ const OrdersBoard = ({
   ) => void;
 }) => (
   <section>
-    <SourcePanel runtime={runtime} />
+    <SourcePanel runtime={runtime} runtimeEnvironment={runtimeEnvironment} />
     {runtime.source === "d1" && orders.length === 0 ? (
       <EmptyOrdersState
         title="Todavía no hay pedidos para revisar."
@@ -2849,10 +3075,18 @@ const KitchenQueue = ({
               Cocina operativa
             </p>
             <h2 className="mt-1 text-2xl font-black text-zinc-50 md:text-3xl">
-              Producción en vivo
+              {runtime.source === "d1"
+                ? runtime.environment === "preview"
+                  ? "Cocina conectada a preview"
+                  : "Cocina conectada a D1 real"
+                : "Cocina en respaldo"}
             </h2>
             <p className="mt-1 max-w-3xl text-sm text-zinc-400">
-              Ordenado por urgencia, pago, antigüedad y estado para decidir el siguiente pedido sin leer campos técnicos.
+              {runtime.source === "d1"
+                ? runtime.environment === "preview"
+                  ? "Valida prioridades y flujo sin asumir producción."
+                  : "Ordenado por urgencia, pago y antigüedad para decidir el siguiente pedido."
+                : "Solo referencia visual. Reintenta antes de confirmar cambios como definitivos."}
             </p>
           </div>
           <div className="kitchen-hero__actions">
@@ -3380,10 +3614,12 @@ const PaymentStatusBadge = ({ status }: { status: string }) => {
 const PaymentNotesPanel = ({
   orders,
   runtime,
+  runtimeEnvironment,
   onUpdatePayment,
 }: {
   orders: InternalOrder[];
   runtime: OrdersRuntime;
+  runtimeEnvironment: ChekeoRuntimeEnvironment;
   onUpdatePayment: (
     orderId: string,
     paymentStatus: OrderV2PaymentStatus,
@@ -3474,7 +3710,11 @@ const PaymentNotesPanel = ({
 
   return (
     <section className="space-y-2.5">
-      <SourcePanel runtime={runtime} includeTerminal />
+      <SourcePanel
+        runtime={runtime}
+        runtimeEnvironment={runtimeEnvironment}
+        includeTerminal
+      />
       <Card className="p-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -3645,16 +3885,22 @@ const PaymentNotesPanel = ({
 const HistoryPanel = ({
   orders,
   runtime,
+  runtimeEnvironment,
   onArchiveCancelled,
 }: {
   orders: InternalOrder[];
   runtime: OrdersRuntime;
+  runtimeEnvironment: ChekeoRuntimeEnvironment;
   onArchiveCancelled: (order: InternalOrder) => Promise<void>;
 }) => {
   const terminalOrders = orders.filter((o) => terminalStatuses.has(o.status));
   return (
     <section>
-      <SourcePanel runtime={runtime} includeTerminal />
+      <SourcePanel
+        runtime={runtime}
+        runtimeEnvironment={runtimeEnvironment}
+        includeTerminal
+      />
       <Card className="p-3">
         <h3 className="mb-2">
           Historial {runtime.source === "d1" ? "de pedidos" : "de esta vista"}
@@ -3899,32 +4145,46 @@ const OrderDetailModal = ({
 const OperatorTabs = ({
   tab,
   setTab,
+  summary,
   content,
 }: {
   tab: TabKey;
   setTab: (v: TabKey) => void;
+  summary?: ReactNode;
   content: ReactNode;
 }) => (
   <Tabs.Root
     value={getPrimaryTab(tab)}
     onValueChange={(v) => setTab(v as TabKey)}
   >
-    <Tabs.List className="tabs">
-      {primaryTabs.map(({ key, label, shortLabel }) => (
-        <Tabs.Trigger key={key} value={key} className="tab">
-          <span className="tab__label">{label}</span>
-          {shortLabel ? (
-            <span className="tab__hint">{shortLabel}</span>
-          ) : null}
-        </Tabs.Trigger>
-      ))}
-    </Tabs.List>
+    <div className="tabs-shell">
+      <div className="tabs-shell__meta">
+        <p>Operacion</p>
+        <p>Admin al final</p>
+      </div>
+      <Tabs.List className="tabs">
+        {primaryTabs.map(({ key, label, shortLabel }) => (
+          <Tabs.Trigger
+            key={key}
+            value={key}
+            className={`tab ${key === "mas" ? "tab--admin" : ""}`}
+          >
+            <span className="tab__label">{label}</span>
+            {shortLabel ? (
+              <span className="tab__hint">{shortLabel}</span>
+            ) : null}
+          </Tabs.Trigger>
+        ))}
+      </Tabs.List>
+    </div>
+    {summary}
     {content}
   </Tabs.Root>
 );
 
 export function InternalChekeoApp() {
   const [logged, setLogged] = useState(false);
+  const [sessionState, setSessionState] = useState<SessionState>("checking");
   const [tab, setTab] = useState<TabKey>("cocina");
   const [orders, setOrders] = useState<InternalOrder[]>(
     asInternalOrders(mockOrders),
@@ -3979,6 +4239,7 @@ export function InternalChekeoApp() {
 
   const expireSession = useCallback(() => {
     setLogged(false);
+    setSessionState("expired");
     setOrders(asInternalOrders(mockOrders));
     setOrdersSource("mock");
     setOrdersError("Sesión expirada. Vuelve a iniciar sesión.");
@@ -4071,6 +4332,7 @@ export function InternalChekeoApp() {
 
         const mappedOrders = liveOrders.map(mapOrderV2ToInternalOrder);
         setOrders(mappedOrders);
+        setSessionState("active");
         setSelected((current) => {
           if (!current) return current;
           return (
@@ -4123,9 +4385,13 @@ export function InternalChekeoApp() {
         const authenticated = await fetchInternalAuthStatus();
         if (cancelled) return;
         setLogged(authenticated);
+        setSessionState(authenticated ? "active" : "inactive");
         if (authenticated) void loadLiveOrders(shouldIncludeTerminalOrders(tab));
       } catch {
-        if (!cancelled) setLogged(false);
+        if (!cancelled) {
+          setLogged(false);
+          setSessionState("inactive");
+        }
       } finally {
         if (!cancelled) setCheckingSession(false);
       }
@@ -4415,6 +4681,7 @@ export function InternalChekeoApp() {
     notice: ordersNotice,
     highlightedOrderIds,
     sessionActive: logged,
+    sessionState,
     onSessionExpired: expireSession,
     reload: (includeTerminal?: boolean) => {
       void loadLiveOrders(Boolean(includeTerminal));
@@ -4422,8 +4689,12 @@ export function InternalChekeoApp() {
     lastUpdated,
     limitWarning,
   };
-
   const active = orders.filter((o) => !terminalStatuses.has(o.status));
+  const shellTruth = getOperationalTruth({
+    runtime,
+    runtimeEnvironment,
+    activeCount: active.length,
+  });
   const content = useMemo(
     () =>
       ({
@@ -4441,6 +4712,7 @@ export function InternalChekeoApp() {
             orders={orders.filter((o) => !terminalStatuses.has(o.status))}
             setSelected={setSelected}
             runtime={runtime}
+            runtimeEnvironment={runtimeEnvironment}
             move={move}
             requestCancellation={requestCancellation}
           />
@@ -4458,6 +4730,7 @@ export function InternalChekeoApp() {
           <PaymentNotesPanel
             orders={orders}
             runtime={runtime}
+            runtimeEnvironment={runtimeEnvironment}
             onUpdatePayment={updatePayment}
           />
         ),
@@ -4465,6 +4738,7 @@ export function InternalChekeoApp() {
           <HistoryPanel
             orders={orders}
             runtime={runtime}
+            runtimeEnvironment={runtimeEnvironment}
             onArchiveCancelled={archiveCancelledOrder}
           />
         ),
@@ -4509,9 +4783,12 @@ export function InternalChekeoApp() {
       <InternalLogin
         checkingSession={checkingSession}
         runtimeEnvironment={runtimeEnvironment}
+        sessionState={sessionState}
+        sessionMessage={ordersError}
         onLogin={() => {
           loggedRef.current = true;
           setLogged(true);
+          setSessionState("active");
           void loadLiveOrders(shouldIncludeTerminalOrders(tab));
         }}
       />
@@ -4519,15 +4796,13 @@ export function InternalChekeoApp() {
   return (
     <main className="shell">
       <OperatorHeader
-        active={active.length}
-        environment={orderEnvironment}
         runtimeEnvironment={runtimeEnvironment}
-        source={ordersSource}
-        lastUpdated={lastUpdated}
+        truth={shellTruth}
         onLogout={() => {
           void logoutInternal();
           loggedRef.current = false;
           setLogged(false);
+          setSessionState("inactive");
           setOrdersSource("mock");
           setOrders(asInternalOrders(mockOrders));
           setOrdersNotice(null);
@@ -4542,10 +4817,13 @@ export function InternalChekeoApp() {
           setLimitWarning(null);
         }}
       />
-      <OperationalSummary
-        orders={orders}
-        source={ordersSource}
-        onOpenTab={setTab}
+      <OperationalStatusBar
+        truth={shellTruth}
+        onPrimaryAction={() => {
+          if (runtime.sessionState !== "active") return;
+          void runtime.reload(shouldIncludeTerminalOrders(tab));
+        }}
+        disabled={runtime.loading || runtime.sessionState !== "active"}
       />
       <NewOrderBanner
         notice={newOrderNotice}
@@ -4554,6 +4832,13 @@ export function InternalChekeoApp() {
       <OperatorTabs
         tab={tab}
         setTab={setTab}
+        summary={
+          <OperationalSummary
+            orders={orders}
+            truth={shellTruth}
+            onOpenTab={setTab}
+          />
+        }
         content={
           <AnimatePresence mode="wait">
             <motion.div
