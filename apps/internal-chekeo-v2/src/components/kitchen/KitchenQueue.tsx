@@ -593,6 +593,16 @@ export const KitchenQueue = ({
     [orderMetas],
   );
   const fallback = runtime.source !== "d1";
+  const kitchenTitle = fallback
+    ? "Cocina en fallback"
+    : runtime.environment === "preview"
+      ? "Cocina conectada a preview"
+      : "Cocina conectada a D1 real";
+  const kitchenHint = fallback
+    ? "Solo referencia visual. Reintenta antes de confirmar cambios como definitivos."
+    : runtime.environment === "preview"
+      ? "Valida prioridades y flujo sin asumir producción."
+      : "Ordenado por urgencia, pago y antigüedad para decidir el siguiente pedido.";
 
   useEffect(() => {
     if (view !== "board" || activeOrders.length === 0) return;
@@ -623,10 +633,10 @@ export const KitchenQueue = ({
               Cocina operativa
             </p>
             <h2 className="mt-1 text-2xl font-black text-zinc-50 md:text-3xl">
-              Producción en vivo
+              {kitchenTitle}
             </h2>
             <p className="mt-1 max-w-3xl text-sm text-zinc-400">
-              Ordenado por urgencia, pago, antigüedad y estado para decidir el siguiente pedido sin leer campos técnicos.
+              {kitchenHint}
             </p>
           </div>
           <div className="kitchen-hero__actions">

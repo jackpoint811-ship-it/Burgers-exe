@@ -11,8 +11,11 @@ button{min-height:44px}
 .btn-sm{@apply min-h-11 rounded-lg border border-zinc-700 px-3 py-2 text-[11px] font-bold}
 .danger{@apply border-rose-700 text-rose-300}
 .input{@apply mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2}
-.tabs{@apply grid grid-cols-2 gap-1 rounded-2xl border border-zinc-800 bg-zinc-950/95 p-1 min-[520px]:grid-cols-3 xl:grid-cols-6}
-.tab{@apply flex min-h-[54px] w-full flex-col items-start justify-center gap-0.5 rounded-xl px-3 py-2 text-left text-[11px] text-zinc-300 data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400}
+.tabs-shell{@apply space-y-2}
+.tabs-shell__meta{@apply flex items-center justify-between px-1 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500}
+.tabs{@apply flex gap-2 overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-950/95 p-1.5 xl:grid xl:grid-cols-6 xl:overflow-visible}
+.tab{@apply flex min-h-[54px] min-w-[132px] shrink-0 flex-col items-start justify-center gap-0.5 rounded-xl px-3 py-2 text-left text-[11px] text-zinc-300 data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400 xl:min-w-0}
+.tab--admin{@apply border border-zinc-800 bg-zinc-900/70 data-[state=active]:border-zinc-500 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100}
 .tab__label{@apply text-sm font-semibold text-zinc-100}
 .tab__hint{@apply text-[10px] uppercase tracking-[0.18em] text-zinc-500}
 .row{@apply flex items-center justify-between gap-2 rounded-lg border border-zinc-800 bg-zinc-900/60 p-2 text-left}
@@ -28,6 +31,35 @@ button{min-height:44px}
 .shell-header--preview{@apply border-amber-400/50 bg-amber-500/10}
 .shell-header--production{@apply border-rose-400/50 bg-rose-500/10}
 .shell-header--local{@apply border-sky-400/40 bg-sky-500/10}
+.truth-shell{@apply rounded-2xl border border-zinc-800 bg-zinc-950/90 p-3 shadow-xl}
+.truth-shell__top{@apply flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between}
+.truth-shell__intro{@apply min-w-0}
+.truth-shell__eyebrow{@apply text-[11px] font-black uppercase tracking-[0.24em] text-cyan-200}
+.truth-shell__title{@apply mt-1 text-lg font-black text-zinc-50 md:text-xl}
+.truth-shell__summary{@apply mt-1 text-sm text-zinc-300}
+.truth-shell__action{@apply flex flex-col gap-2 xl:min-w-[220px] xl:items-end}
+.truth-shell__grid{@apply mt-3 grid gap-2 min-[520px]:grid-cols-2 xl:grid-cols-6}
+.truth-shell__card{@apply rounded-xl border border-zinc-800 bg-zinc-900/70 p-3}
+.truth-shell__label{@apply mb-2 text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500}
+.truth-pill{@apply inline-flex min-h-8 items-center rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.12em]}
+.truth-pill--system{@apply border-cyan-400/40 bg-cyan-400/10 text-cyan-100}
+.truth-pill--success{@apply border-lime-400/40 bg-lime-400/10 text-lime-100}
+.truth-pill--warning{@apply border-amber-400/40 bg-amber-400/10 text-amber-100}
+.truth-pill--danger{@apply border-rose-400/45 bg-rose-400/10 text-rose-100}
+.truth-pill--neutral{@apply border-zinc-700 bg-zinc-900 text-zinc-200}
+.truth-banner{@apply mt-3 flex flex-col gap-1 rounded-xl border px-3 py-2 text-sm}
+.truth-banner strong{@apply font-black}
+.truth-banner--system{@apply border-cyan-400/30 bg-cyan-400/10 text-cyan-100}
+.truth-banner--success{@apply border-lime-400/30 bg-lime-400/10 text-lime-100}
+.truth-banner--warning{@apply border-amber-400/30 bg-amber-400/10 text-amber-100}
+.truth-banner--danger{@apply border-rose-400/35 bg-rose-400/10 text-rose-100}
+.truth-banner--neutral{@apply border-zinc-700 bg-zinc-900/80 text-zinc-200}
+.truth-action{@apply min-h-11 w-full px-3 py-2 text-sm font-black xl:w-auto}
+.truth-action--system{@apply border border-cyan-400/40 bg-cyan-400/15 text-cyan-50}
+.truth-action--success{@apply bg-lime-300 text-lime-950}
+.truth-action--warning{@apply border border-amber-400/40 bg-amber-400/15 text-amber-50}
+.truth-action--danger{@apply border border-rose-400/40 bg-rose-400/15 text-rose-50}
+.truth-action--neutral{@apply border border-zinc-700 bg-zinc-900 text-zinc-100}
 .environment-badge{@apply inline-flex min-h-8 items-center rounded-md border px-2.5 py-1 text-[11px] font-black uppercase tracking-[0.18em]}
 .environment-badge--preview{@apply border-amber-300 bg-amber-300 text-amber-950 shadow-[0_0_18px_rgba(251,191,36,0.24)]}
 .environment-badge--production{@apply border-rose-300 bg-rose-300 text-rose-950 shadow-[0_0_18px_rgba(251,113,133,0.24)]}
@@ -38,6 +70,9 @@ button{min-height:44px}
 .runtime-environment-banner--local{@apply border-sky-400/50 bg-sky-500/10 shadow-[0_0_22px_rgba(56,189,248,0.12)]}
 .runtime-environment-link{@apply inline-flex min-h-11 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs font-black text-zinc-50 hover:bg-zinc-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400}
 .runtime-login-notice{@apply mb-4 rounded-xl border border-zinc-800 bg-zinc-900/65 p-3 text-left}
+.surface-status{@apply flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between}
+.surface-status__copy{@apply min-w-0 space-y-1}
+.surface-status__meta{@apply flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center}
 .kitchen-production{@apply space-y-3}
 .kitchen-hero{@apply rounded-2xl border border-zinc-800 bg-zinc-950/95 p-3 shadow-xl md:p-4}
 .kitchen-hero__actions{@apply flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end}

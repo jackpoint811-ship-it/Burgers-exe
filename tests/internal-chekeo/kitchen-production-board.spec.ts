@@ -326,7 +326,9 @@ const loginToKitchen = async (page: Page) => {
   await page.locator('input[type="password"]').fill("0485");
   await page.getByRole("button", { name: /Entrar/i }).click();
   await expect(page.getByText("Cocina operativa")).toBeVisible();
-  await expect(page.getByText("Producción en vivo")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /Cocina conectada a (preview|D1 real)/i }),
+  ).toBeVisible();
 };
 
 test.describe("internal chekeo kitchen production board", () => {
@@ -368,7 +370,9 @@ test.describe("internal chekeo kitchen production board", () => {
       page.getByRole("heading", { name: "Ingredientes estimados" }),
     ).toBeVisible();
     await page.getByRole("button", { name: /Tablero/i }).click();
-    await expect(page.getByText("Producción en vivo")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /Cocina conectada a (preview|D1 real)/i }),
+    ).toBeVisible();
 
     await ticketByFolio(page, "RDY-401")
       .getByRole("button", { name: /Ver detalle/i })
@@ -379,15 +383,21 @@ test.describe("internal chekeo kitchen production board", () => {
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).toHaveCount(0);
 
-    await page.getByRole("button", { name: /^Actualizar$/i }).click();
-    await expect(page.getByText("Producción en vivo")).toBeVisible();
+    await page
+      .getByLabel("Estado operativo actual")
+      .getByRole("button", { name: /^Actualizar$/i })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: /Cocina conectada a (preview|D1 real)/i }),
+    ).toBeVisible();
 
     await page
       .locator("button.tab")
       .filter({ hasText: /^Pedidos$/i })
       .first()
       .click();
-    await expect(page.getByText("Datos de preview")).toBeVisible();
+    await expect(page.getByText("Preview D1").first()).toBeVisible();
+    await expect(page.getByText("Operable en preview")).toBeVisible();
     await expect(page.getByText("Operación en vivo")).toHaveCount(0);
 
     await page
