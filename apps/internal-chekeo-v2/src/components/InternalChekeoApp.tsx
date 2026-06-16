@@ -196,11 +196,6 @@ const shouldIncludeTerminalOrders = (tab: TabKey) =>
   tab === "historial" || tab === "pagos";
 const shouldKeepOrdersLoaded = (tab: TabKey) =>
   tab !== "catalogo" && tab !== "sorteos" && tab !== "cierre";
-const isOperationalTab = (tab: TabKey) =>
-  tab === "cocina" ||
-  tab === "pedidos" ||
-  tab === "pagos" ||
-  tab === "historial";
 
 const isPreviewOrderSource = (source?: string) => source === "public-v2-preview";
 
@@ -248,6 +243,24 @@ const sourceLabel = (source?: string) =>
     : source === "public-v2-preview"
       ? "Pedidos de prueba"
       : "Vista local";
+const getSourcePanelCopy = (runtime: OrdersRuntime) => {
+  if (runtime.source === "d1" && runtime.environment === "production") {
+    return {
+      badge: "Operación en vivo",
+      message: "La lista se está leyendo desde D1 de producción.",
+    };
+  }
+  if (runtime.source === "d1" && runtime.environment === "preview") {
+    return {
+      badge: "Datos de preview",
+      message: "La lista se está leyendo desde D1 preview. Esta operación es de prueba.",
+    };
+  }
+  return {
+    badge: "Modo respaldo",
+    message: "Esta vista sigue operable, pero no está escribiendo contra datos reales.",
+  };
+};
 const getOrdersDataLabel = (
   source: OrdersSource,
   environment: OrderV2Environment,
@@ -878,62 +891,59 @@ const SourcePanel = ({
 }: {
   runtime: OrdersRuntime;
   includeTerminal?: boolean;
-}) => (
-  <Card className="mb-2.5 p-3">
-    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-      <div className="min-w-0 space-y-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="chip">
-            {runtime.source === "d1" ? "Operación en vivo" : "Modo respaldo"}
-          </span>
-          <span className="chip">
-            {runtime.sessionActive ? "Sesión activa" : "Inicia sesión"}
-          </span>
-          {includeTerminal ? (
-            <span className="chip">Incluye entregados y cancelados</span>
-          ) : null}
+}) => {
+  const copy = getSourcePanelCopy(runtime);
+  return (
+    <Card className="mb-2.5 p-3">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0 space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="chip">{copy.badge}</span>
+            <span className="chip">
+              {runtime.sessionActive ? "Sesión activa" : "Inicia sesión"}
+            </span>
+            {includeTerminal ? (
+              <span className="chip">Incluye entregados y cancelados</span>
+            ) : null}
+          </div>
+          <p className="text-sm font-bold text-zinc-100">{copy.message}</p>
+          <p className="text-[11px] text-zinc-400">
+            Usa esta superficie para refrescar rápido y validar si la sesión sigue lista para operar.
+          </p>
         </div>
-        <p className="text-sm font-bold text-zinc-100">
-          {runtime.source === "d1"
-            ? "La lista se está leyendo desde D1."
-            : "Esta vista sigue operable, pero no está escribiendo contra datos reales."}
-        </p>
-        <p className="text-[11px] text-zinc-400">
-          Usa esta superficie para refrescar rápido y validar si la sesión sigue lista para operar.
-        </p>
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          {runtime.lastUpdated ? (
+            <span className="text-[11px] text-zinc-500">
+              Actualizado: {runtime.lastUpdated}
+            </span>
+          ) : null}
+          <Button
+            className="border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs disabled:opacity-40"
+            onClick={() => runtime.reload(includeTerminal)}
+            disabled={runtime.loading || !runtime.sessionActive}
+          >
+            {runtime.loading ? "Actualizando…" : "Actualizar lista"}
+          </Button>
+        </div>
       </div>
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-        {runtime.lastUpdated ? (
-          <span className="text-[11px] text-zinc-500">
-            Actualizado: {runtime.lastUpdated}
-          </span>
-        ) : null}
-        <Button
-          className="border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs disabled:opacity-40"
-          onClick={() => runtime.reload(includeTerminal)}
-          disabled={runtime.loading || !runtime.sessionActive}
-        >
-          {runtime.loading ? "Actualizando…" : "Actualizar lista"}
-        </Button>
-      </div>
-    </div>
-    {runtime.limitWarning ? (
-      <p className="mt-3 rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-100">
-        {runtime.limitWarning}
-      </p>
-    ) : null}
-    {runtime.error ? (
-      <p className="mt-2 rounded bg-rose-500/10 px-2 py-1 text-xs text-rose-200">
-        {runtime.error}
-      </p>
-    ) : null}
-    {runtime.notice ? (
-      <p className="mt-2 rounded bg-emerald-500/10 px-2 py-1 text-xs text-emerald-200">
-        {runtime.notice}
-      </p>
-    ) : null}
-  </Card>
-);
+      {runtime.limitWarning ? (
+        <p className="mt-3 rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-100">
+          {runtime.limitWarning}
+        </p>
+      ) : null}
+      {runtime.error ? (
+        <p className="mt-2 rounded bg-rose-500/10 px-2 py-1 text-xs text-rose-200">
+          {runtime.error}
+        </p>
+      ) : null}
+      {runtime.notice ? (
+        <p className="mt-2 rounded bg-emerald-500/10 px-2 py-1 text-xs text-emerald-200">
+          {runtime.notice}
+        </p>
+      ) : null}
+    </Card>
+  );
+};
 
 const InternalLogin = ({
   onLogin,
