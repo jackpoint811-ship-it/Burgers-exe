@@ -2085,7 +2085,7 @@ const getKitchenItemNotes = (item: InternalOrderItem) => {
   if (item.includedDrink) notes.push(`Bebida: ${item.includedDrink.name}`);
   if (item.sideQuestExtras.length)
     notes.push(
-      `Side Quest: ${item.sideQuestExtras.map((extra) => extra.name).join(", ")}`,
+      `Extras de guarnición: ${item.sideQuestExtras.map((extra) => extra.name).join(", ")}`,
     );
   if (item.comboBurgers.length)
     notes.push(
@@ -2160,8 +2160,8 @@ const buildKitchenOrderMeta = (
 
 const getKitchenSortRank = (meta: KitchenOrderMeta) => {
   if (meta.order.priority === "urgent") return 0;
-  if (meta.needsAttention) return 1;
-  if (meta.urgency === "critical") return 2;
+  if (meta.urgency === "critical") return 1;
+  if (meta.needsAttention) return 2;
   if (meta.urgency === "late") return 3;
   if (meta.order.status === "new") return 4;
   if (meta.order.status === "preparing") return 5;
@@ -2236,7 +2236,7 @@ const KitchenTicketItem = ({
         ) : null}
         {!item.lineKey ? (
           <p className="mt-2 text-xs font-bold text-amber-200">
-            Falta identificador de línea. Revisa el pedido antes de cerrar este item.
+            No se puede marcar este item todavía. Revisa el detalle del pedido.
           </p>
         ) : null}
       </div>
@@ -2495,7 +2495,7 @@ const KitchenBurgerCard = ({
           ) : null}
           {item.sideQuestExtras.length ? (
             <div className="mb-3 rounded-xl border border-fuchsia-400/20 bg-fuchsia-400/5 p-3 text-xs font-semibold text-zinc-200">
-              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-fuchsia-200">Side Quest extra</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-fuchsia-200">Extras de guarnición</p>
               <ul className="mt-2 space-y-1">
                 {item.sideQuestExtras.map((extra, index) => <li key={`${extra.sku ?? extra.name}-${index}`}>{extra.itemKind === "drink" ? "Bebida" : "Guarnición"}: {extra.name}</li>)}
               </ul>
@@ -2671,7 +2671,7 @@ const SideQuestItemCard = ({
             {item.name} #{item.itemDisplayIndex ?? itemIndex + 1}
           </p>
           <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-zinc-500">
-            Side Quest · {done ? "Hecha" : "Pendiente"}
+            Guarnición · {done ? "Hecha" : "Pendiente"}
           </p>
         </div>
         <span
