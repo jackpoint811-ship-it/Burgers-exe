@@ -3,7 +3,7 @@
 @tailwind utilities;
 body{font-family:Inter,system-ui,sans-serif;background:#050507;color:#f4f4f5;min-width:320px}
 button{min-height:44px}
-.shell{@apply mx-auto min-h-screen max-w-7xl space-y-3 p-2 md:p-4}
+.shell{@apply mx-auto min-h-screen max-w-7xl space-y-3 overflow-x-hidden p-2 md:p-4}
 .card{@apply rounded-xl border border-zinc-800 bg-zinc-950/90 p-3 shadow-xl}
 .header-compact{@apply flex items-center justify-between gap-2 py-1.5}
 .muted{@apply text-xs text-zinc-400}
@@ -13,9 +13,11 @@ button{min-height:44px}
 .input{@apply mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2}
 .tabs-shell{@apply space-y-2}
 .tabs-shell__meta{@apply flex items-center justify-between px-1 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500}
-.tabs{@apply flex gap-2 overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-950/95 p-1.5 xl:grid xl:grid-cols-6 xl:overflow-visible}
-.tab{@apply flex min-h-[54px] min-w-[132px] shrink-0 flex-col items-start justify-center gap-0.5 rounded-xl px-3 py-2 text-left text-[11px] text-zinc-300 data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400 xl:min-w-0}
+.tabs{@apply flex gap-2 overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-950/95 p-1.5 xl:grid xl:grid-cols-5 xl:overflow-visible}
+.tab{@apply flex min-h-[58px] min-w-[148px] shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-left text-[11px] text-zinc-300 data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400 xl:min-w-0}
 .tab--admin{@apply border border-zinc-800 bg-zinc-900/70 data-[state=active]:border-zinc-500 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100}
+.tab__icon{@apply inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900/70 text-zinc-100}
+.tab__copy{@apply flex min-w-0 flex-col}
 .tab__label{@apply text-sm font-semibold text-zinc-100}
 .tab__hint{@apply text-[10px] uppercase tracking-[0.18em] text-zinc-500}
 .row{@apply flex items-center justify-between gap-2 rounded-lg border border-zinc-800 bg-zinc-900/60 p-2 text-left}
@@ -119,9 +121,30 @@ button{min-height:44px}
 .kitchen-primary-action--muted{@apply border border-zinc-700 bg-zinc-900 text-zinc-300}
 .kitchen-secondary-action{@apply inline-flex items-center justify-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm font-black text-zinc-100 disabled:opacity-50}
 .kitchen-secondary-action--active{@apply border-lime-300/50 bg-lime-300/10 text-lime-100}
-.admin-nav{@apply grid grid-cols-2 gap-2 sm:flex sm:flex-wrap}
+.home-grid{@apply grid gap-3 xl:grid-cols-[1.35fr_0.85fr]}
+.home-grid--secondary{@apply xl:grid-cols-2}
+.home-hero{@apply p-4}
+.home-hero__meta{@apply flex flex-wrap gap-2}
+.home-metrics{@apply mt-4 grid gap-2 min-[520px]:grid-cols-2 xl:grid-cols-4}
+.home-metric-card{@apply rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3 text-left}
+.home-metric-card__label{@apply text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500}
+.home-metric-card__value{@apply mt-2 text-2xl font-black text-zinc-50}
+.home-metric-card__hint{@apply mt-1 text-[11px] text-zinc-400}
+.home-side-card{@apply p-4}
+.home-quick-actions{@apply mt-4 grid gap-2 min-[520px]:grid-cols-2 xl:grid-cols-1}
+.quick-action-card{@apply flex items-start gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3 text-left}
+.quick-action-card__icon{@apply inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-950 text-cyan-100}
+.quick-action-card__label{@apply text-sm font-bold text-zinc-50}
+.quick-action-card__hint{@apply mt-1 text-[11px] text-zinc-400}
+.admin-nav{@apply grid grid-cols-2 gap-2 md:grid-cols-3 xl:flex xl:flex-wrap}
 .admin-nav__button{@apply min-h-11 rounded-xl border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-sm font-semibold text-zinc-300}
 .admin-nav__button--active{@apply border-cyan-300/50 bg-cyan-400/10 text-cyan-100}
+.admin-module-grid{@apply grid gap-3 md:grid-cols-2 xl:grid-cols-3}
+.admin-module-card{@apply flex items-start gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/75 p-4 text-left}
+.admin-module-card__icon{@apply inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-900 text-cyan-100}
+.admin-module-card__label{@apply text-base font-black text-zinc-50}
+.admin-module-card__hint{@apply mt-1 text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-200}
+.admin-module-card__desc{@apply mt-2 text-sm text-zinc-400}
 .overlay{@apply fixed inset-0 z-40 overflow-y-auto bg-black/70}
 .modal{@apply fixed left-1/2 top-1/2 z-50 w-[calc(100%-1rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-xl border border-zinc-700 bg-zinc-950 p-4}
 .modal{max-height:calc(100dvh - 1rem)}
@@ -131,12 +154,12 @@ button{min-height:44px}
 .image-preview{@apply flex h-28 w-full shrink-0 items-center justify-center overflow-hidden rounded-xl border border-zinc-700 bg-zinc-900 text-xs uppercase tracking-widest text-zinc-500 sm:w-32}
 .image-preview img{@apply h-full w-full object-cover}
 @media (hover: hover) and (pointer: fine){
-  .btn,.btn-sm,.tab,.runtime-environment-link,.summary-card,.row,.kitchen-lane,.admin-nav__button,.kitchen-ticket,.kitchen-secondary-action,.kitchen-primary-action,.kitchen-item-action{transition-property:transform,border-color,background-color,opacity;transition-duration:180ms;transition-timing-function:cubic-bezier(0.23,1,0.32,1)}
-  .btn:hover,.btn-sm:hover,.runtime-environment-link:hover,.kitchen-secondary-action:hover,.kitchen-primary-action:hover,.kitchen-item-action:hover{transform:translateY(-1px)}
-  .summary-card:hover,.row:hover,.kitchen-lane:hover,.admin-nav__button:hover,.kitchen-ticket:hover{border-color:rgb(163 230 53 / .45)}
+  .btn,.btn-sm,.tab,.runtime-environment-link,.home-metric-card,.quick-action-card,.row,.kitchen-lane,.admin-nav__button,.admin-module-card,.kitchen-ticket,.kitchen-secondary-action,.kitchen-primary-action,.kitchen-item-action{transition-property:transform,border-color,background-color,opacity;transition-duration:180ms;transition-timing-function:cubic-bezier(0.23,1,0.32,1)}
+  .btn:hover,.btn-sm:hover,.runtime-environment-link:hover,.home-metric-card:hover,.quick-action-card:hover,.kitchen-secondary-action:hover,.kitchen-primary-action:hover,.kitchen-item-action:hover,.admin-module-card:hover{transform:translateY(-1px)}
+  .home-metric-card:hover,.quick-action-card:hover,.row:hover,.kitchen-lane:hover,.admin-nav__button:hover,.admin-module-card:hover,.kitchen-ticket:hover{border-color:rgb(163 230 53 / .45)}
 }
-.btn:active,.btn-sm:active,.runtime-environment-link:active,.kitchen-secondary-action:active,.kitchen-primary-action:active,.kitchen-item-action:active{transform:scale(.98)}
+.btn:active,.btn-sm:active,.runtime-environment-link:active,.home-metric-card:active,.quick-action-card:active,.kitchen-secondary-action:active,.kitchen-primary-action:active,.kitchen-item-action:active,.admin-module-card:active{transform:scale(.98)}
 @media (prefers-reduced-motion: reduce){
   *,::before,::after{scroll-behavior:auto!important}
-  .btn,.btn-sm,.tab,.runtime-environment-link,.summary-card,.row,.kitchen-lane,.admin-nav__button,.kitchen-ticket,.kitchen-secondary-action,.kitchen-primary-action,.kitchen-item-action{transition:none!important;transform:none!important}
+  .btn,.btn-sm,.tab,.runtime-environment-link,.home-metric-card,.quick-action-card,.row,.kitchen-lane,.admin-nav__button,.admin-module-card,.kitchen-ticket,.kitchen-secondary-action,.kitchen-primary-action,.kitchen-item-action{transition:none!important;transform:none!important}
 }

@@ -101,6 +101,98 @@ const buildKitchenSummary = () => ({
   ],
 });
 
+const buildOrdersSummary = (orders: OrderRecord[]) => {
+  const byStatus = {
+    new: 0,
+    preparing: 0,
+    ready: 0,
+    delivered: 0,
+    cancelled: 0,
+  } as Record<OrderStatus, number>;
+  let grossSales = 0;
+  let deliveredSales = 0;
+
+  for (const order of orders) {
+    byStatus[order.status] += 1;
+    grossSales += order.total;
+    if (order.status === "delivered") deliveredSales += order.total;
+  }
+
+  const byPaymentMethod = ["cash", "card"].map((paymentMethod) => {
+    const matchingOrders = orders.filter((order) => order.paymentMethod === paymentMethod);
+    return {
+      paymentMethod,
+      orders: matchingOrders.length,
+      total: matchingOrders.reduce((sum, order) => sum + order.total, 0),
+    };
+  });
+
+  const topItemsMap = new Map<
+    string,
+    { sku: string; name: string; qty: number; total: number; orders: number }
+  >();
+  for (const order of orders) {
+    for (const item of order.items) {
+      const current = topItemsMap.get(item.sku) ?? {
+        sku: item.sku,
+        name: item.name,
+        qty: 0,
+        total: 0,
+        orders: 0,
+      };
+      current.qty += item.qty;
+      current.total += item.lineTotal;
+      current.orders += 1;
+      topItemsMap.set(item.sku, current);
+    }
+  }
+
+  return {
+    source: "d1" as const,
+    range: {
+      from: "2026-06-17",
+      to: "2026-06-17",
+      fromUtc: "2026-06-17T00:00:00.000Z",
+      toUtc: "2026-06-17T23:59:59.999Z",
+    },
+    totals: {
+      orders: orders.length,
+      activeOrders: orders.filter((order) => !["delivered", "cancelled"].includes(order.status)).length,
+      deliveredOrders: byStatus.delivered,
+      cancelledOrders: byStatus.cancelled,
+      grossSales,
+      deliveredSales,
+      averageTicket: orders.length ? Math.round(grossSales / orders.length) : 0,
+    },
+    byStatus,
+    byPaymentMethod,
+    byOrderMode: [
+      {
+        orderMode: "pickup",
+        orders: orders.length,
+        total: grossSales,
+      },
+    ],
+    topItems: [...topItemsMap.values()].sort((a, b) => b.qty - a.qty).slice(0, 5),
+    recentOrders: orders.slice(0, 5).map((order) => ({
+      id: order.id,
+      folio: order.folio,
+      createdAt: order.createdAt,
+      status: order.status,
+      customerName: order.customerName,
+      orderMode: order.orderMode,
+      paymentMethod: order.paymentMethod,
+      paymentStatus: order.paymentStatus,
+      total: order.total,
+    })),
+    durations: {
+      newToReadyAvgSeconds: 720,
+      newToDeliveredAvgSeconds: 1440,
+    },
+    generatedAt: new Date().toISOString(),
+  };
+};
+
 const createKitchenState = () => {
   let eventSeq = 0;
   let authenticated = false;
@@ -198,6 +290,35 @@ const createKitchenState = () => {
       items: [makeItem("order-ready-402", "ready-line-3", "Burger ready", "burger", 15000)],
       events: [doneEvent("order-ready-402", "ready-line-3")],
     }),
+    makeOrder({
+      id: "order-delivered-501",
+      folio: "DEL-501",
+      status: "delivered",
+      minutesAgo: 18,
+      total: 19900,
+      items: [makeItem("order-delivered-501", "del-line-1", "Burger entregada", "burger", 19900)],
+    }),
+    makeOrder({
+      id: "order-cancelled-601",
+      folio: "CAN-601",
+      status: "cancelled",
+      paymentStatus: "cancelled",
+      minutesAgo: 14,
+      total: 12000,
+      items: [makeItem("order-cancelled-601", "can-line-1", "Burger cancelada", "burger", 12000)],
+      events: [
+        {
+          id: `event-${++eventSeq}`,
+          orderId: "order-cancelled-601",
+          type: "STATUS_CHANGED",
+          actor: "internal-v2",
+          previousStatus: "new",
+          nextStatus: "cancelled",
+          createdAt: isoMinutesAgo(12),
+          detail: { reason: "Cliente canceló" },
+        },
+      ],
+    }),
   ];
 
   return {
@@ -245,6 +366,15 @@ const createKitchenState = () => {
 
 const ticketByFolio = (page: Page, folio: string) =>
   page.locator(".kitchen-ticket").filter({ hasText: folio }).first();
+
+const primaryTab = (page: Page, label: string) =>
+  page.locator("button.tab").filter({ hasText: new RegExp(label, "i") }).first();
+
+const adminNavButton = (page: Page, label: string) =>
+  page
+    .locator("button.admin-nav__button")
+    .filter({ hasText: new RegExp(`^${label}$`, "i") })
+    .first();
 
 const clickLane = async (page: Page, label: string) => {
   await page
@@ -312,6 +442,12 @@ const installKitchenApiMocks = async (page: Page) => {
     });
   });
 
+  await page.route(/.*\/api\/orders-v2-admin\/summary(\?.*)?$/, async (route) => {
+    await route.fulfill({
+      json: { ok: true, data: buildOrdersSummary(state.getOrders()) },
+    });
+  });
+
   await page.route(/.*\/api\/orders-v2-admin\?.*$/, async (route) => {
     await route.fulfill({
       json: { ok: true, data: { orders: state.getOrders() } },
@@ -321,10 +457,27 @@ const installKitchenApiMocks = async (page: Page) => {
   return state;
 };
 
-const loginToKitchen = async (page: Page) => {
+const loginToChekeo = async (page: Page) => {
   await page.goto("/", { waitUntil: "networkidle" });
   await page.locator('input[type="password"]').fill("0485");
   await page.getByRole("button", { name: /Entrar/i }).click();
+  await expect(page.getByRole("heading", { name: "Base operativa para Home" })).toBeVisible();
+  await expect(page.getByText("Mini Resumen K")).toBeVisible();
+  await expect(page.locator("button.tab")).toHaveCount(5);
+};
+
+const openPrimaryTab = async (page: Page, label: string) => {
+  await primaryTab(page, label).click();
+  await page.waitForTimeout(200);
+};
+
+const openAdminSection = async (page: Page, label: string) => {
+  await adminNavButton(page, label).click();
+  await page.waitForTimeout(200);
+};
+
+const openKitchenFromHome = async (page: Page) => {
+  await openPrimaryTab(page, "Cocina");
   await expect(page.getByText("Cocina operativa")).toBeVisible();
   await expect(
     page.getByRole("heading", { name: /Cocina conectada a (preview|D1 real)/i }),
@@ -332,9 +485,19 @@ const loginToKitchen = async (page: Page) => {
 };
 
 test.describe("internal chekeo kitchen production board", () => {
-  test("keeps the kitchen-first production flow stable", async ({ page }) => {
+  test("keeps the restructured operation shell stable", async ({ page }) => {
     await installKitchenApiMocks(page);
-    await loginToKitchen(page);
+    await loginToChekeo(page);
+
+    await expect(page.getByText("Pedidos activos")).toBeVisible();
+    await expect(page.getByText("Pagos pendientes")).toBeVisible();
+    await expect(primaryTab(page, "Home")).toBeVisible();
+    await expect(primaryTab(page, "Pedidos")).toBeVisible();
+    await expect(primaryTab(page, "Cocina")).toBeVisible();
+    await expect(primaryTab(page, "Pagos")).toBeVisible();
+    await expect(primaryTab(page, "Admin")).toBeVisible();
+
+    await openKitchenFromHome(page);
 
     for (const folio of ["CRIT-001", "RDY-401", "NEW-201", "PREP-301", "RDY-402"]) {
       await expect(ticketByFolio(page, folio)).toHaveCount(1);
@@ -391,28 +554,46 @@ test.describe("internal chekeo kitchen production board", () => {
       page.getByRole("heading", { name: /Cocina conectada a (preview|D1 real)/i }),
     ).toBeVisible();
 
-    await page
-      .locator("button.tab")
-      .filter({ hasText: /^Pedidos$/i })
-      .first()
-      .click();
+    await openPrimaryTab(page, "Pedidos");
+    await expect(page.getByText("CRIT-001").first()).toBeVisible();
     await expect(page.getByText("Preview D1").first()).toBeVisible();
-    await expect(page.getByText("Operable en preview")).toBeVisible();
+    await expect(page.getByText("Operable en preview").first()).toBeVisible();
     await expect(page.getByText("Operación en vivo")).toHaveCount(0);
 
-    await page
-      .locator("button.tab")
-      .filter({ hasText: /^Más/i })
-      .first()
-      .click();
-    await expect(page.getByText("Superficies secundarias de Chekeo")).toBeVisible();
+    await openPrimaryTab(page, "Pagos");
+    await expect(page.getByRole("heading", { name: "Pagos por confirmar" })).toBeVisible();
+    await expect(page.getByText("RDY-401")).toBeVisible();
+
+    await openPrimaryTab(page, "Admin");
+    await expect(page.getByRole("heading", { name: "Hub de módulos de Chekeo" })).toBeVisible();
+    await expect(page.locator("button.admin-module-card").filter({ hasText: /Historial/i })).toHaveCount(1);
+    await expect(page.locator("button.admin-module-card").filter({ hasText: /Cierre/i })).toHaveCount(1);
+    await expect(page.locator("button.admin-module-card").filter({ hasText: /Catálogo/i })).toHaveCount(1);
+    await expect(page.locator("button.admin-module-card").filter({ hasText: /Sorteos/i })).toHaveCount(1);
+    await expect(page.locator("button.admin-module-card").filter({ hasText: /Reportes/i })).toHaveCount(1);
+    await expect(
+      page.getByText(/Auth global se mantiene temporalmente por seguridad/i),
+    ).toBeVisible();
+
+    await page.locator("button.admin-module-card").filter({ hasText: /Historial/i }).first().click();
+    await expect(page.getByRole("heading", { name: /Historial (de pedidos|de esta vista)/i })).toBeVisible();
+    await expect(page.getByText("DEL-501")).toBeVisible();
+    await expect(page.getByText("CAN-601")).toBeVisible();
+
+    await openAdminSection(page, "Cierre");
+    await expect(page.getByRole("heading", { name: "Cierre" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Descargar reporte/i })).toBeVisible();
+
+    await openAdminSection(page, "Reportes");
+    await expect(page.getByRole("heading", { name: "Exportes operativos" })).toBeVisible();
+    await expect(page.getByText("Reportes y exportes")).toBeVisible();
   });
 
   for (const viewport of viewports) {
     test(`avoids horizontal overflow on ${viewport.name}`, async ({ page }) => {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
       await installKitchenApiMocks(page);
-      await loginToKitchen(page);
+      await loginToChekeo(page);
 
       const overflow = await page.evaluate(() => {
         const root = document.documentElement;
@@ -420,7 +601,17 @@ test.describe("internal chekeo kitchen production board", () => {
       });
 
       expect(overflow).toBeLessThanOrEqual(1);
-      await expect(page.getByText("Cocina operativa")).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Base operativa para Home" })).toBeVisible();
+
+      await openPrimaryTab(page, "Admin");
+      await expect(page.getByRole("heading", { name: "Hub de módulos de Chekeo" })).toBeVisible();
+
+      const adminOverflow = await page.evaluate(() => {
+        const root = document.documentElement;
+        return root.scrollWidth - root.clientWidth;
+      });
+
+      expect(adminOverflow).toBeLessThanOrEqual(1);
     });
   }
 });
