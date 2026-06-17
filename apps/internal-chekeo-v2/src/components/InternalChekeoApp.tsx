@@ -10,11 +10,20 @@ import {
 import * as Tabs from "@radix-ui/react-tabs";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
+  ChefHat,
+  CreditCard,
+  FileText,
+  Gift,
+  History,
+  House,
+  PackageSearch,
   RefreshCw,
+  Shield,
+  ShoppingBag,
+  WalletCards,
 } from "lucide-react";
 import {
   mockOrders,
-  operatorStats,
   type KitchenSummaryKResponse,
   type MockOrder,
   type OrdersV2SummaryResponse,
@@ -37,6 +46,7 @@ import {
   loginInternal,
   logoutInternal,
 } from "../lib/internal-auth";
+import { fetchKitchenSummaryK } from "../lib/ingredients-v2-admin";
 import {
   archiveCancelledOrderV2,
   exportOrdersV2Csv,
@@ -68,22 +78,18 @@ import {
 } from "./kitchen/kitchen-helpers";
 
 type TabKey =
-  | "inicio"
+  | "home"
   | "pedidos"
   | "cocina"
   | "pagos"
+  | "admin";
+type AdminViewKey =
+  | "launcher"
   | "historial"
   | "cierre"
-  | "mas"
   | "catalogo"
-  | "sorteos";
-type PrimaryTabKey =
-  | "cocina"
-  | "pedidos"
-  | "pagos"
-  | "historial"
-  | "cierre"
-  | "mas";
+  | "sorteos"
+  | "reportes";
 type OrdersSource = "d1" | "mock" | "fallback";
 type OrdersV2Summary = NonNullable<OrdersV2SummaryResponse["data"]>;
 type KitchenSummaryK = NonNullable<KitchenSummaryKResponse["data"]>;
@@ -177,6 +183,7 @@ type OperationalTruth = {
   kitchenHint: string;
   summaryHint: string;
 };
+type NavIcon = typeof House;
 
 const orderEnvironmentLabel: Record<OrderV2Environment, string> = {
   production: "Producción",
@@ -207,28 +214,44 @@ const runtimeEnvironmentCopy: Record<
   },
 };
 const primaryTabs: Array<{
-  key: PrimaryTabKey;
+  key: TabKey;
   label: string;
-  shortLabel?: string;
+  hint: string;
+  icon: NavIcon;
 }> = [
-  { key: "cocina", label: "Cocina" },
-  { key: "pedidos", label: "Pedidos" },
-  { key: "pagos", label: "Pagos" },
-  { key: "historial", label: "Historial" },
-  { key: "cierre", label: "Cierre" },
-  { key: "mas", label: "Más", shortLabel: "Admin" },
+  { key: "home", label: "Home", hint: "Resumen", icon: House },
+  { key: "pedidos", label: "Pedidos", hint: "Seguimiento", icon: ShoppingBag },
+  { key: "cocina", label: "Cocina", hint: "Producción", icon: ChefHat },
+  { key: "pagos", label: "Pagos", hint: "Confirmación", icon: WalletCards },
+  { key: "admin", label: "Admin", hint: "Módulos", icon: Shield },
 ];
-const adminTabs = new Set<TabKey>(["mas", "inicio", "catalogo", "sorteos"]);
+const adminViews: Array<{
+  key: AdminViewKey;
+  label: string;
+  hint: string;
+  icon: NavIcon;
+}> = [
+  { key: "launcher", label: "Panel", hint: "Módulos", icon: Shield },
+  { key: "historial", label: "Historial", hint: "Terminales", icon: History },
+  { key: "cierre", label: "Cierre", hint: "Corte actual", icon: CreditCard },
+  { key: "catalogo", label: "Catálogo", hint: "Menú y stock", icon: PackageSearch },
+  { key: "sorteos", label: "Sorteos", hint: "Campañas", icon: Gift },
+  { key: "reportes", label: "Reportes", hint: "Exportes", icon: FileText },
+];
 const LIVE_ACTIVE_ORDERS_LIMIT = 100;
 const LIVE_TERMINAL_ORDERS_LIMIT = 100;
-const getPrimaryTab = (tab: TabKey): PrimaryTabKey => {
-  if (adminTabs.has(tab)) return "mas";
-  return tab as PrimaryTabKey;
-};
-const shouldIncludeTerminalOrders = (tab: TabKey) =>
-  tab === "historial" || tab === "pagos";
-const shouldKeepOrdersLoaded = (tab: TabKey) =>
-  tab !== "catalogo" && tab !== "sorteos" && tab !== "cierre";
+const shouldIncludeTerminalOrders = (tab: TabKey, adminView: AdminViewKey) =>
+  tab === "pagos" ||
+  (tab === "admin" &&
+    (adminView === "historial" ||
+      adminView === "cierre" ||
+      adminView === "reportes"));
+const shouldKeepOrdersLoaded = (tab: TabKey, adminView: AdminViewKey) =>
+  tab !== "admin" ||
+  (adminView !== "catalogo" &&
+    adminView !== "sorteos" &&
+    adminView !== "cierre" &&
+    adminView !== "reportes");
 
 const isPreviewOrderSource = (source?: string) => source === "public-v2-preview";
 
@@ -362,7 +385,7 @@ const getOperationalTruth = ({
   let sourceMessage = "Revisa esta superficie antes de operar.";
   let sourceHint = "Reintenta si dudas del backend.";
   let kitchenTitle = "Cocina conectada";
-  let kitchenHint = "Ordenado por urgencia y pago para decidir rápido.";
+  let kitchenHint = "Revisa el flujo actual antes de mover pedidos.";
   let summaryHint = "Solo referencia visual.";
 
   if (runtime.sessionState === "expired") {
@@ -406,7 +429,7 @@ const getOperationalTruth = ({
     sourceMessage = "Lee y escribe sobre D1 preview.";
     sourceHint = "Úsalo para validar flujos y copy.";
     kitchenTitle = "Cocina conectada a preview";
-    kitchenHint = "Valida orden y prioridad sin tratarlo como producción.";
+    kitchenHint = "Valida el flujo sin tratarlo como producción.";
     summaryHint = `${activeCount} pedidos activos visibles en preview.`;
   } else if (runtime.source === "fallback") {
     headline = "Chekeo está en fallback";
@@ -489,16 +512,18 @@ const getOperationalSummary = (orders: InternalOrder[]) => {
   const participants = new Set(
     orders.map((order) => (order.customerPhone || order.customer).trim().toLowerCase()).filter(Boolean),
   );
-  const attentionOrders = visibleOrders.filter(
+  const actionableOrders = visibleOrders.filter(
     (order) =>
-      order.priority === "urgent" || order.paymentState === "pending",
+      order.status === "new" ||
+      order.status === "ready" ||
+      order.paymentState === "pending",
   );
   return {
     activeOrders: visibleOrders.length,
     pendingOrders: visibleOrders.filter((order) => order.status === "new").length,
     preparingOrders: visibleOrders.filter((order) => order.status === "preparing").length,
     readyOrders: visibleOrders.filter((order) => order.status === "ready").length,
-    attentionOrders: attentionOrders.length,
+    actionableOrders: actionableOrders.length,
     participants: participants.size,
     totalTickets: orders.length,
     paymentsToReview: visibleOrders.filter((order) => order.paymentState === "pending").length,
@@ -1290,7 +1315,7 @@ const OperatorHeader = ({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-[11px] font-black uppercase tracking-[0.24em] text-cyan-200">
-              Chekeo operativo
+              Operación de hoy
             </p>
             <EnvironmentBadge environment={runtimeEnvironment} />
           </div>
@@ -1382,260 +1407,496 @@ const OperationalStatusBar = ({
   );
 };
 
-const OperationalSummary = ({
+const HomePanel = ({
   orders,
-  truth,
+  runtime,
+  runtimeEnvironment,
   onOpenTab,
+  onOpenAdminView,
 }: {
   orders: InternalOrder[];
-  truth: OperationalTruth;
+  runtime: OrdersRuntime;
+  runtimeEnvironment: ChekeoRuntimeEnvironment;
   onOpenTab: (tab: TabKey) => void;
+  onOpenAdminView: (view: AdminViewKey) => void;
 }) => {
-  const summary = getOperationalSummary(orders);
-  const cards = [
+  const summary = useMemo(() => getOperationalSummary(orders), [orders]);
+  const [todaySummary, setTodaySummary] = useState<OrdersV2Summary | null>(null);
+  const [kitchenSummary, setKitchenSummary] = useState<KitchenSummaryK | null>(null);
+  const [todayLoading, setTodayLoading] = useState(false);
+  const [todayError, setTodayError] = useState<string | null>(null);
+  const actionableOrders = useMemo(
+    () =>
+      orders
+        .filter(
+          (order) =>
+            !terminalStatuses.has(order.status) &&
+            (order.status === "new" ||
+              order.status === "ready" ||
+              order.paymentState === "pending"),
+        )
+        .slice(0, 4),
+    [orders],
+  );
+
+  useEffect(() => {
+    if (!runtime.sessionActive) {
+      setTodaySummary(null);
+      setKitchenSummary(null);
+      setTodayError(null);
+      setTodayLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const today = todayDateInput();
+
+    const loadHomeData = async () => {
+      setTodayLoading(true);
+      setTodayError(null);
+      const [summaryResult, kitchenResult] = await Promise.allSettled([
+        fetchOrdersV2Summary({
+          from: today,
+          to: today,
+          includeTerminal: true,
+          limit: 1000,
+          topLimit: 5,
+          environment: runtime.environment,
+        }),
+        fetchKitchenSummaryK(runtime.environment),
+      ]);
+
+      if (cancelled) return;
+
+      if (summaryResult.status === "fulfilled") {
+        setTodaySummary(summaryResult.value);
+      } else {
+        setTodaySummary(null);
+      }
+
+      if (kitchenResult.status === "fulfilled") {
+        setKitchenSummary(kitchenResult.value);
+      } else {
+        setKitchenSummary(null);
+      }
+
+      if (
+        summaryResult.status === "rejected" &&
+        kitchenResult.status === "rejected"
+      ) {
+        setTodayError(
+          "No se pudo cargar el resumen de hoy ni el mini Resumen K.",
+        );
+      } else if (summaryResult.status === "rejected") {
+        setTodayError("No se pudo cargar la venta de hoy.");
+      } else if (kitchenResult.status === "rejected") {
+        setTodayError("No se pudo cargar el mini Resumen K.");
+      } else {
+        setTodayError(null);
+      }
+
+      setTodayLoading(false);
+    };
+
+    void loadHomeData();
+    return () => {
+      cancelled = true;
+    };
+  }, [runtime.environment, runtime.sessionActive]);
+
+  const metricCards = [
     {
-      label: "Nuevos",
-      value: summary.pendingOrders,
-      hint: "Entraron y falta arrancarlos",
-      tab: "cocina" as TabKey,
+      label: "Pedidos activos",
+      value: summary.activeOrders,
+      hint: "Pedidos hoy que siguen abiertos",
+      action: () => onOpenTab("pedidos"),
     },
     {
-      label: "En preparación",
-      value: summary.preparingOrders,
-      hint: "Ya están corriendo en cocina",
-      tab: "cocina" as TabKey,
-    },
-    {
-      label: "Atención",
-      value: summary.attentionOrders,
-      hint: "Urgentes o con pago pendiente",
-      tab: "cocina" as TabKey,
-    },
-    {
-      label: "Listos",
-      value: summary.readyOrders,
-      hint: "Pueden pasar a entrega",
-      tab: "pedidos" as TabKey,
-    },
-    {
-      label: "Pagos por revisar",
+      label: "Pagos pendientes",
       value: summary.paymentsToReview,
-      hint: "Sigue accesible en Pagos",
-      tab: "pagos" as TabKey,
+      hint: "Confirmaciones por revisar",
+      action: () => onOpenTab("pagos"),
+    },
+    {
+      label: "Pedidos de hoy",
+      value: todaySummary?.totals.orders ?? "—",
+      hint: todayLoading ? "Actualizando..." : "Lectura del corte actual",
+      action: () => onOpenAdminView("cierre"),
+    },
+    {
+      label: "Venta de hoy",
+      value:
+        todaySummary?.totals.grossSales !== undefined
+          ? formatCurrency(todaySummary.totals.grossSales)
+          : "—",
+      hint: "Sin cálculo de utilidad en este PR",
+      action: () => onOpenAdminView("cierre"),
+    },
+  ];
+
+  const quickActions: Array<{
+    label: string;
+    hint: string;
+    icon: NavIcon;
+    onClick: () => void;
+  }> = [
+    {
+      label: "Pedidos",
+      hint: "Entregados y cancelaciones viven aquí",
+      icon: ShoppingBag,
+      onClick: () => onOpenTab("pedidos"),
+    },
+    {
+      label: "Cocina",
+      hint: "Checklist y producción actual",
+      icon: ChefHat,
+      onClick: () => onOpenTab("cocina"),
+    },
+    {
+      label: "Pagos",
+      hint: "Pendiente y pagado",
+      icon: WalletCards,
+      onClick: () => onOpenTab("pagos"),
+    },
+    {
+      label: "Historial",
+      hint: "Pasa a Admin",
+      icon: History,
+      onClick: () => onOpenAdminView("historial"),
+    },
+    {
+      label: "Cierre actual",
+      hint: "Corte y venta del día",
+      icon: CreditCard,
+      onClick: () => onOpenAdminView("cierre"),
     },
   ];
 
   return (
-    <section className="summary-strip" aria-label="Resumen operativo de Chekeo">
-      <div className="summary-strip__meta">
-        <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
-          Prioridades del turno
-        </p>
-        <p className="text-[11px] text-zinc-400">
-          {truth.summaryHint}
-        </p>
-      </div>
-      <div className="summary-strip__grid">
-        {cards.map((card) => (
-          <button
-            key={card.label}
-            type="button"
-            className="summary-card text-left"
-            onClick={() => onOpenTab(card.tab)}
-          >
-            <p className="text-[11px] font-semibold text-zinc-400">{card.label}</p>
-            <p className="mt-1 text-2xl font-black text-zinc-50">{card.value}</p>
-            <p className="mt-1 text-[11px] text-zinc-500">{card.hint}</p>
-          </button>
-        ))}
-      </div>
-    </section>
-  );
-};
-
-const DashboardHome = ({
-  orders,
-  source,
-}: {
-  orders: InternalOrder[];
-  source: OrdersSource;
-}) => {
-  const active = orders.filter((o) => !terminalStatuses.has(o.status));
-  const urgent = active
-    .filter((o) => o.priority === "urgent" || o.status === "new" || o.paymentState === "pending")
-    .slice(0, 4);
-  return (
-    <section className="grid gap-2.5 lg:grid-cols-[1.4fr_0.8fr]">
-      <Card className="p-3">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-200">
-              Prioridad
-            </p>
-            <h3 className="mt-1 text-lg font-black">Pedidos que piden acción</h3>
+    <section className="space-y-3">
+      <div className="home-grid">
+        <Card className="home-hero">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
+                Operación de hoy
+              </p>
+              <h2 className="mt-1 text-2xl font-black text-zinc-50 md:text-3xl">
+                Base operativa para Home
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm text-zinc-400">
+                Home concentra lectura rápida, accesos directos y el estado mínimo para arrancar sin mezclar módulos técnicos.
+              </p>
+            </div>
+            <div className="home-hero__meta">
+              <StatusPill className={truthToneClassName[runtime.source === "d1" ? "success" : "warning"]}>
+                {runtime.source === "d1" ? "Datos live" : "Vista de respaldo"}
+              </StatusPill>
+              <StatusPill className={truthToneClassName[runtimeEnvironment === "production" ? "danger" : "system"]}>
+                {runtimeEnvironmentLabel[runtimeEnvironment]}
+              </StatusPill>
+            </div>
           </div>
-          <StatusPill className="border-cyan-400/40 text-cyan-100">
-            {urgent.length} por revisar
-          </StatusPill>
-        </div>
-        <div className="mt-3 space-y-2">
-          {urgent.length ? (
-            urgent.map((o) => (
-              <div key={o.id} className="row items-start">
-                <div className="min-w-0">
-                  <p className="break-words text-sm font-bold">
-                    {o.folio} · {o.customer}
-                  </p>
-                  <p className="text-[11px] text-zinc-400">
-                    {channelLabel[o.channel]} · {getPaymentStatusLabel(o.paymentState)} ·{" "}
-                    {formatCurrency(o.total)}
-                  </p>
-                </div>
-                <StatusBadge status={o.status} />
+          <div className="home-metrics">
+            {metricCards.map((card) => (
+              <button
+                key={card.label}
+                type="button"
+                className="home-metric-card"
+                onClick={card.action}
+              >
+                <p className="home-metric-card__label">{card.label}</p>
+                <p className="home-metric-card__value">{card.value}</p>
+                <p className="home-metric-card__hint">{card.hint}</p>
+              </button>
+            ))}
+          </div>
+          {todayError ? (
+            <p className="mt-3 rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-100">
+              {todayError}
+            </p>
+          ) : null}
+        </Card>
+
+        <Card className="home-side-card">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-200">
+            Mini Resumen K
+          </p>
+          <h3 className="mt-1 text-lg font-black text-zinc-50">
+            Lectura rápida de producción
+          </h3>
+          {kitchenSummary ? (
+            <div className="mt-3 grid gap-2">
+              <div className="row">
+                <span>Burgers / combos</span>
+                <strong>{kitchenSummary.totals.burgers}</strong>
               </div>
-            ))
+              <div className="row">
+                <span>Guarniciones</span>
+                <strong>{kitchenSummary.totals.garnishes}</strong>
+              </div>
+              <div className="row">
+                <span>Ingredientes</span>
+                <strong>{kitchenSummary.totals.ingredients}</strong>
+              </div>
+              <div className="row">
+                <span>Costo estimado</span>
+                <strong>
+                  {kitchenSummary.totals.estimatedCostCents === null
+                    ? "—"
+                    : formatCurrency(
+                        kitchenSummary.totals.estimatedCostCents / 100,
+                      )}
+                </strong>
+              </div>
+            </div>
           ) : (
-            <p className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3 text-sm text-zinc-400">
-              Sin pedidos pendientes. Cuando entre uno nuevo aparecerá aquí.
+            <p className="mt-3 text-sm text-zinc-400">
+              {todayLoading
+                ? "Cargando resumen..."
+                : "Sin datos disponibles para el mini Resumen K."}
             </p>
           )}
-        </div>
-      </Card>
-      <Card className="p-3">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-200">
-          Estado del turno
-        </p>
-        <p className="mt-2 text-2xl font-black">
-          {source === "d1" ? active.length : operatorStats.activeOrders}
-        </p>
-        <p className="text-sm text-zinc-400">pedidos activos cargados</p>
-        <p className="mt-3 rounded-lg border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-xs text-emerald-100">
-          Carga de cocina estimada: {operatorStats.kitchenLoad}%.
-        </p>
-      </Card>
+          <Button
+            className="mt-3 border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm"
+            onClick={() => onOpenTab("cocina")}
+          >
+            Abrir Cocina
+          </Button>
+        </Card>
+      </div>
+
+      <div className="home-grid home-grid--secondary">
+        <Card className="p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
+                Accesos directos
+              </p>
+              <h3 className="mt-1 text-lg font-black text-zinc-50">
+                Moverse sin ruido
+              </h3>
+            </div>
+            <StatusPill className="border-cyan-400/40 text-cyan-100">
+              5 accesos
+            </StatusPill>
+          </div>
+          <div className="home-quick-actions">
+            {quickActions.map((action) => {
+              const Icon = action.icon;
+              return (
+                <button
+                  key={action.label}
+                  type="button"
+                  className="quick-action-card"
+                  onClick={action.onClick}
+                >
+                  <span className="quick-action-card__icon">
+                    <Icon size={18} aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="quick-action-card__label">{action.label}</p>
+                    <p className="quick-action-card__hint">{action.hint}</p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </Card>
+
+        <Card className="p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-200">
+                Resumen de operación
+              </p>
+              <h3 className="mt-1 text-lg font-black text-zinc-50">
+                Pedidos por resolver
+              </h3>
+            </div>
+            <StatusPill className="border-amber-400/40 text-amber-100">
+              {summary.actionableOrders} abiertos
+            </StatusPill>
+          </div>
+          <div className="mt-3 space-y-2">
+            {actionableOrders.length ? (
+              actionableOrders.map((order) => (
+                <div key={order.id} className="row items-start">
+                  <div className="min-w-0">
+                    <p className="break-words text-sm font-bold text-zinc-50">
+                      {order.folio} · {order.customer}
+                    </p>
+                    <p className="text-[11px] text-zinc-400">
+                      {channelLabel[order.channel]} · {getPaymentStatusLabel(order.paymentState)} · {formatCurrency(order.total)}
+                    </p>
+                  </div>
+                  <StatusBadge status={order.status} />
+                </div>
+              ))
+            ) : (
+              <p className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3 text-sm text-zinc-400">
+                Sin pedidos abiertos por resolver. Cuando entre uno nuevo aparecerá aquí.
+              </p>
+            )}
+          </div>
+        </Card>
+      </div>
     </section>
   );
 };
 
-const AdminWorkspace = ({
-  tab,
-  setTab,
-  orders,
-  source,
+const AdminReportsPanel = ({
   runtime,
 }: {
-  tab: TabKey;
-  setTab: (tab: TabKey) => void;
-  orders: InternalOrder[];
-  source: OrdersSource;
   runtime: OrdersRuntime;
+}) => (
+  <div className="grid gap-3 xl:grid-cols-[1.1fr_0.9fr]">
+    <Card className="p-4">
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-200">
+        Reportes y exportes
+      </p>
+      <h3 className="mt-2 text-xl font-black text-zinc-50">
+        Exportes operativos
+      </h3>
+      <p className="mt-2 text-sm text-zinc-400">
+        Descarga cortes y listas filtradas sin volver a mezclar estos controles con Pedidos, Cocina o Pagos.
+      </p>
+      <OrdersExportControls
+        sessionActive={runtime.sessionActive}
+        defaultIncludeTerminal
+        environment={runtime.environment}
+      />
+    </Card>
+    <Card className="p-4">
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
+        Estado técnico
+      </p>
+      <h3 className="mt-2 text-lg font-black text-zinc-50">
+        Contexto actual del backend
+      </h3>
+      <div className="mt-3 space-y-2">
+        <div className="row">
+          <span>Fuente de datos</span>
+          <strong>{runtime.source === "d1" ? "D1" : runtime.source}</strong>
+        </div>
+        <div className="row">
+          <span>Sesión</span>
+          <strong>{sessionStateLabel[runtime.sessionState].value}</strong>
+        </div>
+        <div className="row">
+          <span>Última actualización</span>
+          <strong>{runtime.lastUpdated || "Pendiente"}</strong>
+        </div>
+      </div>
+      <p className="mt-3 text-xs text-zinc-500">
+        Admin sigue detrás del auth global actual hasta definir una capa externa dedicada.
+      </p>
+    </Card>
+  </div>
+);
+
+const AdminWorkspace = ({
+  view,
+  setView,
+  orders,
+  runtime,
+  runtimeEnvironment,
+  onArchiveCancelled,
+}: {
+  view: AdminViewKey;
+  setView: (view: AdminViewKey) => void;
+  orders: InternalOrder[];
+  runtime: OrdersRuntime;
+  runtimeEnvironment: ChekeoRuntimeEnvironment;
+  onArchiveCancelled: (order: InternalOrder) => Promise<void>;
 }) => {
-  const adminNav: Array<{ key: TabKey; label: string }> = [
-    { key: "mas", label: "Panel" },
-    { key: "inicio", label: "Resumen" },
-    { key: "catalogo", label: "Catálogo" },
-    { key: "sorteos", label: "Sorteos" },
-  ];
+  const modules = adminViews.filter((option) => option.key !== "launcher");
 
   const content =
-    tab === "catalogo" ? (
+    view === "catalogo" ? (
       <CatalogAdminPanel />
-    ) : tab === "sorteos" ? (
+    ) : view === "sorteos" ? (
       <RafflesAdminPanel />
-    ) : tab === "inicio" ? (
-      <DashboardHome orders={orders} source={source} />
+    ) : view === "historial" ? (
+      <HistoryPanel
+        orders={orders}
+        runtime={runtime}
+        runtimeEnvironment={runtimeEnvironment}
+        onArchiveCancelled={onArchiveCancelled}
+      />
+    ) : view === "cierre" ? (
+      <OperationalClosePanel
+        environment={runtime.environment}
+        sessionActive={runtime.sessionActive}
+      />
+    ) : view === "reportes" ? (
+      <AdminReportsPanel runtime={runtime} />
     ) : (
-      <div className="grid gap-3 xl:grid-cols-[1.1fr_0.9fr]">
-        <Card className="p-4">
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
-            Admin secundario
-          </p>
-          <h3 className="mt-2 text-xl font-black text-zinc-50">
-            Herramientas fuera del flujo principal
-          </h3>
-          <p className="mt-2 text-sm text-zinc-400">
-            Catálogo, sorteos y reportes quedan aquí para no quitar foco a Cocina y Pedidos.
-          </p>
-          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+      <div className="admin-module-grid">
+        {modules.map((module) => {
+          const Icon = module.icon;
+          return (
             <button
+              key={module.key}
               type="button"
-              className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3 text-left transition hover:border-cyan-300/40"
-              onClick={() => setTab("inicio")}
+              className="admin-module-card"
+              onClick={() => setView(module.key)}
             >
-              <p className="text-sm font-bold text-zinc-50">Resumen</p>
-              <p className="mt-1 text-[11px] text-zinc-400">
-                Señales del turno y prioridades visibles.
-              </p>
+              <span className="admin-module-card__icon">
+                <Icon size={18} aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <p className="admin-module-card__label">{module.label}</p>
+                <p className="admin-module-card__hint">{module.hint}</p>
+                <p className="admin-module-card__desc">
+                  {module.key === "historial"
+                    ? "Entregados y cancelados fuera del flujo principal."
+                    : module.key === "cierre"
+                      ? "Corte actual, métricas y venta de hoy."
+                      : module.key === "catalogo"
+                        ? "Menú, promos, banners e ingredientes."
+                        : module.key === "sorteos"
+                          ? "Campañas, tickets y referidos."
+                          : "CSV y revisión técnica sin ruido operativo."}
+                </p>
+              </div>
             </button>
-            <button
-              type="button"
-              className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3 text-left transition hover:border-cyan-300/40"
-              onClick={() => setTab("catalogo")}
-            >
-              <p className="text-sm font-bold text-zinc-50">Catálogo</p>
-              <p className="mt-1 text-[11px] text-zinc-400">
-                Ajustes de menú y stock sin interferir con cocina.
-              </p>
-            </button>
-            <button
-              type="button"
-              className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3 text-left transition hover:border-cyan-300/40"
-              onClick={() => setTab("sorteos")}
-            >
-              <p className="text-sm font-bold text-zinc-50">Sorteos</p>
-              <p className="mt-1 text-[11px] text-zinc-400">
-                Tickets y campañas disponibles a un toque.
-              </p>
-            </button>
-          </div>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-200">
-            Reportes
-          </p>
-          <h3 className="mt-2 text-lg font-black text-zinc-50">
-            Exportes y revisión manual
-          </h3>
-          <p className="mt-2 text-sm text-zinc-400">
-            Mantén los reportes accesibles, pero fuera de Pedidos y Cocina para no robar foco operativo.
-          </p>
-          <OrdersExportControls
-            sessionActive={runtime.sessionActive}
-            defaultIncludeTerminal
-            environment={runtime.environment}
-          />
-        </Card>
+          );
+        })}
       </div>
     );
 
   return (
     <section className="space-y-3">
-      <Card className="p-3">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+      <Card className="p-4">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
-              Más / Admin
+              Admin técnico
             </p>
-            <h2 className="mt-1 text-lg font-black text-zinc-50">
-              Superficies secundarias de Chekeo
+            <h2 className="mt-1 text-xl font-black text-zinc-50">
+              Hub de módulos de Chekeo
             </h2>
-            <p className="mt-1 text-sm text-zinc-400">
-              Resumen, catálogo, sorteos y reportes viven fuera del flujo operativo principal.
+            <p className="mt-1 max-w-3xl text-sm text-zinc-400">
+              Historial, cierre, catálogo, sorteos y reportes viven aquí para mantener la navegación principal enfocada en operación.
             </p>
           </div>
           <div className="admin-nav">
-            {adminNav.map((option) => (
+            {adminViews.map((option) => (
               <button
                 key={option.key}
                 type="button"
-                className={`admin-nav__button ${tab === option.key ? "admin-nav__button--active" : ""}`}
-                onClick={() => setTab(option.key)}
+                className={`admin-nav__button ${view === option.key ? "admin-nav__button--active" : ""}`}
+                onClick={() => setView(option.key)}
               >
                 {option.label}
               </button>
             ))}
           </div>
         </div>
+        <p className="mt-3 text-xs text-zinc-500">
+          Auth global se mantiene temporalmente por seguridad hasta definir Cloudflare Access u otra capa externa.
+        </p>
       </Card>
       {content}
     </section>
@@ -3105,39 +3366,39 @@ const OrderDetailModal = ({
 const OperatorTabs = ({
   tab,
   setTab,
-  summary,
   content,
 }: {
   tab: TabKey;
   setTab: (v: TabKey) => void;
-  summary?: ReactNode;
   content: ReactNode;
 }) => (
   <Tabs.Root
-    value={getPrimaryTab(tab)}
+    value={tab}
     onValueChange={(v) => setTab(v as TabKey)}
   >
     <div className="tabs-shell">
       <div className="tabs-shell__meta">
-        <p>Operacion</p>
-        <p>Admin al final</p>
+        <p>Operación de hoy</p>
+        <p>Admin técnico al final</p>
       </div>
       <Tabs.List className="tabs">
-        {primaryTabs.map(({ key, label, shortLabel }) => (
+        {primaryTabs.map(({ key, label, hint, icon: Icon }) => (
           <Tabs.Trigger
             key={key}
             value={key}
-            className={`tab ${key === "mas" ? "tab--admin" : ""}`}
+            className={`tab ${key === "admin" ? "tab--admin" : ""}`}
           >
-            <span className="tab__label">{label}</span>
-            {shortLabel ? (
-              <span className="tab__hint">{shortLabel}</span>
-            ) : null}
+            <span className="tab__icon">
+              <Icon size={16} aria-hidden="true" />
+            </span>
+            <span className="tab__copy">
+              <span className="tab__label">{label}</span>
+              <span className="tab__hint">{hint}</span>
+            </span>
           </Tabs.Trigger>
         ))}
       </Tabs.List>
     </div>
-    {summary}
     {content}
   </Tabs.Root>
 );
@@ -3145,7 +3406,8 @@ const OperatorTabs = ({
 export function InternalChekeoApp() {
   const [logged, setLogged] = useState(false);
   const [sessionState, setSessionState] = useState<SessionState>("checking");
-  const [tab, setTab] = useState<TabKey>("cocina");
+  const [tab, setTab] = useState<TabKey>("home");
+  const [adminView, setAdminView] = useState<AdminViewKey>("launcher");
   const [orders, setOrders] = useState<InternalOrder[]>(
     asInternalOrders(mockOrders),
   );
@@ -3265,7 +3527,7 @@ export function InternalChekeoApp() {
 
   const loadLiveOrders = useCallback(
     async (
-      includeTerminal = shouldIncludeTerminalOrders(tab),
+      includeTerminal = shouldIncludeTerminalOrders(tab, adminView),
       reason: "manual" | "auto" | "session" = "manual",
     ) => {
       const isAutoRefresh = reason === "auto";
@@ -3304,7 +3566,7 @@ export function InternalChekeoApp() {
         setLimitWarning(
           mappedOrders.length >= requestedLimit
             ? includeTerminal
-              ? `Mostrando los primeros ${requestedLimit} registros con estados terminales. Si necesitas el corte completo, exporta desde Más / Admin o ajusta filtros en Cierre.`
+              ? `Mostrando los primeros ${requestedLimit} registros con estados terminales. Si necesitas el corte completo, exporta desde Admin o ajusta filtros en Cierre.`
               : `Mostrando los primeros ${requestedLimit} pedidos activos. En hora pico puede haber más pedidos fuera de esta carga.`
             : null,
         );
@@ -3334,7 +3596,14 @@ export function InternalChekeoApp() {
         setLoadingOrders(false);
       }
     },
-    [expireSession, isRefreshBlocked, orderEnvironment, registerLoadedOrders, tab],
+    [
+      adminView,
+      expireSession,
+      isRefreshBlocked,
+      orderEnvironment,
+      registerLoadedOrders,
+      tab,
+    ],
   );
 
   useEffect(() => {
@@ -3346,7 +3615,8 @@ export function InternalChekeoApp() {
         if (cancelled) return;
         setLogged(authenticated);
         setSessionState(authenticated ? "active" : "inactive");
-        if (authenticated) void loadLiveOrders(shouldIncludeTerminalOrders(tab));
+        if (authenticated)
+          void loadLiveOrders(shouldIncludeTerminalOrders(tab, adminView));
       } catch {
         if (!cancelled) {
           setLogged(false);
@@ -3363,20 +3633,20 @@ export function InternalChekeoApp() {
   }, []);
 
   useEffect(() => {
-    if (logged && shouldKeepOrdersLoaded(tab))
-      void loadLiveOrders(shouldIncludeTerminalOrders(tab));
-  }, [logged, tab, loadLiveOrders]);
+    if (logged && shouldKeepOrdersLoaded(tab, adminView))
+      void loadLiveOrders(shouldIncludeTerminalOrders(tab, adminView));
+  }, [adminView, logged, tab, loadLiveOrders]);
 
   useEffect(() => {
-    if (!logged || !shouldKeepOrdersLoaded(tab)) return;
+    if (!logged || !shouldKeepOrdersLoaded(tab, adminView)) return;
 
     const refresh = () => {
-      void loadLiveOrders(shouldIncludeTerminalOrders(tab), "auto");
+      void loadLiveOrders(shouldIncludeTerminalOrders(tab, adminView), "auto");
     };
     const interval = window.setInterval(refresh, AUTO_REFRESH_INTERVAL_MS);
 
     return () => window.clearInterval(interval);
-  }, [logged, loadLiveOrders, tab]);
+  }, [adminView, logged, loadLiveOrders, tab]);
 
   useEffect(() => {
     if (!newOrderNotice) return;
@@ -3409,7 +3679,7 @@ export function InternalChekeoApp() {
           };
           return { ...o, status: s, timeline: [...o.timeline, timelineEvent] };
         });
-        return tab === "historial"
+        return tab === "admin" && adminView === "historial"
           ? next
           : next.filter((o) => !terminalStatuses.has(o.status));
       });
@@ -3456,7 +3726,7 @@ export function InternalChekeoApp() {
       const mapped = mapOrderV2ToInternalOrder(updated);
       setOrders((p) => {
         const next = p.map((o) => (o.id === id ? mapped : o));
-        return tab === "historial"
+        return tab === "admin" && adminView === "historial"
           ? next
           : next.filter((o) => !terminalStatuses.has(o.status));
       });
@@ -3655,89 +3925,62 @@ export function InternalChekeoApp() {
     runtimeEnvironment,
     activeCount: active.length,
   });
-  const content = useMemo(
-    () =>
-      ({
-        inicio: (
-          <AdminWorkspace
-            tab={tab}
-            setTab={setTab}
-            orders={orders}
-            source={ordersSource}
-            runtime={runtime}
-          />
-        ),
-        pedidos: (
-          <OrdersBoard
-            orders={orders.filter((o) => !terminalStatuses.has(o.status))}
-            setSelected={setSelected}
-            runtime={runtime}
-            runtimeEnvironment={runtimeEnvironment}
-            move={move}
-            requestCancellation={requestCancellation}
-          />
-        ),
-        cocina: (
-          <KitchenQueue
-            orders={orders}
-            runtime={runtime}
-            onToggleKitchenItem={toggleKitchenItemDone}
-            onMove={move}
-            onOpenOrder={(order) => setSelected(order as InternalOrder)}
-          />
-        ),
-        pagos: (
-          <PaymentNotesPanel
-            orders={orders}
-            runtime={runtime}
-            runtimeEnvironment={runtimeEnvironment}
-            onUpdatePayment={updatePayment}
-          />
-        ),
-        historial: (
-          <HistoryPanel
-            orders={orders}
-            runtime={runtime}
-            runtimeEnvironment={runtimeEnvironment}
-            onArchiveCancelled={archiveCancelledOrder}
-          />
-        ),
-        cierre: (
-          <OperationalClosePanel
-            environment={orderEnvironment}
-            sessionActive={logged}
-          />
-        ),
-        mas: (
-          <AdminWorkspace
-            tab={tab}
-            setTab={setTab}
-            orders={orders}
-            source={ordersSource}
-            runtime={runtime}
-          />
-        ),
-        catalogo: (
-          <AdminWorkspace
-            tab={tab}
-            setTab={setTab}
-            orders={orders}
-            source={ordersSource}
-            runtime={runtime}
-          />
-        ),
-        sorteos: (
-          <AdminWorkspace
-            tab={tab}
-            setTab={setTab}
-            orders={orders}
-            source={ordersSource}
-            runtime={runtime}
-          />
-        ),
-      })[tab],
-    [logged, orderEnvironment, orders, ordersSource, tab, runtime, toggleKitchenItemDone],
-  );
+  const openPrimaryTab = useCallback((nextTab: TabKey) => {
+    setTab(nextTab);
+    if (nextTab !== "admin") setAdminView("launcher");
+  }, []);
+  const openAdminView = useCallback((nextView: AdminViewKey) => {
+    setTab("admin");
+    setAdminView(nextView);
+  }, []);
+  const content = ({
+    home: (
+      <HomePanel
+        orders={orders}
+        runtime={runtime}
+        runtimeEnvironment={runtimeEnvironment}
+        onOpenTab={openPrimaryTab}
+        onOpenAdminView={openAdminView}
+      />
+    ),
+    pedidos: (
+      <OrdersBoard
+        orders={orders.filter((o) => !terminalStatuses.has(o.status))}
+        setSelected={setSelected}
+        runtime={runtime}
+        runtimeEnvironment={runtimeEnvironment}
+        move={move}
+        requestCancellation={requestCancellation}
+      />
+    ),
+    cocina: (
+      <KitchenQueue
+        orders={orders}
+        runtime={runtime}
+        onToggleKitchenItem={toggleKitchenItemDone}
+        onMove={move}
+        onOpenOrder={(order) => setSelected(order as InternalOrder)}
+      />
+    ),
+    pagos: (
+      <PaymentNotesPanel
+        orders={orders}
+        runtime={runtime}
+        runtimeEnvironment={runtimeEnvironment}
+        onUpdatePayment={updatePayment}
+      />
+    ),
+    admin: (
+      <AdminWorkspace
+        view={adminView}
+        setView={setAdminView}
+        orders={orders}
+        runtime={runtime}
+        runtimeEnvironment={runtimeEnvironment}
+        onArchiveCancelled={archiveCancelledOrder}
+      />
+    ),
+  })[tab];
   if (!logged)
     return (
       <InternalLogin
@@ -3749,7 +3992,7 @@ export function InternalChekeoApp() {
           loggedRef.current = true;
           setLogged(true);
           setSessionState("active");
-          void loadLiveOrders(shouldIncludeTerminalOrders(tab));
+          void loadLiveOrders(shouldIncludeTerminalOrders(tab, adminView));
         }}
       />
     );
@@ -3781,7 +4024,7 @@ export function InternalChekeoApp() {
         truth={shellTruth}
         onPrimaryAction={() => {
           if (runtime.sessionState !== "active") return;
-          void runtime.reload(shouldIncludeTerminalOrders(tab));
+          void runtime.reload(shouldIncludeTerminalOrders(tab, adminView));
         }}
         disabled={runtime.loading || runtime.sessionState !== "active"}
       />
@@ -3791,14 +4034,7 @@ export function InternalChekeoApp() {
       />
       <OperatorTabs
         tab={tab}
-        setTab={setTab}
-        summary={
-          <OperationalSummary
-            orders={orders}
-            truth={shellTruth}
-            onOpenTab={setTab}
-          />
-        }
+        setTab={openPrimaryTab}
         content={
           <AnimatePresence mode="wait">
             <motion.div
