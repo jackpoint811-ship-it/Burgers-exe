@@ -81,6 +81,19 @@ export type SiteConfig = {
   updatedAt?: string;
 };
 
+export type BankPaymentConfig = {
+  bankName: string;
+  accountHolder: string;
+  accountNumber?: string;
+  clabe?: string;
+  reference?: string;
+  accountLabel?: string;
+  transferOnly: boolean;
+  editable: boolean;
+  source: "shared-config";
+  updatedAt?: string;
+};
+
 export type MenuV2Response = {
   categories: MenuCategory[];
   items: MenuItem[];

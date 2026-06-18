@@ -868,6 +868,7 @@ test.describe("internal chekeo kitchen production board", () => {
 
     await openPrimaryTab(page, "Admin");
     await expect(page.getByRole("heading", { name: "Hub de módulos de Chekeo" })).toBeVisible();
+    await expect(page.locator("button.admin-module-card").filter({ hasText: /Datos bancarios/i })).toHaveCount(1);
     await expect(page.locator("button.admin-module-card").filter({ hasText: /Historial/i })).toHaveCount(1);
     await expect(page.locator("button.admin-module-card").filter({ hasText: /Cierre/i })).toHaveCount(1);
     await expect(page.locator("button.admin-module-card").filter({ hasText: /Catálogo/i })).toHaveCount(1);
@@ -877,7 +878,14 @@ test.describe("internal chekeo kitchen production board", () => {
       page.getByText(/Auth global se mantiene temporalmente por seguridad/i),
     ).toBeVisible();
 
-    await page.locator("button.admin-module-card").filter({ hasText: /Historial/i }).first().click();
+    await openAdminSection(page, "Datos bancarios");
+    await expect(page.getByRole("heading", { name: "Datos bancarios" })).toBeVisible();
+    await expect(page.getByText("BBVA", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Yolitzin Ameyali Zarate Otero", { exact: true })).toBeVisible();
+    await expect(page.getByText("012180015645465369", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText(/Solo transferencia/i)).toBeVisible();
+
+    await openAdminSection(page, "Historial");
     await expect(page.getByRole("heading", { name: /Historial (de pedidos|de esta vista)/i })).toBeVisible();
     await expect(page.getByText("DEL-501")).toBeVisible();
     await expect(page.getByText("CAN-601")).toBeVisible();
