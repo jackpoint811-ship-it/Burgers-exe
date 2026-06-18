@@ -99,7 +99,7 @@ button{min-height:44px}
 .kitchen-ticket--critical{@apply border-rose-400/55 bg-rose-950/20}
 .kitchen-ticket--highlighted{@apply border-lime-300/70 bg-lime-300/10 shadow-lime-950/30}
 .kitchen-ticket__topline{@apply flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between}
-.kitchen-ticket__timer{@apply inline-flex w-fit items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 py-1.5 text-sm font-black text-zinc-100}
+.kitchen-ticket__elapsed{@apply inline-flex w-fit items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 py-1.5 text-sm font-black text-zinc-100}
 .kitchen-ticket__meta{@apply mt-3 flex flex-wrap gap-1.5 text-[11px] font-bold text-zinc-300}
 .kitchen-ticket__meta span{@apply inline-flex min-h-8 items-center gap-1 rounded-lg border border-zinc-800 bg-zinc-900/70 px-2.5 py-1}
 .kitchen-ticket__progress-row{@apply mt-3 grid gap-2 rounded-xl border border-zinc-800 bg-zinc-900/55 p-3 sm:grid-cols-[1fr_120px] sm:items-center}

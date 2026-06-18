@@ -3,6 +3,41 @@ type InternalAuthEnvelope = {
   data?: { authenticated?: boolean };
   error?: { code?: string; message?: string };
 };
+export type InternalAuthMode = 'global' | 'admin-only';
+
+const INTERNAL_AUTH_MODE_ENV_KEY = 'VITE_INTERNAL_AUTH_MODE';
+const SUPPORTED_INTERNAL_AUTH_MODES = new Set<InternalAuthMode>([
+  'global',
+  'admin-only',
+]);
+
+const readInternalAuthModeEnv = () => {
+  const meta = import.meta as ImportMeta & {
+    env?: Record<string, string | undefined>;
+  };
+  return meta.env?.[INTERNAL_AUTH_MODE_ENV_KEY];
+};
+
+export const normalizeInternalAuthMode = (
+  value?: string | null,
+): InternalAuthMode => {
+  const normalized = value?.trim().toLowerCase();
+  return SUPPORTED_INTERNAL_AUTH_MODES.has(normalized as InternalAuthMode)
+    ? (normalized as InternalAuthMode)
+    : 'global';
+};
+
+export const getInternalAuthMode = (): InternalAuthMode =>
+  normalizeInternalAuthMode(readInternalAuthModeEnv());
+
+// Safety latch for PR-2: even if admin-only is configured early, Chekeo keeps
+// the global login until external URL protection is confirmed and tested.
+export const shouldUseGlobalInternalAuthGate = (
+  _mode: InternalAuthMode,
+): boolean => true;
+
+export const shouldGateAdminInternally = (mode: InternalAuthMode): boolean =>
+  mode === 'admin-only';
 
 const parseAuthEnvelope = async (res: Response): Promise<InternalAuthEnvelope> => {
   let envelope: InternalAuthEnvelope | null = null;
