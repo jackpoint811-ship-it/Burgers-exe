@@ -62,6 +62,7 @@ const makeItem = (
   name: string,
   itemKind: ItemKind,
   unitPrice: number,
+  snapshotOverrides: Record<string, unknown> = {},
 ): OrderItem => ({
   id: `${orderId}-${lineKey}`,
   orderId,
@@ -75,6 +76,10 @@ const makeItem = (
     itemKind,
     itemDisplayIndex: 1,
     sideQuestExtras: [],
+    removedIngredients: [],
+    extras: [],
+    comboBurgers: [],
+    ...snapshotOverrides,
   },
   createdAt: new Date().toISOString(),
 });
@@ -249,8 +254,34 @@ const createKitchenState = () => {
       folio: "CRIT-001",
       status: "preparing",
       minutesAgo: 25,
-      total: 18900,
-      items: [makeItem("order-critical-001", "crit-line-1", "Burger crítica", "burger", 18900)],
+      total: 38900,
+      items: [
+        makeItem("order-critical-001", "crit-line-1", "Burger crítica", "burger", 18900, {
+          removedIngredients: ["Cebolla"],
+          extras: [{ sku: "extra-cheese", name: "Queso extra", price: 2500 }],
+        }),
+        makeItem("order-critical-001", "crit-line-2", "Combo doble", "combo", 15000, {
+          comboBurgers: [
+            {
+              sku: "burger-og",
+              name: "OG",
+              removedIngredients: ["Pickles"],
+              extras: [{ sku: "bacon", name: "Tocino", price: 3000 }],
+              burgerNote: "Bien dorada",
+            },
+            {
+              sku: "burger-bx",
+              name: "BX",
+              removedIngredients: [],
+              extras: [],
+            },
+          ],
+          garnish: { sku: "fries", name: "Papas" },
+          sideQuestExtras: [{ sku: "onion-rings", name: "Aros", itemKind: "garnish" }],
+          includedDrink: { sku: "soda", name: "Refresco" },
+        }),
+        makeItem("order-critical-001", "crit-line-3", "Papas directas", "garnish", 5000),
+      ],
     }),
     makeOrder({
       id: "order-ready-review-401",
@@ -364,8 +395,11 @@ const createKitchenState = () => {
   };
 };
 
-const ticketByFolio = (page: Page, folio: string) =>
-  page.locator(".kitchen-ticket").filter({ hasText: folio }).first();
+const productionCardByFolio = (page: Page, folio: string) =>
+  page.locator(".kitchen-production-card").filter({ hasText: folio });
+
+const readyCardByFolio = (page: Page, folio: string) =>
+  page.locator(".kitchen-ready-card").filter({ hasText: folio });
 
 const primaryTab = (page: Page, label: string) =>
   page.locator("button.tab").filter({ hasText: new RegExp(label, "i") }).first();
@@ -376,12 +410,14 @@ const adminNavButton = (page: Page, label: string) =>
     .filter({ hasText: new RegExp(`^${label}$`, "i") })
     .first();
 
-const clickLane = async (page: Page, label: string) => {
-  await page
-    .locator("button.kitchen-lane")
+const kitchenViewTab = (page: Page, label: string) =>
+  page
+    .locator("button.kitchen-view-tab")
     .filter({ hasText: new RegExp(label, "i") })
-    .first()
-    .click();
+    .first();
+
+const openKitchenView = async (page: Page, label: string) => {
+  await kitchenViewTab(page, label).click();
   await page.waitForTimeout(200);
 };
 
@@ -478,7 +514,7 @@ const openAdminSection = async (page: Page, label: string) => {
 
 const openKitchenFromHome = async (page: Page) => {
   await openPrimaryTab(page, "Cocina");
-  await expect(page.getByText("Cocina operativa")).toBeVisible();
+  await expect(page.getByText("Producción actual", { exact: true })).toBeVisible();
   await expect(
     page.getByRole("heading", { name: /Cocina conectada a (preview|D1 real)/i }),
   ).toBeVisible();
@@ -522,49 +558,72 @@ test.describe("internal chekeo kitchen production board", () => {
 
     await openKitchenFromHome(page);
 
-    for (const folio of ["CRIT-001", "RDY-401", "NEW-201", "PREP-301", "RDY-402"]) {
-      await expect(ticketByFolio(page, folio)).toHaveCount(1);
+    for (const folio of ["CRIT-001", "NEW-201", "PREP-301"]) {
+      await expect(page.getByText(folio).first()).toBeVisible();
     }
 
-    await clickLane(page, "ATENCIÓN");
-    const attentionFolios = await page.locator(".kitchen-ticket .text-2xl").allTextContents();
-    expect(attentionFolios[0]).toBe("CRIT-001");
-    await expect(ticketByFolio(page, "RDY-401")).toHaveCount(1);
+    await expect(kitchenViewTab(page, "Preparación")).toBeVisible();
+    await expect(kitchenViewTab(page, "Listos")).toBeVisible();
+    await expect(kitchenViewTab(page, "Side Quest")).toBeVisible();
+    await expect(kitchenViewTab(page, "Resumen K")).toBeVisible();
+    await expect(page.getByText("Siguiente en cocina")).toBeVisible();
+    await expect(page.getByRole("button", { name: /Entregar/i })).toHaveCount(0);
 
-    await clickLane(page, "NUEVOS");
-    await expect(ticketByFolio(page, "NEW-201")).toHaveCount(1);
-    await ticketByFolio(page, "NEW-201")
-      .getByRole("button", { name: /Iniciar preparación/i })
+    const firstProductionFolios = await page
+      .locator(".kitchen-production-card .kitchen-production-card__folio")
+      .allTextContents();
+    expect(firstProductionFolios[0]).toBe("CRIT-001");
+
+    const criticalCard = productionCardByFolio(page, "CRIT-001");
+    await expect(criticalCard).toHaveCount(3);
+    await expect(criticalCard.first().getByText("Burger crítica")).toBeVisible();
+    await expect(criticalCard.nth(1).getByRole("button", { name: /Abrir item/i })).toBeVisible();
+    await criticalCard.nth(1).getByRole("button", { name: /Abrir item/i }).click();
+    await expect(criticalCard.nth(1).getByText("Burgers del combo", { exact: true })).toBeVisible();
+    await expect(criticalCard.nth(1).getByText("OG · sin Pickles")).toBeVisible();
+
+    const newCard = productionCardByFolio(page, "NEW-201");
+    await expect(newCard).toHaveCount(1);
+    await newCard.getByRole("button", { name: /^Hecho$/i }).click();
+    await expect(newCard).toHaveCount(0);
+
+    const prepCard = productionCardByFolio(page, "PREP-301");
+    await expect(prepCard).toHaveCount(1);
+    await prepCard.getByRole("button", { name: /^Hecho$/i }).first().click();
+    await expect(prepCard).toHaveCount(0);
+
+    await openKitchenView(page, "Listos");
+    await expect(readyCardByFolio(page, "RDY-401")).toHaveCount(1);
+    await expect(readyCardByFolio(page, "RDY-402")).toHaveCount(1);
+    await expect(readyCardByFolio(page, "PREP-301")).toHaveCount(1);
+    await expect(readyCardByFolio(page, "NEW-201")).toHaveCount(1);
+    await readyCardByFolio(page, "PREP-301")
+      .getByRole("button", { name: /Ver items/i })
       .click();
+    await expect(readyCardByFolio(page, "PREP-301").getByText("Burger prep")).toBeVisible();
 
-    await clickLane(page, "EN PREPARACIÓN");
-    await expect(ticketByFolio(page, "NEW-201")).toHaveCount(1);
-    const prepTicket = ticketByFolio(page, "PREP-301");
-    await expect(prepTicket).toHaveCount(1);
-    await expect(prepTicket.getByRole("button", { name: /Marcar listo/i })).toHaveCount(0);
-    await prepTicket.getByRole("button", { name: /^Hecho$/i }).first().click();
-    await expect(prepTicket.getByRole("button", { name: /Reabrir/i })).toHaveCount(1);
-    await prepTicket.getByRole("button", { name: /Marcar listo/i }).click();
+    await openKitchenView(page, "Side Quest");
+    await expect(page.getByRole("heading", { name: "Papas", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Aros", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Papas directas", exact: true })).toBeVisible();
 
-    await clickLane(page, "LISTOS");
-    await expect(ticketByFolio(page, "RDY-401")).toHaveCount(1);
-    await expect(ticketByFolio(page, "RDY-402")).toHaveCount(1);
-    await expect(ticketByFolio(page, "PREP-301")).toHaveCount(1);
-
-    await page.getByRole("button", { name: /Resumen K/i }).click();
+    await openKitchenView(page, "Resumen K");
     await expect(
       page.getByRole("heading", { name: "Ingredientes estimados" }),
     ).toBeVisible();
-    await page.getByRole("button", { name: /Tablero/i }).click();
+    await expect(page.getByText("Combos desglosados")).toBeVisible();
+    await expect(page.getByText("Side Quest").nth(2)).toBeVisible();
+    await openKitchenView(page, "Preparación");
     await expect(
       page.getByRole("heading", { name: /Cocina conectada a (preview|D1 real)/i }),
     ).toBeVisible();
 
-    await ticketByFolio(page, "RDY-401")
-      .getByRole("button", { name: /Ver detalle/i })
+    await productionCardByFolio(page, "CRIT-001")
+      .first()
+      .getByRole("button", { name: /Ver pedido/i })
       .click();
     await expect(page.getByRole("dialog")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "RDY-401" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "CRIT-001", exact: true })).toBeVisible();
     await page.getByRole("dialog").click({ position: { x: 8, y: 8 } }).catch(() => undefined);
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -625,6 +684,18 @@ test.describe("internal chekeo kitchen production board", () => {
 
       expect(overflow).toBeLessThanOrEqual(1);
       await expect(page.getByRole("heading", { name: "Base operativa para Home" })).toBeVisible();
+
+      await openPrimaryTab(page, "Cocina");
+      await expect(
+        page.getByRole("heading", { name: /Cocina conectada a (preview|D1 real)/i }),
+      ).toBeVisible();
+
+      const kitchenOverflow = await page.evaluate(() => {
+        const root = document.documentElement;
+        return root.scrollWidth - root.clientWidth;
+      });
+
+      expect(kitchenOverflow).toBeLessThanOrEqual(1);
 
       await openPrimaryTab(page, "Admin");
       await expect(page.getByRole("heading", { name: "Hub de módulos de Chekeo" })).toBeVisible();
