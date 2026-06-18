@@ -126,6 +126,35 @@ button{min-height:44px}
 .kitchen-primary-action--muted{@apply border border-zinc-700 bg-zinc-900 text-zinc-300}
 .kitchen-secondary-action{@apply inline-flex items-center justify-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm font-black text-zinc-100 disabled:opacity-50}
 .kitchen-secondary-action--active{@apply border-lime-300/50 bg-lime-300/10 text-lime-100}
+.orders-board-shell{@apply p-4}
+.orders-board-shell__header{@apply flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between}
+.orders-board-shell__summary{@apply flex flex-wrap gap-2}
+.orders-summary-chip{@apply rounded-full border border-zinc-800 bg-zinc-950/70 px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-zinc-300}
+.orders-filters{@apply mt-4 grid gap-3 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,0.8fr)]}
+.orders-search span,.orders-filter-group span{@apply text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500}
+.orders-filter-group{@apply space-y-2}
+.orders-filter-pills{@apply flex flex-wrap gap-2}
+.orders-filter-pill{@apply rounded-full border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs font-bold text-zinc-200}
+.orders-filter-pill--active{@apply border-cyan-300 bg-cyan-300 text-black}
+.orders-card{@apply space-y-3}
+.orders-card__head{@apply flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between}
+.orders-location-chip{@apply inline-flex rounded-full border border-cyan-400/35 bg-cyan-400/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-100}
+.orders-card__meta{@apply grid gap-2 text-xs text-zinc-300 min-[420px]:grid-cols-2 lg:grid-cols-4}
+.orders-note{@apply rounded-xl border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-100}
+.orders-card__actions{@apply flex flex-col gap-2 sm:flex-row sm:flex-wrap}
+.orders-primary-action{@apply w-full bg-cyan-300 px-3 py-2 text-sm font-black text-black sm:w-auto}
+.orders-secondary-action{@apply border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm font-black text-zinc-100}
+.orders-danger-action{@apply border border-rose-700 bg-rose-950/60 px-3 py-2 text-sm font-black text-rose-100}
+.orders-ticket-preview{@apply rounded-[28px] border border-cyan-400/30 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.14),transparent_30%),linear-gradient(145deg,rgba(9,9,11,0.98),rgba(17,24,39,0.96))] p-4 shadow-xl}
+.orders-ticket-preview__hero{@apply flex flex-col gap-3 border-b border-zinc-800 pb-4 sm:flex-row sm:items-start sm:justify-between}
+.orders-ticket-preview__stats{@apply mt-4 grid gap-2 min-[420px]:grid-cols-2 xl:grid-cols-4}
+.orders-ticket-stat{@apply rounded-2xl border border-zinc-800 bg-zinc-950/70 p-3}
+.orders-ticket-stat span{@apply text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500}
+.orders-ticket-stat strong{@apply mt-2 block text-xl font-black text-zinc-50}
+.orders-ticket-preview__meta{@apply mt-3 flex flex-wrap gap-2}
+.orders-ticket-preview__body{@apply mt-4 space-y-3}
+.orders-ticket-items{@apply mt-3 space-y-2}
+.orders-ticket-item{@apply grid gap-2 rounded-2xl border border-zinc-800 bg-zinc-950/65 p-3 sm:grid-cols-[1fr_auto] sm:items-start}
 .home-grid{@apply grid gap-3 xl:grid-cols-[1.35fr_0.85fr]}
 .home-grid--secondary{@apply xl:grid-cols-2}
 .home-hero{@apply p-4}

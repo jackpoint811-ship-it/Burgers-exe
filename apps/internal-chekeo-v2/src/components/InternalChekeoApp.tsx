@@ -77,6 +77,7 @@ import { CatalogAdminPanel } from "./CatalogAdminPanel";
 import { RafflesAdminPanel } from "./RafflesAdminPanel";
 import { KitchenQueue } from "./kitchen/KitchenQueue";
 import {
+  extractKitchenLocation,
   getKitchenLineKey,
   parseOrderTimestamp,
 } from "./kitchen/kitchen-helpers";
@@ -145,6 +146,8 @@ type InternalOrder = Omit<
 };
 
 type StatusAction = { status: OrderStatus; label: string; tone?: "danger" };
+type OrdersStatusFilter = "all" | "received" | "ready" | "delivered" | "cancelled";
+type OrdersRangeFilter = "today" | "week" | "all";
 type NewOrderNotice = {
   message: string;
   orderFolios: string[];
@@ -245,6 +248,7 @@ const adminViews: Array<{
 const LIVE_ACTIVE_ORDERS_LIMIT = 100;
 const LIVE_TERMINAL_ORDERS_LIMIT = 100;
 const shouldIncludeTerminalOrders = (tab: TabKey, adminView: AdminViewKey) =>
+  tab === "pedidos" ||
   tab === "pagos" ||
   (tab === "admin" &&
     (adminView === "historial" ||
@@ -256,6 +260,8 @@ const shouldKeepOrdersLoaded = (tab: TabKey, adminView: AdminViewKey) =>
     adminView !== "sorteos" &&
     adminView !== "cierre" &&
     adminView !== "reportes");
+const shouldRetainTerminalOrdersInView = (tab: TabKey, adminView: AdminViewKey) =>
+  tab === "pedidos" || (tab === "admin" && adminView === "historial");
 
 const isPreviewOrderSource = (source?: string) => source === "public-v2-preview";
 
@@ -511,6 +517,71 @@ const getPaymentMethodLabel = (method: string) =>
   paymentMethodLabel[method] ?? (method || "Por confirmar");
 const getOrderItemCount = (order: InternalOrder) =>
   order.items.reduce((total, item) => total + item.qty, 0);
+const getOrdersStatusFilterValue = (
+  status: OrderStatus,
+): Exclude<OrdersStatusFilter, "all"> =>
+  status === "ready"
+    ? "ready"
+    : status === "delivered"
+      ? "delivered"
+      : status === "cancelled"
+        ? "cancelled"
+        : "received";
+const ordersStatusLabel: Record<Exclude<OrdersStatusFilter, "all">, string> = {
+  received: "Recibido",
+  ready: "Listo",
+  delivered: "Entregado",
+  cancelled: "Cancelado",
+};
+const ordersStatusTone: Record<Exclude<OrdersStatusFilter, "all">, string> = {
+  received: "border-sky-400/40 text-sky-200",
+  ready: "border-emerald-400/40 text-emerald-200",
+  delivered: "border-zinc-500/40 text-zinc-200",
+  cancelled: "border-rose-500/40 text-rose-300",
+};
+const ordersStatusFilterOptions: Array<{
+  value: OrdersStatusFilter;
+  label: string;
+}> = [
+  { value: "all", label: "Todos" },
+  { value: "received", label: "Recibido" },
+  { value: "ready", label: "Listo" },
+  { value: "delivered", label: "Entregado" },
+  { value: "cancelled", label: "Cancelado" },
+];
+const ordersRangeFilterOptions: Array<{
+  value: OrdersRangeFilter;
+  label: string;
+}> = [
+  { value: "today", label: "Hoy" },
+  { value: "week", label: "Semana" },
+  { value: "all", label: "Todo" },
+];
+const getOrdersStatusLabel = (status: OrderStatus) =>
+  ordersStatusLabel[getOrdersStatusFilterValue(status)];
+const getOrderLocationLabel = (order: Pick<InternalOrder, "note">) =>
+  extractKitchenLocation(order.note);
+const getOrderPower = (order: InternalOrder) => {
+  const extrasCount = order.items.reduce(
+    (total, item) =>
+      total +
+      item.extras.length +
+      item.sideQuestExtras.length +
+      item.comboBurgers.reduce((comboTotal, burger) => comboTotal + burger.extras.length, 0),
+    0,
+  );
+  return Math.max(
+    10,
+    Math.round(order.total / 120) + getOrderItemCount(order) * 12 + extrasCount * 6,
+  );
+};
+const getOrderRarity = (order: InternalOrder) => {
+  const power = getOrderPower(order);
+  if (power >= 220) return "Legendario";
+  if (power >= 160) return "Épico";
+  if (power >= 110) return "Raro";
+  return "Base";
+};
 const getOperationalSummary = (orders: InternalOrder[]) => {
   const visibleOrders = orders.filter((order) => !terminalStatuses.has(order.status));
   const participants = new Set(
@@ -861,6 +932,15 @@ const mapOrderV2ToInternalOrder = (order: OrderV2): InternalOrder => {
 const StatusBadge = ({ status }: { status: OrderStatus }) => (
   <StatusPill className={statusTone[status]}>{statusLabel[status]}</StatusPill>
 );
+
+const OrdersStatusBadge = ({ status }: { status: OrderStatus }) => {
+  const key = getOrdersStatusFilterValue(status);
+  return (
+    <StatusPill className={ordersStatusTone[key]}>
+      {ordersStatusLabel[key]}
+    </StatusPill>
+  );
+};
 
 const EmptyOrdersState = ({
   title,
@@ -1937,20 +2017,9 @@ const getPedidoActions = (status: OrderStatus): StatusAction[] =>
   terminalStatuses.has(status)
     ? []
     : [
-        {
-          status:
-            status === "new"
-              ? "preparing"
-              : status === "preparing"
-                ? "ready"
-                : "delivered",
-          label:
-            status === "new"
-              ? "Confirmar e iniciar"
-              : status === "preparing"
-                ? "Marcar como listo"
-                : "Marcar entregado",
-        },
+        ...(status === "ready"
+          ? [{ status: "delivered", label: "Marcar entregado" } satisfies StatusAction]
+          : []),
         { status: "cancelled", label: "Cancelar pedido", tone: "danger" },
       ];
 const getKitchenActions = (status: OrderStatus): StatusAction[] =>
@@ -2138,13 +2207,13 @@ const WhatsappOrderActions = ({
           onClick={() => void downloadTicket()}
           disabled={generatingTicket}
         >
-          {generatingTicket ? "Generando…" : "Descargar ticket PNG"}
+          {generatingTicket ? "Generando…" : "Descargar ticket"}
         </Button>
         <Button
           className="border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-[11px]"
           onClick={() => void copySummary()}
         >
-          Copiar resumen
+          Copiar mensaje
         </Button>
         <Button
           className="border border-emerald-700 bg-emerald-950/50 px-2 py-1.5 text-[11px] text-emerald-100 disabled:opacity-40"
@@ -2360,64 +2429,91 @@ const OrderItems = ({ order }: { order: InternalOrder }) => (
     })}
   </div>
 );
+
 const CompactRow = ({
   order,
   onOpen,
+  onMove,
+  onCancel,
+  busy,
 }: {
   order: InternalOrder;
   onOpen: () => void;
+  onMove: MoveOrderStatus;
+  onCancel: (order: InternalOrder) => void;
+  busy: boolean;
 }) => {
   const previewOrder = isPreviewOrderSource(order.source);
   const itemCount = getOrderItemCount(order);
+  const location = getOrderLocationLabel(order);
+  const canDeliver = order.status === "ready";
+  const canCancel = !terminalStatuses.has(order.status);
   return (
-  <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3">
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-      <div className="min-w-0">
-        <p className="flex flex-wrap items-center gap-2 text-base font-black text-zinc-50">
-          <span>{order.folio}</span>
-          {previewOrder ? (
-            <span className="rounded-full bg-amber-300 px-2 py-0.5 text-[10px] font-black text-amber-950">
-              Prueba
-            </span>
-          ) : null}
-        </p>
-        <p className="mt-1 break-words text-sm font-semibold text-zinc-100">
-          {order.customer}
-        </p>
-        <p className="text-xs text-zinc-400">
-          {order.createdAt} · {channelLabel[order.channel]} · {sourceLabel(order.source)}
-        </p>
-        {order.customerPhone ? (
-          <p className="text-xs text-zinc-500">
-            Tel: {order.customerPhone}
+    <div className="orders-card">
+      <div className="orders-card__head">
+        <div className="min-w-0">
+          <p className="flex flex-wrap items-center gap-2 text-base font-black text-zinc-50">
+            <span>{order.folio}</span>
+            {previewOrder ? (
+              <span className="rounded-full bg-amber-300 px-2 py-0.5 text-[10px] font-black text-amber-950">
+                Prueba
+              </span>
+            ) : null}
           </p>
+          <p className="mt-1 break-words text-sm font-semibold text-zinc-100">
+            {order.customer}
+          </p>
+          <p className="text-xs text-zinc-400">
+            {order.createdAt} · {channelLabel[order.channel]}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-1 sm:justify-end">
+          <OrdersStatusBadge status={order.status} />
+          <PaymentStatusBadge status={order.paymentState} />
+          <span className="orders-location-chip">Ubicación: {location}</span>
+        </div>
+      </div>
+
+      <div className="orders-card__meta">
+        <span className="info-pill">
+          Total: <strong>{formatCurrency(order.total)}</strong>
+        </span>
+        <span className="info-pill">Pago: {getPaymentMethodLabel(order.paymentMethod)}</span>
+        <span className="info-pill">Estado pago: {getPaymentStatusLabel(order.paymentState)}</span>
+        <span className="info-pill">Items: {itemCount}</span>
+      </div>
+
+      {order.note ? (
+        <p className="orders-note">Nota para revisar: {order.note}</p>
+      ) : null}
+
+      <div className="orders-card__actions">
+        <Button
+          className="orders-primary-action"
+          onClick={onOpen}
+        >
+          Ver ticket
+        </Button>
+        {canDeliver ? (
+          <Button
+            className="orders-secondary-action"
+            onClick={() => void onMove(order.id, "delivered")}
+            disabled={busy}
+          >
+            {busy ? "Actualizando…" : "Entregado"}
+          </Button>
+        ) : null}
+        {canCancel ? (
+          <Button
+            className="orders-danger-action"
+            onClick={() => onCancel(order)}
+            disabled={busy}
+          >
+            {busy ? "Cancelando…" : "Cancelar pedido"}
+          </Button>
         ) : null}
       </div>
-      <div className="flex flex-wrap gap-1 sm:justify-end">
-        <StatusBadge status={order.status} />
-        <PaymentStatusBadge status={order.paymentState} />
-      </div>
     </div>
-    <div className="mt-3 grid gap-2 text-xs text-zinc-300 min-[420px]:grid-cols-2 lg:grid-cols-4">
-      <span className="info-pill">Total: <strong>{formatCurrency(order.total)}</strong></span>
-      <span className="info-pill">Pago: {getPaymentMethodLabel(order.paymentMethod)}</span>
-      <span className="info-pill">Items: {itemCount}</span>
-      <span className="info-pill">Ticket: {order.folio}</span>
-    </div>
-    {order.note ? (
-      <p className="mt-1.5 rounded bg-amber-500/10 px-2 py-1 text-[11px] text-amber-200">
-        Nota para revisar: {order.note}
-      </p>
-    ) : null}
-    <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-      <Button
-        className="w-full border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs sm:w-auto"
-        onClick={onOpen}
-      >
-        Ver detalle
-      </Button>
-    </div>
-  </div>
   );
 };
 
@@ -2438,40 +2534,160 @@ const OrdersBoard = ({
     order: InternalOrder,
     origin: "pedidos" | "detalle",
   ) => void;
-}) => (
-  <section>
-    <SourcePanel runtime={runtime} runtimeEnvironment={runtimeEnvironment} />
-    {runtime.source === "d1" && orders.length === 0 ? (
-      <EmptyOrdersState
-        title="Todavía no hay pedidos para revisar."
-        description="Cuando entre un pedido nuevo, aparecerá aquí."
+}) => {
+  const [statusFilter, setStatusFilter] = useState<OrdersStatusFilter>("all");
+  const [rangeFilter, setRangeFilter] = useState<OrdersRangeFilter>("today");
+  const [search, setSearch] = useState("");
+
+  const filteredOrders = useMemo(() => {
+    const now = new Date();
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    ).getTime();
+    const startOfWeek = startOfToday - 6 * 24 * 60 * 60 * 1000;
+    const normalizedSearch = search.trim().toLowerCase();
+
+    return [...orders]
+      .sort((a, b) => (b.createdAtMs ?? 0) - (a.createdAtMs ?? 0))
+      .filter((order) => {
+        const orderStatus = getOrdersStatusFilterValue(order.status);
+        if (statusFilter !== "all" && orderStatus !== statusFilter) return false;
+
+        if (rangeFilter !== "all" && order.createdAtMs) {
+          const threshold =
+            rangeFilter === "today" ? startOfToday : startOfWeek;
+          if (order.createdAtMs < threshold) return false;
+        }
+
+        if (!normalizedSearch) return true;
+        const haystack = [
+          order.folio,
+          order.customer,
+          order.customerPhone,
+          getOrderLocationLabel(order),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return haystack.includes(normalizedSearch);
+      });
+  }, [orders, rangeFilter, search, statusFilter]);
+
+  return (
+    <section className="space-y-3">
+      <SourcePanel
+        runtime={runtime}
+        runtimeEnvironment={runtimeEnvironment}
+        includeTerminal
       />
-    ) : null}
-    <div className="grid gap-2">
-      {orders.map((o) => {
-        const highlighted = runtime.highlightedOrderIds.has(o.id);
-        return (
-            <Card
-              key={o.id}
-              className={`p-2.5 transition-colors ${highlighted ? "border-cyan-300/70 bg-cyan-400/10 shadow-lg shadow-cyan-950/30" : ""}`}
-            >
-              <CompactRow order={o} onOpen={() => setSelected(o)} />
-            <OrderItems order={o} />
-            <div className="mt-2">
-              <ActionButtons
-                order={o}
-                actions={getPedidoActions(o.status)}
-                onMove={move}
-                onCancel={(order) => requestCancellation(order, "pedidos")}
-                actionOrderId={runtime.actionOrderId}
-              />
+
+      <Card className="orders-board-shell">
+        <div className="orders-board-shell__header">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
+              Pedidos de hoy
+            </p>
+            <h2 className="mt-1 text-2xl font-black text-zinc-50">
+              Centro operativo de pedidos
+            </h2>
+            <p className="mt-1 max-w-3xl text-sm text-zinc-400">
+              Revisa estado, abre ticket y marca entregado o cancelado sin mezclar Cocina, Pagos o reportes.
+            </p>
+          </div>
+          <div className="orders-board-shell__summary">
+            <span className="orders-summary-chip">
+              {filteredOrders.length} visibles
+            </span>
+            <span className="orders-summary-chip">
+              {orders.filter((order) => order.status === "ready").length} listos
+            </span>
+            <span className="orders-summary-chip">
+              {orders.filter((order) => order.paymentState === "pending").length} pago pendiente
+            </span>
+          </div>
+        </div>
+
+        <div className="orders-filters">
+          <label className="orders-search">
+            <span>Buscar por folio o cliente</span>
+            <input
+              className="input mt-1 text-sm"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Ej. BX-102 o Andrea"
+            />
+          </label>
+          <div className="orders-filter-group">
+            <span>Estado</span>
+            <div className="orders-filter-pills">
+              {ordersStatusFilterOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={`orders-filter-pill ${statusFilter === option.value ? "orders-filter-pill--active" : ""}`}
+                  onClick={() => setStatusFilter(option.value)}
+                >
+                  {option.label}
+                </button>
+              ))}
             </div>
-          </Card>
-        );
-      })}
-    </div>
-  </section>
-);
+          </div>
+          <div className="orders-filter-group">
+            <span>Rango</span>
+            <div className="orders-filter-pills">
+              {ordersRangeFilterOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={`orders-filter-pill ${rangeFilter === option.value ? "orders-filter-pill--active" : ""}`}
+                  onClick={() => setRangeFilter(option.value)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {runtime.source === "d1" && orders.length === 0 ? (
+        <EmptyOrdersState
+          title="Todavía no hay pedidos para revisar."
+          description="Cuando entre un pedido nuevo, aparecerá aquí."
+        />
+      ) : null}
+
+      {!filteredOrders.length ? (
+        <EmptyOrdersState
+          title="No hay pedidos para ese filtro."
+          description="Ajusta estado, rango o búsqueda para volver a mostrar pedidos."
+        />
+      ) : (
+        <div className="grid gap-3">
+          {filteredOrders.map((order) => {
+            const highlighted = runtime.highlightedOrderIds.has(order.id);
+            return (
+              <Card
+                key={order.id}
+                className={`p-3 transition-colors ${highlighted ? "border-cyan-300/70 bg-cyan-400/10 shadow-lg shadow-cyan-950/30" : ""}`}
+              >
+                <CompactRow
+                  order={order}
+                  onOpen={() => setSelected(order)}
+                  onMove={move}
+                  onCancel={(nextOrder) => requestCancellation(nextOrder, "pedidos")}
+                  busy={runtime.actionOrderId === order.id}
+                />
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+};
 
 const CloseMetricCard = ({
   label,
@@ -3212,6 +3428,120 @@ const getNextStatus = (status: OrderStatus): OrderStatus =>
         ? "delivered"
         : status;
 
+const TicketPreviewItems = ({ order }: { order: InternalOrder }) => (
+  <div className="orders-ticket-items">
+    {order.items.map((item, index) => {
+      const lineTotal = item.lineTotal ?? item.qty * item.price;
+      const notes = [
+        item.comboBurgers.length
+          ? `Combo: ${item.comboBurgers.map((burger) => burger.name).join(", ")}`
+          : "",
+        item.removedIngredients.length
+          ? `Sin: ${item.removedIngredients.join(", ")}`
+          : "",
+        item.extras.length
+          ? `Extras: ${item.extras.map((extra) => extra.name).join(", ")}`
+          : "",
+        item.garnish?.name ? `Guarnición: ${item.garnish.name}` : "",
+        item.sideQuestExtras.length
+          ? `Side Quest: ${item.sideQuestExtras.map((extra) => extra.name).join(", ")}`
+          : "",
+        item.burgerNote ? `Nota: ${item.burgerNote}` : "",
+      ].filter(Boolean);
+
+      return (
+        <div key={`${order.id}-${index}`} className="orders-ticket-item">
+          <div className="min-w-0">
+            <p className="break-words text-sm font-black text-zinc-50">
+              {item.qty}x {item.name}
+            </p>
+            {notes.length ? (
+              <p className="mt-1 break-words text-xs text-zinc-400">
+                {notes.join(" · ")}
+              </p>
+            ) : null}
+          </div>
+          <strong className="text-sm text-cyan-100">
+            {formatCurrency(lineTotal)}
+          </strong>
+        </div>
+      );
+    })}
+  </div>
+);
+
+const OrderTicketPreview = ({ order }: { order: InternalOrder }) => {
+  const itemCount = getOrderItemCount(order);
+  const location = getOrderLocationLabel(order);
+  const power = getOrderPower(order);
+  const rarity = getOrderRarity(order);
+  return (
+    <section className="orders-ticket-preview">
+      <div className="orders-ticket-preview__hero">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-200">
+            Ticket
+          </p>
+          <h3 className="mt-2 text-3xl font-black text-zinc-50">
+            {order.folio}
+          </h3>
+          <p className="mt-2 break-words text-base font-semibold text-zinc-100">
+            {order.customer}
+          </p>
+          <p className="mt-1 text-xs text-zinc-400">
+            {order.createdAt} · {channelLabel[order.channel]}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2 sm:justify-end">
+          <OrdersStatusBadge status={order.status} />
+          <PaymentStatusBadge status={order.paymentState} />
+          <span className="orders-location-chip">Ubicación: {location}</span>
+        </div>
+      </div>
+
+      <div className="orders-ticket-preview__stats">
+        <div className="orders-ticket-stat">
+          <span>Total</span>
+          <strong>{formatCurrency(order.total)}</strong>
+        </div>
+        <div className="orders-ticket-stat">
+          <span>Items</span>
+          <strong>{itemCount}</strong>
+        </div>
+        <div className="orders-ticket-stat">
+          <span>Rareza</span>
+          <strong>{rarity}</strong>
+        </div>
+        <div className="orders-ticket-stat">
+          <span>Power</span>
+          <strong>{power}</strong>
+        </div>
+      </div>
+
+      <div className="orders-ticket-preview__meta">
+        <span className="info-pill">Pago: {getPaymentMethodLabel(order.paymentMethod)}</span>
+        <span className="info-pill">Estado pago: {getPaymentStatusLabel(order.paymentState)}</span>
+        <span className="info-pill">Origen: {sourceLabel(order.source)}</span>
+        {order.customerPhone ? (
+          <span className="info-pill">Tel: {order.customerPhone}</span>
+        ) : null}
+      </div>
+
+      <div className="orders-ticket-preview__body">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-200">
+            Resumen del pedido
+          </p>
+          <TicketPreviewItems order={order} />
+        </div>
+        {order.note ? (
+          <p className="orders-note">Nota para revisar: {order.note}</p>
+        ) : null}
+      </div>
+    </section>
+  );
+};
+
 const OrderDetailModal = ({
   selected,
   onClose,
@@ -3250,7 +3580,6 @@ const OrderDetailModal = ({
     (action) => action.status !== "cancelled",
   );
   const busy = actionOrderId === selected.id;
-  const itemCount = getOrderItemCount(selected);
   const runAction = async (next: OrderStatus) => {
     if (busy) return;
     await onMove(selected.id, next);
@@ -3270,6 +3599,9 @@ const OrderDetailModal = ({
       >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
+              Ver ticket
+            </p>
             <h2 id="order-title" className="text-lg font-black">
               {selected.folio}
             </h2>
@@ -3292,28 +3624,14 @@ const OrderDetailModal = ({
             ) : null}
           </div>
           <div className="flex flex-wrap gap-1 sm:justify-end">
-            <StatusBadge status={selected.status} />
+            <OrdersStatusBadge status={selected.status} />
             <PaymentStatusBadge status={selected.paymentState} />
           </div>
         </div>
-        <div className="mt-3 grid gap-2 text-sm min-[420px]:grid-cols-2">
-          <p className="info-pill">Pago: {getPaymentMethodLabel(selected.paymentMethod)}</p>
-          <p className="info-pill">Total: {formatCurrency(selected.total)}</p>
-          <p className="info-pill">Items: {itemCount}</p>
-          <p className="info-pill">Ticket: {selected.folio}</p>
-        </div>
-        <OrderItems order={selected} />
-        {selected.note ? (
-          <p className="mt-2 rounded bg-amber-500/10 px-2 py-1 text-xs text-amber-200">
-            Nota para revisar: {selected.note}
-          </p>
-        ) : null}
-        <p className="mt-2 text-right text-sm font-bold">
-          Total: {formatCurrency(selected.total)}
-        </p>
-        <div className="mt-3 rounded-lg border border-cyan-400/20 bg-cyan-400/5 p-2">
+        <OrderTicketPreview order={selected} />
+        <div className="mt-3 rounded-lg border border-cyan-400/20 bg-cyan-400/5 p-3">
           <label className="text-[11px] font-semibold text-cyan-100">
-            Mensaje para WhatsApp
+            Copiar mensaje
             <select
               className="input mt-1 text-xs"
               value={whatsappTemplate}
@@ -3365,17 +3683,17 @@ const OrderDetailModal = ({
                 <Button
                   key={action.status}
                   onClick={() => void runAction(action.status)}
-                  className="flex-1 border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs disabled:opacity-40"
+                  className="orders-secondary-action flex-1 disabled:opacity-40"
                   disabled={busy}
                 >
-                  {busy ? "Actualizando…" : action.label}
+                  {busy ? "Actualizando…" : "Entregado"}
                 </Button>
               ))
             : null}
           {canCancel ? (
             <Button
               onClick={() => onRequestCancellation(selected, "detalle")}
-              className="flex-1 border border-rose-700 bg-rose-950/50 px-3 py-1.5 text-xs text-rose-200 disabled:opacity-40"
+              className="orders-danger-action flex-1 disabled:opacity-40"
               disabled={busy}
             >
               {busy ? "Cancelando…" : "Cancelar pedido"}
@@ -3383,7 +3701,7 @@ const OrderDetailModal = ({
           ) : null}
         </div>
         <Button
-          className="mt-2 w-full border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs"
+          className="mt-2 w-full border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm"
           onClick={onClose}
         >
           Cerrar
@@ -3711,7 +4029,7 @@ export function InternalChekeoApp() {
           };
           return { ...o, status: s, timeline: [...o.timeline, timelineEvent] };
         });
-        return tab === "admin" && adminView === "historial"
+        return shouldRetainTerminalOrdersInView(tab, adminView)
           ? next
           : next.filter((o) => !terminalStatuses.has(o.status));
       });
@@ -3758,7 +4076,7 @@ export function InternalChekeoApp() {
       const mapped = mapOrderV2ToInternalOrder(updated);
       setOrders((p) => {
         const next = p.map((o) => (o.id === id ? mapped : o));
-        return tab === "admin" && adminView === "historial"
+        return shouldRetainTerminalOrdersInView(tab, adminView)
           ? next
           : next.filter((o) => !terminalStatuses.has(o.status));
       });
@@ -3977,7 +4295,7 @@ export function InternalChekeoApp() {
     ),
     pedidos: (
       <OrdersBoard
-        orders={orders.filter((o) => !terminalStatuses.has(o.status))}
+        orders={orders}
         setSelected={setSelected}
         runtime={runtime}
         runtimeEnvironment={runtimeEnvironment}

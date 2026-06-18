@@ -423,6 +423,12 @@ const adminNavButton = (page: Page, label: string) =>
     .filter({ hasText: new RegExp(`^${label}$`, "i") })
     .first();
 
+const orderCardByFolio = (page: Page, folio: string) =>
+  page.locator(".orders-card").filter({ hasText: folio });
+
+const ordersFilterButton = (page: Page, label: string) =>
+  page.locator("button.orders-filter-pill").filter({ hasText: new RegExp(`^${label}$`, "i") }).first();
+
 const kitchenViewTab = (page: Page, label: string) =>
   page
     .locator("button.kitchen-view-tab")
@@ -655,7 +661,7 @@ test.describe("internal chekeo kitchen production board", () => {
       .getByRole("button", { name: /Ver pedido/i })
       .click();
     await expect(page.getByRole("dialog")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "CRIT-001", exact: true })).toBeVisible();
+    await expect(page.locator("#order-title")).toHaveText("CRIT-001");
     await page.getByRole("dialog").click({ position: { x: 8, y: 8 } }).catch(() => undefined);
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -669,10 +675,37 @@ test.describe("internal chekeo kitchen production board", () => {
     ).toBeVisible();
 
     await openPrimaryTab(page, "Pedidos");
-    await expect(page.getByText("CRIT-001").first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Centro operativo de pedidos" })).toBeVisible();
+    await expect(page.getByPlaceholder("Ej. BX-102 o Andrea")).toBeVisible();
+    await expect(orderCardByFolio(page, "CRIT-001")).toHaveCount(1);
     await expect(page.getByText("Preview D1").first()).toBeVisible();
     await expect(page.getByText("Operable en preview").first()).toBeVisible();
     await expect(page.getByText("Operación en vivo")).toHaveCount(0);
+    await ordersFilterButton(page, "Listo").click();
+    await expect(orderCardByFolio(page, "RDY-401")).toHaveCount(1);
+    await expect(orderCardByFolio(page, "RDY-402")).toHaveCount(1);
+    await orderCardByFolio(page, "RDY-402")
+      .getByRole("button", { name: /^Entregado$/i })
+      .click();
+    await expect(orderCardByFolio(page, "RDY-402")).toHaveCount(0);
+    await ordersFilterButton(page, "Entregado").click();
+    await expect(orderCardByFolio(page, "RDY-402")).toHaveCount(1);
+    await ordersFilterButton(page, "Todos").click();
+    await page.getByPlaceholder("Ej. BX-102 o Andrea").fill("RDY-401");
+    await expect(orderCardByFolio(page, "RDY-401")).toHaveCount(1);
+    await expect(orderCardByFolio(page, "RDY-402")).toHaveCount(0);
+    await orderCardByFolio(page, "RDY-401")
+      .getByRole("button", { name: /Ver ticket/i })
+      .click();
+    await expect(page.locator("#order-title")).toHaveText("RDY-401");
+    await expect(page.getByText("Rareza")).toBeVisible();
+    await expect(page.getByText("Power")).toBeVisible();
+    await expect(page.getByRole("dialog").getByText("Ubicación: Mostrador", { exact: true })).toBeVisible();
+    await expect(page.getByText(/CLABE|BBVA|Banorte|Santander/i)).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /Copiar mensaje/i })).toHaveCount(1);
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await page.getByPlaceholder("Ej. BX-102 o Andrea").fill("");
 
     await openPrimaryTab(page, "Pagos");
     await expect(page.getByRole("heading", { name: "Pagos por confirmar" })).toBeVisible();
@@ -728,6 +761,16 @@ test.describe("internal chekeo kitchen production board", () => {
       });
 
       expect(kitchenOverflow).toBeLessThanOrEqual(1);
+
+      await openPrimaryTab(page, "Pedidos");
+      await expect(page.getByRole("heading", { name: "Centro operativo de pedidos" })).toBeVisible();
+
+      const ordersOverflow = await page.evaluate(() => {
+        const root = document.documentElement;
+        return root.scrollWidth - root.clientWidth;
+      });
+
+      expect(ordersOverflow).toBeLessThanOrEqual(1);
 
       await openPrimaryTab(page, "Admin");
       await expect(page.getByRole("heading", { name: "Hub de módulos de Chekeo" })).toBeVisible();
