@@ -23,6 +23,17 @@ export type WhatsappOrderMessageInput = {
   items?: WhatsappOrderItemInput[];
   note?: string;
   source?: string;
+  orderStatus?: string;
+  deliveryDetail?: string;
+  bankDetails?: WhatsappBankDetails | null;
+};
+
+export type WhatsappBankDetails = {
+  bankName?: string;
+  accountHolder?: string;
+  accountNumber?: string;
+  clabe?: string;
+  reference?: string;
 };
 
 const formatWhatsappCurrency = (value?: number) => `$${(Number.isFinite(value) ? value ?? 0 : 0).toFixed(2)}`;
@@ -37,6 +48,59 @@ const getFolio = (order: WhatsappOrderMessageInput) => order.folio?.trim() || 't
 const getPaymentMethod = (order: WhatsappOrderMessageInput) => order.paymentMethod?.trim() || 'no especificado';
 const getPaymentStatus = (order: WhatsappOrderMessageInput) => order.paymentState?.trim() || order.paymentStatus?.trim() || 'pendiente';
 const isPreviewOrder = (order: WhatsappOrderMessageInput) => order.source === 'public-v2-preview';
+const isTransferPaymentMethod = (paymentMethod?: string) => {
+  const normalized = paymentMethod?.trim().toLowerCase();
+  return normalized === 'transfer' || normalized === 'transferencia' || normalized === 'spei';
+};
+const paymentMethodMessageLabel: Record<string, string> = {
+  cash: 'Efectivo',
+  card: 'Tarjeta',
+  transfer: 'Transferencia',
+  transferencia: 'Transferencia',
+  spei: 'Transferencia',
+  unknown: 'Por confirmar',
+};
+const paymentStatusMessageLabel: Record<string, string> = {
+  pending: 'Pago pendiente',
+  paid: 'Pago confirmado',
+  cancelled: 'Pago cancelado',
+};
+
+const getPaymentMethodMessageLabel = (paymentMethod?: string) => {
+  const normalized = paymentMethod?.trim().toLowerCase() || 'unknown';
+  return paymentMethodMessageLabel[normalized] || safeText(paymentMethod, 'Por confirmar');
+};
+
+const getPaymentStatusMessageLabel = (paymentStatus?: string) => {
+  const normalized = paymentStatus?.trim().toLowerCase() || 'pending';
+  return paymentStatusMessageLabel[normalized] || safeText(paymentStatus, 'Pago pendiente');
+};
+
+const hasBankDetails = (bankDetails?: WhatsappBankDetails | null) =>
+  Boolean(
+    bankDetails?.bankName ||
+      bankDetails?.accountHolder ||
+      bankDetails?.accountNumber ||
+      bankDetails?.clabe ||
+      bankDetails?.reference,
+  );
+
+const buildBankDetailLines = (bankDetails?: WhatsappBankDetails | null) => {
+  if (!hasBankDetails(bankDetails)) {
+    return [
+      'Datos bancarios:',
+      'Confirmar cuenta bancaria con operacion antes de compartir este cobro.',
+    ];
+  }
+
+  const lines = ['Datos bancarios:'];
+  if (bankDetails?.bankName) lines.push(`Banco: ${safeText(bankDetails.bankName)}`);
+  if (bankDetails?.accountHolder) lines.push(`Titular: ${safeText(bankDetails.accountHolder)}`);
+  if (bankDetails?.accountNumber) lines.push(`Cuenta: ${safeText(bankDetails.accountNumber)}`);
+  if (bankDetails?.clabe) lines.push(`CLABE: ${safeText(bankDetails.clabe)}`);
+  if (bankDetails?.reference) lines.push(`Referencia: ${safeText(bankDetails.reference)}`);
+  return lines;
+};
 
 const buildItemModifierText = (item: WhatsappOrderItemInput): string[] => {
   const modifiers: string[] = [];
@@ -99,6 +163,42 @@ export const buildWhatsappOrderMessage = (
     ...(note ? ['', `Notas: ${note}`] : []),
     '',
     'Nota Burgers.exe: WhatsApp abre este texto; si hay ticket PNG, descárgalo y adjúntalo manualmente.',
+  ].join('\n');
+};
+
+export const buildWhatsappPaymentMessage = (
+  order: WhatsappOrderMessageInput,
+): string => {
+  const name = getCustomerName(order);
+  const folio = getFolio(order);
+  const total = formatWhatsappCurrency(order.total);
+  const paymentMethod = getPaymentMethodMessageLabel(order.paymentMethod);
+  const paymentStatus = getPaymentStatusMessageLabel(getPaymentStatus(order));
+  const orderStatus = safeText(order.orderStatus, 'Pedido en operacion');
+  const deliveryDetail = safeText(order.deliveryDetail, 'Sin detalle de entrega');
+  const note = safeText(order.note, '');
+  const summaryLines = buildWhatsappOrderSummaryLines(order);
+
+  return [
+    `Burgers.exe | ${paymentStatus}`,
+    '',
+    `Hola ${name},`,
+    '',
+    `Folio: ${folio}`,
+    `Total: ${total}`,
+    `Metodo de pago: ${paymentMethod}`,
+    `Estado de pago: ${paymentStatus}`,
+    `Estado del pedido: ${orderStatus}`,
+    `Detalle de entrega: ${deliveryDetail}`,
+    '',
+    'Resumen del pedido:',
+    ...summaryLines,
+    ...(isTransferPaymentMethod(order.paymentMethod)
+      ? ['', ...buildBankDetailLines(order.bankDetails)]
+      : []),
+    ...(note ? ['', `Notas: ${note}`] : []),
+    '',
+    'Si ya realizaste el pago, comparte tu comprobante por este medio.',
   ].join('\n');
 };
 

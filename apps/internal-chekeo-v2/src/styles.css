@@ -155,6 +155,50 @@ button{min-height:44px}
 .orders-ticket-preview__body{@apply mt-4 space-y-3}
 .orders-ticket-items{@apply mt-3 space-y-2}
 .orders-ticket-item{@apply grid gap-2 rounded-2xl border border-zinc-800 bg-zinc-950/65 p-3 sm:grid-cols-[1fr_auto] sm:items-start}
+.payments-shell{@apply space-y-3}
+.payments-hero{@apply rounded-3xl border border-zinc-800 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),transparent_32%),linear-gradient(145deg,rgba(9,9,11,0.98),rgba(17,24,39,0.95))] p-4 shadow-xl}
+.payments-hero__header{@apply flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between}
+.payments-hero__eyebrow{@apply text-[11px] font-black uppercase tracking-[0.24em] text-cyan-200}
+.payments-hero__title{@apply mt-1 text-lg font-black text-zinc-50 md:text-xl}
+.payments-hero__summary{@apply mt-1 max-w-3xl text-sm text-zinc-300}
+.payments-summary-grid{@apply mt-4 grid gap-2 min-[520px]:grid-cols-2 xl:grid-cols-5}
+.payments-summary-card{@apply rounded-2xl border border-zinc-800 bg-zinc-950/65 p-3}
+.payments-summary-card span{@apply text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500}
+.payments-summary-card strong{@apply mt-2 block text-2xl font-black text-zinc-50}
+.payments-toolbar{@apply mt-4 grid gap-3 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]}
+.payments-toolbar__group{@apply grid gap-3}
+.payments-toolbar__label,.payments-search span{@apply text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500}
+.payments-pill-row{@apply mt-2 flex flex-wrap gap-2}
+.payments-filter-pill{@apply rounded-full border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs font-bold text-zinc-200}
+.payments-filter-pill--active{@apply border-cyan-300 bg-cyan-300 text-black}
+.payments-card{@apply space-y-3 rounded-3xl border border-zinc-800 bg-zinc-950/95 p-4 shadow-xl}
+.payments-card--pending{@apply border-amber-400/25 bg-[radial-gradient(circle_at_top_right,rgba(251,191,36,0.12),transparent_30%),rgba(9,9,11,0.98)]}
+.payments-card__head{@apply flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between}
+.payments-card__folio{@apply text-lg font-black tracking-tight text-zinc-50}
+.payments-card__amount{@apply rounded-2xl border border-zinc-800 bg-zinc-900/75 px-4 py-3 text-left sm:min-w-[180px] sm:text-right}
+.payments-card__amount span{@apply text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500}
+.payments-card__amount strong{@apply mt-1 block text-2xl font-black text-cyan-100}
+.payments-card__status{@apply flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between}
+.payments-card__meta{@apply grid gap-2 text-xs text-zinc-300 min-[420px]:grid-cols-2}
+.payments-card__summary{@apply rounded-2xl border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-sm text-zinc-300}
+.payments-card__actions{@apply grid gap-2 sm:grid-cols-2 xl:grid-cols-4}
+.payments-primary-action{@apply w-full bg-cyan-300 px-3 py-2 text-sm font-black text-black}
+.payments-success-action{@apply border border-emerald-700 bg-emerald-950/60 px-3 py-2 text-sm font-black text-emerald-100}
+.payments-secondary-action{@apply border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm font-black text-zinc-100}
+.payments-detail__header{@apply flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between}
+.payments-detail__eyebrow{@apply text-[11px] font-black uppercase tracking-[0.16em] text-cyan-200}
+.payments-detail__title{@apply mt-1 text-xl font-black text-zinc-50}
+.payments-detail__grid{@apply mt-4 grid gap-2 min-[520px]:grid-cols-2}
+.payments-detail__stat{@apply rounded-2xl border border-zinc-800 bg-zinc-900/55 p-3}
+.payments-detail__stat span{@apply text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500}
+.payments-detail__stat strong{@apply mt-2 block text-sm font-black text-zinc-50}
+.payments-detail__actions{@apply mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4}
+.payments-bank-panel{@apply rounded-2xl border border-emerald-400/25 bg-emerald-500/10 p-3}
+.payments-bank-panel__label{@apply text-[11px] font-black uppercase tracking-[0.16em] text-emerald-100}
+.payments-bank-panel__grid{@apply mt-3 grid gap-2 min-[520px]:grid-cols-3}
+.payments-bank-panel__item{@apply rounded-2xl border border-emerald-400/20 bg-zinc-950/55 p-3}
+.payments-bank-panel__item span{@apply text-[10px] font-black uppercase tracking-[0.16em] text-emerald-200}
+.payments-bank-panel__item strong{@apply mt-2 block break-words text-sm font-black text-zinc-50}
 .home-grid{@apply grid gap-3 xl:grid-cols-[1.35fr_0.85fr]}
 .home-grid--secondary{@apply xl:grid-cols-2}
 .home-hero{@apply p-4}
@@ -181,6 +225,7 @@ button{min-height:44px}
 .admin-module-card__desc{@apply mt-2 text-sm text-zinc-400}
 .overlay{@apply fixed inset-0 z-40 overflow-y-auto bg-black/70}
 .modal{@apply fixed left-1/2 top-1/2 z-50 w-[calc(100%-1rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-xl border border-zinc-700 bg-zinc-950 p-4}
+.modal--wide{@apply max-w-4xl}
 .modal{max-height:calc(100dvh - 1rem)}
 @supports not (height: 100dvh){
   .modal{max-height:calc(100vh - 1rem)}
@@ -188,12 +233,12 @@ button{min-height:44px}
 .image-preview{@apply flex h-28 w-full shrink-0 items-center justify-center overflow-hidden rounded-xl border border-zinc-700 bg-zinc-900 text-xs uppercase tracking-widest text-zinc-500 sm:w-32}
 .image-preview img{@apply h-full w-full object-cover}
 @media (hover: hover) and (pointer: fine){
-  .btn,.btn-sm,.tab,.runtime-environment-link,.home-metric-card,.quick-action-card,.row,.kitchen-view-tab,.kitchen-production-card,.kitchen-next-list__item,.admin-nav__button,.admin-module-card,.kitchen-secondary-action,.kitchen-primary-action,.kitchen-item-action{transition-property:transform,border-color,background-color,opacity;transition-duration:180ms;transition-timing-function:cubic-bezier(0.23,1,0.32,1)}
-  .btn:hover,.btn-sm:hover,.runtime-environment-link:hover,.home-metric-card:hover,.quick-action-card:hover,.kitchen-secondary-action:hover,.kitchen-primary-action:hover,.kitchen-item-action:hover,.admin-module-card:hover{transform:translateY(-1px)}
-  .home-metric-card:hover,.quick-action-card:hover,.row:hover,.kitchen-view-tab:hover,.kitchen-production-card:hover,.kitchen-next-list__item:hover,.admin-nav__button:hover,.admin-module-card:hover{border-color:rgb(163 230 53 / .45)}
+  .btn,.btn-sm,.tab,.runtime-environment-link,.home-metric-card,.quick-action-card,.row,.kitchen-view-tab,.kitchen-production-card,.kitchen-next-list__item,.admin-nav__button,.admin-module-card,.kitchen-secondary-action,.kitchen-primary-action,.kitchen-item-action,.payments-card,.payments-primary-action,.payments-success-action,.payments-secondary-action{transition-property:transform,border-color,background-color,opacity;transition-duration:180ms;transition-timing-function:cubic-bezier(0.23,1,0.32,1)}
+  .btn:hover,.btn-sm:hover,.runtime-environment-link:hover,.home-metric-card:hover,.quick-action-card:hover,.kitchen-secondary-action:hover,.kitchen-primary-action:hover,.kitchen-item-action:hover,.admin-module-card:hover,.payments-card:hover,.payments-primary-action:hover,.payments-success-action:hover,.payments-secondary-action:hover{transform:translateY(-1px)}
+  .home-metric-card:hover,.quick-action-card:hover,.row:hover,.kitchen-view-tab:hover,.kitchen-production-card:hover,.kitchen-next-list__item:hover,.admin-nav__button:hover,.admin-module-card:hover,.payments-card:hover{border-color:rgb(163 230 53 / .45)}
 }
-.btn:active,.btn-sm:active,.runtime-environment-link:active,.home-metric-card:active,.quick-action-card:active,.kitchen-secondary-action:active,.kitchen-primary-action:active,.kitchen-item-action:active,.admin-module-card:active{transform:scale(.98)}
+.btn:active,.btn-sm:active,.runtime-environment-link:active,.home-metric-card:active,.quick-action-card:active,.kitchen-secondary-action:active,.kitchen-primary-action:active,.kitchen-item-action:active,.admin-module-card:active,.payments-card:active,.payments-primary-action:active,.payments-success-action:active,.payments-secondary-action:active{transform:scale(.98)}
 @media (prefers-reduced-motion: reduce){
   *,::before,::after{scroll-behavior:auto!important}
-  .btn,.btn-sm,.tab,.runtime-environment-link,.home-metric-card,.quick-action-card,.row,.kitchen-view-tab,.kitchen-production-card,.kitchen-next-list__item,.admin-nav__button,.admin-module-card,.kitchen-secondary-action,.kitchen-primary-action,.kitchen-item-action{transition:none!important;transform:none!important}
+  .btn,.btn-sm,.tab,.runtime-environment-link,.home-metric-card,.quick-action-card,.row,.kitchen-view-tab,.kitchen-production-card,.kitchen-next-list__item,.admin-nav__button,.admin-module-card,.kitchen-secondary-action,.kitchen-primary-action,.kitchen-item-action,.payments-card,.payments-primary-action,.payments-success-action,.payments-secondary-action{transition:none!important;transform:none!important}
 }

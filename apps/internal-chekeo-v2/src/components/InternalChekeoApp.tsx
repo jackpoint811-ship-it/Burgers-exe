@@ -62,8 +62,10 @@ import {
 } from "../lib/orders-v2-admin";
 import {
   buildWhatsappOrderMessage,
+  buildWhatsappPaymentMessage,
   buildWhatsappUrl,
   normalizeWhatsappPhone,
+  type WhatsappBankDetails,
   type WhatsappOrderMessageType,
 } from "../lib/whatsapp";
 import {
@@ -80,6 +82,7 @@ import {
   extractKitchenLocation,
   getKitchenLineKey,
   parseOrderTimestamp,
+  stripLocationFromNotes,
 } from "./kitchen/kitchen-helpers";
 
 type TabKey =
@@ -280,7 +283,7 @@ const statusTone: Record<OrderStatus, string> = {
   cancelled: "border-rose-500/40 text-rose-300",
 };
 const paymentStatusLabel: Record<OrderV2PaymentStatus, string> = {
-  pending: "Falta confirmar pago",
+  pending: "Pago pendiente",
   paid: "Pago confirmado",
   cancelled: "Cancelado",
 };
@@ -515,6 +518,61 @@ const getPaymentStatusLabel = (status: string) =>
   isOrderV2PaymentStatus(status) ? paymentStatusLabel[status] : status || "Por confirmar";
 const getPaymentMethodLabel = (method: string) =>
   paymentMethodLabel[method] ?? (method || "Por confirmar");
+const paymentMessageBankDetails: WhatsappBankDetails = {
+  bankName: "BBVA",
+  accountHolder: "Yolitzin Ameyali Zarate Otero",
+  clabe: "012180015645465369",
+};
+const isTransferPaymentMethod = (method: string) =>
+  ["transfer", "transferencia", "spei"].includes(
+    method.trim().toLowerCase(),
+  );
+const getPaymentDeliveryDetail = (order: InternalOrder) => {
+  const location = extractKitchenLocation(order.note);
+  const noteWithoutLocation = stripLocationFromNotes(order.note);
+  const detailParts = [`${channelLabel[order.channel]} · ${location}`];
+  if (noteWithoutLocation) detailParts.push(noteWithoutLocation);
+  return detailParts.join(" | ");
+};
+const buildPaymentNoteWithLocation = (
+  order: InternalOrder,
+  note: string,
+) => {
+  const location = extractKitchenLocation(order.note);
+  const trimmedNote = note.trim();
+  if (!trimmedNote) {
+    return location === "Sin ubicación" ? "" : `Ubicación: ${location}`;
+  }
+  return location === "Sin ubicación"
+    ? trimmedNote
+    : `Ubicación: ${location} | ${trimmedNote}`;
+};
+const getPaymentItemsDigest = (order: InternalOrder) => {
+  if (!order.items.length) return "Resumen no disponible.";
+  const preview = order.items
+    .slice(0, 2)
+    .map((item) => `${item.qty}x ${item.name}`)
+    .join(" · ");
+  const remaining = order.items.length - 2;
+  return remaining > 0 ? `${preview} +${remaining} mas` : preview;
+};
+const buildPaymentWhatsappCopy = (order: InternalOrder) =>
+  buildWhatsappPaymentMessage({
+    customer: order.customer,
+    customerName: order.customer,
+    folio: order.folio,
+    paymentMethod: order.paymentMethod,
+    paymentState: order.paymentState,
+    total: order.total,
+    items: order.items,
+    note: stripLocationFromNotes(order.note),
+    source: order.source,
+    orderStatus: statusLabel[order.status],
+    deliveryDetail: getPaymentDeliveryDetail(order),
+    bankDetails: isTransferPaymentMethod(order.paymentMethod)
+      ? paymentMessageBankDetails
+      : null,
+  });
 const getOrderItemCount = (order: InternalOrder) =>
   order.items.reduce((total, item) => total + item.qty, 0);
 const getOrdersStatusFilterValue = (
@@ -3058,14 +3116,21 @@ const OperationalClosePanel = ({
   );
 };
 
-type PaymentFilter = "all" | OrderV2PaymentStatus;
+type PaymentFilter = "all" | "pending" | "paid";
 type PaymentPanelNotice = { tone: "success" | "error"; message: string };
 
 const paymentFilters: Array<{ value: PaymentFilter; label: string }> = [
   { value: "all", label: "Todos" },
-  { value: "pending", label: "Por revisar" },
-  { value: "paid", label: "Confirmados" },
-  { value: "cancelled", label: "Cancelados" },
+  { value: "pending", label: "Pendiente" },
+  { value: "paid", label: "Pagado" },
+];
+const paymentRangeFilters: Array<{
+  value: OrdersRangeFilter;
+  label: string;
+}> = [
+  { value: "today", label: "Hoy" },
+  { value: "week", label: "Semana" },
+  { value: "all", label: "Todo" },
 ];
 
 const PaymentStatusBadge = ({ status }: { status: string }) => {
@@ -3076,6 +3141,218 @@ const PaymentStatusBadge = ({ status }: { status: string }) => {
     ? paymentStatusTone[status]
     : "border-zinc-500/40 text-zinc-200";
   return <StatusPill className={tone}>{label}</StatusPill>;
+};
+
+const PaymentDetailModal = ({
+  order,
+  runtime,
+  draftNote,
+  notice,
+  onClose,
+  onDraftChange,
+  onSaveNote,
+  onCopyMessage,
+  onOpenWhatsapp,
+  onMarkPaid,
+  onMarkPending,
+}: {
+  order: InternalOrder | null;
+  runtime: OrdersRuntime;
+  draftNote: string;
+  notice?: PaymentPanelNotice;
+  onClose: () => void;
+  onDraftChange: (value: string) => void;
+  onSaveNote: () => Promise<void>;
+  onCopyMessage: () => Promise<void>;
+  onOpenWhatsapp: () => void;
+  onMarkPaid: () => Promise<void>;
+  onMarkPending: () => Promise<void>;
+}) => {
+  useEffect(() => {
+    if (!order) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose, order]);
+
+  if (!order) return null;
+
+  const busy = runtime.actionOrderId === order.id;
+  const paymentCopy = buildPaymentWhatsappCopy(order);
+  const phone = normalizeWhatsappPhone(order.customerPhone ?? "");
+  const isTransferPayment = isTransferPaymentMethod(order.paymentMethod);
+  const noteWithoutLocation = stripLocationFromNotes(order.note);
+
+  return (
+    <div
+      className="overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="payment-detail-title"
+      onClick={onClose}
+    >
+      <section
+        className="modal modal--wide max-h-[calc(100vh-1rem)] overflow-y-auto"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="payments-detail__header">
+          <div className="min-w-0">
+            <p className="payments-detail__eyebrow">Pago operativo</p>
+            <h2 id="payment-detail-title" className="payments-detail__title">
+              {order.folio}
+            </h2>
+            <p className="break-words text-sm font-semibold text-zinc-100">
+              {order.customer}
+            </p>
+            <p className="text-xs text-zinc-400">
+              {order.createdAt} · {channelLabel[order.channel]} ·{" "}
+              {sourceLabel(order.source)}
+            </p>
+            {order.customerPhone ? (
+              <p className="text-xs text-zinc-500">Tel: {order.customerPhone}</p>
+            ) : null}
+          </div>
+          <div className="flex flex-wrap gap-1 sm:justify-end">
+            <PaymentStatusBadge status={order.paymentState} />
+            <StatusBadge status={order.status} />
+          </div>
+        </div>
+
+        <div className="payments-detail__grid">
+          <div className="payments-detail__stat">
+            <span>Total</span>
+            <strong>{formatCurrency(order.total)}</strong>
+          </div>
+          <div className="payments-detail__stat">
+            <span>Metodo de pago</span>
+            <strong>{getPaymentMethodLabel(order.paymentMethod)}</strong>
+          </div>
+          <div className="payments-detail__stat">
+            <span>Estado de pago</span>
+            <strong>{getPaymentStatusLabel(order.paymentState)}</strong>
+          </div>
+          <div className="payments-detail__stat">
+            <span>Detalle de entrega</span>
+            <strong>{getPaymentDeliveryDetail(order)}</strong>
+          </div>
+        </div>
+
+        <div className="mt-3 space-y-3">
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/55 p-3">
+            <p className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500">
+              Resumen del pedido
+            </p>
+            <p className="mt-2 text-sm text-zinc-300">{getPaymentItemsDigest(order)}</p>
+            <OrderItems order={order} />
+          </div>
+
+          {isTransferPayment ? (
+            <div className="payments-bank-panel">
+              <p className="payments-bank-panel__label">Datos bancarios</p>
+              <div className="payments-bank-panel__grid">
+                <div className="payments-bank-panel__item">
+                  <span>Banco</span>
+                  <strong>{paymentMessageBankDetails.bankName}</strong>
+                </div>
+                <div className="payments-bank-panel__item">
+                  <span>Titular</span>
+                  <strong>{paymentMessageBankDetails.accountHolder}</strong>
+                </div>
+                <div className="payments-bank-panel__item">
+                  <span>CLABE</span>
+                  <strong>{paymentMessageBankDetails.clabe}</strong>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/55 p-3">
+            <label className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500">
+              Nota para seguimiento
+              <textarea
+                className="input mt-2 min-h-24 text-xs"
+                maxLength={500}
+                value={draftNote}
+                onChange={(event) => onDraftChange(event.target.value)}
+                placeholder="Ej. comprobante pendiente, cliente confirma por WhatsApp"
+              />
+            </label>
+            {noteWithoutLocation ? (
+              <p className="mt-2 text-[11px] text-zinc-400">
+                Nota actual: {noteWithoutLocation}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-3">
+            <label className="text-[11px] font-black uppercase tracking-[0.16em] text-cyan-100">
+              Mensaje listo para WhatsApp
+              <textarea
+                className="input mt-2 min-h-48 text-xs leading-5"
+                readOnly
+                value={paymentCopy}
+              />
+            </label>
+            {!phone ? (
+              <p className="mt-2 rounded-lg bg-amber-400/10 px-3 py-2 text-xs text-amber-100">
+                Telefono invalido para abrir WhatsApp desde esta vista.
+              </p>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="payments-detail__actions">
+          {order.paymentState === "paid" ? (
+            <Button
+              className="payments-secondary-action disabled:opacity-40"
+              onClick={() => void onMarkPending()}
+              disabled={busy || !runtime.sessionActive}
+            >
+              {busy ? "Actualizando…" : "Regresar a pendiente"}
+            </Button>
+          ) : (
+            <Button
+              className="payments-success-action disabled:opacity-40"
+              onClick={() => void onMarkPaid()}
+              disabled={busy || !runtime.sessionActive}
+            >
+              {busy ? "Actualizando…" : "Marcar pagado"}
+            </Button>
+          )}
+          <Button
+            className="payments-secondary-action"
+            onClick={() => void onCopyMessage()}
+          >
+            Copiar mensaje de pago
+          </Button>
+          <Button
+            className="payments-secondary-action disabled:opacity-40"
+            onClick={onOpenWhatsapp}
+            disabled={!phone}
+          >
+            Abrir WhatsApp
+          </Button>
+          <Button
+            className="payments-secondary-action disabled:opacity-40"
+            onClick={() => void onSaveNote()}
+            disabled={busy || !runtime.sessionActive}
+          >
+            {busy ? "Guardando…" : "Guardar nota"}
+          </Button>
+        </div>
+
+        {notice ? (
+          <p
+            className={`mt-3 rounded-xl px-3 py-2 text-xs ${notice.tone === "error" ? "bg-rose-500/10 text-rose-200" : "bg-emerald-500/10 text-emerald-200"}`}
+          >
+            {notice.message}
+          </p>
+        ) : null}
+      </section>
+    </div>
+  );
 };
 
 const PaymentNotesPanel = ({
@@ -3094,17 +3371,21 @@ const PaymentNotesPanel = ({
     reason?: string,
   ) => Promise<void>;
 }) => {
-  const [filter, setFilter] = useState<PaymentFilter>("all");
+  const [filter, setFilter] = useState<PaymentFilter>("pending");
+  const [rangeFilter, setRangeFilter] = useState<OrdersRangeFilter>("today");
+  const [search, setSearch] = useState("");
   const [draftNotes, setDraftNotes] = useState<Record<string, string>>({});
   const [inlineNotice, setInlineNotice] = useState<
     Record<string, PaymentPanelNotice>
   >({});
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
   useEffect(() => {
     setDraftNotes((current) => {
       const next: Record<string, string> = {};
       orders.forEach((order) => {
-        next[order.id] = current[order.id] ?? order.note ?? "";
+        next[order.id] =
+          current[order.id] ?? stripLocationFromNotes(order.note);
       });
       return next;
     });
@@ -3123,20 +3404,71 @@ const PaymentNotesPanel = ({
     return () => window.clearTimeout(timeout);
   }, [inlineNotice]);
 
-  const filteredOrders = orders.filter(
-    (order) => filter === "all" || order.paymentState === filter,
-  );
-  const paymentOrders =
-    runtime.source === "d1"
-      ? filteredOrders
-      : filteredOrders.filter(
-          (order) => order.paymentState === "pending" || order.note,
+  useEffect(() => {
+    if (!selectedOrderId) return;
+    if (!orders.some((order) => order.id === selectedOrderId)) {
+      setSelectedOrderId(null);
+    }
+  }, [orders, selectedOrderId]);
+
+  const filteredOrders = useMemo(() => {
+    const now = new Date();
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    ).getTime();
+    const startOfWeek = startOfToday - 6 * 24 * 60 * 60 * 1000;
+    const normalizedSearch = search.trim().toLowerCase();
+
+    return [...orders]
+      .sort((a, b) => (b.createdAtMs ?? 0) - (a.createdAtMs ?? 0))
+      .filter((order) => {
+        if (rangeFilter !== "all" && order.createdAtMs) {
+          const threshold =
+            rangeFilter === "today" ? startOfToday : startOfWeek;
+          if (order.createdAtMs < threshold) return false;
+        }
+
+        if (!normalizedSearch) return true;
+
+        return (
+          order.folio.toLowerCase().includes(normalizedSearch) ||
+          order.customer.toLowerCase().includes(normalizedSearch)
         );
+      });
+  }, [orders, rangeFilter, search]);
+
+  const paymentOrders = useMemo(
+    () =>
+      filteredOrders.filter(
+        (order) => filter === "all" || order.paymentState === filter,
+      ),
+    [filter, filteredOrders],
+  );
+  const paymentMetrics = useMemo(
+    () => ({
+      visible: paymentOrders.length,
+      pending: filteredOrders.filter((order) => order.paymentState === "pending")
+        .length,
+      paid: filteredOrders.filter((order) => order.paymentState === "paid")
+        .length,
+      transfer: filteredOrders.filter((order) =>
+        isTransferPaymentMethod(order.paymentMethod),
+      ).length,
+      total: filteredOrders.reduce((sum, order) => sum + order.total, 0),
+    }),
+    [filteredOrders, paymentOrders.length],
+  );
+  const selectedOrder = selectedOrderId
+    ? orders.find((order) => order.id === selectedOrderId) ?? null
+    : null;
 
   const runPaymentAction = async (
     order: InternalOrder,
     paymentStatus: OrderV2PaymentStatus,
     notes?: string,
+    reason?: string,
   ) => {
     setInlineNotice((current) => ({
       ...current,
@@ -3147,18 +3479,16 @@ const PaymentNotesPanel = ({
         order.id,
         paymentStatus,
         notes,
-        `Control de pagos: ${paymentStatus}`,
+        reason ?? `Control de pagos: ${paymentStatus}`,
       );
       setInlineNotice((current) => ({
         ...current,
         [order.id]: {
-            tone: "success",
-            message:
-              paymentStatus === "paid"
-                ? `${order.folio}: pago confirmado.`
-                : paymentStatus === "pending"
-                  ? `${order.folio}: falta confirmar pago.`
-                  : `${order.folio}: pago marcado como cancelado.`,
+          tone: "success",
+          message:
+            paymentStatus === "paid"
+              ? `${order.folio}: pago confirmado.`
+              : `${order.folio}: pago pendiente de confirmar.`,
         },
       }));
     } catch (paymentError) {
@@ -3172,25 +3502,79 @@ const PaymentNotesPanel = ({
               : "No se pudo actualizar el pago. Revisa la sesión e inténtalo de nuevo.",
         },
       }));
+      }
+  };
+
+  const copyPaymentMessage = async (order: InternalOrder) => {
+    try {
+      if (!navigator.clipboard?.writeText) {
+        throw new Error("Clipboard no disponible en este navegador");
+      }
+      await navigator.clipboard.writeText(buildPaymentWhatsappCopy(order));
+      setInlineNotice((current) => ({
+        ...current,
+        [order.id]: {
+          tone: "success",
+          message: `${order.folio}: mensaje de pago copiado.`,
+        },
+      }));
+    } catch (copyError) {
+      setInlineNotice((current) => ({
+        ...current,
+        [order.id]: {
+          tone: "error",
+          message:
+            copyError instanceof Error
+              ? copyError.message
+              : "No se pudo copiar el mensaje de pago.",
+        },
+      }));
     }
   };
 
+  const openPaymentWhatsapp = (order: InternalOrder) => {
+    const phone = normalizeWhatsappPhone(order.customerPhone ?? "");
+    if (!phone) {
+      setInlineNotice((current) => ({
+        ...current,
+        [order.id]: {
+          tone: "error",
+          message: `${order.folio}: telefono invalido para WhatsApp.`,
+        },
+      }));
+      return;
+    }
+    const whatsappUrl = buildWhatsappUrl(phone, buildPaymentWhatsappCopy(order));
+    window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+  };
+
+  const savePaymentNote = async (order: InternalOrder) => {
+    const nextStatus = isOrderV2PaymentStatus(order.paymentState)
+      ? order.paymentState
+      : "pending";
+    await runPaymentAction(
+      order,
+      nextStatus,
+      buildPaymentNoteWithLocation(order, draftNotes[order.id] ?? ""),
+      "Control de pagos: nota operativa",
+    );
+  };
+
   return (
-    <section className="space-y-2.5">
+    <section className="payments-shell">
       <SourcePanel
         runtime={runtime}
         runtimeEnvironment={runtimeEnvironment}
         includeTerminal
       />
-      <Card className="p-3">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+      <Card className="payments-hero">
+        <div className="payments-hero__header">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-200">
-              Revisión de pagos
-            </p>
-            <h3 className="text-lg font-black">Pagos por confirmar</h3>
-            <p className="text-sm text-zinc-400">
-              Marca pagos confirmados y deja una nota si el pedido necesita seguimiento.
+            <p className="payments-hero__eyebrow">Pagos por confirmar</p>
+            <h3 className="payments-hero__title">Centro operativo de cobros</h3>
+            <p className="payments-hero__summary">
+              Revisa pendientes, confirma pagos y abre el mensaje correcto de
+              WhatsApp sin mezclar entregas, cancelaciones ni ticket visual.
             </p>
           </div>
           <Button
@@ -3201,42 +3585,101 @@ const PaymentNotesPanel = ({
             {runtime.loading ? "Actualizando…" : "Actualizar lista"}
           </Button>
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-2 min-[360px]:grid-cols-4">
-          {paymentFilters.map((option) => (
-            <button
-              key={option.value}
-              className={`rounded-full border px-3 py-2 text-xs font-semibold ${filter === option.value ? "border-cyan-300 bg-cyan-300 text-black" : "border-zinc-700 bg-zinc-900 text-zinc-200"}`}
-              onClick={() => setFilter(option.value)}
-            >
-              {option.label}
-            </button>
-          ))}
+
+        <div className="payments-summary-grid">
+          <div className="payments-summary-card">
+            <span>Visibles</span>
+            <strong>{paymentMetrics.visible}</strong>
+          </div>
+          <div className="payments-summary-card">
+            <span>Pendientes</span>
+            <strong>{paymentMetrics.pending}</strong>
+          </div>
+          <div className="payments-summary-card">
+            <span>Pagados</span>
+            <strong>{paymentMetrics.paid}</strong>
+          </div>
+          <div className="payments-summary-card">
+            <span>Transferencia</span>
+            <strong>{paymentMetrics.transfer}</strong>
+          </div>
+          <div className="payments-summary-card">
+            <span>Total visible</span>
+            <strong>{formatCurrency(paymentMetrics.total)}</strong>
+          </div>
         </div>
+
+        <div className="payments-toolbar">
+          <label className="payments-search">
+            <span>Buscar por folio o cliente</span>
+            <input
+              className="input mt-2 text-sm"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Ej. RDY-401 o Andrea"
+            />
+          </label>
+          <div className="payments-toolbar__group">
+            <div>
+              <p className="payments-toolbar__label">Estado de pago</p>
+              <div className="payments-pill-row">
+                {paymentFilters.map((option) => (
+                  <button
+                    key={option.value}
+                    className={`payments-filter-pill ${filter === option.value ? "payments-filter-pill--active" : ""}`}
+                    onClick={() => setFilter(option.value)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="payments-toolbar__label">Rango</p>
+              <div className="payments-pill-row">
+                {paymentRangeFilters.map((option) => (
+                  <button
+                    key={option.value}
+                    className={`payments-filter-pill ${rangeFilter === option.value ? "payments-filter-pill--active" : ""}`}
+                    onClick={() => setRangeFilter(option.value)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
         {!runtime.sessionActive ? (
-            <p className="mt-3 rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-100">
-              Inicia sesión para confirmar pagos.
-            </p>
+          <p className="mt-3 rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-100">
+            Inicia sesión para operar pagos y guardar seguimiento.
+          </p>
         ) : null}
       </Card>
-      {runtime.source === "d1" && paymentOrders.length === 0 ? (
+      {paymentOrders.length === 0 ? (
         <EmptyOrdersState
           title={
-            filter === "all"
-              ? "Todavía no hay pagos para revisar."
+            filter === "all" && !search.trim()
+              ? "Todavia no hay pagos para revisar."
               : "No hay coincidencias con este filtro."
           }
           description={
-            filter === "all"
-              ? "Cuando entre un pedido aparecerá aquí."
-              : "Limpia los filtros para ver todos los registros."
+            filter === "all" && !search.trim()
+              ? "Cuando entre un pedido aparecera aqui."
+              : "Ajusta rango, estado o busqueda para recuperar registros."
           }
           action={
-            filter !== "all" ? (
+            filter !== "all" || search.trim() || rangeFilter !== "today" ? (
               <Button
                 className="border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs"
-                onClick={() => setFilter("all")}
+                onClick={() => {
+                  setFilter("all");
+                  setSearch("");
+                  setRangeFilter("today");
+                }}
               >
-                Limpiar filtros
+                Limpiar vista
               </Button>
             ) : undefined
           }
@@ -3245,94 +3688,88 @@ const PaymentNotesPanel = ({
       <div className="grid gap-2">
         {paymentOrders.map((order) => {
           const busy = runtime.actionOrderId === order.id;
-          const draft = draftNotes[order.id] ?? order.note ?? "";
+          const noteWithoutLocation = stripLocationFromNotes(order.note);
           const notice = inlineNotice[order.id];
+          const location = getOrderLocationLabel(order);
           return (
-            <Card key={order.id} className="p-3">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <Card
+              key={order.id}
+              className={`payments-card ${order.paymentState === "pending" ? "payments-card--pending" : ""}`}
+            >
+              <div className="payments-card__head">
                 <div className="min-w-0">
-                  <p className="break-words text-sm font-bold">
-                    {order.folio} · {order.customer}
+                  <p className="payments-card__folio">{order.folio}</p>
+                  <p className="break-words text-sm font-semibold text-zinc-100">
+                    {order.customer}
                   </p>
                   <p className="text-[11px] text-zinc-400">
                     {order.createdAt} · {channelLabel[order.channel]} ·{" "}
                     {sourceLabel(order.source)}
                   </p>
-                  {order.customerPhone ? (
-                    <p className="text-[11px] text-zinc-500">
-                      Tel: {order.customerPhone}
-                    </p>
-                  ) : null}
                 </div>
-                <div className="flex flex-wrap gap-1 sm:justify-end">
+                <div className="payments-card__amount">
+                  <span>Total final</span>
+                  <strong>{formatCurrency(order.total)}</strong>
+                </div>
+              </div>
+
+              <div className="payments-card__status">
+                <div className="flex flex-wrap gap-1">
                   <PaymentStatusBadge status={order.paymentState} />
                   <StatusBadge status={order.status} />
+                  <span className="orders-location-chip">Ubicacion: {location}</span>
                 </div>
+                {order.customerPhone ? (
+                  <p className="text-[11px] text-zinc-500">{order.customerPhone}</p>
+                ) : null}
               </div>
-              <div className="mt-2 grid gap-1 text-xs text-zinc-300 sm:grid-cols-2">
-                <span>
-                  Total: <strong>{formatCurrency(order.total)}</strong>
-                </span>
+
+              <div className="payments-card__meta">
                 <span>Método de pago: {getPaymentMethodLabel(order.paymentMethod)}</span>
-                <span>Pago: {getPaymentStatusLabel(order.paymentState)}</span>
+                <span>Estado de pago: {getPaymentStatusLabel(order.paymentState)}</span>
                 <span>Estado del pedido: {statusLabel[order.status]}</span>
+                <span>Detalle: {getPaymentDeliveryDetail(order)}</span>
               </div>
-              <OrderItems order={order} />
-              <WhatsappOrderActions order={order} template="received" showHint />
-              <label className="mt-2 block text-[11px] text-zinc-400">
-                Nota para el equipo
-                <textarea
-                  className="input mt-1 min-h-20 text-xs"
-                  maxLength={500}
-                  value={draft}
-                  onChange={(event) =>
-                    setDraftNotes((current) => ({
-                      ...current,
-                      [order.id]: event.target.value,
-                    }))
-                  }
-                  placeholder="Ej. falta comprobante, cliente avisa por WhatsApp"
-                />
-              </label>
-              <p className="mt-1 text-[11px] text-amber-200">
-                Guardar nota reemplaza la nota actual del pedido.
+              <p className="payments-card__summary">
+                Resumen: {getPaymentItemsDigest(order)}
               </p>
-              <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              {noteWithoutLocation ? (
+                <p className="orders-note">Seguimiento: {noteWithoutLocation}</p>
+              ) : null}
+              <div className="payments-card__actions">
                 <Button
-                  className="border border-emerald-700 bg-emerald-950/50 px-3 py-1.5 text-xs text-emerald-100 disabled:opacity-40"
-                  onClick={() => void runPaymentAction(order, "paid")}
-                  disabled={busy || !runtime.sessionActive}
+                  className="payments-primary-action"
+                  onClick={() => setSelectedOrderId(order.id)}
                 >
-                  {busy ? "Actualizando…" : "Confirmar pago"}
+                  Ver pago
                 </Button>
                 <Button
-                  className="border border-amber-700 bg-amber-950/50 px-3 py-1.5 text-xs text-amber-100 disabled:opacity-40"
-                  onClick={() => void runPaymentAction(order, "pending")}
-                  disabled={busy || !runtime.sessionActive}
-                >
-                  {busy ? "Actualizando…" : "Falta confirmar"}
-                </Button>
-                <Button
-                  className="border border-rose-700 bg-rose-950/50 px-3 py-1.5 text-xs text-rose-100 disabled:opacity-40"
-                  onClick={() => void runPaymentAction(order, "cancelled")}
-                  disabled={busy || !runtime.sessionActive}
-                >
-                  {busy ? "Actualizando…" : "Cancelar pago"}
-                </Button>
-                <Button
-                  className="border border-cyan-700 bg-cyan-950/50 px-3 py-1.5 text-xs text-cyan-100 disabled:opacity-40"
+                  className={`${order.paymentState === "paid" ? "payments-secondary-action" : "payments-success-action"} disabled:opacity-40`}
                   onClick={() =>
                     void runPaymentAction(
                       order,
-                      isOrderV2PaymentStatus(order.paymentState)
-                        ? order.paymentState
-                        : "pending",
-                      draft,
+                      order.paymentState === "paid" ? "pending" : "paid",
                     )
                   }
                   disabled={busy || !runtime.sessionActive}
                 >
-                  {busy ? "Guardando…" : "Guardar nota"}
+                  {busy
+                    ? "Actualizando…"
+                    : order.paymentState === "paid"
+                      ? "Regresar a pendiente"
+                      : "Marcar pagado"}
+                </Button>
+                <Button
+                  className="payments-secondary-action"
+                  onClick={() => void copyPaymentMessage(order)}
+                >
+                  Copiar mensaje de pago
+                </Button>
+                <Button
+                  className="payments-secondary-action"
+                  onClick={() => openPaymentWhatsapp(order)}
+                >
+                  Abrir WhatsApp
                 </Button>
               </div>
               {notice ? (
@@ -3346,6 +3783,45 @@ const PaymentNotesPanel = ({
           );
         })}
       </div>
+      <PaymentDetailModal
+        order={selectedOrder}
+        runtime={runtime}
+        draftNote={
+          selectedOrder
+            ? draftNotes[selectedOrder.id] ??
+              stripLocationFromNotes(selectedOrder.note)
+            : ""
+        }
+        notice={selectedOrder ? inlineNotice[selectedOrder.id] : undefined}
+        onClose={() => setSelectedOrderId(null)}
+        onDraftChange={(value) => {
+          if (!selectedOrder) return;
+          setDraftNotes((current) => ({
+            ...current,
+            [selectedOrder.id]: value,
+          }));
+        }}
+        onSaveNote={() =>
+          selectedOrder ? savePaymentNote(selectedOrder) : Promise.resolve()
+        }
+        onCopyMessage={() =>
+          selectedOrder ? copyPaymentMessage(selectedOrder) : Promise.resolve()
+        }
+        onOpenWhatsapp={() => {
+          if (!selectedOrder) return;
+          openPaymentWhatsapp(selectedOrder);
+        }}
+        onMarkPaid={() =>
+          selectedOrder
+            ? runPaymentAction(selectedOrder, "paid")
+            : Promise.resolve()
+        }
+        onMarkPending={() =>
+          selectedOrder
+            ? runPaymentAction(selectedOrder, "pending")
+            : Promise.resolve()
+        }
+      />
     </section>
   );
 };
