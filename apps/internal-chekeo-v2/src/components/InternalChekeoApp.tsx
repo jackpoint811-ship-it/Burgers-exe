@@ -35,6 +35,9 @@ import {
   type OrderV2PaymentStatus,
   type OrderV2Status,
   type ChekeoRuntimeEnvironment,
+  bankPaymentConfig,
+  getBankPaymentPrimaryLabel,
+  getBankPaymentPrimaryValue,
   getChekeoRuntimeEnvironment,
   getOrderEnvironmentForChekeoRuntime,
   getPublicOrderLabelForEnvironment,
@@ -93,6 +96,7 @@ type TabKey =
   | "admin";
 type AdminViewKey =
   | "launcher"
+  | "banco"
   | "historial"
   | "cierre"
   | "catalogo"
@@ -242,6 +246,7 @@ const adminViews: Array<{
   icon: NavIcon;
 }> = [
   { key: "launcher", label: "Panel", hint: "Módulos", icon: Shield },
+  { key: "banco", label: "Datos bancarios", hint: "Pagos", icon: WalletCards },
   { key: "historial", label: "Historial", hint: "Terminales", icon: History },
   { key: "cierre", label: "Cierre", hint: "Corte actual", icon: CreditCard },
   { key: "catalogo", label: "Catálogo", hint: "Menú y stock", icon: PackageSearch },
@@ -259,7 +264,8 @@ const shouldIncludeTerminalOrders = (tab: TabKey, adminView: AdminViewKey) =>
       adminView === "reportes"));
 const shouldKeepOrdersLoaded = (tab: TabKey, adminView: AdminViewKey) =>
   tab !== "admin" ||
-  (adminView !== "catalogo" &&
+  (adminView !== "banco" &&
+    adminView !== "catalogo" &&
     adminView !== "sorteos" &&
     adminView !== "cierre" &&
     adminView !== "reportes");
@@ -518,11 +524,6 @@ const getPaymentStatusLabel = (status: string) =>
   isOrderV2PaymentStatus(status) ? paymentStatusLabel[status] : status || "Por confirmar";
 const getPaymentMethodLabel = (method: string) =>
   paymentMethodLabel[method] ?? (method || "Por confirmar");
-const paymentMessageBankDetails: WhatsappBankDetails = {
-  bankName: "BBVA",
-  accountHolder: "Yolitzin Ameyali Zarate Otero",
-  clabe: "012180015645465369",
-};
 const isTransferPaymentMethod = (method: string) =>
   ["transfer", "transferencia", "spei"].includes(
     method.trim().toLowerCase(),
@@ -570,7 +571,7 @@ const buildPaymentWhatsappCopy = (order: InternalOrder) =>
     orderStatus: statusLabel[order.status],
     deliveryDetail: getPaymentDeliveryDetail(order),
     bankDetails: isTransferPaymentMethod(order.paymentMethod)
-      ? paymentMessageBankDetails
+      ? bankPaymentConfig
       : null,
   });
 const getOrderItemCount = (order: InternalOrder) =>
@@ -1981,7 +1982,9 @@ const AdminWorkspace = ({
   const modules = adminViews.filter((option) => option.key !== "launcher");
 
   const content =
-    view === "catalogo" ? (
+    view === "banco" ? (
+      <BankConfigAdminPanel />
+    ) : view === "catalogo" ? (
       <CatalogAdminPanel />
     ) : view === "sorteos" ? (
       <RafflesAdminPanel />
@@ -2017,7 +2020,9 @@ const AdminWorkspace = ({
                 <p className="admin-module-card__label">{module.label}</p>
                 <p className="admin-module-card__hint">{module.hint}</p>
                 <p className="admin-module-card__desc">
-                  {module.key === "historial"
+                  {module.key === "banco"
+                    ? "Fuente central de transferencia para Pagos y copy operativo."
+                    : module.key === "historial"
                     ? "Entregados y cancelados fuera del flujo principal."
                     : module.key === "cierre"
                       ? "Corte actual, métricas y venta de hoy."
@@ -2046,7 +2051,7 @@ const AdminWorkspace = ({
               Hub de módulos de Chekeo
             </h2>
             <p className="mt-1 max-w-3xl text-sm text-zinc-400">
-              Historial, cierre, catálogo, sorteos y reportes viven aquí para mantener la navegación principal enfocada en operación.
+              Datos bancarios, historial, cierre, catálogo, sorteos y reportes viven aquí para mantener la navegación principal enfocada en operación.
             </p>
           </div>
           <div className="admin-nav">
@@ -2067,6 +2072,97 @@ const AdminWorkspace = ({
         </p>
       </Card>
       {content}
+    </section>
+  );
+};
+
+const BankConfigAdminPanel = () => {
+  const primaryLabel = getBankPaymentPrimaryLabel(bankPaymentConfig);
+  const primaryValue = getBankPaymentPrimaryValue(bankPaymentConfig);
+
+  return (
+    <section className="space-y-3">
+      <Card className="p-4">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
+              Configuración de pago
+            </p>
+            <h3 className="mt-1 text-xl font-black text-zinc-50">
+              Datos bancarios
+            </h3>
+            <p className="mt-1 max-w-3xl text-sm text-zinc-400">
+              Fuente central compartida para transferencias. Pagos la consume
+              para el mensaje operativo y esta vista la expone solo dentro de
+              Admin.
+            </p>
+          </div>
+          <StatusPill className="border-zinc-700 bg-zinc-900 text-zinc-100">
+            {bankPaymentConfig.editable ? "Editable" : "Solo lectura"}
+          </StatusPill>
+        </div>
+      </Card>
+
+      <div className="grid gap-3 xl:grid-cols-[1.1fr_0.9fr]">
+        <Card className="p-4">
+          <div className="grid gap-3 min-[520px]:grid-cols-2">
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/65 p-3">
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500">
+                Banco
+              </p>
+              <p className="mt-2 break-words text-base font-black text-zinc-50">
+                {bankPaymentConfig.bankName}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/65 p-3">
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500">
+                Titular
+              </p>
+              <p className="mt-2 break-words text-base font-black text-zinc-50">
+                {bankPaymentConfig.accountHolder}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/65 p-3 min-[520px]:col-span-2">
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500">
+                {primaryLabel}
+              </p>
+              <p className="mt-2 break-all text-base font-black text-zinc-50">
+                {primaryValue || "Sin dato configurado"}
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-4">
+          <div className="space-y-3">
+            <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-3">
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-emerald-100">
+                Alcance
+              </p>
+              <p className="mt-2 text-sm text-zinc-100">
+                Solo transferencia. Pedidos, ticket, Home y Cocina no deben
+                mostrar estos datos.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/65 p-3 text-sm text-zinc-300">
+              <p className="font-black text-zinc-100">Estado de edición</p>
+              <p className="mt-2">
+                La configuración actual es de solo lectura y vive en la capa
+                compartida del proyecto. La edición persistente queda pendiente
+                hasta definir una fuente segura en backend.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/65 p-3 text-sm text-zinc-300">
+              <p className="font-black text-zinc-100">Fuente</p>
+              <p className="mt-2">
+                <code>{bankPaymentConfig.source}</code> compartida por{" "}
+                <code>Pagos</code>, <code>Admin</code> y la integración de
+                transferencia donde aplica.
+              </p>
+            </div>
+          </div>
+        </Card>
+      </div>
     </section>
   );
 };
@@ -3254,15 +3350,15 @@ const PaymentDetailModal = ({
               <div className="payments-bank-panel__grid">
                 <div className="payments-bank-panel__item">
                   <span>Banco</span>
-                  <strong>{paymentMessageBankDetails.bankName}</strong>
+                  <strong>{bankPaymentConfig.bankName}</strong>
                 </div>
                 <div className="payments-bank-panel__item">
                   <span>Titular</span>
-                  <strong>{paymentMessageBankDetails.accountHolder}</strong>
+                  <strong>{bankPaymentConfig.accountHolder}</strong>
                 </div>
                 <div className="payments-bank-panel__item">
-                  <span>CLABE</span>
-                  <strong>{paymentMessageBankDetails.clabe}</strong>
+                  <span>{getBankPaymentPrimaryLabel(bankPaymentConfig)}</span>
+                  <strong>{getBankPaymentPrimaryValue(bankPaymentConfig)}</strong>
                 </div>
               </div>
             </div>

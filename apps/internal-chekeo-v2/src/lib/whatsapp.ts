@@ -96,8 +96,14 @@ const buildBankDetailLines = (bankDetails?: WhatsappBankDetails | null) => {
   const lines = ['Datos bancarios:'];
   if (bankDetails?.bankName) lines.push(`Banco: ${safeText(bankDetails.bankName)}`);
   if (bankDetails?.accountHolder) lines.push(`Titular: ${safeText(bankDetails.accountHolder)}`);
-  if (bankDetails?.accountNumber) lines.push(`Cuenta: ${safeText(bankDetails.accountNumber)}`);
-  if (bankDetails?.clabe) lines.push(`CLABE: ${safeText(bankDetails.clabe)}`);
+  const accountNumber = bankDetails?.accountNumber?.trim();
+  const clabe = bankDetails?.clabe?.trim();
+  if (accountNumber && clabe && accountNumber === clabe) {
+    lines.push(`Cuenta / CLABE: ${safeText(clabe)}`);
+  } else {
+    if (accountNumber) lines.push(`Cuenta: ${safeText(accountNumber)}`);
+    if (clabe) lines.push(`CLABE: ${safeText(clabe)}`);
+  }
   if (bankDetails?.reference) lines.push(`Referencia: ${safeText(bankDetails.reference)}`);
   return lines;
 };
