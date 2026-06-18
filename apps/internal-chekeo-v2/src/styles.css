@@ -214,15 +214,36 @@ button{min-height:44px}
 .quick-action-card__icon{@apply inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-950 text-cyan-100}
 .quick-action-card__label{@apply text-sm font-bold text-zinc-50}
 .quick-action-card__hint{@apply mt-1 text-[11px] text-zinc-400}
-.admin-nav{@apply grid grid-cols-2 gap-2 md:grid-cols-3 xl:flex xl:flex-wrap}
-.admin-nav__button{@apply min-h-11 rounded-xl border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-sm font-semibold text-zinc-300}
+.admin-workspace-header{@apply overflow-hidden}
+.admin-workspace-header__actions{@apply flex w-full flex-col gap-2 xl:max-w-[460px] xl:items-stretch}
+.admin-back-button{@apply min-h-11 w-full justify-center rounded-xl px-3 py-2 text-sm font-black}
+.admin-nav-shell{@apply rounded-2xl border border-zinc-800 bg-zinc-950/60 p-2}
+.admin-nav-shell__title{@apply mb-2 px-1 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500}
+.admin-nav{@apply grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 xl:grid-cols-3}
+.admin-nav__button{@apply flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-left text-sm font-semibold text-zinc-300}
 .admin-nav__button--active{@apply border-cyan-300/50 bg-cyan-400/10 text-cyan-100}
+.admin-nav__icon{@apply inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-950 text-cyan-100}
+.admin-nav__copy{@apply min-w-0}
+.admin-nav__label{@apply block truncate text-sm font-black text-zinc-100}
+.admin-nav__hint{@apply mt-0.5 block truncate text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-500}
+.admin-nav__button--active .admin-nav__hint{@apply text-cyan-200}
+.admin-hub{@apply space-y-3}
+.admin-module-group{@apply rounded-3xl border border-zinc-800 bg-zinc-950/55 p-3}
+.admin-module-group__header{@apply mb-3 flex flex-col gap-2 md:flex-row md:items-start md:justify-between}
+.admin-module-group__title{@apply text-base font-black text-zinc-50}
+.admin-module-group__desc{@apply mt-1 text-sm text-zinc-400}
+.admin-module-group__count{@apply inline-flex min-h-8 w-fit items-center rounded-full border border-zinc-800 bg-zinc-900/70 px-3 text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400}
 .admin-module-grid{@apply grid gap-3 md:grid-cols-2 xl:grid-cols-3}
-.admin-module-card{@apply flex items-start gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/75 p-4 text-left}
+.admin-module-card{@apply flex min-h-[180px] cursor-pointer flex-col justify-between gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/75 p-4 text-left no-underline}
+.admin-module-card--link{@apply text-zinc-100}
+.admin-module-card__top{@apply flex items-start justify-between gap-3}
 .admin-module-card__icon{@apply inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-900 text-cyan-100}
-.admin-module-card__label{@apply text-base font-black text-zinc-50}
-.admin-module-card__hint{@apply mt-1 text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-200}
-.admin-module-card__desc{@apply mt-2 text-sm text-zinc-400}
+.admin-module-card__status{@apply shrink-0 whitespace-nowrap}
+.admin-module-card__content{@apply min-w-0}
+.admin-module-card__label{@apply block text-base font-black text-zinc-50}
+.admin-module-card__hint{@apply mt-1 block text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-200}
+.admin-module-card__desc{@apply mt-2 block text-sm text-zinc-400}
+.admin-module-card__footer{@apply mt-2 flex min-h-11 items-center justify-between gap-3 border-t border-zinc-800 pt-3 text-sm font-black text-zinc-100}
 .overlay{@apply fixed inset-0 z-40 overflow-y-auto bg-black/70}
 .modal{@apply fixed left-1/2 top-1/2 z-50 w-[calc(100%-1rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-xl border border-zinc-700 bg-zinc-950 p-4}
 .modal--wide{@apply max-w-4xl}
@@ -233,12 +254,12 @@ button{min-height:44px}
 .image-preview{@apply flex h-28 w-full shrink-0 items-center justify-center overflow-hidden rounded-xl border border-zinc-700 bg-zinc-900 text-xs uppercase tracking-widest text-zinc-500 sm:w-32}
 .image-preview img{@apply h-full w-full object-cover}
 @media (hover: hover) and (pointer: fine){
-  .btn,.btn-sm,.tab,.runtime-environment-link,.home-metric-card,.quick-action-card,.row,.kitchen-view-tab,.kitchen-production-card,.kitchen-next-list__item,.admin-nav__button,.admin-module-card,.kitchen-secondary-action,.kitchen-primary-action,.kitchen-item-action,.payments-card,.payments-primary-action,.payments-success-action,.payments-secondary-action{transition-property:transform,border-color,background-color,opacity;transition-duration:180ms;transition-timing-function:cubic-bezier(0.23,1,0.32,1)}
-  .btn:hover,.btn-sm:hover,.runtime-environment-link:hover,.home-metric-card:hover,.quick-action-card:hover,.kitchen-secondary-action:hover,.kitchen-primary-action:hover,.kitchen-item-action:hover,.admin-module-card:hover,.payments-card:hover,.payments-primary-action:hover,.payments-success-action:hover,.payments-secondary-action:hover{transform:translateY(-1px)}
-  .home-metric-card:hover,.quick-action-card:hover,.row:hover,.kitchen-view-tab:hover,.kitchen-production-card:hover,.kitchen-next-list__item:hover,.admin-nav__button:hover,.admin-module-card:hover,.payments-card:hover{border-color:rgb(163 230 53 / .45)}
+  .btn,.btn-sm,.tab,.runtime-environment-link,.home-metric-card,.quick-action-card,.row,.kitchen-view-tab,.kitchen-production-card,.kitchen-next-list__item,.admin-back-button,.admin-nav__button,.admin-module-card,.kitchen-secondary-action,.kitchen-primary-action,.kitchen-item-action,.payments-card,.payments-primary-action,.payments-success-action,.payments-secondary-action{transition-property:transform,border-color,background-color,opacity;transition-duration:180ms;transition-timing-function:cubic-bezier(0.23,1,0.32,1)}
+  .btn:hover,.btn-sm:hover,.runtime-environment-link:hover,.home-metric-card:hover,.quick-action-card:hover,.kitchen-secondary-action:hover,.kitchen-primary-action:hover,.kitchen-item-action:hover,.admin-back-button:hover,.admin-module-card:hover,.payments-card:hover,.payments-primary-action:hover,.payments-success-action:hover,.payments-secondary-action:hover{transform:translateY(-1px)}
+  .home-metric-card:hover,.quick-action-card:hover,.row:hover,.kitchen-view-tab:hover,.kitchen-production-card:hover,.kitchen-next-list__item:hover,.admin-back-button:hover,.admin-nav__button:hover,.admin-module-card:hover,.payments-card:hover{border-color:rgb(163 230 53 / .45)}
 }
-.btn:active,.btn-sm:active,.runtime-environment-link:active,.home-metric-card:active,.quick-action-card:active,.kitchen-secondary-action:active,.kitchen-primary-action:active,.kitchen-item-action:active,.admin-module-card:active,.payments-card:active,.payments-primary-action:active,.payments-success-action:active,.payments-secondary-action:active{transform:scale(.98)}
+.btn:active,.btn-sm:active,.runtime-environment-link:active,.home-metric-card:active,.quick-action-card:active,.kitchen-secondary-action:active,.kitchen-primary-action:active,.kitchen-item-action:active,.admin-back-button:active,.admin-module-card:active,.payments-card:active,.payments-primary-action:active,.payments-success-action:active,.payments-secondary-action:active{transform:scale(.98)}
 @media (prefers-reduced-motion: reduce){
   *,::before,::after{scroll-behavior:auto!important}
-  .btn,.btn-sm,.tab,.runtime-environment-link,.home-metric-card,.quick-action-card,.row,.kitchen-view-tab,.kitchen-production-card,.kitchen-next-list__item,.admin-nav__button,.admin-module-card,.kitchen-secondary-action,.kitchen-primary-action,.kitchen-item-action,.payments-card,.payments-primary-action,.payments-success-action,.payments-secondary-action{transition:none!important;transform:none!important}
+  .btn,.btn-sm,.tab,.runtime-environment-link,.home-metric-card,.quick-action-card,.row,.kitchen-view-tab,.kitchen-production-card,.kitchen-next-list__item,.admin-back-button,.admin-nav__button,.admin-module-card,.kitchen-secondary-action,.kitchen-primary-action,.kitchen-item-action,.payments-card,.payments-primary-action,.payments-success-action,.payments-secondary-action{transition:none!important;transform:none!important}
 }

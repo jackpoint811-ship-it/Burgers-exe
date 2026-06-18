@@ -12,6 +12,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   ChefHat,
   CreditCard,
+  ExternalLink,
   FileText,
   Gift,
   History,
@@ -198,6 +199,25 @@ type OperationalTruth = {
   summaryHint: string;
 };
 type NavIcon = typeof House;
+type AdminModuleCategory = "operacion" | "configuracion" | "datos" | "promos";
+type AdminModuleStatus = "base-lista" | "solo-lectura" | "basico" | "pendiente";
+type AdminViewDefinition = {
+  key: AdminViewKey;
+  label: string;
+  hint: string;
+  icon: NavIcon;
+  category?: AdminModuleCategory;
+  status?: AdminModuleStatus;
+  description?: string;
+  cta?: string;
+};
+type AdminModuleDefinition = AdminViewDefinition & {
+  key: Exclude<AdminViewKey, "launcher">;
+  category: AdminModuleCategory;
+  status: AdminModuleStatus;
+  description: string;
+  cta: string;
+};
 
 const orderEnvironmentLabel: Record<OrderV2Environment, string> = {
   production: "Producción",
@@ -239,20 +259,125 @@ const primaryTabs: Array<{
   { key: "pagos", label: "Pagos", hint: "Confirmación", icon: WalletCards },
   { key: "admin", label: "Admin", hint: "Módulos", icon: Shield },
 ];
-const adminViews: Array<{
-  key: AdminViewKey;
-  label: string;
-  hint: string;
-  icon: NavIcon;
+const adminModuleGroups: Array<{
+  key: AdminModuleCategory;
+  title: string;
+  description: string;
 }> = [
-  { key: "launcher", label: "Panel", hint: "Módulos", icon: Shield },
-  { key: "banco", label: "Datos bancarios", hint: "Pagos", icon: WalletCards },
-  { key: "historial", label: "Historial", hint: "Terminales", icon: History },
-  { key: "cierre", label: "Cierre", hint: "Corte actual", icon: CreditCard },
-  { key: "catalogo", label: "Catálogo", hint: "Menú y stock", icon: PackageSearch },
-  { key: "sorteos", label: "Sorteos", hint: "Campañas", icon: Gift },
-  { key: "reportes", label: "Reportes", hint: "Exportes", icon: FileText },
+  {
+    key: "operacion",
+    title: "Operación",
+    description: "Cierre actual e historial fuera del flujo diario.",
+  },
+  {
+    key: "configuracion",
+    title: "Configuración",
+    description: "Datos y catálogo que alimentan módulos internos.",
+  },
+  {
+    key: "datos",
+    title: "Datos",
+    description: "Exportes, reportes y enlaces de estado.",
+  },
+  {
+    key: "promos",
+    title: "Promos/Sorteos",
+    description: "Campañas existentes sin tickets extras manuales.",
+  },
 ];
+const adminModuleStatusMeta: Record<
+  AdminModuleStatus,
+  { label: string; className: string }
+> = {
+  "base-lista": {
+    label: "Base lista",
+    className: "border-emerald-400/40 bg-emerald-500/10 text-emerald-100",
+  },
+  "solo-lectura": {
+    label: "Solo lectura",
+    className: "border-zinc-600 bg-zinc-900 text-zinc-100",
+  },
+  basico: {
+    label: "Básico",
+    className: "border-cyan-400/40 bg-cyan-500/10 text-cyan-100",
+  },
+  pendiente: {
+    label: "Pendiente",
+    className: "border-amber-400/40 bg-amber-500/10 text-amber-100",
+  },
+};
+const adminViews: AdminViewDefinition[] = [
+  { key: "launcher", label: "Hub", hint: "Módulos", icon: Shield },
+  {
+    key: "banco",
+    label: "Datos bancarios",
+    hint: "Transferencia",
+    icon: WalletCards,
+    category: "configuracion",
+    status: "solo-lectura",
+    description:
+      "Fuente central de transferencia para Pagos y mensajes operativos.",
+    cta: "Ver módulo",
+  },
+  {
+    key: "historial",
+    label: "Historial",
+    hint: "Entregados/cancelados",
+    icon: History,
+    category: "operacion",
+    status: "base-lista",
+    description:
+      "Pedidos entregados y cancelados sin saturar el centro operativo.",
+    cta: "Ver módulo",
+  },
+  {
+    key: "cierre",
+    label: "Cierre",
+    hint: "Corte actual",
+    icon: CreditCard,
+    category: "operacion",
+    status: "base-lista",
+    description:
+      "Resumen de operación por rango y descarga del corte actual.",
+    cta: "Ver módulo",
+  },
+  {
+    key: "catalogo",
+    label: "Catálogo",
+    hint: "Menú y stock",
+    icon: PackageSearch,
+    category: "configuracion",
+    status: "base-lista",
+    description:
+      "Productos, promos, banners e ingredientes con el panel existente.",
+    cta: "Ver módulo",
+  },
+  {
+    key: "sorteos",
+    label: "Sorteos",
+    hint: "Campañas",
+    icon: Gift,
+    category: "promos",
+    status: "basico",
+    description:
+      "Campañas, tickets existentes y referidos sin tickets extras manuales.",
+    cta: "Ver módulo",
+  },
+  {
+    key: "reportes",
+    label: "Reportes",
+    hint: "Exportes",
+    icon: FileText,
+    category: "datos",
+    status: "basico",
+    description:
+      "Exportes y contexto técnico sin mezclarlo con operación diaria.",
+    cta: "Ver módulo",
+  },
+];
+const adminModuleViews = adminViews.filter(
+  (option): option is AdminModuleDefinition => option.key !== "launcher",
+);
 const LIVE_ACTIVE_ORDERS_LIMIT = 100;
 const LIVE_TERMINAL_ORDERS_LIMIT = 100;
 const shouldIncludeTerminalOrders = (tab: TabKey, adminView: AdminViewKey) =>
@@ -1979,7 +2104,41 @@ const AdminWorkspace = ({
   runtimeEnvironment: ChekeoRuntimeEnvironment;
   onArchiveCancelled: (order: InternalOrder) => Promise<void>;
 }) => {
-  const modules = adminViews.filter((option) => option.key !== "launcher");
+  const activeView = adminViews.find((option) => option.key === view) ?? adminViews[0];
+  const publicOrderUrl = getPublicOrderUrlForEnvironment(runtimeEnvironment);
+  const publicOrderLabel = getPublicOrderLabelForEnvironment(runtimeEnvironment);
+
+  const renderModuleCard = (module: AdminModuleDefinition) => {
+    const Icon = module.icon;
+    const status = adminModuleStatusMeta[module.status];
+
+    return (
+      <button
+        key={module.key}
+        type="button"
+        className="admin-module-card"
+        onClick={() => setView(module.key)}
+      >
+        <span className="admin-module-card__top">
+          <span className="admin-module-card__icon">
+            <Icon size={18} aria-hidden="true" />
+          </span>
+          <StatusPill className={`admin-module-card__status ${status.className}`}>
+            {status.label}
+          </StatusPill>
+        </span>
+        <span className="admin-module-card__content">
+          <span className="admin-module-card__label">{module.label}</span>
+          <span className="admin-module-card__hint">{module.hint}</span>
+          <span className="admin-module-card__desc">{module.description}</span>
+        </span>
+        <span className="admin-module-card__footer">
+          <span>{module.cta}</span>
+          <span aria-hidden="true">→</span>
+        </span>
+      </button>
+    );
+  };
 
   const content =
     view === "banco" ? (
@@ -2003,68 +2162,131 @@ const AdminWorkspace = ({
     ) : view === "reportes" ? (
       <AdminReportsPanel runtime={runtime} />
     ) : (
-      <div className="admin-module-grid">
-        {modules.map((module) => {
-          const Icon = module.icon;
+      <div className="admin-hub">
+        {adminModuleGroups.map((group) => {
+          const modules = adminModuleViews.filter((module) => module.category === group.key);
+          if (!modules.length) return null;
+
           return (
-            <button
-              key={module.key}
-              type="button"
-              className="admin-module-card"
-              onClick={() => setView(module.key)}
+            <section
+              key={group.key}
+              className="admin-module-group"
+              aria-labelledby={`admin-module-group-${group.key}`}
             >
-              <span className="admin-module-card__icon">
-                <Icon size={18} aria-hidden="true" />
-              </span>
-              <div className="min-w-0">
-                <p className="admin-module-card__label">{module.label}</p>
-                <p className="admin-module-card__hint">{module.hint}</p>
-                <p className="admin-module-card__desc">
-                  {module.key === "banco"
-                    ? "Fuente central de transferencia para Pagos y copy operativo."
-                    : module.key === "historial"
-                    ? "Entregados y cancelados fuera del flujo principal."
-                    : module.key === "cierre"
-                      ? "Corte actual, métricas y venta de hoy."
-                      : module.key === "catalogo"
-                        ? "Menú, promos, banners e ingredientes."
-                        : module.key === "sorteos"
-                          ? "Campañas, tickets y referidos."
-                          : "CSV y revisión técnica sin ruido operativo."}
-                </p>
+              <div className="admin-module-group__header">
+                <div>
+                  <h3 id={`admin-module-group-${group.key}`} className="admin-module-group__title">
+                    {group.title}
+                  </h3>
+                  <p className="admin-module-group__desc">{group.description}</p>
+                </div>
+                <span className="admin-module-group__count">
+                  {modules.length} módulo{modules.length === 1 ? "" : "s"}
+                </span>
               </div>
-            </button>
+              <div className="admin-module-grid">
+                {modules.map(renderModuleCard)}
+              </div>
+            </section>
           );
         })}
+
+        <section className="admin-module-group" aria-labelledby="admin-module-group-public">
+          <div className="admin-module-group__header">
+            <div>
+              <h3 id="admin-module-group-public" className="admin-module-group__title">
+                Página pública
+              </h3>
+              <p className="admin-module-group__desc">
+                Enlace de estado a la experiencia de clientes; este PR no la modifica.
+              </p>
+            </div>
+            <StatusPill className="border-emerald-400/40 bg-emerald-500/10 text-emerald-100">
+              Base lista
+            </StatusPill>
+          </div>
+          <a
+            className="admin-module-card admin-module-card--link"
+            href={publicOrderUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <span className="admin-module-card__top">
+              <span className="admin-module-card__icon">
+                <ExternalLink size={18} aria-hidden="true" />
+              </span>
+              <StatusPill className="admin-module-card__status border-emerald-400/40 bg-emerald-500/10 text-emerald-100">
+                Base lista
+              </StatusPill>
+            </span>
+            <span className="admin-module-card__content">
+              <span className="admin-module-card__label">Página pública</span>
+              <span className="admin-module-card__hint">{publicOrderLabel}</span>
+              <span className="admin-module-card__desc">
+                Acceso rápido para revisar la ruta pública activa sin cambiar su implementación.
+              </span>
+            </span>
+            <span className="admin-module-card__footer">
+              <span>Abrir página</span>
+              <ExternalLink size={16} aria-hidden="true" />
+            </span>
+          </a>
+        </section>
       </div>
     );
 
   return (
     <section className="space-y-3">
-      <Card className="p-4">
+      <Card className="admin-workspace-header p-4">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
-              Admin técnico
+              Admin
             </p>
             <h2 className="mt-1 text-xl font-black text-zinc-50">
-              Hub de módulos de Chekeo
+              {view === "launcher" ? "Hub de módulos de Chekeo" : activeView.label}
             </h2>
             <p className="mt-1 max-w-3xl text-sm text-zinc-400">
-              Datos bancarios, historial, cierre, catálogo, sorteos y reportes viven aquí para mantener la navegación principal enfocada en operación.
+              {view === "launcher"
+                ? "Datos bancarios, historial, cierre, catálogo, sorteos y reportes viven aquí para mantener la navegación principal enfocada en operación."
+                : activeView.description}
             </p>
           </div>
-          <div className="admin-nav">
-            {adminViews.map((option) => (
-              <button
-                key={option.key}
+          <div className="admin-workspace-header__actions">
+            {view !== "launcher" ? (
+              <Button
                 type="button"
-                className={`admin-nav__button ${view === option.key ? "admin-nav__button--active" : ""}`}
-                onClick={() => setView(option.key)}
+                className="admin-back-button border border-cyan-400/40 bg-cyan-400/10 text-cyan-100"
+                onClick={() => setView("launcher")}
               >
-                {option.label}
-              </button>
-            ))}
+                Volver al hub
+              </Button>
+            ) : null}
+            <div className="admin-nav-shell" aria-label="Navegación Admin">
+              <p className="admin-nav-shell__title">Navegación Admin</p>
+              <div className="admin-nav">
+                {adminViews.map((option) => {
+                  const Icon = option.icon;
+                  return (
+                    <button
+                      key={option.key}
+                      type="button"
+                      aria-label={option.label}
+                      className={`admin-nav__button ${view === option.key ? "admin-nav__button--active" : ""}`}
+                      onClick={() => setView(option.key)}
+                    >
+                      <span className="admin-nav__icon">
+                        <Icon size={16} aria-hidden="true" />
+                      </span>
+                      <span className="admin-nav__copy">
+                        <span className="admin-nav__label">{option.label}</span>
+                        <span className="admin-nav__hint">{option.hint}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
         <p className="mt-3 text-xs text-zinc-500">

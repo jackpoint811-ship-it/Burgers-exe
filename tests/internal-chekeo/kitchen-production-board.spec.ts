@@ -465,10 +465,10 @@ const primaryTab = (page: Page, label: string) =>
   page.locator("button.tab").filter({ hasText: new RegExp(label, "i") }).first();
 
 const adminNavButton = (page: Page, label: string) =>
-  page
-    .locator("button.admin-nav__button")
-    .filter({ hasText: new RegExp(`^${label}$`, "i") })
-    .first();
+  page.getByRole("button", { name: new RegExp(`^${label}$`, "i") }).first();
+
+const adminModuleCard = (page: Page, label: string) =>
+  page.locator("button.admin-module-card").filter({ hasText: new RegExp(label, "i") });
 
 const orderCardByFolio = (page: Page, folio: string) =>
   page.locator(".orders-card").filter({ hasText: folio });
@@ -868,22 +868,34 @@ test.describe("internal chekeo kitchen production board", () => {
 
     await openPrimaryTab(page, "Admin");
     await expect(page.getByRole("heading", { name: "Hub de módulos de Chekeo" })).toBeVisible();
-    await expect(page.locator("button.admin-module-card").filter({ hasText: /Datos bancarios/i })).toHaveCount(1);
-    await expect(page.locator("button.admin-module-card").filter({ hasText: /Historial/i })).toHaveCount(1);
-    await expect(page.locator("button.admin-module-card").filter({ hasText: /Cierre/i })).toHaveCount(1);
-    await expect(page.locator("button.admin-module-card").filter({ hasText: /Catálogo/i })).toHaveCount(1);
-    await expect(page.locator("button.admin-module-card").filter({ hasText: /Sorteos/i })).toHaveCount(1);
-    await expect(page.locator("button.admin-module-card").filter({ hasText: /Reportes/i })).toHaveCount(1);
+    await expect(page.getByRole("heading", { name: "Operación" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Configuración" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Datos" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Promos/Sorteos" })).toBeVisible();
+    await expect(adminModuleCard(page, "Datos bancarios")).toHaveCount(1);
+    await expect(adminModuleCard(page, "Historial")).toHaveCount(1);
+    await expect(adminModuleCard(page, "Cierre")).toHaveCount(1);
+    await expect(adminModuleCard(page, "Catálogo")).toHaveCount(1);
+    await expect(adminModuleCard(page, "Sorteos")).toHaveCount(1);
+    await expect(adminModuleCard(page, "Reportes")).toHaveCount(1);
+    await expect(page.getByText("Base lista", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Solo lectura", { exact: true })).toBeVisible();
+    await expect(page.getByText("Básico", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Ver módulo", { exact: true }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: /Página pública/i })).toBeVisible();
+    await expect(page.getByText("Abrir página", { exact: true })).toBeVisible();
     await expect(
       page.getByText(/Auth global se mantiene temporalmente por seguridad/i),
     ).toBeVisible();
 
     await openAdminSection(page, "Datos bancarios");
-    await expect(page.getByRole("heading", { name: "Datos bancarios" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Datos bancarios" }).first()).toBeVisible();
     await expect(page.getByText("BBVA", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("Yolitzin Ameyali Zarate Otero", { exact: true })).toBeVisible();
     await expect(page.getByText("012180015645465369", { exact: true }).first()).toBeVisible();
     await expect(page.getByText(/Solo transferencia/i)).toBeVisible();
+    await page.getByRole("button", { name: /Volver al hub/i }).click();
+    await expect(page.getByRole("heading", { name: "Hub de módulos de Chekeo" })).toBeVisible();
 
     await openAdminSection(page, "Historial");
     await expect(page.getByRole("heading", { name: /Historial (de pedidos|de esta vista)/i })).toBeVisible();
@@ -891,8 +903,14 @@ test.describe("internal chekeo kitchen production board", () => {
     await expect(page.getByText("CAN-601")).toBeVisible();
 
     await openAdminSection(page, "Cierre");
-    await expect(page.getByRole("heading", { name: "Cierre" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Cierre" }).first()).toBeVisible();
     await expect(page.getByRole("button", { name: /Descargar reporte/i })).toBeVisible();
+
+    await openAdminSection(page, "Catálogo");
+    await expect(page.getByRole("heading", { name: "Catálogo" }).first()).toBeVisible();
+
+    await openAdminSection(page, "Sorteos");
+    await expect(page.getByRole("heading", { name: "Campañas mensuales" })).toBeVisible();
 
     await openAdminSection(page, "Reportes");
     await expect(page.getByRole("heading", { name: "Exportes operativos" })).toBeVisible();
@@ -954,6 +972,16 @@ test.describe("internal chekeo kitchen production board", () => {
       });
 
       expect(adminOverflow).toBeLessThanOrEqual(1);
+
+      await openAdminSection(page, "Datos bancarios");
+      await expect(page.getByRole("heading", { name: "Datos bancarios" }).first()).toBeVisible();
+
+      const adminModuleOverflow = await page.evaluate(() => {
+        const root = document.documentElement;
+        return root.scrollWidth - root.clientWidth;
+      });
+
+      expect(adminModuleOverflow).toBeLessThanOrEqual(1);
     });
   }
 });
