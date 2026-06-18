@@ -284,7 +284,7 @@ const KitchenTicket = ({
             {order.customer}
           </p>
         </div>
-        <div className="kitchen-ticket__timer">
+        <div className="kitchen-ticket__elapsed">
           <Clock3 size={16} aria-hidden="true" />
           <span>{formatKitchenElapsed(meta.elapsedMinutes)}</span>
         </div>
@@ -321,7 +321,7 @@ const KitchenTicket = ({
               ? "Pago pendiente antes de salida."
               : meta.readyNeedsReview
                 ? "Pedido listo con checklist pendiente."
-                : "Revisar prioridad operativa."}
+                : "Revisar operación actual."}
           </span>
         </div>
       ) : null}
@@ -601,8 +601,8 @@ export const KitchenQueue = ({
   const kitchenHint = fallback
     ? "Solo referencia visual. Reintenta antes de confirmar cambios como definitivos."
     : runtime.environment === "preview"
-      ? "Valida prioridades y flujo sin asumir producción."
-      : "Ordenado por urgencia, pago y antigüedad para decidir el siguiente pedido.";
+      ? "Valida flujo y estados sin asumir producción."
+      : "Ordenado por estado y pago para decidir el siguiente pedido.";
 
   useEffect(() => {
     if (view !== "board" || activeOrders.length === 0) return;

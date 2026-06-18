@@ -485,6 +485,29 @@ const openKitchenFromHome = async (page: Page) => {
 };
 
 test.describe("internal chekeo kitchen production board", () => {
+  test("keeps the global auth gate before the operation shell", async ({ page }) => {
+    await installKitchenApiMocks(page);
+    await page.goto("/", { waitUntil: "networkidle" });
+
+    await expect(page.getByLabel("PIN de acceso")).toBeVisible();
+    await expect(page.locator("button.tab")).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Base operativa para Home" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Hub de módulos de Chekeo" })).toHaveCount(0);
+
+    await page.locator('input[type="password"]').fill("0485");
+    await page.getByRole("button", { name: /Entrar/i }).click();
+    await expect(page.getByRole("heading", { name: "Base operativa para Home" })).toBeVisible();
+
+    await openPrimaryTab(page, "Admin");
+    await expect(page.getByRole("heading", { name: "Hub de módulos de Chekeo" })).toBeVisible();
+
+    await page.getByRole("button", { name: /Cerrar sesion/i }).click();
+    await expect(page.getByLabel("PIN de acceso")).toBeVisible();
+    await expect(page.locator("button.tab")).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Base operativa para Home" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Hub de módulos de Chekeo" })).toHaveCount(0);
+  });
+
   test("keeps the restructured operation shell stable", async ({ page }) => {
     await installKitchenApiMocks(page);
     await loginToChekeo(page);

@@ -43,8 +43,12 @@ import {
 import { Button, Card, StatusPill } from "@ui/index";
 import {
   fetchInternalAuthStatus,
+  getInternalAuthMode,
+  shouldGateAdminInternally,
+  shouldUseGlobalInternalAuthGate,
   loginInternal,
   logoutInternal,
+  type InternalAuthMode,
 } from "../lib/internal-auth";
 import { fetchKitchenSummaryK } from "../lib/ingredients-v2-admin";
 import {
@@ -1795,6 +1799,32 @@ const AdminReportsPanel = ({
   </div>
 );
 
+const AdminGate = ({
+  authMode,
+  sessionActive,
+  children,
+}: {
+  authMode: InternalAuthMode;
+  sessionActive: boolean;
+  children: ReactNode;
+}) => {
+  if (!shouldGateAdminInternally(authMode) || sessionActive) return <>{children}</>;
+
+  return (
+    <Card className="p-4">
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
+        Acceso protegido
+      </p>
+      <h2 className="mt-1 text-xl font-black text-zinc-50">
+        Admin requiere sesión
+      </h2>
+      <p className="mt-2 text-sm text-zinc-400">
+        Los módulos internos permanecen bloqueados hasta validar la sesión de Chekeo.
+      </p>
+    </Card>
+  );
+};
+
 const AdminWorkspace = ({
   view,
   setView,
@@ -3426,6 +3456,8 @@ export function InternalChekeoApp() {
   const [actionOrderId, setActionOrderId] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [limitWarning, setLimitWarning] = useState<string | null>(null);
+  const authMode = useMemo(getInternalAuthMode, []);
+  const useGlobalAuthGate = shouldUseGlobalInternalAuthGate(authMode);
   const runtimeEnvironment = useMemo(getChekeoRuntimeEnvironment, []);
   const orderEnvironment = useMemo(
     () => getOrderEnvironmentForChekeoRuntime(runtimeEnvironment),
@@ -3971,17 +4003,19 @@ export function InternalChekeoApp() {
       />
     ),
     admin: (
-      <AdminWorkspace
-        view={adminView}
-        setView={setAdminView}
-        orders={orders}
-        runtime={runtime}
-        runtimeEnvironment={runtimeEnvironment}
-        onArchiveCancelled={archiveCancelledOrder}
-      />
+      <AdminGate authMode={authMode} sessionActive={runtime.sessionActive}>
+        <AdminWorkspace
+          view={adminView}
+          setView={setAdminView}
+          orders={orders}
+          runtime={runtime}
+          runtimeEnvironment={runtimeEnvironment}
+          onArchiveCancelled={archiveCancelledOrder}
+        />
+      </AdminGate>
     ),
   })[tab];
-  if (!logged)
+  if (useGlobalAuthGate && !logged)
     return (
       <InternalLogin
         checkingSession={checkingSession}
