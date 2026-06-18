@@ -1,16 +1,12 @@
 import type { OrderV2ItemKind } from "@config/index";
 import type {
-  KitchenFocus,
   KitchenItemKind,
-  KitchenLaneKey,
+  KitchenLocalSummary,
   KitchenOrder,
   KitchenOrderItem,
-  KitchenOrderMeta,
-  KitchenUrgency,
+  KitchenProductionItem,
+  KitchenSideQuestItem,
 } from "./kitchen-types";
-
-export const KITCHEN_LATE_MINUTES = 12;
-export const KITCHEN_CRITICAL_MINUTES = 20;
 
 export const parseOrderTimestamp = (value?: string) => {
   if (!value) return undefined;
@@ -23,15 +19,6 @@ export const parseOrderTimestamp = (value?: string) => {
   return today.getTime();
 };
 
-export const formatKitchenElapsed = (minutes: number | null) => {
-  if (minutes === null) return "Tiempo sin confirmar";
-  if (minutes < 1) return "Ahora";
-  if (minutes < 60) return `${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  return rest ? `${hours}h ${rest}m` : `${hours}h`;
-};
-
 export const getKitchenItemKind = (
   item: Pick<KitchenOrderItem, "itemKind" | "name">,
 ): OrderV2ItemKind => {
@@ -39,13 +26,10 @@ export const getKitchenItemKind = (
   return item.name.toLowerCase().includes("fries") ? "garnish" : "burger";
 };
 
-const isBurgerOrCombo = (item: KitchenOrderItem) => {
-  const kind = getKitchenItemKind(item);
-  return kind === "burger" || kind === "combo";
-};
-
-const isStandaloneGarnish = (item: KitchenOrderItem) =>
-  getKitchenItemKind(item) === "garnish";
+export const isKitchenActionKind = (
+  kind: OrderV2ItemKind,
+): kind is KitchenItemKind =>
+  kind === "burger" || kind === "combo" || kind === "garnish";
 
 export const getKitchenLineKey = (
   order: Pick<KitchenOrder, "id">,
@@ -69,13 +53,16 @@ export const stripLocationFromNotes = (notes?: string) => {
 export const getKitchenItemLabel = (item: KitchenOrderItem) => {
   const kind = getKitchenItemKind(item);
   if (kind === "combo") return "Combo";
-  if (kind === "garnish") return "Guarnición";
+  if (kind === "garnish") return "Side Quest";
   if (kind === "drink") return "Bebida";
   return "Burger";
 };
 
 export const getKitchenItemNotes = (item: KitchenOrderItem) => {
   const notes: string[] = [];
+  if (item.comboBurgers.length) {
+    notes.push(`Burgers del combo: ${item.comboBurgers.map((burger) => burger.name).join(", ")}`);
+  }
   if (item.removedIngredients.length) {
     notes.push(`Sin: ${item.removedIngredients.join(", ")}`);
   }
@@ -83,117 +70,141 @@ export const getKitchenItemNotes = (item: KitchenOrderItem) => {
     notes.push(`Extras: ${item.extras.map((extra) => extra.name).join(", ")}`);
   }
   if (item.garnish) notes.push(`Guarnición: ${item.garnish.name}`);
-  if (item.includedDrink) notes.push(`Bebida: ${item.includedDrink.name}`);
   if (item.sideQuestExtras.length) {
     notes.push(
-      `Extras de guarnición: ${item.sideQuestExtras.map((extra) => extra.name).join(", ")}`,
+      `Side Quest: ${item.sideQuestExtras.map((extra) => extra.name).join(", ")}`,
     );
   }
-  if (item.comboBurgers.length) {
-    notes.push(`Combo: ${item.comboBurgers.map((burger) => burger.name).join(", ")}`);
-  }
+  if (item.includedDrink) notes.push(`Bebida: ${item.includedDrink.name}`);
   if (item.burgerNote) notes.push(`Nota: ${item.burgerNote}`);
   return notes;
 };
 
-export const buildKitchenOrderMeta = (
-  order: KitchenOrder,
-  nowMs: number,
-): KitchenOrderMeta => {
-  const kitchenItems = order.items.filter((item) => {
-    const kind = getKitchenItemKind(item);
-    return kind === "burger" || kind === "combo" || kind === "garnish";
+export const getComboBurgerNotes = (item: KitchenOrderItem) =>
+  item.comboBurgers.flatMap((burger) => {
+    const notes: string[] = [burger.name];
+    if (burger.removedIngredients.length) {
+      notes.push(`sin ${burger.removedIngredients.join(", ")}`);
+    }
+    if (burger.extras.length) {
+      notes.push(`extras ${burger.extras.map((extra) => extra.name).join(", ")}`);
+    }
+    if (burger.burgerNote) notes.push(burger.burgerNote);
+    return notes.join(" · ");
   });
-  const burgerItems = kitchenItems.filter(isBurgerOrCombo);
-  const garnishItems = kitchenItems.filter(isStandaloneGarnish);
-  const pendingItems = kitchenItems.filter((item) => !item.kitchenDone);
-  const doneItems = kitchenItems.filter((item) => item.kitchenDone);
-  const elapsedMinutes =
-    typeof order.createdAtMs === "number"
-      ? Math.max(0, Math.floor((nowMs - order.createdAtMs) / 60000))
-      : null;
-  const urgency: KitchenUrgency =
-    elapsedMinutes !== null && elapsedMinutes >= KITCHEN_CRITICAL_MINUTES
-      ? "critical"
-      : elapsedMinutes !== null && elapsedMinutes >= KITCHEN_LATE_MINUTES
-        ? "late"
-        : "normal";
-  const progressPercent = kitchenItems.length
-    ? Math.round((doneItems.length / kitchenItems.length) * 100)
-    : 100;
-  const readyNeedsReview = order.status === "ready" && pendingItems.length > 0;
-  const needsAttention =
-    order.priority === "urgent" ||
-    order.paymentState === "pending" ||
-    readyNeedsReview ||
-    urgency === "critical";
-  const nextAction =
-    order.paymentState === "pending"
-      ? "Revisar pago"
-      : readyNeedsReview
-        ? "Completar checklist"
-        : order.status === "new"
-          ? "Iniciar preparación"
-          : order.status === "preparing" && pendingItems.length === 0
-            ? "Marcar listo"
-            : order.status === "preparing"
-              ? "Terminar pendientes"
-              : order.status === "ready"
-                ? "Salida"
-                : "Revisar pedido";
 
-  return {
-    order,
-    kitchenItems,
-    burgerItems,
-    garnishItems,
-    pendingItems,
-    doneItems,
-    elapsedMinutes,
-    urgency,
-    needsAttention,
-    readyNeedsReview,
-    progressLabel: `${doneItems.length}/${kitchenItems.length || 0}`,
-    progressPercent,
-    nextAction,
-  };
+const isProductionItem = (item: KitchenOrderItem) => {
+  const kind = getKitchenItemKind(item);
+  return kind === "burger" || kind === "combo" || kind === "garnish";
 };
 
-export const getKitchenSortRank = (meta: KitchenOrderMeta) => {
-  if (meta.order.priority === "urgent") return 0;
-  if (meta.urgency === "critical") return 1;
-  if (meta.needsAttention) return 2;
-  if (meta.urgency === "late") return 3;
-  if (meta.order.status === "new") return 4;
-  if (meta.order.status === "preparing") return 5;
-  if (meta.order.status === "ready") return 6;
-  return 7;
-};
+export const buildKitchenProductionItems = (
+  orders: KitchenOrder[],
+): KitchenProductionItem[] =>
+  [...orders]
+    .sort((a, b) => {
+      const aTime = a.createdAtMs ?? Number.MAX_SAFE_INTEGER;
+      const bTime = b.createdAtMs ?? Number.MAX_SAFE_INTEGER;
+      if (aTime !== bTime) return aTime - bTime;
+      return a.folio.localeCompare(b.folio);
+    })
+    .flatMap((order) => {
+      const kitchenItems = order.items.filter(isProductionItem);
+      return kitchenItems.map((item, index) => {
+        const kind = getKitchenItemKind(item) as KitchenItemKind;
+        const lineKey = getKitchenLineKey(order, item, index);
+        return {
+          id: `${order.id}-${lineKey}`,
+          order,
+          item,
+          index,
+          kind,
+          lineKey,
+          done: Boolean(item.kitchenDone),
+          collapsedByDefault: kitchenItems.length > 2 && index > 0,
+          orderKitchenItemCount: kitchenItems.length,
+        };
+      });
+    });
 
-export const sortKitchenOrders = (a: KitchenOrderMeta, b: KitchenOrderMeta) => {
-  const rankDiff = getKitchenSortRank(a) - getKitchenSortRank(b);
-  if (rankDiff !== 0) return rankDiff;
-  const aTime = a.order.createdAtMs ?? Number.MAX_SAFE_INTEGER;
-  const bTime = b.order.createdAtMs ?? Number.MAX_SAFE_INTEGER;
-  return aTime - bTime;
-};
+export const buildKitchenSideQuestItems = (
+  productionItems: KitchenProductionItem[],
+): KitchenSideQuestItem[] =>
+  productionItems.flatMap((entry) => {
+    const items: KitchenSideQuestItem[] = [];
+    if (entry.item.garnish) {
+      items.push({
+        id: `${entry.id}-garnish`,
+        order: entry.order,
+        label: entry.item.garnish.name,
+        detail: `${entry.item.name} · guarnición incluida`,
+        done: entry.done,
+      });
+    }
+    entry.item.sideQuestExtras.forEach((extra, index) => {
+      items.push({
+        id: `${entry.id}-extra-${index}`,
+        order: entry.order,
+        label: extra.name,
+        detail: `${entry.item.name} · extra`,
+        done: entry.done,
+      });
+    });
+    if (entry.kind === "garnish") {
+      items.push({
+        id: `${entry.id}-standalone`,
+        order: entry.order,
+        label: entry.item.name,
+        detail: "Side Quest directo",
+        done: entry.done,
+      });
+    }
+    return items;
+  });
 
-export const matchesKitchenFocus = (
-  meta: KitchenOrderMeta,
-  focus: KitchenFocus,
-) => {
-  if (focus === "all") return true;
-  if (focus === "attention") return meta.needsAttention;
-  return meta.order.status === focus;
-};
+export const buildKitchenLocalSummary = (
+  productionItems: KitchenProductionItem[],
+): KitchenLocalSummary => {
+  return productionItems.reduce<KitchenLocalSummary>(
+    (summary, entry) => {
+      const comboBurgerCount = entry.item.comboBurgers.length;
+      const garnishCount = entry.item.garnish ? 1 : 0;
+      const sideQuestExtraCount = entry.item.sideQuestExtras.filter(
+        (extra) => extra.itemKind !== "drink",
+      ).length;
 
-export const getKitchenLane = (meta: KitchenOrderMeta): KitchenLaneKey => {
-  if (meta.needsAttention) return "attention";
-  if (meta.order.status === "new") return "new";
-  if (meta.order.status === "preparing") return "preparing";
-  return "ready";
+      summary.totalItems += 1;
+      if (entry.done) summary.doneItems += 1;
+      else summary.pendingItems += 1;
+      if (entry.kind === "burger") summary.burgers += entry.item.qty;
+      if (entry.kind === "combo") {
+        summary.comboItems += entry.item.qty;
+        summary.comboBurgers += Math.max(1, comboBurgerCount) * entry.item.qty;
+        summary.burgers += Math.max(1, comboBurgerCount) * entry.item.qty;
+      }
+      if (entry.kind === "garnish") summary.garnishes += entry.item.qty;
+      summary.garnishes += (garnishCount + sideQuestExtraCount) * entry.item.qty;
+      summary.extras += entry.item.extras.length * entry.item.qty;
+      summary.sideQuests += (garnishCount + sideQuestExtraCount + (entry.kind === "garnish" ? 1 : 0)) * entry.item.qty;
+      return summary;
+    },
+    {
+      totalItems: 0,
+      pendingItems: 0,
+      doneItems: 0,
+      burgers: 0,
+      comboItems: 0,
+      comboBurgers: 0,
+      garnishes: 0,
+      extras: 0,
+      sideQuests: 0,
+    },
+  );
 };
 
 export const getKitchenItemActionKind = (
   item: Pick<KitchenOrderItem, "itemKind" | "name">,
-) => getKitchenItemKind(item) as KitchenItemKind;
+) => {
+  const kind = getKitchenItemKind(item);
+  return isKitchenActionKind(kind) ? kind : "burger";
+};

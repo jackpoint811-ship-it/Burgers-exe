@@ -9,9 +9,8 @@ export type KitchenItemKind = Extract<
   "burger" | "combo" | "garnish"
 >;
 
-export type KitchenFocus = "all" | "new" | "preparing" | "attention" | "ready";
-export type KitchenUrgency = "normal" | "late" | "critical";
-export type KitchenLaneKey = Exclude<KitchenFocus, "all">;
+export type KitchenView = "preparacion" | "listos" | "sideQuest" | "summaryK";
+export type KitchenPrepState = "por-hacer" | "hecho";
 
 export type KitchenOrderItem = {
   name: string;
@@ -52,20 +51,36 @@ export type KitchenOrder = {
   items: KitchenOrderItem[];
 };
 
-export type KitchenOrderMeta = {
+export type KitchenProductionItem = {
+  id: string;
   order: KitchenOrder;
-  kitchenItems: KitchenOrderItem[];
-  burgerItems: KitchenOrderItem[];
-  garnishItems: KitchenOrderItem[];
-  pendingItems: KitchenOrderItem[];
-  doneItems: KitchenOrderItem[];
-  elapsedMinutes: number | null;
-  urgency: KitchenUrgency;
-  needsAttention: boolean;
-  readyNeedsReview: boolean;
-  progressLabel: string;
-  progressPercent: number;
-  nextAction: string;
+  item: KitchenOrderItem;
+  index: number;
+  kind: KitchenItemKind;
+  lineKey: string;
+  done: boolean;
+  collapsedByDefault: boolean;
+  orderKitchenItemCount: number;
+};
+
+export type KitchenSideQuestItem = {
+  id: string;
+  order: KitchenOrder;
+  label: string;
+  detail: string;
+  done: boolean;
+};
+
+export type KitchenLocalSummary = {
+  totalItems: number;
+  pendingItems: number;
+  doneItems: number;
+  burgers: number;
+  comboItems: number;
+  comboBurgers: number;
+  garnishes: number;
+  extras: number;
+  sideQuests: number;
 };
 
 export type KitchenOrdersRuntime = {
