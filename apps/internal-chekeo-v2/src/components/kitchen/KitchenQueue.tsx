@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Button, Card, StatusPill } from "@ui/index";
 import {
   CheckCircle2,
-  ChefHat,
   Eye,
   ListChecks,
   MapPin,
@@ -274,6 +273,8 @@ const ReadyOrderCard = ({
   onOpen: (order: KitchenOrder) => void;
 }) => {
   const [expanded, setExpanded] = useState(false);
+  const doneCount = items.filter((item) => item.done).length;
+  const pendingCount = items.length - doneCount;
   return (
     <Card className="kitchen-ready-card">
       <div className="flex items-start justify-between gap-3">
@@ -281,6 +282,7 @@ const ReadyOrderCard = ({
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-xl font-black text-zinc-50">{order.folio}</p>
             <KitchenStatusBadge status={order.status} />
+            <KitchenPaymentStatusBadge status={order.paymentState} />
           </div>
           <p className="mt-1 break-words text-sm font-bold text-zinc-200">
             {order.customer}
@@ -293,16 +295,27 @@ const ReadyOrderCard = ({
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
         <span className="kitchen-note-chip">{items.length} items</span>
-        <span className="kitchen-note-chip">
-          {items.filter((item) => item.done).length} hechos
-        </span>
+        <span className="kitchen-note-chip">{doneCount} hechos</span>
+        {pendingCount ? (
+          <span className="kitchen-note-chip">{pendingCount} por hacer</span>
+        ) : null}
       </div>
+      {pendingCount ? (
+        <p className="mt-3 text-sm font-semibold text-amber-100">
+          Este pedido sigue teniendo items por hacer en Preparación.
+        </p>
+      ) : null}
       {expanded ? (
         <div className="mt-3 grid gap-2">
           {items.map((entry) => (
             <div key={entry.id} className="kitchen-ready-line">
-              <span>{getKitchenItemLabel(entry.item)}</span>
-              <strong>{entry.item.name}</strong>
+              <span>{entry.done ? "Hecho" : "Por hacer"}</span>
+              <div className="min-w-0">
+                <strong>{entry.item.name}</strong>
+                <p className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-zinc-500">
+                  {getKitchenItemLabel(entry.item)}
+                </p>
+              </div>
             </div>
           ))}
         </div>
@@ -319,6 +332,61 @@ const ReadyOrderCard = ({
         </Button>
       </div>
     </Card>
+  );
+};
+
+const DoneItemsSection = ({
+  items,
+  busyLineKey,
+  onToggle,
+  onOpen,
+}: {
+  items: KitchenProductionItem[];
+  busyLineKey: string | null;
+  onToggle: (entry: KitchenProductionItem, done: boolean) => void;
+  onOpen: (order: KitchenOrder) => void;
+}) => {
+  const [expanded, setExpanded] = useState(false);
+
+  if (!items.length) return null;
+
+  return (
+    <section className="kitchen-done-section">
+      <div className="kitchen-done-section__header">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-200">
+            Hechos
+          </p>
+          <h3 className="mt-1 text-lg font-black text-zinc-50">
+            Items disponibles para corregir
+          </h3>
+          <p className="mt-1 text-sm text-zinc-400">
+            Reabrir sigue disponible sin salir de Cocina.
+          </p>
+        </div>
+        <Button
+          className="kitchen-secondary-action"
+          onClick={() => setExpanded((current) => !current)}
+        >
+          <PanelTopOpen size={16} aria-hidden="true" />
+          {expanded ? "Ocultar hechos" : `Abrir hechos (${items.length})`}
+        </Button>
+      </div>
+
+      {expanded ? (
+        <div className="kitchen-item-grid">
+          {items.map((entry) => (
+            <KitchenProductionCard
+              key={entry.id}
+              entry={entry}
+              busy={busyLineKey === entry.lineKey}
+              onToggle={onToggle}
+              onOpen={onOpen}
+            />
+          ))}
+        </div>
+      ) : null}
+    </section>
   );
 };
 
@@ -602,10 +670,7 @@ export const KitchenQueue = ({
     [activeOrders],
   );
   const pendingItems = useMemo(
-    () =>
-      productionItems.filter(
-        (entry) => !entry.done && entry.order.status !== "ready",
-      ),
+    () => productionItems.filter((entry) => !entry.done),
     [productionItems],
   );
   const doneItems = useMemo(
@@ -759,20 +824,44 @@ export const KitchenQueue = ({
       ) : null}
 
       {view === "preparacion" ? (
-        <section className="kitchen-item-grid">
-          {pendingItems.length ? (
-            pendingItems.map((entry) => (
-              <KitchenProductionCard
-                key={entry.id}
-                entry={entry}
-                busy={busyLineKey === entry.lineKey}
-                onToggle={toggleKitchenItem}
-                onOpen={onOpenOrder}
-              />
-            ))
-          ) : (
-            <KitchenEmptyState title="Sin items por hacer." />
-          )}
+        <section className="space-y-4">
+          <div className="kitchen-section">
+            <div className="kitchen-section__header">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-lime-200">
+                  Por hacer
+                </p>
+                <h3 className="mt-1 text-lg font-black text-zinc-50">
+                  Producción accionable
+                </h3>
+                <p className="mt-1 text-sm text-zinc-400">
+                  Incluye pedidos en Preparación y pedidos Listos con items pendientes.
+                </p>
+              </div>
+              <span className="kitchen-note-chip">{pendingItems.length} items</span>
+            </div>
+            <div className="kitchen-item-grid">
+              {pendingItems.length ? (
+                pendingItems.map((entry) => (
+                  <KitchenProductionCard
+                    key={entry.id}
+                    entry={entry}
+                    busy={busyLineKey === entry.lineKey}
+                    onToggle={toggleKitchenItem}
+                    onOpen={onOpenOrder}
+                  />
+                ))
+              ) : (
+                <KitchenEmptyState title="Sin items por hacer." />
+              )}
+            </div>
+          </div>
+          <DoneItemsSection
+            items={doneItems}
+            busyLineKey={busyLineKey}
+            onToggle={toggleKitchenItem}
+            onOpen={onOpenOrder}
+          />
         </section>
       ) : null}
 

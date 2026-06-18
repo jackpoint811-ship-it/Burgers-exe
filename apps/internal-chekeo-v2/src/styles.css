@@ -88,6 +88,8 @@ button{min-height:44px}
 .kitchen-view-tab strong{@apply mt-1 block text-2xl font-black text-lime-100}
 .kitchen-view-tab p{@apply mt-1 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500}
 .kitchen-view-tab--active{@apply border-lime-300/60 bg-lime-300/10}
+.kitchen-section,.kitchen-done-section{@apply space-y-3}
+.kitchen-section__header,.kitchen-done-section__header{@apply flex flex-col gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4 md:flex-row md:items-start md:justify-between}
 .kitchen-item-grid{@apply grid gap-3 xl:grid-cols-2}
 .kitchen-ready-grid,.kitchen-sidequest-grid{@apply grid gap-3 lg:grid-cols-2}
 .kitchen-production-card{@apply min-w-0 overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950 p-3 shadow-xl md:p-4}
@@ -106,6 +108,7 @@ button{min-height:44px}
 .kitchen-ready-line{@apply grid gap-1 rounded-xl border border-zinc-800 bg-zinc-900/65 p-3 sm:grid-cols-[140px_1fr]}
 .kitchen-ready-line span{@apply text-[11px] font-black uppercase tracking-[0.14em] text-zinc-500}
 .kitchen-ready-line strong{@apply break-words text-sm text-zinc-100}
+.kitchen-ready-line p{@apply break-words}
 .kitchen-next-list{@apply mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3}
 .kitchen-next-list__item{@apply min-w-0 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-lime-300}
 .kitchen-next-list__item span{@apply text-[10px] font-black uppercase tracking-[0.14em] text-lime-200}
