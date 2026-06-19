@@ -24,9 +24,11 @@ export const normalizeInternalAuthMode = (
 export const getInternalAuthMode = (): InternalAuthMode =>
   normalizeInternalAuthMode(readInternalAuthModeEnv());
 
+// `admin-only` stays as an explicit, auditable future mode until there is a
+// server-side external-auth policy that can create a real operational session.
 export const shouldUseGlobalInternalAuthGate = (
-  mode: InternalAuthMode,
-): boolean => mode !== 'admin-only';
+  _mode: InternalAuthMode,
+): boolean => true;
 
 export const shouldGateAdminInternally = (mode: InternalAuthMode): boolean =>
   mode === 'admin-only';

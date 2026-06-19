@@ -5,7 +5,7 @@
 Chekeo Operación v1 ahora reconoce dos modos de auth:
 
 - `global`: modo por defecto y seguro. Si no existe una sesión válida, `InternalChekeoApp` renderiza `InternalLogin` antes de montar `Home`, `Pedidos`, `Cocina`, `Pagos` o `Admin`.
-- `admin-only`: modo explícito para una URL interna que ya esté protegida externamente. `Home`, `Pedidos`, `Cocina` y `Pagos` pueden abrir sin PIN global, pero `Admin` sigue pidiendo PIN interno antes de mostrar sus módulos.
+- `admin-only`: bandera explícita y auditable reservada para el futuro flujo con protección externa real y política backend compatible.
 
 El PIN usa `POST /api/internal-v2-auth/login`. El backend valida contra `BOG_INTERNAL_PIN`, crea una sesión firmada y responde con la cookie HttpOnly `bog_internal_session`. La sesión dura 12 horas y se valida en cada endpoint interno con `requireAdminToken`.
 
@@ -13,16 +13,17 @@ El PIN usa `POST /api/internal-v2-auth/login`. El backend valida contra `BOG_INT
 
 No se usa `localStorage` como fuente de verdad. El frontend solo refleja el estado de la cookie de sesión.
 
-## Qué cambia en `admin-only`
+## Estado real de `admin-only`
 
-Cuando `VITE_INTERNAL_AUTH_MODE=admin-only`:
+Hoy `VITE_INTERNAL_AUTH_MODE=admin-only` no abre el shell sin PIN global.
 
-- el shell principal puede renderizar sin login global;
-- `Admin` muestra un bloqueo propio con `PIN Admin`;
-- al desbloquear `Admin`, la sesión interna queda activa para el resto de la navegación actual;
-- si logout o una respuesta `401` / `UNAUTHORIZED` expiran la sesión, `Admin` vuelve a bloquearse y pide PIN otra vez.
+Chekeo mantiene el gate global incluso con esa bandera porque:
 
-Este modo no relaja la protección backend. Los endpoints internos siguen dependiendo de `bog_internal_session`.
+- los endpoints internos siguen dependiendo de `bog_internal_session`;
+- no existe todavía una política backend de external-auth que cree una sesión operativa real;
+- abrir `Home`, `Pedidos`, `Cocina` o `Pagos` sin esa sesión dejaría una operación falsa o degradada.
+
+En otras palabras: `admin-only` queda preparado, documentado y visible como intención de diseño, pero no es un modo operativo completo en este PR.
 
 ## Endpoints protegidos
 
@@ -34,24 +35,17 @@ Los endpoints internos de pedidos, cocina, pagos, cierre, exportes, catálogo, i
 - `/api/ingredients-v2-admin*`
 - `/api/raffles-v2-admin*`
 
-`admin-only` no debe entenderse como bypass del backend. Solo mueve el punto de entrada del PIN interno para que `Admin` siga protegido dentro de una URL ya cerrada al público.
+`admin-only` no debe entenderse como bypass del backend. Mientras no exista una política backend compatible, Chekeo conserva el PIN global.
 
-## Cómo activar `admin-only`
+## Cómo usar la bandera `admin-only`
 
-Solo activar `admin-only` cuando la URL interna ya tenga una capa externa confirmada, por ejemplo Cloudflare Access o un control equivalente.
+Solo considerar `admin-only` cuando la URL interna ya tenga una capa externa confirmada, por ejemplo Cloudflare Access o un control equivalente.
 
 Variable:
 
 - `VITE_INTERNAL_AUTH_MODE=admin-only`
 
-Ejemplo local o preview:
-
-```powershell
-$env:VITE_INTERNAL_AUTH_MODE = "admin-only"
-npm run preview:internal -- --host 127.0.0.1 --port 4174 --strictPort
-```
-
-También puede inyectarse en el build interno:
+Ejemplo de configuración:
 
 ```powershell
 $env:VITE_INTERNAL_AUTH_MODE = "admin-only"
@@ -60,11 +54,18 @@ npm run build:internal
 
 Si la variable falta, tiene un valor desconocido o no se configura, Chekeo vuelve a `global`.
 
+Importante:
+
+- hoy esa bandera no desactiva el PIN global;
+- no activarla en preview o prod esperando operación sin PIN;
+- no marcarla como lista hasta que frontend y backend cierren el mismo modelo de sesión real.
+
 ## Condiciones antes de activarlo
 
 - La URL interna ya no es pública sin protección externa.
-- Preview ya validó que `Admin` no abre módulos sin PIN.
-- El equipo entiende que `Admin` conserva PIN interno aunque la URL ya esté protegida.
+- Existe una política backend explícita para external-auth que no dependa de headers spoofeables.
+- Preview ya validó que la operación no cae a mock o fallback por falta de sesión real.
+- El equipo entiende que no basta con un flag de frontend para operar sin PIN global.
 - No se están usando secretos en frontend ni docs.
 
 ## Reglas de seguridad

@@ -1437,62 +1437,43 @@ test.describe("internal chekeo kitchen production board", () => {
 test.describe("internal chekeo admin-only security mode", () => {
   test.skip(!isAdminOnlyMode, "Admin-only assertions run only when the explicit mode is enabled.");
 
-  test("keeps Admin behind its own PIN in admin-only mode", async ({ page }) => {
+  test("keeps admin-only prepared behind the global gate until backend auth exists", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await installKitchenApiMocks(page);
     await page.goto("/", { waitUntil: "networkidle" });
 
-    await expect(page.getByLabel("PIN de acceso")).toHaveCount(0);
+    await expect(page.getByLabel("PIN de acceso")).toBeVisible();
+    await expect(page.locator("button.tab")).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Base operativa para Home" })).toHaveCount(0);
+    await expect(
+      page.getByText(/Modo admin-only preparado\. Chekeo sigue pidiendo PIN global/i),
+    ).toBeVisible();
+
+    const loginOverflow = await page.evaluate(() => {
+      const root = document.documentElement;
+      return root.scrollWidth - root.clientWidth;
+    });
+    expect(loginOverflow).toBeLessThanOrEqual(1);
+
+    await page.getByLabel("PIN de acceso").fill(validInternalPin);
+    await page.getByRole("button", { name: /Entrar/i }).click();
     await expect(page.getByRole("heading", { name: "Base operativa para Home" })).toBeVisible();
     await expect(page.locator("button.tab")).toHaveCount(5);
 
-    const homeOverflow = await page.evaluate(() => {
-      const root = document.documentElement;
-      return root.scrollWidth - root.clientWidth;
-    });
-    expect(homeOverflow).toBeLessThanOrEqual(1);
-
-    await openPrimaryTab(page, "Pedidos");
-    await expect(page.getByRole("heading", { name: "Centro operativo de pedidos" })).toBeVisible();
-    await openPrimaryTab(page, "Cocina");
-    await expect(page.getByText("Producción actual", { exact: true })).toBeVisible();
-    await openPrimaryTab(page, "Pagos");
-    await expect(page.getByRole("heading", { name: "Centro operativo de cobros" })).toBeVisible();
-
-    await openPrimaryTab(page, "Admin");
-    await expect(page.getByRole("heading", { name: "Acceso Admin" })).toBeVisible();
-    await expect(page.getByLabel("PIN Admin")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Hub de módulos de Chekeo" })).toHaveCount(0);
-
-    const adminGateOverflow = await page.evaluate(() => {
-      const root = document.documentElement;
-      return root.scrollWidth - root.clientWidth;
-    });
-    expect(adminGateOverflow).toBeLessThanOrEqual(1);
-
-    await page.getByLabel("PIN Admin").fill("1111");
-    await page.getByRole("button", { name: /Desbloquear Admin/i }).click();
-    await expect(page.getByText("PIN incorrecto.")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Hub de módulos de Chekeo" })).toHaveCount(0);
-
-    await page.getByLabel("PIN Admin").fill(validInternalPin);
-    await page.getByRole("button", { name: /Desbloquear Admin/i }).click();
-    await expect(page.getByRole("heading", { name: "Hub de módulos de Chekeo" })).toBeVisible();
-
-    await openPrimaryTab(page, "Home");
-    await expect(page.getByRole("heading", { name: "Base operativa para Home" })).toBeVisible();
     await openPrimaryTab(page, "Admin");
     await expect(page.getByRole("heading", { name: "Hub de módulos de Chekeo" })).toBeVisible();
+    await expect(
+      page.getByText(/Modo admin-only preparado\. Chekeo sigue pidiendo PIN global/i),
+    ).toBeVisible();
 
-    const unlockedAdminOverflow = await page.evaluate(() => {
+    const shellOverflow = await page.evaluate(() => {
       const root = document.documentElement;
       return root.scrollWidth - root.clientWidth;
     });
-    expect(unlockedAdminOverflow).toBeLessThanOrEqual(1);
+    expect(shellOverflow).toBeLessThanOrEqual(1);
 
     await page.getByRole("button", { name: /Cerrar sesion/i }).click();
-    await expect(page.getByLabel("PIN de acceso")).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: "Acceso Admin" })).toBeVisible();
-    await expect(page.getByLabel("PIN Admin")).toBeVisible();
+    await expect(page.getByLabel("PIN de acceso")).toBeVisible();
+    await expect(page.locator("button.tab")).toHaveCount(0);
   });
 });

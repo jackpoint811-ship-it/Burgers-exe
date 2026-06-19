@@ -1427,12 +1427,14 @@ const SourcePanel = ({
 };
 
 const InternalLogin = ({
+  authMode,
   onLogin,
   checkingSession,
   runtimeEnvironment,
   sessionState,
   sessionMessage,
 }: {
+  authMode: InternalAuthMode;
   onLogin: () => void;
   checkingSession: boolean;
   runtimeEnvironment: ChekeoRuntimeEnvironment;
@@ -1475,6 +1477,11 @@ const InternalLogin = ({
             {publicOrderLabel}
           </a>
         </div>
+        {authMode === "admin-only" ? (
+          <p className="mb-4 rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
+            {getAdminAuthModeHint(authMode)}
+          </p>
+        ) : null}
         <SessionPinForm
           inputId="pin"
           label="PIN de acceso"
@@ -2048,7 +2055,7 @@ const HomePanel = ({
 
 const getAdminAuthModeHint = (authMode: InternalAuthMode) =>
   authMode === "admin-only"
-    ? "Modo admin-only activo. Admin mantiene PIN interno y esta URL debe quedar detrás de protección externa."
+    ? "Modo admin-only preparado. Chekeo sigue pidiendo PIN global hasta que exista protección externa y una política backend compatible."
     : "Modo seguro global activo. Toda la app sigue pidiendo PIN antes de abrir.";
 
 const AdminReportsPanel = ({
@@ -5198,6 +5205,7 @@ export function InternalChekeoApp() {
   if (useGlobalAuthGate && !logged)
     return (
       <InternalLogin
+        authMode={authMode}
         checkingSession={checkingSession}
         runtimeEnvironment={runtimeEnvironment}
         sessionState={sessionState}
