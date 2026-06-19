@@ -121,6 +121,7 @@ const mapReferralCode = (row: ReferralCodeLookupRow | null | undefined): RaffleT
 const loadParticipant = async (db: D1Database, campaign: RaffleCampaignRow, phone: string): Promise<RaffleTicketsLookupResult['participant']> => {
   const ticketPerBurger = Number(campaign.ticket_per_burger) || 1;
   const ticketPerReferral = Number(campaign.ticket_per_referral) || 2;
+  const participantKey = makeParticipantKey(phone);
   const { startsAt, endsAt } = campaignDateBounds(campaign);
   const orderConditions = ["o.status IN ('new', 'preparing', 'ready', 'delivered')", "o.source = 'public-v2'", 'o.customer_phone = ?'];
   const orderBindings: string[] = [phone];
@@ -220,8 +221,34 @@ const loadParticipant = async (db: D1Database, campaign: RaffleCampaignRow, phon
     }
   }
 
+  const manualExtraTicketsRow = await db.prepare(
+    `SELECT COALESCE(SUM(tickets_delta), 0) AS manual_extra_tickets
+     FROM raffle_ticket_adjustments_v2
+     WHERE campaign_id = ? AND participant_key = ? AND status = 'active'`
+  ).bind(campaign.id, participantKey).first<{ manual_extra_tickets: number }>();
+
+  const manualExtraTickets = Math.max(0, Number(manualExtraTicketsRow?.manual_extra_tickets) || 0);
+  if (!participant && manualExtraTickets > 0) {
+    const latestAdjustmentRow = await db.prepare(
+      `SELECT participant_name, participant_phone_masked, created_at, updated_at
+       FROM raffle_ticket_adjustments_v2
+       WHERE campaign_id = ? AND participant_key = ? AND status = 'active'
+       ORDER BY updated_at DESC, created_at DESC
+       LIMIT 1`
+    ).bind(campaign.id, participantKey).first<{ participant_name: string; participant_phone_masked: string; created_at: string; updated_at: string }>();
+    const lastAdjustmentAt = String(latestAdjustmentRow?.updated_at || latestAdjustmentRow?.created_at || '');
+    participant = makeParticipant({
+      customerName: String(latestAdjustmentRow?.participant_name || 'Sin nombre'),
+      customerPhoneMasked: String(latestAdjustmentRow?.participant_phone_masked || maskPhone(phone)),
+      lastOrderFolio: '—',
+      lastOrderAt: '',
+      lastActivityAt: lastAdjustmentAt
+    });
+  }
+
   if (!participant) return null;
-  participant.totalTickets = participant.burgerTickets + participant.referralTickets;
+  participant.manualExtraTickets = manualExtraTickets;
+  participant.totalTickets = participant.burgerTickets + participant.referralTickets + participant.manualExtraTickets;
   if (participant.totalTickets <= 0) return null;
   const { lastActivityAt: _lastActivityAt, ...safeParticipant } = participant;
   return safeParticipant;
