@@ -1,5 +1,6 @@
 import type {
   CreateRaffleCampaignPayload,
+  CreateRaffleTicketAdjustmentPayload,
   CreateRaffleReferralCodePayload,
   DeleteRaffleCampaignResponse,
   RaffleCampaignMutationResponse,
@@ -8,10 +9,12 @@ import type {
   RaffleReferralCodesAdminResponse,
   RaffleReferralMutationResponse,
   RaffleReferralsAdminResponse,
+  RaffleTicketAdjustmentMutationResponse,
   RaffleSummaryResponse,
   UpdateRaffleCampaignPayload,
   UpdateRaffleReferralCodePayload,
   UpdateRaffleReferralPayload,
+  UpdateRaffleTicketAdjustmentPayload,
 } from "@config/index";
 
 const buildSessionFetchInit = (init: RequestInit = {}): RequestInit => ({
@@ -146,4 +149,18 @@ export const updateRaffleReferralV2 = async (id: string, payload: UpdateRaffleRe
   const envelope = await parseJsonEnvelope<RaffleReferralMutationResponse>(res);
   if (!envelope.data?.referral) throw new Error("Backend V2 no devolvió referido actualizado");
   return envelope.data.referral;
+};
+
+export const createRaffleTicketAdjustmentV2 = async (payload: CreateRaffleTicketAdjustmentPayload) => {
+  const res = await fetch("/api/raffles-v2-admin/ticket-adjustments", buildSessionFetchInit({ method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }));
+  const envelope = await parseJsonEnvelope<RaffleTicketAdjustmentMutationResponse>(res);
+  if (!envelope.data?.adjustment) throw new Error("Backend V2 no devolvió ajuste creado");
+  return envelope.data.adjustment;
+};
+
+export const updateRaffleTicketAdjustmentV2 = async (id: string, payload: UpdateRaffleTicketAdjustmentPayload) => {
+  const res = await fetch(`/api/raffles-v2-admin/ticket-adjustments/${encodeURIComponent(id)}`, buildSessionFetchInit({ method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }));
+  const envelope = await parseJsonEnvelope<RaffleTicketAdjustmentMutationResponse>(res);
+  if (!envelope.data?.adjustment) throw new Error("Backend V2 no devolvió ajuste actualizado");
+  return envelope.data.adjustment;
 };

@@ -442,6 +442,313 @@ const createKitchenState = () => {
   };
 };
 
+type RaffleCampaignRecord = {
+  id: string;
+  title: string;
+  description: string;
+  rulesText: string;
+  bannerImageUrl: string;
+  bannerImageKey: string;
+  detailImageUrl: string;
+  detailImageKey: string;
+  startsAt: string;
+  endsAt: string;
+  isActive: boolean;
+  ticketPerBurger: number;
+  ticketPerReferral: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type RaffleParticipantRecord = {
+  participantKey: string;
+  customerName: string;
+  customerPhoneMasked: string;
+  burgerTickets: number;
+  referralTickets: number;
+  manualExtraTickets: number;
+  totalTickets: number;
+  lastOrderFolio: string;
+  lastOrderAt: string;
+  referralCode?: string;
+  referralCodeIsActive?: boolean;
+  lastAdjustmentAt?: string;
+  lastAdjustmentReason?: string;
+};
+
+type RaffleReferralCodeRecord = {
+  id: string;
+  campaignId: string;
+  ownerName: string;
+  ownerPhoneMasked: string;
+  code: string;
+  labelText?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type RaffleReferralRecord = {
+  id: string;
+  campaignId: string;
+  code: string;
+  referrerName: string;
+  referrerPhoneMasked: string;
+  referredCustomerName: string;
+  referredCustomerPhoneMasked: string;
+  referredOrderFolio: string;
+  status: "pending" | "valid" | "invalid";
+  ticketsAwarded: number;
+  invalidReason?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type RaffleAdjustmentRecord = {
+  id: string;
+  campaignId: string;
+  participantKey: string;
+  participantName: string;
+  participantPhoneMasked: string;
+  ticketsDelta: number;
+  reason: string;
+  actor: string;
+  status: "active" | "reverted";
+  createdAt: string;
+  updatedAt: string;
+  revertedAt?: string;
+  revertedBy?: string;
+};
+
+const createRaffleState = () => {
+  const campaign: RaffleCampaignRecord = {
+    id: "raffle-june-2026",
+    title: "Rifa Burger Lovers",
+    description: "Tickets extra por pedidos y referidos.",
+    rulesText: "Cada burger suma tickets base y los ajustes manuales quedan auditados.",
+    bannerImageUrl: "",
+    bannerImageKey: "",
+    detailImageUrl: "",
+    detailImageKey: "",
+    startsAt: "2026-06-01T00:00:00.000Z",
+    endsAt: "2026-06-30T23:59:59.999Z",
+    isActive: true,
+    ticketPerBurger: 1,
+    ticketPerReferral: 2,
+    createdAt: "2026-06-01T12:00:00.000Z",
+    updatedAt: "2026-06-17T18:30:00.000Z",
+  };
+
+  const participants: RaffleParticipantRecord[] = [
+    {
+      participantKey: "pk-luna-4821",
+      customerName: "Luna Smash",
+      customerPhoneMasked: "****4821",
+      burgerTickets: 4,
+      referralTickets: 2,
+      manualExtraTickets: 0,
+      totalTickets: 6,
+      lastOrderFolio: "BX-4821",
+      lastOrderAt: "2026-06-17T18:15:00.000Z",
+      referralCode: "LUNA27",
+      referralCodeIsActive: true,
+    },
+    {
+      participantKey: "pk-mario-9910",
+      customerName: "Mario Queso",
+      customerPhoneMasked: "****9910",
+      burgerTickets: 2,
+      referralTickets: 1,
+      manualExtraTickets: 1,
+      totalTickets: 4,
+      lastOrderFolio: "BX-9910",
+      lastOrderAt: "2026-06-17T16:40:00.000Z",
+      referralCode: "MARIO10",
+      referralCodeIsActive: false,
+      lastAdjustmentAt: "2026-06-17T17:00:00.000Z",
+      lastAdjustmentReason: "Premio de bienvenida",
+    },
+  ];
+
+  const referralCodes: RaffleReferralCodeRecord[] = [
+    {
+      id: "code-luna",
+      campaignId: campaign.id,
+      ownerName: "Luna Smash",
+      ownerPhoneMasked: "****4821",
+      code: "LUNA27",
+      labelText: "LUNA 27",
+      isActive: true,
+      createdAt: "2026-06-01T12:10:00.000Z",
+      updatedAt: "2026-06-17T18:00:00.000Z",
+    },
+    {
+      id: "code-mario",
+      campaignId: campaign.id,
+      ownerName: "Mario Queso",
+      ownerPhoneMasked: "****9910",
+      code: "MARIO10",
+      labelText: "MARIO 10",
+      isActive: false,
+      createdAt: "2026-06-01T12:12:00.000Z",
+      updatedAt: "2026-06-17T17:10:00.000Z",
+    },
+  ];
+
+  const referrals: RaffleReferralRecord[] = [
+    {
+      id: "ref-001",
+      campaignId: campaign.id,
+      code: "LUNA27",
+      referrerName: "Luna Smash",
+      referrerPhoneMasked: "****4821",
+      referredCustomerName: "Bruno Bacon",
+      referredCustomerPhoneMasked: "****1133",
+      referredOrderFolio: "BX-701",
+      status: "valid",
+      ticketsAwarded: 2,
+      createdAt: "2026-06-17T15:00:00.000Z",
+      updatedAt: "2026-06-17T15:20:00.000Z",
+    },
+    {
+      id: "ref-002",
+      campaignId: campaign.id,
+      code: "MARIO10",
+      referrerName: "Mario Queso",
+      referrerPhoneMasked: "****9910",
+      referredCustomerName: "Camila Crunch",
+      referredCustomerPhoneMasked: "****2299",
+      referredOrderFolio: "BX-702",
+      status: "pending",
+      ticketsAwarded: 1,
+      createdAt: "2026-06-17T16:00:00.000Z",
+      updatedAt: "2026-06-17T16:10:00.000Z",
+    },
+  ];
+
+  const adjustments: RaffleAdjustmentRecord[] = [];
+  let adjustmentSeq = 0;
+
+  const sortParticipants = () => [...participants].sort((a, b) => b.totalTickets - a.totalTickets || a.customerName.localeCompare(b.customerName));
+  const syncParticipant = (participantKey: string) => {
+    const participant = participants.find((entry) => entry.participantKey === participantKey);
+    if (!participant) return null;
+    const activeAdjustments = adjustments.filter((entry) => entry.participantKey === participantKey && entry.status === "active");
+    const totalExtra = activeAdjustments.reduce((sum, entry) => sum + entry.ticketsDelta, 0);
+    participant.manualExtraTickets = totalExtra;
+    participant.totalTickets = participant.burgerTickets + participant.referralTickets + totalExtra;
+    const latestAdjustment = activeAdjustments[0];
+    participant.lastAdjustmentAt = latestAdjustment?.createdAt;
+    participant.lastAdjustmentReason = latestAdjustment?.reason;
+    return participant;
+  };
+
+  const matchesParticipant = (participant: RaffleParticipantRecord, query: string) => {
+    if (!query) return true;
+    const fields = [
+      participant.customerName,
+      participant.customerPhoneMasked,
+      participant.lastOrderFolio,
+      participant.participantKey,
+      participant.referralCode,
+      participant.lastAdjustmentReason,
+    ].filter((value): value is string => Boolean(value));
+    return fields.some((field) => field.toLowerCase().includes(query));
+  };
+
+  const buildSummary = (q?: string) => {
+    const query = q?.trim().toLowerCase() ?? "";
+    const topParticipants = sortParticipants();
+    const participantResults = query ? topParticipants.filter((participant) => matchesParticipant(participant, query)) : topParticipants;
+    const baseTickets = topParticipants.reduce((sum, participant) => sum + participant.burgerTickets + participant.referralTickets, 0);
+    const extraTickets = topParticipants.reduce((sum, participant) => sum + participant.manualExtraTickets, 0);
+    return {
+      campaign,
+      baseTickets,
+      extraTickets,
+      totalTickets: baseTickets + extraTickets,
+      totalParticipants: topParticipants.length,
+      topParticipants,
+      participantResults,
+      recentAdjustments: [...adjustments].slice(0, 5),
+    };
+  };
+
+  const buildReferralCodes = (q?: string) => {
+    const query = q?.trim().toLowerCase() ?? "";
+    return referralCodes.filter((code) => {
+      if (!query) return true;
+      return [code.ownerName, code.ownerPhoneMasked, code.code, code.labelText ?? ""].some((field) => field.toLowerCase().includes(query));
+    });
+  };
+
+  const buildReferrals = (options: { q?: string; status?: string }) => {
+    const query = options.q?.trim().toLowerCase() ?? "";
+    return referrals.filter((referral) => {
+      if (options.status && options.status !== "all" && referral.status !== options.status) return false;
+      if (!query) return true;
+      return [
+        referral.code,
+        referral.referrerName,
+        referral.referrerPhoneMasked,
+        referral.referredCustomerName,
+        referral.referredCustomerPhoneMasked,
+        referral.referredOrderFolio,
+        referral.status,
+      ].some((field) => field.toLowerCase().includes(query));
+    });
+  };
+
+  const createAdjustment = (payload: { campaignId?: string; participantKey?: string; ticketsDelta?: number; reason?: string; actor?: string }) => {
+    const participant = payload.participantKey ? participants.find((entry) => entry.participantKey === payload.participantKey) : null;
+    if (!participant) throw new Error(`Participant not found: ${payload.participantKey || "unknown"}`);
+    const now = new Date().toISOString();
+    const adjustment: RaffleAdjustmentRecord = {
+      id: `adj-${++adjustmentSeq}`,
+      campaignId: payload.campaignId || campaign.id,
+      participantKey: participant.participantKey,
+      participantName: participant.customerName,
+      participantPhoneMasked: participant.customerPhoneMasked,
+      ticketsDelta: Math.max(1, Number(payload.ticketsDelta) || 1),
+      reason: String(payload.reason || "").trim(),
+      actor: String(payload.actor || "internal-v2").trim() || "internal-v2",
+      status: "active",
+      createdAt: now,
+      updatedAt: now,
+    };
+    adjustments.unshift(adjustment);
+    syncParticipant(participant.participantKey);
+    return adjustment;
+  };
+
+  const updateAdjustment = (id: string, payload: { status?: "active" | "reverted"; actor?: string }) => {
+    const adjustment = adjustments.find((entry) => entry.id === id);
+    if (!adjustment) throw new Error(`Adjustment not found: ${id}`);
+    const now = new Date().toISOString();
+    adjustment.status = payload.status ?? adjustment.status;
+    adjustment.updatedAt = now;
+    adjustment.actor = String(payload.actor || adjustment.actor || "internal-v2");
+    if (adjustment.status === "reverted") {
+      adjustment.revertedAt = now;
+      adjustment.revertedBy = adjustment.actor;
+    } else {
+      adjustment.revertedAt = undefined;
+      adjustment.revertedBy = undefined;
+    }
+    syncParticipant(adjustment.participantKey);
+    return adjustment;
+  };
+
+  return {
+    campaigns: [campaign],
+    buildSummary,
+    buildReferralCodes,
+    buildReferrals,
+    createAdjustment,
+    updateAdjustment,
+  };
+};
+
 const productionCardByFolio = (page: Page, folio: string) =>
   page.locator(".kitchen-production-card").filter({ hasText: folio });
 
@@ -495,6 +802,7 @@ const openKitchenView = async (page: Page, label: string) => {
 
 const installKitchenApiMocks = async (page: Page) => {
   const state = createKitchenState();
+  const raffleState = createRaffleState();
 
   await page.addInitScript(() => {
     let copiedText = "";
@@ -606,6 +914,70 @@ const installKitchenApiMocks = async (page: Page) => {
   await page.route(/.*\/api\/orders-v2-admin\?.*$/, async (route) => {
     await route.fulfill({
       json: { ok: true, data: { orders: state.getOrders() } },
+    });
+  });
+
+  await page.route(/.*\/api\/raffles-v2-admin\/campaigns(\?.*)?$/, async (route) => {
+    const requestUrl = new URL(route.request().url());
+    const campaignId = requestUrl.searchParams.get("campaignId");
+    const campaigns = raffleState.campaigns.filter((campaign) => !campaignId || campaign.id === campaignId);
+    await route.fulfill({
+      json: { ok: true, data: { campaigns } },
+    });
+  });
+
+  await page.route(/.*\/api\/raffles-v2-admin\/summary(\?.*)?$/, async (route) => {
+    const requestUrl = new URL(route.request().url());
+    const q = requestUrl.searchParams.get("q") || undefined;
+    await route.fulfill({
+      json: { ok: true, data: raffleState.buildSummary(q) },
+    });
+  });
+
+  await page.route(/.*\/api\/raffles-v2-admin\/referral-codes(\?.*)?$/, async (route) => {
+    const requestUrl = new URL(route.request().url());
+    const q = requestUrl.searchParams.get("q") || undefined;
+    await route.fulfill({
+      json: { ok: true, data: { codes: raffleState.buildReferralCodes(q) } },
+    });
+  });
+
+  await page.route(/.*\/api\/raffles-v2-admin\/referrals(\?.*)?$/, async (route) => {
+    const requestUrl = new URL(route.request().url());
+    const q = requestUrl.searchParams.get("q") || undefined;
+    const status = requestUrl.searchParams.get("status") || undefined;
+    await route.fulfill({
+      json: { ok: true, data: { referrals: raffleState.buildReferrals({ q, status }) } },
+    });
+  });
+
+  await page.route(/.*\/api\/raffles-v2-admin\/ticket-adjustments$/, async (route) => {
+    if (route.request().method() !== "POST") {
+      await route.fulfill({ json: { ok: true, data: { adjustment: null } } });
+      return;
+    }
+    const payload = JSON.parse(route.request().postData() || "{}") as {
+      campaignId?: string;
+      participantKey?: string;
+      ticketsDelta?: number;
+      reason?: string;
+      actor?: string;
+    };
+    const adjustment = raffleState.createAdjustment(payload);
+    await route.fulfill({
+      json: { ok: true, data: { adjustment } },
+    });
+  });
+
+  await page.route(/.*\/api\/raffles-v2-admin\/ticket-adjustments\/[^/]+$/, async (route) => {
+    const adjustmentId = route.request().url().split("/").pop() || "";
+    const payload = JSON.parse(route.request().postData() || "{}") as {
+      status?: "active" | "reverted";
+      actor?: string;
+    };
+    const adjustment = raffleState.updateAdjustment(adjustmentId, payload);
+    await route.fulfill({
+      json: { ok: true, data: { adjustment } },
     });
   });
 
@@ -910,11 +1282,60 @@ test.describe("internal chekeo kitchen production board", () => {
     await expect(page.getByRole("heading", { name: "Catálogo" }).first()).toBeVisible();
 
     await openAdminSection(page, "Sorteos");
-    await expect(page.getByRole("heading", { name: "Campañas mensuales" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Campañas" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Rifa Burger Lovers" })).toBeVisible();
+    await expect(page.getByText("Premio visible")).toBeVisible();
 
     await openAdminSection(page, "Reportes");
     await expect(page.getByRole("heading", { name: "Exportes operativos" })).toBeVisible();
     await expect(page.getByText("Reportes y exportes")).toBeVisible();
+  });
+
+  test("supports manual raffle ticket adjustments", async ({ page }) => {
+    await installKitchenApiMocks(page);
+    await loginToChekeo(page);
+
+    await openPrimaryTab(page, "Admin");
+    await openAdminSection(page, "Sorteos");
+    await expect(page.getByRole("heading", { name: "Rifa Burger Lovers" })).toBeVisible();
+
+    const raffleSearch = page.getByPlaceholder("Nombre, folio, teléfono o código");
+    await expect(raffleSearch).toBeVisible();
+    await raffleSearch.fill("Luna");
+    await expect(page.getByText("Resultados de búsqueda", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Ver participante" }).first().click();
+    await expect(page.getByRole("heading", { name: "Luna Smash" })).toBeVisible();
+
+    const participantDetailCard = page.getByRole("heading", { name: "Luna Smash" }).locator("xpath=ancestor::div[contains(@class,'rounded-2xl')][1]");
+    const participantMetricCard = (label: string) => participantDetailCard.locator("div:has(> strong)").filter({ hasText: label });
+    const baseTicketsCard = participantMetricCard("Tickets base");
+    const extraTicketsCard = participantMetricCard("Tickets extra");
+    const totalTicketsCard = participantMetricCard("Tickets totales");
+    await expect(baseTicketsCard).toContainText("6");
+    await expect(extraTicketsCard).toContainText("0");
+    await expect(totalTicketsCard).toContainText("6");
+
+    await page.getByRole("spinbutton", { name: "Tickets extra" }).fill("4");
+    await page.getByLabel("Motivo").fill("ok");
+    await page.getByRole("button", { name: "Guardar ajuste" }).click();
+    await expect(page.getByText("El motivo es obligatorio.")).toBeVisible();
+    await expect(extraTicketsCard).toContainText("0");
+    await expect(totalTicketsCard).toContainText("6");
+
+    await page.getByLabel("Motivo").fill("Ajuste premio");
+    await page.getByRole("button", { name: "Guardar ajuste" }).click();
+    await expect(page.getByText("Ajuste guardado.")).toBeVisible();
+    await expect(extraTicketsCard).toContainText("4");
+    await expect(totalTicketsCard).toContainText("10");
+
+    await page.once("dialog", (dialog) => {
+      void dialog.accept();
+    });
+    await page.getByRole("button", { name: "Revertir" }).first().click();
+    await expect(page.getByText("Ajuste revertido.")).toBeVisible();
+    await expect(extraTicketsCard).toContainText("0");
+    await expect(totalTicketsCard).toContainText("6");
+    await expect(page.getByRole("button", { name: "Revertir" })).toHaveCount(0);
   });
 
   for (const viewport of viewports) {
@@ -982,6 +1403,16 @@ test.describe("internal chekeo kitchen production board", () => {
       });
 
       expect(adminModuleOverflow).toBeLessThanOrEqual(1);
+
+      await openAdminSection(page, "Sorteos");
+      await expect(page.getByRole("heading", { name: "Rifa Burger Lovers" })).toBeVisible();
+
+      const raffleOverflow = await page.evaluate(() => {
+        const root = document.documentElement;
+        return root.scrollWidth - root.clientWidth;
+      });
+
+      expect(raffleOverflow).toBeLessThanOrEqual(1);
     });
   }
 });

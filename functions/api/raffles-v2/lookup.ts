@@ -51,6 +51,14 @@ type ParticipantAccumulator = NonNullable<RaffleTicketsLookupResult['participant
 
 const normalizeLookupCode = (value: unknown) => String(value ?? '').trim().toUpperCase().slice(0, 32);
 const maskPhone = (normalized: string) => `****${normalized.slice(-4).padStart(Math.min(4, normalized.length), '*')}`;
+const makeParticipantKey = (normalizedPhone: string) => {
+  let hash = 0x811c9dc5;
+  for (const char of normalizedPhone) {
+    hash ^= char.codePointAt(0) ?? 0;
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return `pk-${(hash >>> 0).toString(36)}-${normalizedPhone.length.toString(36)}`;
+};
 
 const mapPublicCampaign = (row: RaffleCampaignRow): RaffleTicketsLookupResult['campaign'] => ({
   id: row.id,
@@ -119,6 +127,19 @@ const loadParticipant = async (db: D1Database, campaign: RaffleCampaignRow, phon
   if (startsAt) { orderConditions.push('o.created_at >= ?'); orderBindings.push(startsAt); }
   if (endsAt) { orderConditions.push('o.created_at <= ?'); orderBindings.push(endsAt); }
 
+  const makeParticipant = (base: Pick<ParticipantAccumulator, 'customerName' | 'customerPhoneMasked' | 'lastOrderFolio' | 'lastOrderAt' | 'lastActivityAt'>): ParticipantAccumulator => ({
+    participantKey: makeParticipantKey(phone),
+    customerName: base.customerName,
+    customerPhoneMasked: base.customerPhoneMasked,
+    burgerTickets: 0,
+    referralTickets: 0,
+    manualExtraTickets: 0,
+    totalTickets: 0,
+    lastOrderFolio: base.lastOrderFolio,
+    lastOrderAt: base.lastOrderAt,
+    lastActivityAt: base.lastActivityAt
+  });
+
   const orderRows = await db.prepare(
     `SELECT o.folio, o.customer_name, o.created_at, i.qty, i.snapshot_json
      FROM orders_v2 o
@@ -134,23 +155,18 @@ const loadParticipant = async (db: D1Database, campaign: RaffleCampaignRow, phon
       ? Math.max(0, Number(row.qty) || 0) * ticketPerBurger
       : 0;
     const rowCreatedAt = String(row.created_at || '');
-    if (!participant) {
-      participant = {
-        customerName: String(row.customer_name || 'Sin nombre'),
-        customerPhoneMasked: maskPhone(phone),
-        burgerTickets: 0,
-        referralTickets: 0,
-        totalTickets: 0,
-        lastOrderFolio: String(row.folio || '—'),
-        lastOrderAt: rowCreatedAt,
-        lastActivityAt: rowCreatedAt
-      };
-    }
-    participant.burgerTickets += burgerTickets;
-    if (rowCreatedAt && (!participant.lastOrderAt || rowCreatedAt > participant.lastOrderAt)) {
-      participant.customerName = String(row.customer_name || participant.customerName);
-      participant.lastOrderFolio = String(row.folio || participant.lastOrderFolio || '—');
-      participant.lastOrderAt = rowCreatedAt;
+    const currentParticipant = participant ?? (participant = makeParticipant({
+      customerName: String(row.customer_name || 'Sin nombre'),
+      customerPhoneMasked: maskPhone(phone),
+      lastOrderFolio: String(row.folio || '—'),
+      lastOrderAt: rowCreatedAt,
+      lastActivityAt: rowCreatedAt
+    }));
+    currentParticipant.burgerTickets += burgerTickets;
+    if (rowCreatedAt && (!currentParticipant.lastOrderAt || rowCreatedAt > currentParticipant.lastOrderAt)) {
+      currentParticipant.customerName = String(row.customer_name || currentParticipant.customerName);
+      currentParticipant.lastOrderFolio = String(row.folio || currentParticipant.lastOrderFolio || '—');
+      currentParticipant.lastOrderAt = rowCreatedAt;
     }
   }
 
@@ -163,23 +179,18 @@ const loadParticipant = async (db: D1Database, campaign: RaffleCampaignRow, phon
 
   for (const row of referralRows.results ?? []) {
     const activityAt = String(row.updated_at || row.created_at || '');
-    if (!participant) {
-      participant = {
-        customerName: String(row.referrer_name || 'Sin nombre'),
-        customerPhoneMasked: maskPhone(phone),
-        burgerTickets: 0,
-        referralTickets: 0,
-        totalTickets: 0,
-        lastOrderFolio: '—',
-        lastOrderAt: activityAt,
-        lastActivityAt: activityAt
-      };
-    }
-    participant.referralTickets += Math.max(0, Number(row.tickets_awarded) || ticketPerReferral);
-    if (activityAt && (!participant.lastActivityAt || activityAt > participant.lastActivityAt)) {
-      participant.customerName = String(row.referrer_name || participant.customerName);
-      participant.lastActivityAt = activityAt;
-      if (!participant.lastOrderAt || participant.lastOrderFolio === '—') participant.lastOrderAt = activityAt;
+    const currentParticipant = participant ?? (participant = makeParticipant({
+      customerName: String(row.referrer_name || 'Sin nombre'),
+      customerPhoneMasked: maskPhone(phone),
+      lastOrderFolio: '—',
+      lastOrderAt: activityAt,
+      lastActivityAt: activityAt
+    }));
+    currentParticipant.referralTickets += Math.max(0, Number(row.tickets_awarded) || ticketPerReferral);
+    if (activityAt && (!currentParticipant.lastActivityAt || activityAt > currentParticipant.lastActivityAt)) {
+      currentParticipant.customerName = String(row.referrer_name || currentParticipant.customerName);
+      currentParticipant.lastActivityAt = activityAt;
+      if (!currentParticipant.lastOrderAt || currentParticipant.lastOrderFolio === '—') currentParticipant.lastOrderAt = activityAt;
     }
   }
 
@@ -193,24 +204,19 @@ const loadParticipant = async (db: D1Database, campaign: RaffleCampaignRow, phon
 
   for (const row of invitedRows.results ?? []) {
     const activityAt = String(row.updated_at || row.created_at || '');
-    if (!participant) {
-      participant = {
-        customerName: String(row.referred_customer_name || 'Sin nombre'),
-        customerPhoneMasked: maskPhone(phone),
-        burgerTickets: 0,
-        referralTickets: 0,
-        totalTickets: 0,
-        lastOrderFolio: String(row.referred_order_folio || '—'),
-        lastOrderAt: activityAt,
-        lastActivityAt: activityAt
-      };
-    }
-    participant.referralTickets += 1;
-    if (activityAt && (!participant.lastActivityAt || activityAt > participant.lastActivityAt)) {
-      participant.customerName = String(row.referred_customer_name || participant.customerName);
-      participant.lastActivityAt = activityAt;
-      if (row.referred_order_folio) participant.lastOrderFolio = String(row.referred_order_folio);
-      if (!participant.lastOrderAt || participant.lastOrderFolio === '—') participant.lastOrderAt = activityAt;
+    const currentParticipant = participant ?? (participant = makeParticipant({
+      customerName: String(row.referred_customer_name || 'Sin nombre'),
+      customerPhoneMasked: maskPhone(phone),
+      lastOrderFolio: String(row.referred_order_folio || '—'),
+      lastOrderAt: activityAt,
+      lastActivityAt: activityAt
+    }));
+    currentParticipant.referralTickets += 1;
+    if (activityAt && (!currentParticipant.lastActivityAt || activityAt > currentParticipant.lastActivityAt)) {
+      currentParticipant.customerName = String(row.referred_customer_name || currentParticipant.customerName);
+      currentParticipant.lastActivityAt = activityAt;
+      if (row.referred_order_folio) currentParticipant.lastOrderFolio = String(row.referred_order_folio);
+      if (!currentParticipant.lastOrderAt || currentParticipant.lastOrderFolio === '—') currentParticipant.lastOrderAt = activityAt;
     }
   }
 
