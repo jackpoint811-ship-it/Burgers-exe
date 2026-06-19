@@ -728,6 +728,7 @@ Prerequisitos de schema en el mismo D1:
 - `migrations/0003_v2_orders_schema.sql` debe estar aplicado antes de calcular resúmenes, porque Sorteos V2 lee `orders_v2` y `order_items_v2`.
 - `migrations/0004_v2_raffles_schema.sql` crea `raffle_campaigns_v2`.
 - `migrations/0005_v2_raffles_referrals_schema.sql` crea `raffle_referral_codes_v2` y `raffle_referrals_v2`.
+- `migrations/0013_v2_raffles_ticket_adjustments.sql` debe estar aplicada antes de validar preview/prod, porque la consulta pública de tickets lee `raffle_ticket_adjustments_v2` para sumar ajustes activos.
 
 Aplicar Sorteos V2 local:
 
@@ -782,6 +783,7 @@ Troubleshooting operativo:
 
 - Si Internal Chekeo V2 muestra “No se pudieron cargar los sorteos”, revisar que exista `raffle_campaigns_v2` en el D1 conectado por `BOG_MENU_DB` y que la migración `migrations/0004_v2_raffles_schema.sql` se haya aplicado en el ambiente correcto.
 - Si Internal Chekeo V2 muestra “No se pudo calcular el resumen del sorteo”, revisar que existan `raffle_referral_codes_v2`, `raffle_referrals_v2`, `orders_v2` y `order_items_v2`; el resumen depende de referidos y de las órdenes reales para calcular tickets.
+- Si la consulta pública no muestra `Tickets extra manuales`, revisar que `migrations/0013_v2_raffles_ticket_adjustments.sql` esté aplicada en el mismo D1 de preview/prod y que existan filas `status = 'active'` para ese participante. `reverted` no suma.
 
 ## Fase 4A — D1 raffle_campaigns_v2
 

@@ -282,7 +282,7 @@ const adminModuleGroups: Array<{
   {
     key: "promos",
     title: "Promos/Sorteos",
-    description: "Campañas existentes sin tickets extras manuales.",
+    description: "Campañas, referidos y ajustes manuales auditable.",
   },
 ];
 const adminModuleStatusMeta: Record<
@@ -360,7 +360,7 @@ const adminViews: AdminViewDefinition[] = [
     category: "promos",
     status: "basico",
     description:
-      "Campañas, tickets existentes y referidos sin tickets extras manuales.",
+      "Campañas, participantes, referidos y tickets extra manuales.",
     cta: "Ver módulo",
   },
   {
@@ -2146,7 +2146,7 @@ const AdminWorkspace = ({
     ) : view === "catalogo" ? (
       <CatalogAdminPanel />
     ) : view === "sorteos" ? (
-      <RafflesAdminPanel />
+      <RafflesAdminPanel runtimeEnvironment={runtimeEnvironment} />
     ) : view === "historial" ? (
       <HistoryPanel
         orders={orders}

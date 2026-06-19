@@ -1,10 +1,11 @@
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from "react";
-import type { CreateRaffleCampaignPayload, RaffleCampaignV2, RaffleParticipantSummary, RaffleReferralCodeV2, RaffleReferralStatus, RaffleReferralV2, RaffleSummaryResponse } from "@config/index";
+import type { ChekeoRuntimeEnvironment, CreateRaffleCampaignPayload, CreateRaffleTicketAdjustmentPayload, RaffleCampaignV2, RaffleParticipantSummary, RaffleReferralCodeV2, RaffleReferralStatus, RaffleReferralV2, RaffleSummaryResponse } from "@config/index";
 import { Button, Card, StatusPill } from "@ui/index";
-import { createRaffleCampaignV2, createRaffleReferralCodeV2, deleteRaffleCampaignV2, fetchRaffleCampaignsV2, fetchRaffleReferralCodesV2, fetchRaffleReferralsV2, fetchRaffleSummaryV2, deleteRaffleCampaignImageV2, updateRaffleCampaignV2, updateRaffleReferralCodeV2, updateRaffleReferralV2, uploadRaffleCampaignImageV2, type RaffleImageKind } from "../lib/raffles-v2-admin";
+import { createRaffleCampaignV2, createRaffleReferralCodeV2, createRaffleTicketAdjustmentV2, deleteRaffleCampaignV2, fetchRaffleCampaignsV2, fetchRaffleReferralCodesV2, fetchRaffleReferralsV2, fetchRaffleSummaryV2, deleteRaffleCampaignImageV2, updateRaffleCampaignV2, updateRaffleReferralCodeV2, updateRaffleReferralV2, updateRaffleTicketAdjustmentV2, uploadRaffleCampaignImageV2, type RaffleImageKind } from "../lib/raffles-v2-admin";
 import { RAFFLE_SHARE_FALLBACK_CODE, buildRaffleShareText, buildWhatsAppUrl, downloadBlob, generateRaffleTicketImage, shareBlobIfSupported, type RaffleShareImageData } from "../lib/raffle-share-image";
 
 type RaffleSummary = NonNullable<RaffleSummaryResponse["data"]>;
+type RaffleAdjustment = NonNullable<RaffleSummary["recentAdjustments"]>[number];
 type RaffleForm = {
   id?: string;
   title: string;
@@ -27,7 +28,9 @@ const ALLOWED_RAFFLE_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/we
 const SAFE_IMAGE_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._/-]*$/;
 
 type ReferralCodeForm = { ownerName: string; ownerPhone: string; burgerWord: typeof BURGER_WORDS[number]; number: string };
+type AdjustmentForm = { ticketsDelta: string; reason: string; actor: string };
 const emptyReferralCodeForm = (): ReferralCodeForm => ({ ownerName: "", ownerPhone: "", burgerWord: "BURGER", number: "27" });
+const emptyAdjustmentForm = (): AdjustmentForm => ({ ticketsDelta: "1", reason: "", actor: "internal-v2" });
 
 const emptyForm = (): RaffleForm => ({
   title: "",
@@ -67,11 +70,12 @@ const formatDateTime = (value?: string) => {
   return parsed.toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" });
 };
 
-const participantKey = (participant: RaffleParticipantSummary) => `${participant.customerPhoneMasked}-${participant.lastOrderFolio}`;
+const participantKey = (participant: RaffleParticipantSummary) => participant.participantKey;
 
 const normalizeLookupName = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().replace(/\s+/g, " ").toLowerCase();
 
 const resolveReferralCodeForParticipant = (participant: RaffleParticipantSummary, codes: RaffleReferralCodeV2[]) => {
+  if (participant.referralCode && participant.referralCodeIsActive) return participant.referralCode;
   const normalizedName = normalizeLookupName(participant.customerName);
   const strongMatches = codes.filter((code) => (
     code.isActive
@@ -108,6 +112,23 @@ const resolveAssetUrl = (imageUrl?: string, imageKey?: string): string | undefin
 
 type ImageUploadState = { file: File | null; uploading: boolean; error: string | null; message: string | null };
 const emptyImageUploadState = (): ImageUploadState => ({ file: null, uploading: false, error: null, message: null });
+const raffleEnvironmentMeta: Record<ChekeoRuntimeEnvironment, { label: string; badge: string; helper: string }> = {
+  production: {
+    label: "Real",
+    badge: "border-rose-400/50 bg-rose-500/10 text-rose-100",
+    helper: "Producción",
+  },
+  preview: {
+    label: "Prueba",
+    badge: "border-amber-400/50 bg-amber-500/10 text-amber-100",
+    helper: "Preview",
+  },
+  local: {
+    label: "Prueba",
+    badge: "border-sky-400/50 bg-sky-500/10 text-sky-100",
+    helper: "Local",
+  },
+};
 
 const validateImageFile = (file: File): string | null => {
   if (!ALLOWED_RAFFLE_IMAGE_TYPES.has(file.type)) return "Usa JPG, PNG, WebP o AVIF.";
@@ -214,6 +235,8 @@ const RaffleShareImageModal = ({ data, onClose }: { data: RaffleShareImageData; 
               <div className="mt-2 grid gap-2 text-sm text-zinc-200 sm:grid-cols-2">
                 <span>Nombre: <strong>{data.customerName}</strong></span>
                 <span>Teléfono: <strong>{data.customerPhoneMasked}</strong></span>
+                <span>Base tickets: <strong>{data.baseTickets}</strong></span>
+                <span>Tickets extra manuales: <strong>{data.manualExtraTickets}</strong></span>
                 <span>Total: <strong>{data.totalTickets}</strong></span>
                 <span>Burger tickets: <strong>{data.burgerTickets}</strong></span>
                 <span>Referidos: <strong>{data.referralTickets}</strong></span>
@@ -239,35 +262,90 @@ const RaffleShareImageModal = ({ data, onClose }: { data: RaffleShareImageData; 
   );
 };
 
-const ParticipantList = ({ title, participants, empty, onImage }: { title: string; participants: RaffleParticipantSummary[]; empty: string; onImage: (participant: RaffleParticipantSummary) => void }) => (
+const ParticipantList = ({
+  title,
+  participants,
+  empty,
+  onImage,
+  onSelect,
+  selectedKey,
+}: {
+  title: string;
+  participants: RaffleParticipantSummary[];
+  empty: string;
+  onImage: (participant: RaffleParticipantSummary) => void;
+  onSelect: (participant: RaffleParticipantSummary) => void;
+  selectedKey?: string | null;
+}) => (
   <Card className="p-3">
-    <h3 className="text-sm font-black text-zinc-100">{title}</h3>
+    <div className="flex items-center justify-between gap-3">
+      <h3 className="text-sm font-black text-zinc-100">{title}</h3>
+      <span className="rounded-full border border-zinc-800 bg-zinc-900/70 px-2 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-zinc-400">
+        {participants.length} participante{participants.length === 1 ? "" : "s"}
+      </span>
+    </div>
     <div className="mt-3 space-y-2">
-      {participants.length ? participants.map((participant) => (
-        <div key={participantKey(participant)} className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-3">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="font-black text-zinc-50">{participant.customerName}</p>
-              <p className="text-xs text-zinc-400">{participant.customerPhoneMasked} · Último folio {participant.lastOrderFolio || "—"}</p>
-              <p className="text-xs text-zinc-500">Último pedido: {formatDateTime(participant.lastOrderAt)}</p>
+      {participants.length ? participants.map((participant) => {
+        const baseTickets = participant.burgerTickets + participant.referralTickets;
+        const isSelected = selectedKey === participant.participantKey;
+        const statusLabel = participant.totalTickets > 0 ? "Elegible" : "No elegible";
+        const statusClass = participant.totalTickets > 0 ? "border-emerald-400/40 text-emerald-200" : "border-zinc-700 text-zinc-400";
+        return (
+          <article
+            key={participant.participantKey}
+            className={`rounded-2xl border p-3 ${isSelected ? "border-emerald-400/50 bg-emerald-400/10" : "border-zinc-800 bg-zinc-950/70"}`}
+          >
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="min-w-0 text-sm font-black text-zinc-50">{participant.customerName}</p>
+                  <StatusPill className={statusClass}>{statusLabel}</StatusPill>
+                  {participant.referralCode ? (
+                    <StatusPill className={participant.referralCodeIsActive ? "border-cyan-400/40 text-cyan-200" : "border-zinc-700 text-zinc-400"}>
+                      {participant.referralCodeIsActive ? "Código activo" : "Código inactivo"}
+                    </StatusPill>
+                  ) : null}
+                </div>
+                <p className="text-xs text-zinc-400">
+                  {participant.customerPhoneMasked} · Último folio {participant.lastOrderFolio || "—"}
+                </p>
+                <p className="text-xs text-zinc-500">
+                  Último cambio: {formatDateTime(participant.lastAdjustmentAt || participant.lastOrderAt)}
+                </p>
+                {participant.referralCode ? <p className="text-xs text-cyan-100">Código: {participant.referralCode}</p> : null}
+                {participant.lastAdjustmentReason ? <p className="text-xs text-amber-100">Último ajuste: {participant.lastAdjustmentReason}</p> : null}
+              </div>
+              <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end">
+                <div className="text-right">
+                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">Tickets totales</p>
+                  <strong className="block text-3xl font-black text-emerald-300">{participant.totalTickets}</strong>
+                </div>
+                <Button type="button" className="border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-black text-emerald-100" onClick={() => onImage(participant)}>Imagen</Button>
+              </div>
             </div>
-            <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end">
-              <strong className="text-2xl font-black text-emerald-300">{participant.totalTickets}</strong>
-              <Button type="button" className="border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-black text-emerald-100" onClick={() => onImage(participant)}>Imagen</Button>
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              <span className="rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 py-2 text-center text-[11px] font-bold text-zinc-200">Base: {baseTickets}</span>
+              <span className="rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-center text-[11px] font-bold text-cyan-100">Extra manual: {participant.manualExtraTickets}</span>
+              <span className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-center text-[11px] font-bold text-emerald-100">Total: {participant.totalTickets}</span>
             </div>
-          </div>
-          <div className="mt-2 grid grid-cols-3 gap-2 text-center text-[11px] text-zinc-300">
-            <span className="rounded-lg bg-zinc-900 px-2 py-1">Burger tickets: {participant.burgerTickets}</span>
-            <span className="rounded-lg bg-zinc-900 px-2 py-1">Referral tickets: {participant.referralTickets}</span>
-            <span className="rounded-lg bg-emerald-400/10 px-2 py-1 text-emerald-200">Total: {participant.totalTickets}</span>
-          </div>
-        </div>
-      )) : <p className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-4 text-sm text-zinc-400">{empty}</p>}
+            <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-[0.14em]">
+              {participant.burgerTickets > 0 ? <span className="rounded-full border border-zinc-800 bg-zinc-900 px-2.5 py-1 text-zinc-200">Pedidos</span> : null}
+              {participant.referralTickets > 0 ? <span className="rounded-full border border-zinc-800 bg-zinc-900 px-2.5 py-1 text-zinc-200">Referidos</span> : null}
+              {participant.manualExtraTickets > 0 ? <span className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-2.5 py-1 text-cyan-100">Extras manuales</span> : null}
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button type="button" className="border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs font-black text-zinc-100" onClick={() => onSelect(participant)}>Ver participante</Button>
+              <Button type="button" className="border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-black text-emerald-100" onClick={() => onSelect(participant)}>Agregar tickets</Button>
+              <Button type="button" className="border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-xs font-black text-cyan-100" onClick={() => onImage(participant)}>Compartir</Button>
+            </div>
+          </article>
+        );
+      }) : <p className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-4 text-sm text-zinc-400">{empty}</p>}
     </div>
   </Card>
 );
 
-export const RafflesAdminPanel = () => {
+export const RafflesAdminPanel = ({ runtimeEnvironment }: { runtimeEnvironment: ChekeoRuntimeEnvironment }) => {
   const [campaigns, setCampaigns] = useState<RaffleCampaignV2[]>([]);
   const [summary, setSummary] = useState<RaffleSummary | null>(null);
   const [selectedCampaignId, setSelectedCampaignId] = useState("");
@@ -282,6 +360,8 @@ export const RafflesAdminPanel = () => {
   const [referralCodeForm, setReferralCodeForm] = useState<ReferralCodeForm>(() => emptyReferralCodeForm());
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   const [invalidReasons, setInvalidReasons] = useState<Record<string, string>>({});
+  const [selectedParticipantKey, setSelectedParticipantKey] = useState<string | null>(null);
+  const [adjustmentForm, setAdjustmentForm] = useState<AdjustmentForm>(() => emptyAdjustmentForm());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -291,9 +371,26 @@ export const RafflesAdminPanel = () => {
   const [detailUpload, setDetailUpload] = useState<ImageUploadState>(() => emptyImageUploadState());
 
   const activeCampaign = useMemo(() => campaigns.find((campaign) => campaign.isActive) ?? null, [campaigns]);
-  const selectedCampaign = useMemo(() => campaigns.find((campaign) => campaign.id === selectedCampaignId) ?? activeCampaign, [activeCampaign, campaigns, selectedCampaignId]);
+  const selectedCampaign = useMemo(() => campaigns.find((campaign) => campaign.id === selectedCampaignId) ?? activeCampaign ?? campaigns[0] ?? null, [activeCampaign, campaigns, selectedCampaignId]);
   const currentBannerPreview = resolveAssetUrl(form.bannerImageUrl, form.bannerImageKey);
   const currentDetailPreview = resolveAssetUrl(form.detailImageUrl, form.detailImageKey);
+  const participantPool = useMemo(() => [...(summary?.participantResults ?? []), ...(summary?.topParticipants ?? [])], [summary?.participantResults, summary?.topParticipants]);
+  const selectedParticipant = useMemo(
+    () => participantPool.find((participant) => participant.participantKey === selectedParticipantKey) ?? null,
+    [participantPool, selectedParticipantKey],
+  );
+  const recentAdjustments = summary?.recentAdjustments ?? [];
+  const selectedParticipantAdjustments = useMemo(
+    () => selectedParticipant ? recentAdjustments.filter((adjustment) => adjustment.participantKey === selectedParticipant.participantKey) : [],
+    [recentAdjustments, selectedParticipant],
+  );
+  const environmentMeta = raffleEnvironmentMeta[runtimeEnvironment];
+
+  useEffect(() => {
+    if (!selectedParticipantKey) return;
+    if (participantPool.some((participant) => participant.participantKey === selectedParticipantKey)) return;
+    setSelectedParticipantKey(null);
+  }, [participantPool, selectedParticipantKey]);
 
   const imageStateForKind = (kind: RaffleImageKind) => (kind === "banner" ? bannerUpload : detailUpload);
   const setImageStateForKind = (kind: RaffleImageKind, updater: (current: ImageUploadState) => ImageUploadState) => {
@@ -349,10 +446,13 @@ export const RafflesAdminPanel = () => {
   const shareImageData = useMemo<RaffleShareImageData | null>(() => {
     if (!shareParticipant) return null;
     const campaign = summary?.campaign ?? selectedCampaign ?? activeCampaign;
+    const baseTickets = shareParticipant.burgerTickets + shareParticipant.referralTickets;
     return {
       customerName: shareParticipant.customerName,
       customerPhoneMasked: shareParticipant.customerPhoneMasked,
       campaignTitle: campaign?.title ?? "Sorteo mensual",
+      baseTickets,
+      manualExtraTickets: shareParticipant.manualExtraTickets,
       burgerTickets: shareParticipant.burgerTickets,
       referralTickets: shareParticipant.referralTickets,
       totalTickets: shareParticipant.totalTickets,
@@ -363,6 +463,8 @@ export const RafflesAdminPanel = () => {
       rulesText: campaign?.rulesText ?? undefined,
     };
   }, [activeCampaign, referralCodes, selectedCampaign, shareParticipant, summary?.campaign]);
+  const selectedParticipantBaseTickets = selectedParticipant ? selectedParticipant.burgerTickets + selectedParticipant.referralTickets : 0;
+  const visibleParticipants = debouncedSearch ? (summary?.participantResults ?? []) : (summary?.topParticipants ?? []);
 
   const reload = async () => {
     setError(null);
@@ -565,6 +667,65 @@ export const RafflesAdminPanel = () => {
     }
   };
 
+  const selectParticipant = (participant: RaffleParticipantSummary) => {
+    setSelectedParticipantKey(participant.participantKey);
+    setAdjustmentForm(emptyAdjustmentForm());
+  };
+
+  const createAdjustment = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selectedCampaign) { setError("Selecciona una campaña."); return; }
+    if (!selectedParticipant) { setError("Selecciona un participante antes de guardar un ajuste."); return; }
+    const ticketsDelta = Number(adjustmentForm.ticketsDelta);
+    const reason = adjustmentForm.reason.trim();
+    const actor = adjustmentForm.actor.trim() || "internal-v2";
+    if (!Number.isInteger(ticketsDelta) || ticketsDelta <= 0) {
+      setError("La cantidad debe ser un entero positivo.");
+      return;
+    }
+    if (reason.length < 3) {
+      setError("El motivo es obligatorio.");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await createRaffleTicketAdjustmentV2({
+        campaignId: selectedCampaign.id,
+        participantKey: selectedParticipant.participantKey,
+        ticketsDelta,
+        reason,
+        actor,
+      });
+      setNotice("Ajuste guardado.");
+      setAdjustmentForm(emptyAdjustmentForm());
+      await reload();
+      setSelectedParticipantKey(selectedParticipant.participantKey);
+    } catch (adjustmentError) {
+      setError(adjustmentError instanceof Error ? adjustmentError.message : "No se pudo guardar el ajuste.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const revertAdjustment = async (adjustment: RaffleAdjustment) => {
+    if (!window.confirm("¿Revertir este ajuste de tickets?")) return;
+    setSaving(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await updateRaffleTicketAdjustmentV2(adjustment.id, { status: "reverted", actor: "internal-v2" });
+      setNotice("Ajuste revertido.");
+      await reload();
+      if (selectedParticipantKey) setSelectedParticipantKey(selectedParticipantKey);
+    } catch (adjustmentError) {
+      setError(adjustmentError instanceof Error ? adjustmentError.message : "No se pudo revertir el ajuste.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const renderImageBlock = (options: { kind: RaffleImageKind; title: string; recommendation: string; preview?: string; currentKey: string; state: ImageUploadState }) => (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-3">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
@@ -596,70 +757,177 @@ export const RafflesAdminPanel = () => {
   );
 
   return (
-    <section className="grid gap-3 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.25fr)]">
+    <section className="grid gap-3 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.15fr)]">
       <div className="space-y-3">
-        <Card className="p-3">
-          <div className="flex items-start justify-between gap-3">
-            <div>
+        <Card className="p-4">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+            <div className="min-w-0">
               <p className="text-[11px] font-black uppercase tracking-[0.25em] text-emerald-200">Sorteos</p>
-              <h2 className="text-xl font-black text-zinc-50">Campañas mensuales</h2>
-              <p className="mt-1 text-xs text-zinc-400">Tickets por burger y referidos.</p>
+              <h2 className="mt-1 text-2xl font-black text-zinc-50">
+                {selectedCampaign?.title ?? "Sin campaña activa"}
+              </h2>
+              <p className="mt-1 text-sm text-zinc-300">
+                {selectedCampaign?.description || "La campaña activa todavía no tiene descripción visible."}
+              </p>
+              <p className="mt-2 text-xs text-zinc-500">
+                {selectedCampaign ? `Actualizado: ${formatDateTime(selectedCampaign.updatedAt)}` : "Activa una campaña para ver participantes y ajustes."}
+              </p>
             </div>
-            <Button className="border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs" onClick={() => void reload()} disabled={loading}>Recargar</Button>
+            <div className="flex flex-col gap-2 xl:items-end">
+              <StatusPill className={environmentMeta.badge}>
+                {environmentMeta.label} · {environmentMeta.helper}
+              </StatusPill>
+              <StatusPill className={selectedCampaign?.isActive ? "border-emerald-400/40 text-emerald-200" : "border-zinc-700 text-zinc-400"}>
+                {selectedCampaign?.isActive ? "Campaña activa" : "Sin campaña activa"}
+              </StatusPill>
+              <Button className="border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs" onClick={() => void reload()} disabled={loading}>
+                {loading ? "Cargando…" : "Recargar"}
+              </Button>
+            </div>
           </div>
-          {activeCampaign ? (
-            <div className="mt-3 rounded-xl border border-emerald-400/30 bg-emerald-400/10 p-3">
-              <p className="text-xs font-bold text-emerald-100">Activa ahora</p>
-              <p className="font-black text-zinc-50">{activeCampaign.title}</p>
-              <p className="text-xs text-zinc-400">{activeCampaign.ticketPerBurger} ticket por burger · {activeCampaign.ticketPerReferral} por referido</p>
+
+          {selectedCampaign ? (
+            <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+              <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-3">
+                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-emerald-100">Premio visible</p>
+                <p className="mt-1 text-lg font-black text-zinc-50">{selectedCampaign.title}</p>
+                {selectedCampaign.rulesText ? <p className="mt-2 line-clamp-4 text-sm text-zinc-300">{selectedCampaign.rulesText}</p> : null}
+              </div>
+              <div className="grid gap-2 min-[520px]:grid-cols-2 lg:grid-cols-1">
+                <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3">
+                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500">Ticket por burger</p>
+                  <strong className="mt-2 block text-2xl font-black text-emerald-200">{selectedCampaign.ticketPerBurger}</strong>
+                </div>
+                <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3">
+                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500">Ticket por referido</p>
+                  <strong className="mt-2 block text-2xl font-black text-cyan-200">{selectedCampaign.ticketPerReferral}</strong>
+                </div>
+              </div>
             </div>
-          ) : <p className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/70 p-3 text-sm text-zinc-400">No hay sorteo activo; Public no mostrará banner.</p>}
+          ) : (
+            <p className="mt-4 rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4 text-sm text-zinc-400">
+              No hay campaña activa; el panel seguirá mostrando campañas históricas hasta que actives una.
+            </p>
+          )}
+
+          <div className="mt-4 grid gap-2 min-[520px]:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3">
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500">Participantes</p>
+              <strong className="mt-2 block text-2xl font-black text-cyan-200">{summary?.totalParticipants ?? 0}</strong>
+            </div>
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3">
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500">Tickets base</p>
+              <strong className="mt-2 block text-2xl font-black text-emerald-200">{summary?.baseTickets ?? 0}</strong>
+            </div>
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3">
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500">Tickets extra</p>
+              <strong className="mt-2 block text-2xl font-black text-cyan-200">{summary?.extraTickets ?? 0}</strong>
+            </div>
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3">
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500">Tickets totales</p>
+              <strong className="mt-2 block text-2xl font-black text-emerald-300">{summary?.totalTickets ?? 0}</strong>
+            </div>
+          </div>
         </Card>
 
-        <Card className="p-3">
+        <Card className="p-4">
           <div className="mb-3 flex items-center justify-between gap-2">
             <h3 className="font-black text-zinc-100">Campañas</h3>
-            <Button className="border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100" onClick={() => { setForm(emptyForm()); setNotice(null); setError(null); }}>Nueva</Button>
+            <Button className="border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100" onClick={() => { setForm(emptyForm()); setNotice(null); setError(null); }}>
+              Nueva
+            </Button>
           </div>
           <div className="space-y-2">
             {campaigns.length ? campaigns.map((campaign) => (
-              <button key={campaign.id} type="button" className="w-full rounded-xl border border-zinc-800 bg-zinc-950/80 p-3 text-left" onClick={() => { setForm(toForm(campaign)); setSelectedCampaignId(campaign.id); }}>
+              <button
+                key={campaign.id}
+                type="button"
+                className="w-full rounded-2xl border border-zinc-800 bg-zinc-950/80 p-3 text-left"
+                onClick={() => {
+                  setForm(toForm(campaign));
+                  setSelectedCampaignId(campaign.id);
+                }}
+              >
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-bold text-zinc-100">{campaign.title}</p>
-                  <StatusPill className={campaign.isActive ? "border-emerald-400/40 text-emerald-200" : "border-zinc-700 text-zinc-400"}>{campaign.isActive ? "Activa" : "Inactiva"}</StatusPill>
+                  <StatusPill className={campaign.isActive ? "border-emerald-400/40 text-emerald-200" : "border-zinc-700 text-zinc-400"}>
+                    {campaign.isActive ? "Activa" : "Inactiva"}
+                  </StatusPill>
                 </div>
                 <p className="mt-1 text-xs text-zinc-500">Creada: {formatDateTime(campaign.createdAt)}</p>
               </button>
-            )) : <p className="rounded-xl border border-zinc-800 p-3 text-sm text-zinc-400">Sin campañas creadas.</p>}
+            )) : (
+              <p className="rounded-2xl border border-zinc-800 p-3 text-sm text-zinc-400">Sin campañas creadas.</p>
+            )}
           </div>
         </Card>
 
-        <Card className="p-3">
+        <Card className="p-4">
           <h3 className="font-black text-zinc-100">Crear / editar</h3>
           <form className="mt-3 grid gap-3" onSubmit={(event) => void save(event)}>
-            <label className="text-xs font-bold text-zinc-300">Título<input className="input mt-1" value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} maxLength={80} /></label>
-            <label className="text-xs font-bold text-zinc-300">Descripción<textarea className="input mt-1 min-h-20" value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} maxLength={600} /></label>
-            <label className="text-xs font-bold text-zinc-300">Reglas<textarea className="input mt-1 min-h-24" value={form.rulesText} onChange={(event) => setForm((current) => ({ ...current, rulesText: event.target.value }))} maxLength={3000} /></label>
+            <label className="text-xs font-bold text-zinc-300">
+              Título
+              <input className="input mt-1" value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} maxLength={80} />
+            </label>
+            <label className="text-xs font-bold text-zinc-300">
+              Descripción
+              <textarea className="input mt-1 min-h-20" value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} maxLength={600} />
+            </label>
+            <label className="text-xs font-bold text-zinc-300">
+              Reglas
+              <textarea className="input mt-1 min-h-24" value={form.rulesText} onChange={(event) => setForm((current) => ({ ...current, rulesText: event.target.value }))} maxLength={3000} />
+            </label>
             <div className="grid gap-2 sm:grid-cols-2">
-              <label className="text-xs font-bold text-zinc-300">Banner image URL<input className="input mt-1" value={form.bannerImageUrl} onChange={(event) => setForm((current) => ({ ...current, bannerImageUrl: event.target.value }))} /></label>
-              <label className="text-xs font-bold text-zinc-300">Banner image key<input className="input mt-1" value={form.bannerImageKey} onChange={(event) => setForm((current) => ({ ...current, bannerImageKey: event.target.value }))} /></label>
-              <label className="text-xs font-bold text-zinc-300">Inicia<input className="input mt-1" placeholder="YYYY-MM-DD o ISO" value={form.startsAt} onChange={(event) => setForm((current) => ({ ...current, startsAt: event.target.value }))} /></label>
-              <label className="text-xs font-bold text-zinc-300">Termina<input className="input mt-1" placeholder="YYYY-MM-DD o ISO" value={form.endsAt} onChange={(event) => setForm((current) => ({ ...current, endsAt: event.target.value }))} /></label>
-              <label className="text-xs font-bold text-zinc-300">Tickets por burger<input className="input mt-1" type="number" min="0" step="1" value={form.ticketPerBurger} onChange={(event) => setForm((current) => ({ ...current, ticketPerBurger: event.target.value }))} /></label>
-              <label className="text-xs font-bold text-zinc-300">Tickets por referido<input className="input mt-1" type="number" min="0" step="1" value={form.ticketPerReferral} onChange={(event) => setForm((current) => ({ ...current, ticketPerReferral: event.target.value }))} /></label>
+              <label className="text-xs font-bold text-zinc-300">
+                Banner image URL
+                <input className="input mt-1" value={form.bannerImageUrl} onChange={(event) => setForm((current) => ({ ...current, bannerImageUrl: event.target.value }))} />
+              </label>
+              <label className="text-xs font-bold text-zinc-300">
+                Banner image key
+                <input className="input mt-1" value={form.bannerImageKey} onChange={(event) => setForm((current) => ({ ...current, bannerImageKey: event.target.value }))} />
+              </label>
+              <label className="text-xs font-bold text-zinc-300">
+                Inicia
+                <input className="input mt-1" placeholder="YYYY-MM-DD o ISO" value={form.startsAt} onChange={(event) => setForm((current) => ({ ...current, startsAt: event.target.value }))} />
+              </label>
+              <label className="text-xs font-bold text-zinc-300">
+                Termina
+                <input className="input mt-1" placeholder="YYYY-MM-DD o ISO" value={form.endsAt} onChange={(event) => setForm((current) => ({ ...current, endsAt: event.target.value }))} />
+              </label>
+              <label className="text-xs font-bold text-zinc-300">
+                Tickets por burger
+                <input className="input mt-1" type="number" min="0" step="1" value={form.ticketPerBurger} onChange={(event) => setForm((current) => ({ ...current, ticketPerBurger: event.target.value }))} />
+              </label>
+              <label className="text-xs font-bold text-zinc-300">
+                Tickets por referido
+                <input className="input mt-1" type="number" min="0" step="1" value={form.ticketPerReferral} onChange={(event) => setForm((current) => ({ ...current, ticketPerReferral: event.target.value }))} />
+              </label>
             </div>
-            <label className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950/70 p-3 text-sm font-bold text-zinc-200"><input type="checkbox" checked={form.isActive} onChange={(event) => setForm((current) => ({ ...current, isActive: event.target.checked }))} /> Activar al guardar</label>
+            <label className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950/70 p-3 text-sm font-bold text-zinc-200">
+              <input type="checkbox" checked={form.isActive} onChange={(event) => setForm((current) => ({ ...current, isActive: event.target.checked }))} />
+              Activar al guardar
+            </label>
             {error ? <p className="rounded-lg bg-rose-500/10 px-3 py-2 text-sm text-rose-100">{error}</p> : null}
             {notice ? <p className="rounded-lg bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">{notice}</p> : null}
             <div className="grid gap-2 sm:grid-cols-3">
-              <Button className="bg-emerald-400 px-4 py-3 font-black text-emerald-950 disabled:opacity-50" disabled={saving}>{saving ? "Guardando…" : form.id ? "Guardar cambios" : "Crear sorteo"}</Button>
-              {form.id && selectedCampaign ? <Button type="button" className="border border-zinc-700 bg-zinc-900 px-4 py-3 font-black disabled:opacity-50" disabled={saving} onClick={() => void activate(selectedCampaign, !selectedCampaign.isActive)}>{selectedCampaign.isActive ? "Desactivar" : "Activar"}</Button> : null}
-              {form.id && selectedCampaign ? <Button type="button" className="border border-rose-500/40 bg-rose-500/10 px-4 py-3 font-black text-rose-100 disabled:opacity-50" disabled={saving} onClick={() => void deleteCampaign(selectedCampaign)}>Ocultar sorteo</Button> : null}
+              <Button className="bg-emerald-400 px-4 py-3 font-black text-emerald-950 disabled:opacity-50" disabled={saving}>
+                {saving ? "Guardando…" : form.id ? "Guardar cambios" : "Crear sorteo"}
+              </Button>
+              {form.id && selectedCampaign ? (
+                <Button type="button" className="border border-zinc-700 bg-zinc-900 px-4 py-3 font-black disabled:opacity-50" disabled={saving} onClick={() => void activate(selectedCampaign, !selectedCampaign.isActive)}>
+                  {selectedCampaign.isActive ? "Desactivar" : "Activar"}
+                </Button>
+              ) : null}
+              {form.id && selectedCampaign ? (
+                <Button type="button" className="border border-rose-500/40 bg-rose-500/10 px-4 py-3 font-black text-rose-100 disabled:opacity-50" disabled={saving} onClick={() => void deleteCampaign(selectedCampaign)}>
+                  Ocultar sorteo
+                </Button>
+              ) : null}
             </div>
           </form>
         </Card>
 
-        <Card className="p-3">
+        <Card className="p-4">
           <div className="mb-3">
             <h3 className="font-black text-zinc-100">Imágenes del sorteo</h3>
             <p className="mt-1 text-xs text-zinc-400">Imágenes protegidas con sesión interna para campañas activas.</p>
@@ -670,52 +938,293 @@ export const RafflesAdminPanel = () => {
           </div>
         </Card>
 
-        <Card className="p-3">
+        <Card className="p-4">
           <h3 className="font-black text-zinc-100">Códigos de invitado</h3>
           <form className="mt-3 grid gap-2" onSubmit={(event) => void createReferralCode(event)}>
-            <label className="text-xs font-bold text-zinc-300">Nombre participante<input className="input mt-1" value={referralCodeForm.ownerName} onChange={(event) => setReferralCodeForm((current) => ({ ...current, ownerName: event.target.value }))} /></label>
-            <label className="text-xs font-bold text-zinc-300">Teléfono participante<input className="input mt-1" inputMode="tel" value={referralCodeForm.ownerPhone} onChange={(event) => setReferralCodeForm((current) => ({ ...current, ownerPhone: event.target.value }))} /></label>
+            <label className="text-xs font-bold text-zinc-300">
+              Nombre participante
+              <input className="input mt-1" value={referralCodeForm.ownerName} onChange={(event) => setReferralCodeForm((current) => ({ ...current, ownerName: event.target.value }))} />
+            </label>
+            <label className="text-xs font-bold text-zinc-300">
+              Teléfono participante
+              <input className="input mt-1" inputMode="tel" value={referralCodeForm.ownerPhone} onChange={(event) => setReferralCodeForm((current) => ({ ...current, ownerPhone: event.target.value }))} />
+            </label>
             <div className="grid gap-2 sm:grid-cols-2">
-              <label className="text-xs font-bold text-zinc-300">Palabra burger<select className="input mt-1" value={referralCodeForm.burgerWord} onChange={(event) => setReferralCodeForm((current) => ({ ...current, burgerWord: event.target.value as ReferralCodeForm["burgerWord"] }))}>{BURGER_WORDS.map((word) => <option key={word} value={word}>{word}</option>)}</select></label>
-              <label className="text-xs font-bold text-zinc-300">Número 1–100<input className="input mt-1" type="number" min="1" max="100" step="1" value={referralCodeForm.number} onChange={(event) => setReferralCodeForm((current) => ({ ...current, number: event.target.value }))} /></label>
+              <label className="text-xs font-bold text-zinc-300">
+                Palabra burger
+                <select className="input mt-1" value={referralCodeForm.burgerWord} onChange={(event) => setReferralCodeForm((current) => ({ ...current, burgerWord: event.target.value as ReferralCodeForm["burgerWord"] }))}>
+                  {BURGER_WORDS.map((word) => <option key={word} value={word}>{word}</option>)}
+                </select>
+              </label>
+              <label className="text-xs font-bold text-zinc-300">
+                Número 1–100
+                <input className="input mt-1" type="number" min="1" max="100" step="1" value={referralCodeForm.number} onChange={(event) => setReferralCodeForm((current) => ({ ...current, number: event.target.value }))} />
+              </label>
             </div>
             <Button className="bg-cyan-300 px-4 py-3 font-black text-cyan-950 disabled:opacity-50" disabled={saving || !selectedCampaign}>Crear código</Button>
           </form>
-          {generatedCode ? <div className="mt-3 rounded-xl border border-cyan-400/40 bg-cyan-400/10 p-3 text-center"><p className="text-xs text-cyan-100">Código generado</p><strong className="text-2xl text-cyan-200">{generatedCode}</strong><Button type="button" className="mt-2 border border-cyan-400/40 px-3 py-2 text-xs" onClick={() => void navigator.clipboard?.writeText(generatedCode)}>Copiar código</Button></div> : null}
-          <label className="mt-3 block text-xs font-bold text-zinc-300">Buscar códigos<input className="input mt-1" placeholder="Nombre, teléfono o código" value={codeSearch} onChange={(event) => setCodeSearch(event.target.value)} /></label>
+          {generatedCode ? (
+            <div className="mt-3 rounded-xl border border-cyan-400/40 bg-cyan-400/10 p-3 text-center">
+              <p className="text-xs text-cyan-100">Código generado</p>
+              <strong className="text-2xl text-cyan-200">{generatedCode}</strong>
+              <Button type="button" className="mt-2 border border-cyan-400/40 px-3 py-2 text-xs" onClick={() => void navigator.clipboard?.writeText(generatedCode)}>Copiar código</Button>
+            </div>
+          ) : null}
+          <label className="mt-3 block text-xs font-bold text-zinc-300">
+            Buscar códigos
+            <input className="input mt-1" placeholder="Nombre, teléfono o código" value={codeSearch} onChange={(event) => setCodeSearch(event.target.value)} />
+          </label>
           <div className="mt-3 space-y-2">
-            {referralCodes.length ? referralCodes.map((code) => <div key={code.id} className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-3"><div className="flex items-start justify-between gap-2"><div><p className="font-black text-zinc-50">{code.code}</p><p className="text-xs text-zinc-400">{code.ownerName} · {code.ownerPhoneMasked}</p></div><StatusPill className={code.isActive ? "border-emerald-400/40 text-emerald-200" : "border-zinc-700 text-zinc-400"}>{code.isActive ? "Activo" : "Inactivo"}</StatusPill></div><Button type="button" className="mt-2 border border-zinc-700 px-3 py-2 text-xs" disabled={saving} onClick={() => void toggleReferralCode(code)}>{code.isActive ? "Desactivar" : "Activar"}</Button></div>) : <p className="rounded-xl border border-zinc-800 p-3 text-sm text-zinc-400">Sin códigos para este sorteo.</p>}
+            {referralCodes.length ? referralCodes.map((code) => (
+              <div key={code.id} className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-black text-zinc-50">{code.code}</p>
+                    <p className="text-xs text-zinc-400">{code.ownerName} · {code.ownerPhoneMasked}</p>
+                  </div>
+                  <StatusPill className={code.isActive ? "border-emerald-400/40 text-emerald-200" : "border-zinc-700 text-zinc-400"}>{code.isActive ? "Activo" : "Inactivo"}</StatusPill>
+                </div>
+                <Button type="button" className="mt-2 border border-zinc-700 px-3 py-2 text-xs" disabled={saving} onClick={() => void toggleReferralCode(code)}>{code.isActive ? "Desactivar" : "Activar"}</Button>
+              </div>
+            )) : <p className="rounded-xl border border-zinc-800 p-3 text-sm text-zinc-400">Sin códigos para este sorteo.</p>}
           </div>
         </Card>
-
       </div>
 
       <div className="space-y-3">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Card className="p-4"><p className="text-xs text-zinc-400">Total tickets</p><p className="text-3xl font-black text-emerald-300">{summary?.totalTickets ?? 0}</p></Card>
-          <Card className="p-4"><p className="text-xs text-zinc-400">Participantes</p><p className="text-3xl font-black text-cyan-200">{summary?.totalParticipants ?? 0}</p></Card>
-        </div>
-        <Card className="p-3">
-          <label className="text-xs font-bold text-zinc-300">Buscar participante<input className="input mt-1" placeholder="Nombre o últimos 4 dígitos" value={search} onChange={(event) => setSearch(event.target.value)} /></label>
-          <p className="mt-2 text-[11px] text-zinc-500">Busca por nombre, teléfono normalizado o últimos 4 dígitos. La respuesta/UI nunca muestra el teléfono completo.</p>
+        <Card className="p-4">
+          <label className="text-xs font-bold text-zinc-300">
+            Buscar participante
+            <input className="input mt-1" placeholder="Nombre, folio, teléfono o código" value={search} onChange={(event) => setSearch(event.target.value)} />
+          </label>
+          <p className="mt-2 text-[11px] text-zinc-500">Busca por nombre, teléfono normalizado, folio o código. La vista nunca muestra el teléfono completo.</p>
         </Card>
-        <ParticipantList title="Resultados" participants={summary?.participantResults ?? []} empty={debouncedSearch ? "Sin participantes encontrados" : "Escribe nombre o últimos 4 dígitos para buscar."} onImage={setShareParticipant} />
-        <ParticipantList title="Top usuarios por tickets" participants={summary?.topParticipants ?? []} empty="Aún no hay participantes con tickets para esta campaña." onImage={setShareParticipant} />
-        <Card className="p-3">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <label className="text-xs font-bold text-zinc-300">Buscar pedidos referidos<input className="input mt-1" placeholder="Código, nombre, teléfono o folio" value={referralSearch} onChange={(event) => setReferralSearch(event.target.value)} /></label>
-            <label className="text-xs font-bold text-zinc-300">Filtro<select className="input mt-1" value={referralStatus} onChange={(event) => setReferralStatus(event.target.value as RaffleReferralStatus | "all")}><option value="all">Todos</option><option value="pending">Pendientes</option><option value="valid">Válidos</option><option value="invalid">Inválidos</option></select></label>
+
+        <ParticipantList
+          title={debouncedSearch ? "Resultados de búsqueda" : "Top participantes"}
+          participants={debouncedSearch ? (summary?.participantResults ?? []) : (summary?.topParticipants ?? [])}
+          empty={debouncedSearch ? "Sin participantes encontrados." : "Aún no hay participantes con tickets para esta campaña."}
+          onImage={setShareParticipant}
+          onSelect={selectParticipant}
+          selectedKey={selectedParticipantKey}
+        />
+
+        {debouncedSearch ? (
+          <ParticipantList
+            title="Top participantes"
+            participants={summary?.topParticipants ?? []}
+            empty="Aún no hay participantes con tickets para esta campaña."
+            onImage={setShareParticipant}
+            onSelect={selectParticipant}
+            selectedKey={selectedParticipantKey}
+          />
+        ) : null}
+
+        <Card className="p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-emerald-200">Detalle</p>
+              <h3 className="text-lg font-black text-zinc-50">
+                {selectedParticipant ? selectedParticipant.customerName : "Selecciona un participante"}
+              </h3>
+              {selectedParticipant ? (
+                <p className="mt-1 text-xs text-zinc-400">
+                  {selectedParticipant.customerPhoneMasked} · Folio {selectedParticipant.lastOrderFolio || "—"} · {selectedParticipant.referralCode ? `Código ${selectedParticipant.referralCode}` : "Sin código"}
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-zinc-400">Abre un participante desde resultados o top para agregar tickets extras o revisar ajustes.</p>
+              )}
+            </div>
+            {selectedParticipant ? (
+              <StatusPill className={selectedParticipant.totalTickets > 0 ? "border-emerald-400/40 text-emerald-200" : "border-zinc-700 text-zinc-400"}>
+                {selectedParticipant.totalTickets > 0 ? "Elegible" : "No elegible"}
+              </StatusPill>
+            ) : null}
+          </div>
+
+          {selectedParticipant ? (
+            <>
+              <div className="mt-4 grid gap-2 min-[520px]:grid-cols-3">
+                <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3">
+                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500">Tickets base</p>
+                  <strong className="mt-2 block text-2xl font-black text-emerald-200">{selectedParticipantBaseTickets}</strong>
+                </div>
+                <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3">
+                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500">Tickets extra</p>
+                  <strong className="mt-2 block text-2xl font-black text-cyan-200">{selectedParticipant.manualExtraTickets}</strong>
+                </div>
+                <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3">
+                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500">Tickets totales</p>
+                  <strong className="mt-2 block text-2xl font-black text-emerald-300">{selectedParticipant.totalTickets}</strong>
+                </div>
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-black uppercase tracking-[0.14em]">
+                {selectedParticipant.burgerTickets > 0 ? <span className="rounded-full border border-zinc-800 bg-zinc-900 px-2.5 py-1 text-zinc-200">Pedidos</span> : null}
+                {selectedParticipant.referralTickets > 0 ? <span className="rounded-full border border-zinc-800 bg-zinc-900 px-2.5 py-1 text-zinc-200">Referidos</span> : null}
+                {selectedParticipant.manualExtraTickets > 0 ? <span className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-2.5 py-1 text-cyan-100">Extras manuales</span> : null}
+                {selectedParticipant.referralCode ? (
+                  <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-1 text-emerald-100">Código {selectedParticipant.referralCodeIsActive ? "activo" : "inactivo"}</span>
+                ) : null}
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-zinc-800 bg-zinc-950/70 p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500">Historial de ajustes</p>
+                    <p className="mt-1 text-sm text-zinc-400">{selectedParticipantAdjustments.length ? "Revisa y revierte si hace falta." : "Sin ajustes manuales para este participante."}</p>
+                  </div>
+                  <span className="rounded-full border border-zinc-800 bg-zinc-900/70 px-2 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-zinc-400">
+                    Actor: internal-v2
+                  </span>
+                </div>
+                <div className="mt-3 space-y-2">
+                  {selectedParticipantAdjustments.length ? selectedParticipantAdjustments.map((adjustment) => (
+                    <div key={adjustment.id} className="rounded-xl border border-zinc-800 bg-zinc-950/80 p-3">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-black text-zinc-50">{adjustment.ticketsDelta} tickets</p>
+                            <StatusPill className={adjustment.status === "reverted" ? "border-zinc-700 text-zinc-400" : "border-cyan-400/40 text-cyan-200"}>
+                              {adjustment.status === "reverted" ? "Revertido" : "Activo"}
+                            </StatusPill>
+                          </div>
+                          <p className="mt-1 text-xs text-zinc-400">{adjustment.reason}</p>
+                          <p className="mt-1 text-xs text-zinc-500">{formatDateTime(adjustment.createdAt)} · {adjustment.actor}</p>
+                        </div>
+                        <Button
+                          type="button"
+                          className="border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs font-black text-rose-100 disabled:opacity-50"
+                          disabled={saving || adjustment.status === "reverted"}
+                          onClick={() => void revertAdjustment(adjustment)}
+                        >
+                          {adjustment.status === "reverted" ? "Revertido" : "Revertir"}
+                        </Button>
+                      </div>
+                    </div>
+                  )) : <p className="rounded-xl border border-zinc-800 p-3 text-sm text-zinc-400">Sin ajustes manuales para este participante.</p>}
+                </div>
+              </div>
+
+              <form className="mt-4 grid gap-3" onSubmit={(event) => void createAdjustment(event)}>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <label className="text-xs font-bold text-zinc-300">
+                    Tickets extra
+                    <input className="input mt-1" type="number" min="1" max="100" step="1" value={adjustmentForm.ticketsDelta} onChange={(event) => setAdjustmentForm((current) => ({ ...current, ticketsDelta: event.target.value }))} />
+                  </label>
+                  <label className="text-xs font-bold text-zinc-300">
+                    Actor
+                    <input className="input mt-1" value={adjustmentForm.actor} readOnly />
+                  </label>
+                </div>
+                <label className="text-xs font-bold text-zinc-300">
+                  Motivo
+                  <textarea className="input mt-1 min-h-20" required value={adjustmentForm.reason} onChange={(event) => setAdjustmentForm((current) => ({ ...current, reason: event.target.value }))} placeholder="Ajuste operativo, regalo, corrección, etc." />
+                </label>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button className="bg-emerald-400 px-4 py-3 font-black text-emerald-950 disabled:opacity-50" disabled={saving || !selectedParticipant}>
+                    {saving ? "Guardando…" : "Guardar ajuste"}
+                  </Button>
+                  <Button type="button" className="border border-zinc-700 bg-zinc-900 px-4 py-3 font-black text-zinc-100" onClick={() => setAdjustmentForm(emptyAdjustmentForm())}>
+                    Limpiar
+                  </Button>
+                </div>
+              </form>
+            </>
+          ) : (
+            <p className="mt-4 rounded-xl border border-zinc-800 bg-zinc-950/70 p-3 text-sm text-zinc-400">
+              Selecciona un participante para ver su detalle y agregar tickets manuales.
+            </p>
+          )}
+        </Card>
+
+        <Card className="p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-emerald-200">Cambios recientes</p>
+              <h3 className="text-lg font-black text-zinc-50">Últimos ajustes</h3>
+            </div>
+            <StatusPill className="border-zinc-700 text-zinc-300">{recentAdjustments.length}</StatusPill>
           </div>
           <div className="mt-3 space-y-2">
-            {referrals.length ? referrals.map((referral) => <article key={referral.id} className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-3"><div className="flex flex-col gap-2 sm:flex-row sm:justify-between"><div><p className="font-black text-zinc-50">{referral.code} · {referral.referredOrderFolio}</p><p className="text-xs text-zinc-400">Dueño: {referral.referrerName} ({referral.referrerPhoneMasked})</p><p className="text-xs text-zinc-400">Cliente referido: {referral.referredCustomerName} ({referral.referredCustomerPhoneMasked})</p><p className="text-xs text-zinc-500">{formatDateTime(referral.createdAt)} · {referral.ticketsAwarded} tickets</p>{referral.invalidReason ? <p className="text-xs text-rose-200">Razón: {referral.invalidReason}</p> : null}</div><StatusPill className={referral.status === "invalid" ? "border-rose-400/40 text-rose-200" : referral.status === "valid" ? "border-emerald-400/40 text-emerald-200" : "border-amber-400/40 text-amber-200"}>{referral.status}</StatusPill></div><div className="mt-2 grid gap-2 sm:grid-cols-3"><Button type="button" className="border border-emerald-500/40 px-3 py-2 text-xs" disabled={saving} onClick={() => void setReferralState(referral, "valid")}>Marcar válido</Button><Button type="button" className="border border-amber-500/40 px-3 py-2 text-xs" disabled={saving} onClick={() => void setReferralState(referral, "pending")}>Reabrir pendiente</Button><div><input className="input" placeholder="Razón para invalidar" value={invalidReasons[referral.id] ?? ""} onChange={(event) => setInvalidReasons((current) => ({ ...current, [referral.id]: event.target.value }))} /><Button type="button" className="mt-1 w-full border border-rose-500/40 px-3 py-2 text-xs" disabled={saving} onClick={() => void setReferralState(referral, "invalid")}>Invalidar</Button></div></div></article>) : <p className="rounded-xl border border-zinc-800 p-3 text-sm text-zinc-400">Sin pedidos referidos con esos filtros.</p>}
+            {recentAdjustments.length ? recentAdjustments.slice(0, 5).map((adjustment) => (
+              <div key={adjustment.id} className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-black text-zinc-50">{adjustment.participantName}</p>
+                      <StatusPill className={adjustment.status === "reverted" ? "border-zinc-700 text-zinc-400" : "border-cyan-400/40 text-cyan-200"}>
+                        {adjustment.status === "reverted" ? "Revertido" : "Activo"}
+                      </StatusPill>
+                    </div>
+                    <p className="mt-1 text-xs text-zinc-400">{adjustment.participantPhoneMasked} · {adjustment.ticketsDelta} tickets</p>
+                    <p className="mt-1 text-xs text-zinc-500">{adjustment.reason}</p>
+                    <p className="mt-1 text-xs text-zinc-500">{formatDateTime(adjustment.createdAt)} · {adjustment.actor}</p>
+                  </div>
+                  <Button
+                    type="button"
+                    className="border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs font-black text-rose-100 disabled:opacity-50"
+                    disabled={saving || adjustment.status === "reverted"}
+                    onClick={() => void revertAdjustment(adjustment)}
+                  >
+                    {adjustment.status === "reverted" ? "Revertido" : "Revertir"}
+                  </Button>
+                </div>
+              </div>
+            )) : <p className="rounded-xl border border-zinc-800 p-3 text-sm text-zinc-400">Aún no hay cambios manuales.</p>}
           </div>
         </Card>
 
-        <Card className="p-3 text-xs text-zinc-400">
+        <Card className="p-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <label className="text-xs font-bold text-zinc-300">
+              Buscar pedidos referidos
+              <input className="input mt-1" placeholder="Código, nombre, teléfono o folio" value={referralSearch} onChange={(event) => setReferralSearch(event.target.value)} />
+            </label>
+            <label className="text-xs font-bold text-zinc-300">
+              Filtro
+              <select className="input mt-1" value={referralStatus} onChange={(event) => setReferralStatus(event.target.value as RaffleReferralStatus | "all")}>
+                <option value="all">Todos</option>
+                <option value="pending">Pendientes</option>
+                <option value="valid">Válidos</option>
+                <option value="invalid">Inválidos</option>
+              </select>
+            </label>
+          </div>
+          <div className="mt-3 space-y-2">
+            {referrals.length ? referrals.map((referral) => (
+              <article key={referral.id} className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="font-black text-zinc-50">{referral.code} · {referral.referredOrderFolio}</p>
+                    <p className="text-xs text-zinc-400">Dueño: {referral.referrerName} ({referral.referrerPhoneMasked})</p>
+                    <p className="text-xs text-zinc-400">Cliente referido: {referral.referredCustomerName} ({referral.referredCustomerPhoneMasked})</p>
+                    <p className="text-xs text-zinc-500">{formatDateTime(referral.createdAt)} · {referral.ticketsAwarded} tickets</p>
+                    {referral.invalidReason ? <p className="text-xs text-rose-200">Razón: {referral.invalidReason}</p> : null}
+                  </div>
+                  <StatusPill className={referral.status === "invalid" ? "border-rose-400/40 text-rose-200" : referral.status === "valid" ? "border-emerald-400/40 text-emerald-200" : "border-amber-400/40 text-amber-200"}>
+                    {referral.status}
+                  </StatusPill>
+                </div>
+                <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                  <Button type="button" className="border border-emerald-500/40 px-3 py-2 text-xs" disabled={saving} onClick={() => void setReferralState(referral, "valid")}>Marcar válido</Button>
+                  <Button type="button" className="border border-amber-500/40 px-3 py-2 text-xs" disabled={saving} onClick={() => void setReferralState(referral, "pending")}>Reabrir pendiente</Button>
+                  <div>
+                    <input className="input" placeholder="Razón para invalidar" value={invalidReasons[referral.id] ?? ""} onChange={(event) => setInvalidReasons((current) => ({ ...current, [referral.id]: event.target.value }))} />
+                    <Button type="button" className="mt-1 w-full border border-rose-500/40 px-3 py-2 text-xs" disabled={saving} onClick={() => void setReferralState(referral, "invalid")}>Invalidar</Button>
+                  </div>
+                </div>
+              </article>
+            )) : <p className="rounded-xl border border-zinc-800 p-3 text-sm text-zinc-400">Sin pedidos referidos con esos filtros.</p>}
+          </div>
+        </Card>
+
+        <Card className="p-4 text-xs text-zinc-400">
           <p className="font-bold text-zinc-200">Notas operativas</p>
-          <p className="mt-1">Delivered sí cuenta; cancelled no cuenta. Referidos pending/valid suman; invalid no suma. La imagen para compartir usa teléfono enmascarado. Descarga la imagen y adjúntala manualmente en WhatsApp.</p>
+          <p className="mt-1">Tickets base = pedidos + referidos. Tickets extra = ajustes manuales activos. <span className="font-bold text-zinc-200">Real</span> solo cuando el entorno es producción; <span className="font-bold text-zinc-200">Prueba</span> cubre preview/local.</p>
         </Card>
       </div>
+
       {shareImageData ? <RaffleShareImageModal data={shareImageData} onClose={() => setShareParticipant(null)} /> : null}
     </section>
   );

@@ -34,4 +34,44 @@ test.describe('public visual preflight', () => {
       });
     });
   }
+
+  test('shows manual ticket adjustments in the public lookup', async ({ page }) => {
+    await page.route('**/api/raffles-v2/lookup**', async (route) => {
+      await route.fulfill({
+        contentType: 'application/json',
+        json: {
+          ok: true,
+          data: {
+            found: true,
+            campaign: {
+              id: 'raffle-june-2026',
+              title: 'Rifa Burger Lovers',
+              ticketPerBurger: 1,
+              ticketPerReferral: 2
+            },
+            participant: {
+              participantKey: 'pk-luna-4821',
+              customerName: 'Luna Smash',
+              customerPhoneMasked: '****4821',
+              burgerTickets: 6,
+              referralTickets: 2,
+              manualExtraTickets: 4,
+              totalTickets: 12,
+              lastOrderFolio: 'BX-4821',
+              lastOrderAt: '2026-06-17T18:15:00.000Z'
+            },
+            referralCode: null
+          }
+        }
+      });
+    });
+
+    await page.goto(new URL('/tickets', previewUrl).toString(), { waitUntil: 'domcontentloaded' });
+    await page.getByLabel('Teléfono').fill('5551234567');
+    await page.getByRole('button', { name: 'Consultar tickets' }).click();
+
+    await expect(page.getByRole('heading', { name: 'Tus oportunidades' })).toBeVisible();
+    await expect(page.getByText('Tickets extra manuales', { exact: true })).toBeVisible();
+    await expect(page.getByLabel('Total tickets')).toContainText('12');
+  });
 });
