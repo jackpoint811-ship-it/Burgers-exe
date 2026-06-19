@@ -1439,40 +1439,9 @@ const InternalLogin = ({
   sessionState: SessionState;
   sessionMessage?: string | null;
 }) => {
-  const [pin, setPin] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const copy = runtimeEnvironmentCopy[runtimeEnvironment];
   const publicOrderUrl = getPublicOrderUrlForEnvironment(runtimeEnvironment);
   const publicOrderLabel = getPublicOrderLabelForEnvironment(runtimeEnvironment);
-
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const trimmed = pin.trim();
-    if (!trimmed) {
-      setError("Escribe tu PIN de 4 dígitos.");
-      return;
-    }
-    if (!/^\d{4}$/.test(trimmed)) {
-      setError("El PIN debe tener 4 dígitos.");
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      await loginInternal(trimmed);
-      setPin("");
-      onLogin();
-    } catch (loginError) {
-      setError(
-        loginError instanceof Error
-          ? loginError.message
-          : "No se pudo iniciar sesión.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <main className="shell flex items-center justify-center py-8">
@@ -1506,50 +1475,114 @@ const InternalLogin = ({
             {publicOrderLabel}
           </a>
         </div>
-        <form className="space-y-4" onSubmit={(event) => void submit(event)}>
-          <label className="block text-sm font-bold text-zinc-100" htmlFor="pin">
-            PIN de acceso
-            <input
-              id="pin"
-              type="password"
-              className="input mt-2 min-h-12 text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"
-              placeholder="••••"
-              value={pin}
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={4}
-              pattern="[0-9]{4}"
-              aria-describedby={error ? "pin-error" : undefined}
-              onChange={(event) => {
-                setPin(event.target.value.replace(/\D/g, "").slice(0, 4));
-                setError(null);
-              }}
-              autoFocus
-              disabled={loading || checkingSession}
-            />
-          </label>
-          {error ? (
-            <p
-              id="pin-error"
-              className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100"
-            >
-              {error}
-            </p>
-          ) : null}
-          {!error && sessionMessage ? (
-            <p className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
-              {sessionMessage}
-            </p>
-          ) : null}
-          <Button
-            className="w-full bg-cyan-400 py-3 text-base font-black text-black disabled:opacity-50"
-            disabled={loading || checkingSession}
-          >
-            {loading || checkingSession ? "Entrando..." : "Entrar"}
-          </Button>
-        </form>
+        <SessionPinForm
+          inputId="pin"
+          label="PIN de acceso"
+          submitLabel="Entrar"
+          submitBusyLabel="Entrando..."
+          onSuccess={onLogin}
+          disabled={checkingSession}
+          notice={sessionMessage}
+        />
       </section>
     </main>
+  );
+};
+
+const SessionPinForm = ({
+  inputId,
+  label,
+  submitLabel,
+  submitBusyLabel,
+  onSuccess,
+  disabled = false,
+  notice = null,
+  autoFocus = true,
+}: {
+  inputId: string;
+  label: string;
+  submitLabel: string;
+  submitBusyLabel: string;
+  onSuccess: () => void;
+  disabled?: boolean;
+  notice?: string | null;
+  autoFocus?: boolean;
+}) => {
+  const [pin, setPin] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const trimmed = pin.trim();
+    if (!trimmed) {
+      setError("Escribe tu PIN de 4 dígitos.");
+      return;
+    }
+    if (!/^\d{4}$/.test(trimmed)) {
+      setError("El PIN debe tener 4 dígitos.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      await loginInternal(trimmed);
+      setPin("");
+      onSuccess();
+    } catch (loginError) {
+      setError(
+        loginError instanceof Error
+          ? loginError.message
+          : "No se pudo iniciar sesión.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form className="space-y-4" onSubmit={(event) => void submit(event)}>
+      <label className="block text-sm font-bold text-zinc-100" htmlFor={inputId}>
+        {label}
+        <input
+          id={inputId}
+          type="password"
+          className="input mt-2 min-h-12 text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"
+          placeholder="••••"
+          value={pin}
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          maxLength={4}
+          pattern="[0-9]{4}"
+          aria-describedby={error ? `${inputId}-error` : undefined}
+          onChange={(event) => {
+            setPin(event.target.value.replace(/\D/g, "").slice(0, 4));
+            setError(null);
+          }}
+          autoFocus={autoFocus}
+          disabled={loading || disabled}
+        />
+      </label>
+      {error ? (
+        <p
+          id={`${inputId}-error`}
+          className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100"
+        >
+          {error}
+        </p>
+      ) : null}
+      {!error && notice ? (
+        <p className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
+          {notice}
+        </p>
+      ) : null}
+      <Button
+        className="w-full bg-cyan-400 py-3 text-base font-black text-black disabled:opacity-50"
+        disabled={loading || disabled}
+      >
+        {loading || disabled ? submitBusyLabel : submitLabel}
+      </Button>
+    </form>
   );
 };
 
@@ -2013,10 +2046,17 @@ const HomePanel = ({
   );
 };
 
+const getAdminAuthModeHint = (authMode: InternalAuthMode) =>
+  authMode === "admin-only"
+    ? "Modo admin-only activo. Admin mantiene PIN interno y esta URL debe quedar detrás de protección externa."
+    : "Modo seguro global activo. Toda la app sigue pidiendo PIN antes de abrir.";
+
 const AdminReportsPanel = ({
   runtime,
+  authMode,
 }: {
   runtime: OrdersRuntime;
+  authMode: InternalAuthMode;
 }) => (
   <div className="grid gap-3 xl:grid-cols-[1.1fr_0.9fr]">
     <Card className="p-4">
@@ -2057,7 +2097,7 @@ const AdminReportsPanel = ({
         </div>
       </div>
       <p className="mt-3 text-xs text-zinc-500">
-        Admin sigue detrás del auth global actual hasta definir una capa externa dedicada.
+        {getAdminAuthModeHint(authMode)}
       </p>
     </Card>
   </div>
@@ -2066,25 +2106,38 @@ const AdminReportsPanel = ({
 const AdminGate = ({
   authMode,
   sessionActive,
+  onUnlock,
   children,
 }: {
   authMode: InternalAuthMode;
   sessionActive: boolean;
+  onUnlock: () => void;
   children: ReactNode;
 }) => {
   if (!shouldGateAdminInternally(authMode) || sessionActive) return <>{children}</>;
 
   return (
-    <Card className="p-4">
-      <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
-        Acceso protegido
-      </p>
-      <h2 className="mt-1 text-xl font-black text-zinc-50">
-        Admin requiere sesión
-      </h2>
-      <p className="mt-2 text-sm text-zinc-400">
-        Los módulos internos permanecen bloqueados hasta validar la sesión de Chekeo.
-      </p>
+    <Card className="p-4 sm:p-5">
+      <div className="max-w-md">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
+          Admin protegido
+        </p>
+        <h2 className="mt-1 text-xl font-black text-zinc-50">
+          Acceso Admin
+        </h2>
+        <p className="mt-2 text-sm text-zinc-400">
+          Admin siempre requiere PIN interno. Home, Pedidos, Cocina y Pagos solo pueden abrirse sin PIN global cuando la URL ya está protegida externamente.
+        </p>
+        <div className="mt-4 rounded-2xl border border-cyan-400/20 bg-zinc-950/70 p-4">
+          <SessionPinForm
+            inputId="admin-pin"
+            label="PIN Admin"
+            submitLabel="Desbloquear Admin"
+            submitBusyLabel="Desbloqueando..."
+            onSuccess={onUnlock}
+          />
+        </div>
+      </div>
     </Card>
   );
 };
@@ -2095,6 +2148,7 @@ const AdminWorkspace = ({
   orders,
   runtime,
   runtimeEnvironment,
+  authMode,
   onArchiveCancelled,
 }: {
   view: AdminViewKey;
@@ -2102,6 +2156,7 @@ const AdminWorkspace = ({
   orders: InternalOrder[];
   runtime: OrdersRuntime;
   runtimeEnvironment: ChekeoRuntimeEnvironment;
+  authMode: InternalAuthMode;
   onArchiveCancelled: (order: InternalOrder) => Promise<void>;
 }) => {
   const activeView = adminViews.find((option) => option.key === view) ?? adminViews[0];
@@ -2160,7 +2215,7 @@ const AdminWorkspace = ({
         sessionActive={runtime.sessionActive}
       />
     ) : view === "reportes" ? (
-      <AdminReportsPanel runtime={runtime} />
+      <AdminReportsPanel runtime={runtime} authMode={authMode} />
     ) : (
       <div className="admin-hub">
         {adminModuleGroups.map((group) => {
@@ -2290,7 +2345,7 @@ const AdminWorkspace = ({
           </div>
         </div>
         <p className="mt-3 text-xs text-zinc-500">
-          Auth global se mantiene temporalmente por seguridad hasta definir Cloudflare Access u otra capa externa.
+          {getAdminAuthModeHint(authMode)}
         </p>
       </Card>
       {content}
@@ -4750,6 +4805,14 @@ export function InternalChekeoApp() {
     ],
   );
 
+  const activateInternalSession = useCallback(() => {
+    loggedRef.current = true;
+    setLogged(true);
+    setSessionState("active");
+    setOrdersError(null);
+    void loadLiveOrders(shouldIncludeTerminalOrders(tab, adminView), "session");
+  }, [adminView, loadLiveOrders, tab]);
+
   useEffect(() => {
     let cancelled = false;
     const checkSession = async () => {
@@ -5115,13 +5178,18 @@ export function InternalChekeoApp() {
       />
     ),
     admin: (
-      <AdminGate authMode={authMode} sessionActive={runtime.sessionActive}>
+      <AdminGate
+        authMode={authMode}
+        sessionActive={runtime.sessionActive}
+        onUnlock={activateInternalSession}
+      >
         <AdminWorkspace
           view={adminView}
           setView={setAdminView}
           orders={orders}
           runtime={runtime}
           runtimeEnvironment={runtimeEnvironment}
+          authMode={authMode}
           onArchiveCancelled={archiveCancelledOrder}
         />
       </AdminGate>
@@ -5134,12 +5202,7 @@ export function InternalChekeoApp() {
         runtimeEnvironment={runtimeEnvironment}
         sessionState={sessionState}
         sessionMessage={ordersError}
-        onLogin={() => {
-          loggedRef.current = true;
-          setLogged(true);
-          setSessionState("active");
-          void loadLiveOrders(shouldIncludeTerminalOrders(tab, adminView));
-        }}
+        onLogin={activateInternalSession}
       />
     );
   return (

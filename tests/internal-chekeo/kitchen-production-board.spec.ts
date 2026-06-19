@@ -52,6 +52,8 @@ const viewports = [
   { name: "tablet-768", width: 768, height: 1024 },
   { name: "desktop-1280", width: 1280, height: 900 },
 ] as const;
+const validInternalPin = "0485";
+const isAdminOnlyMode = process.env.VITE_INTERNAL_AUTH_MODE === "admin-only";
 
 const isoMinutesAgo = (minutes: number) =>
   new Date(Date.now() - minutes * 60_000).toISOString();
@@ -842,6 +844,19 @@ const installKitchenApiMocks = async (page: Page) => {
   });
 
   await page.route("**/api/internal-v2-auth/login", async (route) => {
+    const payload = JSON.parse(route.request().postData() || "{}") as {
+      pin?: string;
+    };
+    if (payload.pin !== validInternalPin) {
+      await route.fulfill({
+        status: 401,
+        json: {
+          ok: false,
+          error: { code: "UNAUTHORIZED", message: "PIN incorrecto." },
+        },
+      });
+      return;
+    }
     state.authenticated = true;
     await route.fulfill({
       json: { ok: true, data: { authenticated: true } },
@@ -986,7 +1001,7 @@ const installKitchenApiMocks = async (page: Page) => {
 
 const loginToChekeo = async (page: Page) => {
   await page.goto("/", { waitUntil: "networkidle" });
-  await page.locator('input[type="password"]').fill("0485");
+  await page.locator('input[type="password"]').fill(validInternalPin);
   await page.getByRole("button", { name: /Entrar/i }).click();
   await expect(page.getByRole("heading", { name: "Base operativa para Home" })).toBeVisible();
   await expect(page.getByText("Mini Resumen K")).toBeVisible();
@@ -1012,6 +1027,8 @@ const openKitchenFromHome = async (page: Page) => {
 };
 
 test.describe("internal chekeo kitchen production board", () => {
+  test.skip(isAdminOnlyMode, "This suite validates the default global secure mode.");
+
   test("keeps the global auth gate before the operation shell", async ({ page }) => {
     await installKitchenApiMocks(page);
     await page.goto("/", { waitUntil: "networkidle" });
@@ -1021,7 +1038,7 @@ test.describe("internal chekeo kitchen production board", () => {
     await expect(page.getByRole("heading", { name: "Base operativa para Home" })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Hub de módulos de Chekeo" })).toHaveCount(0);
 
-    await page.locator('input[type="password"]').fill("0485");
+    await page.locator('input[type="password"]').fill(validInternalPin);
     await page.getByRole("button", { name: /Entrar/i }).click();
     await expect(page.getByRole("heading", { name: "Base operativa para Home" })).toBeVisible();
 
@@ -1257,7 +1274,7 @@ test.describe("internal chekeo kitchen production board", () => {
     await expect(page.getByRole("link", { name: /Página pública/i })).toBeVisible();
     await expect(page.getByText("Abrir página", { exact: true })).toBeVisible();
     await expect(
-      page.getByText(/Auth global se mantiene temporalmente por seguridad/i),
+      page.getByText(/Modo seguro global activo\. Toda la app sigue pidiendo PIN antes de abrir\./i),
     ).toBeVisible();
 
     await openAdminSection(page, "Datos bancarios");
@@ -1415,4 +1432,67 @@ test.describe("internal chekeo kitchen production board", () => {
       expect(raffleOverflow).toBeLessThanOrEqual(1);
     });
   }
+});
+
+test.describe("internal chekeo admin-only security mode", () => {
+  test.skip(!isAdminOnlyMode, "Admin-only assertions run only when the explicit mode is enabled.");
+
+  test("keeps Admin behind its own PIN in admin-only mode", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await installKitchenApiMocks(page);
+    await page.goto("/", { waitUntil: "networkidle" });
+
+    await expect(page.getByLabel("PIN de acceso")).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Base operativa para Home" })).toBeVisible();
+    await expect(page.locator("button.tab")).toHaveCount(5);
+
+    const homeOverflow = await page.evaluate(() => {
+      const root = document.documentElement;
+      return root.scrollWidth - root.clientWidth;
+    });
+    expect(homeOverflow).toBeLessThanOrEqual(1);
+
+    await openPrimaryTab(page, "Pedidos");
+    await expect(page.getByRole("heading", { name: "Centro operativo de pedidos" })).toBeVisible();
+    await openPrimaryTab(page, "Cocina");
+    await expect(page.getByText("Producción actual", { exact: true })).toBeVisible();
+    await openPrimaryTab(page, "Pagos");
+    await expect(page.getByRole("heading", { name: "Centro operativo de cobros" })).toBeVisible();
+
+    await openPrimaryTab(page, "Admin");
+    await expect(page.getByRole("heading", { name: "Acceso Admin" })).toBeVisible();
+    await expect(page.getByLabel("PIN Admin")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Hub de módulos de Chekeo" })).toHaveCount(0);
+
+    const adminGateOverflow = await page.evaluate(() => {
+      const root = document.documentElement;
+      return root.scrollWidth - root.clientWidth;
+    });
+    expect(adminGateOverflow).toBeLessThanOrEqual(1);
+
+    await page.getByLabel("PIN Admin").fill("1111");
+    await page.getByRole("button", { name: /Desbloquear Admin/i }).click();
+    await expect(page.getByText("PIN incorrecto.")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Hub de módulos de Chekeo" })).toHaveCount(0);
+
+    await page.getByLabel("PIN Admin").fill(validInternalPin);
+    await page.getByRole("button", { name: /Desbloquear Admin/i }).click();
+    await expect(page.getByRole("heading", { name: "Hub de módulos de Chekeo" })).toBeVisible();
+
+    await openPrimaryTab(page, "Home");
+    await expect(page.getByRole("heading", { name: "Base operativa para Home" })).toBeVisible();
+    await openPrimaryTab(page, "Admin");
+    await expect(page.getByRole("heading", { name: "Hub de módulos de Chekeo" })).toBeVisible();
+
+    const unlockedAdminOverflow = await page.evaluate(() => {
+      const root = document.documentElement;
+      return root.scrollWidth - root.clientWidth;
+    });
+    expect(unlockedAdminOverflow).toBeLessThanOrEqual(1);
+
+    await page.getByRole("button", { name: /Cerrar sesion/i }).click();
+    await expect(page.getByLabel("PIN de acceso")).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Acceso Admin" })).toBeVisible();
+    await expect(page.getByLabel("PIN Admin")).toBeVisible();
+  });
 });
