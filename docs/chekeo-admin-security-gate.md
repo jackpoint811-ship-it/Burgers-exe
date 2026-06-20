@@ -2,17 +2,32 @@
 
 ## Estado actual
 
-Chekeo Operación v1 sigue protegido por auth global. Al abrir la app, `InternalChekeoApp` consulta `GET /api/internal-v2-auth/status`; si no hay sesión válida, renderiza `InternalLogin` y no monta `Home`, `Pedidos`, `Cocina`, `Pagos` ni `Admin`.
+Chekeo Operación v1 ahora reconoce dos modos de auth:
 
-El login usa `POST /api/internal-v2-auth/login` con el PIN ingresado por el operador. El backend valida ese PIN contra `BOG_INTERNAL_PIN`, crea una sesión firmada y responde con la cookie HttpOnly `bog_internal_session`. La sesión dura 12 horas y se valida en cada endpoint interno mediante `requireAdminToken`.
+- `global`: modo por defecto y seguro. Si no existe una sesión válida, `InternalChekeoApp` renderiza `InternalLogin` antes de montar `Home`, `Pedidos`, `Cocina`, `Pagos` o `Admin`.
+- `admin-only`: bandera explícita y auditable reservada para el futuro flujo con protección externa real y política backend compatible.
 
-Logout usa `POST /api/internal-v2-auth/logout`, que expira `bog_internal_session`. En el cliente, logout también limpia pedidos cargados, errores, selección activa, avisos y vuelve al estado bloqueado por login global.
+El PIN usa `POST /api/internal-v2-auth/login`. El backend valida contra `BOG_INTERNAL_PIN`, crea una sesión firmada y responde con la cookie HttpOnly `bog_internal_session`. La sesión dura 12 horas y se valida en cada endpoint interno con `requireAdminToken`.
 
-Si una llamada interna responde `401` o `UNAUTHORIZED`, `InternalChekeoApp` ejecuta expiración local de sesión, vuelve a datos mock no operables y muestra el login global.
+`GET /api/internal-v2-auth/status` revisa si la cookie actual sigue activa. `POST /api/internal-v2-auth/logout` expira `bog_internal_session`.
+
+No se usa `localStorage` como fuente de verdad. El frontend solo refleja el estado de la cookie de sesión.
+
+## Estado real de `admin-only`
+
+Hoy `VITE_INTERNAL_AUTH_MODE=admin-only` no abre el shell sin PIN global.
+
+Chekeo mantiene el gate global incluso con esa bandera porque:
+
+- los endpoints internos siguen dependiendo de `bog_internal_session`;
+- no existe todavía una política backend de external-auth que cree una sesión operativa real;
+- abrir `Home`, `Pedidos`, `Cocina` o `Pagos` sin esa sesión dejaría una operación falsa o degradada.
+
+En otras palabras: `admin-only` queda preparado, documentado y visible como intención de diseño, pero no es un modo operativo completo en este PR.
 
 ## Endpoints protegidos
 
-Los endpoints internos de pedidos, cocina, pagos, cierre, exportes, catálogo, ingredientes y sorteos dependen de la cookie de sesión actual. Entre ellos:
+Los endpoints internos de pedidos, cocina, pagos, cierre, exportes, catálogo, ingredientes y sorteos siguen protegidos por la sesión actual. Entre ellos:
 
 - `/api/orders-v2-admin*`
 - `/api/kitchen-v2-admin/summary-k`
@@ -20,37 +35,43 @@ Los endpoints internos de pedidos, cocina, pagos, cierre, exportes, catálogo, i
 - `/api/ingredients-v2-admin*`
 - `/api/raffles-v2-admin*`
 
-Estos endpoints no deben quedar accesibles sin sesión mientras el sitio no tenga una capa externa confirmada.
+`admin-only` no debe entenderse como bypass del backend. Mientras no exista una política backend compatible, Chekeo conserva el PIN global.
 
-## Preparación de PR-2
+## Cómo usar la bandera `admin-only`
 
-El cliente ahora reconoce el modo conceptual `VITE_INTERNAL_AUTH_MODE`, con `global` como default seguro. El modo futuro `admin-only` queda normalizado, pero no activa exposición directa de la app porque `shouldUseGlobalInternalAuthGate()` mantiene la compuerta global siempre encendida en este PR.
+Solo considerar `admin-only` cuando la URL interna ya tenga una capa externa confirmada, por ejemplo Cloudflare Access o un control equivalente.
 
-`AdminGate` queda conectado alrededor de `Admin` para marcar el punto de integración futuro. En el comportamiento actual no cambia nada: como la app completa sigue detrás del login global, `AdminGate` recibe `sessionActive=true` cuando Admin puede renderizar.
+Variable:
 
-## Estado futuro previsto
+- `VITE_INTERNAL_AUTH_MODE=admin-only`
 
-El modo Admin-only solo debe activarse cuando exista una protección externa validada para la URL interna, por ejemplo Cloudflare Access. En ese escenario:
+Ejemplo de configuración:
 
-- Cloudflare Access protege la entrada a Chekeo.
-- `Home`, `Pedidos`, `Cocina` y `Pagos` pueden abrir sin PIN interno, pero solo dentro de la URL ya protegida.
-- `Admin` mantiene PIN interno o una sesión interna equivalente para módulos técnicos.
-- Los endpoints internos siguen protegidos por backend; cualquier cambio de frontend debe acompañarse de una estrategia de endpoints compatible.
+```powershell
+$env:VITE_INTERNAL_AUTH_MODE = "admin-only"
+npm run build:internal
+```
 
-## Condiciones para activar Admin-only
+Si la variable falta, tiene un valor desconocido o no se configura, Chekeo vuelve a `global`.
 
-No activar `admin-only` hasta cumplir todo esto:
+Importante:
 
-- Cloudflare Access u otra capa externa está configurada y probada en preview.
-- La URL interna no es pública sin esa protección.
-- Hay QA que demuestre que `Admin` no renderiza módulos sin sesión interna.
-- Los endpoints usados por `Home`, `Pedidos`, `Cocina` y `Pagos` tienen una política backend definida para el nuevo modelo.
-- Logout y expiración dejan un estado claro y no exponen datos internos.
+- hoy esa bandera no desactiva el PIN global;
+- no activarla en preview o prod esperando operación sin PIN;
+- no marcarla como lista hasta que frontend y backend cierren el mismo modelo de sesión real.
+
+## Condiciones antes de activarlo
+
+- La URL interna ya no es pública sin protección externa.
+- Existe una política backend explícita para external-auth que no dependa de headers spoofeables.
+- Preview ya validó que la operación no cae a mock o fallback por falta de sesión real.
+- El equipo entiende que no basta con un flag de frontend para operar sin PIN global.
+- No se están usando secretos en frontend ni docs.
 
 ## Reglas de seguridad
 
 - No hardcodear PIN.
 - No reemplazar `BOG_INTERNAL_PIN` desde frontend.
 - No exponer `bog_internal_session` a JavaScript.
-- No usar `admin-only` como bypass del backend.
-- No quitar el login global hasta que el PR de protección externa esté aprobado.
+- No activar `admin-only` sin protección externa confirmada.
+- No usar `admin-only` como bypass de endpoints internos.
