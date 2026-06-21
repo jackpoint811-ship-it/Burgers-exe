@@ -1408,17 +1408,17 @@ const SourcePanel = ({
         </div>
       </div>
       {runtime.limitWarning ? (
-        <p className="mt-3 rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-100">
+        <p className="state-message state-message--warning mt-3">
           {runtime.limitWarning}
         </p>
       ) : null}
       {runtime.error ? (
-        <p className="mt-2 rounded bg-rose-500/10 px-2 py-1 text-xs text-rose-200">
+        <p className="state-message state-message--error mt-2">
           {runtime.error}
         </p>
       ) : null}
       {runtime.notice ? (
-        <p className="mt-2 rounded bg-emerald-500/10 px-2 py-1 text-xs text-emerald-200">
+        <p className="state-message state-message--success mt-2">
           {runtime.notice}
         </p>
       ) : null}
@@ -1478,7 +1478,7 @@ const InternalLogin = ({
           </a>
         </div>
         {authMode === "admin-only" ? (
-          <p className="mb-4 rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
+          <p className="state-message state-message--warning mb-4">
             {getAdminAuthModeHint(authMode)}
           </p>
         ) : null}
@@ -1571,15 +1571,12 @@ const SessionPinForm = ({
         />
       </label>
       {error ? (
-        <p
-          id={`${inputId}-error`}
-          className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100"
-        >
+        <p id={`${inputId}-error`} className="state-message state-message--error">
           {error}
         </p>
       ) : null}
       {!error && notice ? (
-        <p className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
+        <p className="state-message state-message--warning">
           {notice}
         </p>
       ) : null}
@@ -1619,22 +1616,22 @@ const OperatorHeader = ({
 
   return (
     <header className={`card shell-header shell-header--${runtimeEnvironment}`}>
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div className="shell-header__layout">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-cyan-200">
+            <p className="shell-header__eyebrow">
               Operación de hoy
             </p>
             <EnvironmentBadge environment={runtimeEnvironment} />
           </div>
-          <h1 className="mt-2 text-xl font-black tracking-tight text-zinc-50 md:text-2xl">
+          <h1 className="shell-header__title">
             Chekeo Burgers.exe
           </h1>
-          <p className="mt-1 max-w-3xl text-sm text-zinc-300">
+          <p className="shell-header__summary">
             {truth.headline}
           </p>
         </div>
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[220px]">
+        <div className="shell-header__actions">
           <a
             className="runtime-environment-link w-full"
             href={publicOrderUrl}

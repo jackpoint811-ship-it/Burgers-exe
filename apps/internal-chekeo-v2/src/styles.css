@@ -1,25 +1,45 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-body{font-family:Inter,system-ui,sans-serif;background:#050507;color:#f4f4f5;min-width:320px}
-button{min-height:44px}
-.shell{@apply mx-auto min-h-screen max-w-7xl space-y-3 overflow-x-hidden p-2 md:p-4}
+:root{
+  --chekeo-bg:#020617;
+  --chekeo-surface:#09090b;
+  --chekeo-surface-raised:#111113;
+  --chekeo-border:rgba(63,63,70,.88);
+  --chekeo-border-strong:rgba(34,197,94,.36);
+  --chekeo-text:#f8fafc;
+  --chekeo-muted:#a1a1aa;
+  --chekeo-soft:#d4d4d8;
+  --chekeo-accent:#22c55e;
+  --chekeo-accent-strong:#84cc16;
+  --chekeo-info:#22d3ee;
+  --chekeo-warning:#facc15;
+  --chekeo-danger:#fb7185;
+  --chekeo-focus:#a3e635;
+}
+body{font-family:Inter,system-ui,sans-serif;background:radial-gradient(circle at top left,rgba(34,197,94,.10),transparent 30rem),linear-gradient(180deg,#020617 0%,#050507 42%,#020617 100%);color:var(--chekeo-text);min-width:320px;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+::selection{background:rgba(163,230,53,.34);color:#f8fafc}
+button,input,select,textarea{font:inherit}
+button{min-height:44px;touch-action:manipulation}
+a,button,[role="button"],input,select,textarea,.tab{touch-action:manipulation}
+:where(a,button,input,select,textarea,[tabindex]):focus-visible{outline:2px solid var(--chekeo-focus);outline-offset:3px}
+.shell{@apply mx-auto min-h-screen max-w-7xl space-y-2.5 overflow-x-hidden p-2 sm:p-3 md:space-y-3 md:p-4}
 .card{@apply rounded-xl border border-zinc-800 bg-zinc-950/90 p-3 shadow-xl}
 .header-compact{@apply flex items-center justify-between gap-2 py-1.5}
 .muted{@apply text-xs text-zinc-400}
-.btn{@apply min-h-11 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400}
-.btn-sm{@apply min-h-11 rounded-lg border border-zinc-700 px-3 py-2 text-[11px] font-bold}
+.btn{@apply min-h-11 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-lime-300}
+.btn-sm{@apply min-h-11 rounded-lg border border-zinc-700 px-3 py-2 text-xs font-bold}
 .danger{@apply border-rose-700 text-rose-300}
-.input{@apply mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2}
+.input{@apply mt-1 min-h-11 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-zinc-100 placeholder:text-zinc-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-lime-300}
 .tabs-shell{@apply space-y-2}
-.tabs-shell__meta{@apply flex items-center justify-between px-1 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500}
-.tabs{@apply flex gap-2 overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-950/95 p-1.5 xl:grid xl:grid-cols-5 xl:overflow-visible}
-.tab{@apply flex min-h-[58px] min-w-[148px] shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-left text-[11px] text-zinc-300 data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400 xl:min-w-0}
+.tabs-shell__meta{@apply flex items-center justify-between px-1 text-[11px] font-black uppercase tracking-[0.14em] text-zinc-500}
+.tabs{@apply flex gap-2 overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-950/95 p-1.5 shadow-xl shadow-black/20 xl:grid xl:grid-cols-5 xl:overflow-visible}
+.tab{@apply flex min-h-[52px] min-w-[132px] shrink-0 items-center gap-2 rounded-xl px-2.5 py-2 text-left text-xs text-zinc-300 data-[state=active]:border-lime-300/30 data-[state=active]:bg-lime-300/10 data-[state=active]:text-lime-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-lime-300 xl:min-w-0}
 .tab--admin{@apply border border-zinc-800 bg-zinc-900/70 data-[state=active]:border-zinc-500 data-[state=active]:bg-zinc-800 data-[state=active]:text-zinc-100}
 .tab__icon{@apply inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900/70 text-zinc-100}
 .tab__copy{@apply flex min-w-0 flex-col}
 .tab__label{@apply text-sm font-semibold text-zinc-100}
-.tab__hint{@apply text-[10px] uppercase tracking-[0.18em] text-zinc-500}
+.tab__hint{@apply text-[10px] uppercase tracking-[0.14em] text-zinc-500}
 .row{@apply flex items-center justify-between gap-2 rounded-lg border border-zinc-800 bg-zinc-900/60 p-2 text-left}
 .chip{@apply rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-1 text-xs text-cyan-200}
 .summary-grid{@apply grid gap-2 rounded-xl border border-zinc-800 bg-zinc-950/70 p-2 min-[520px]:grid-cols-2 lg:grid-cols-6}
@@ -29,20 +49,25 @@ button{min-height:44px}
 .summary-strip__grid{@apply grid gap-2 min-[560px]:grid-cols-2 xl:grid-cols-5}
 .summary-card{@apply rounded-xl border border-zinc-800 bg-zinc-900/65 p-3}
 .info-pill{@apply rounded-lg border border-zinc-800 bg-zinc-950/70 px-3 py-2}
-.shell-header{@apply rounded-2xl border border-zinc-800 bg-zinc-950/95 p-4 shadow-xl}
+.shell-header{@apply rounded-2xl border border-zinc-800 bg-zinc-950/95 p-3 shadow-xl md:p-4}
 .shell-header--preview{@apply border-amber-400/50 bg-amber-500/10}
 .shell-header--production{@apply border-rose-400/50 bg-rose-500/10}
 .shell-header--local{@apply border-sky-400/40 bg-sky-500/10}
+.shell-header__layout{@apply flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between}
+.shell-header__eyebrow{@apply text-[11px] font-black uppercase tracking-[0.18em] text-cyan-200}
+.shell-header__title{@apply mt-1 text-lg font-black tracking-tight text-zinc-50 md:text-2xl}
+.shell-header__summary{@apply mt-1 max-w-3xl text-sm leading-6 text-zinc-300}
+.shell-header__actions{@apply flex w-full flex-col gap-2 sm:w-auto sm:min-w-[220px]}
 .truth-shell{@apply rounded-2xl border border-zinc-800 bg-zinc-950/90 p-3 shadow-xl}
 .truth-shell__top{@apply flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between}
 .truth-shell__intro{@apply min-w-0}
-.truth-shell__eyebrow{@apply text-[11px] font-black uppercase tracking-[0.24em] text-cyan-200}
+.truth-shell__eyebrow{@apply text-[11px] font-black uppercase tracking-[0.18em] text-cyan-200}
 .truth-shell__title{@apply mt-1 text-lg font-black text-zinc-50 md:text-xl}
-.truth-shell__summary{@apply mt-1 text-sm text-zinc-300}
+.truth-shell__summary{@apply mt-1 text-sm leading-6 text-zinc-300}
 .truth-shell__action{@apply flex flex-col gap-2 xl:min-w-[220px] xl:items-end}
-.truth-shell__grid{@apply mt-3 grid gap-2 min-[520px]:grid-cols-2 xl:grid-cols-6}
-.truth-shell__card{@apply rounded-xl border border-zinc-800 bg-zinc-900/70 p-3}
-.truth-shell__label{@apply mb-2 text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500}
+.truth-shell__grid{@apply mt-3 flex gap-2 overflow-x-auto pb-1 md:grid md:grid-cols-3 md:overflow-visible md:pb-0 xl:grid-cols-6}
+.truth-shell__card{@apply min-w-[9rem] rounded-xl border border-zinc-800 bg-zinc-900/70 p-3}
+.truth-shell__label{@apply mb-2 text-[11px] font-black uppercase tracking-[0.12em] text-zinc-500}
 .truth-pill{@apply inline-flex min-h-8 items-center rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.12em]}
 .truth-pill--system{@apply border-cyan-400/40 bg-cyan-400/10 text-cyan-100}
 .truth-pill--success{@apply border-lime-400/40 bg-lime-400/10 text-lime-100}
@@ -70,11 +95,17 @@ button{min-height:44px}
 .runtime-environment-banner--preview{@apply border-amber-400/60 bg-amber-500/15 shadow-[0_0_22px_rgba(251,191,36,0.16)]}
 .runtime-environment-banner--production{@apply border-rose-400/60 bg-rose-500/15 shadow-[0_0_22px_rgba(251,113,133,0.16)]}
 .runtime-environment-banner--local{@apply border-sky-400/50 bg-sky-500/10 shadow-[0_0_22px_rgba(56,189,248,0.12)]}
-.runtime-environment-link{@apply inline-flex min-h-11 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs font-black text-zinc-50 hover:bg-zinc-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400}
+.runtime-environment-link{@apply inline-flex min-h-11 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs font-black text-zinc-50 hover:bg-zinc-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-lime-300}
 .runtime-login-notice{@apply mb-4 rounded-xl border border-zinc-800 bg-zinc-900/65 p-3 text-left}
 .surface-status{@apply flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between}
 .surface-status__copy{@apply min-w-0 space-y-1}
 .surface-status__meta{@apply flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center}
+.state-message{@apply rounded-lg border px-3 py-2 text-sm leading-5}
+.state-message--info{@apply border-cyan-400/25 bg-cyan-400/10 text-cyan-100}
+.state-message--success{@apply border-emerald-400/25 bg-emerald-400/10 text-emerald-100}
+.state-message--warning{@apply border-amber-400/25 bg-amber-400/10 text-amber-100}
+.state-message--error{@apply border-rose-400/30 bg-rose-400/10 text-rose-100}
+.state-message--loading{@apply border-zinc-700 bg-zinc-900/80 text-zinc-200}
 .kitchen-production{@apply space-y-3}
 .kitchen-hero{@apply rounded-3xl border border-zinc-800 bg-[radial-gradient(circle_at_top_left,rgba(132,204,22,0.16),transparent_32%),linear-gradient(135deg,rgba(9,9,11,0.98),rgba(24,24,27,0.94))] p-3 shadow-xl md:p-4}
 .kitchen-hero__actions{@apply flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end}
@@ -134,7 +165,7 @@ button{min-height:44px}
 .orders-search span,.orders-filter-group span{@apply text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500}
 .orders-filter-group{@apply space-y-2}
 .orders-filter-pills{@apply flex flex-wrap gap-2}
-.orders-filter-pill{@apply rounded-full border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs font-bold text-zinc-200}
+.orders-filter-pill{@apply min-h-11 rounded-full border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs font-bold text-zinc-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-lime-300}
 .orders-filter-pill--active{@apply border-cyan-300 bg-cyan-300 text-black}
 .orders-card{@apply space-y-3}
 .orders-card__head{@apply flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between}
@@ -169,7 +200,7 @@ button{min-height:44px}
 .payments-toolbar__group{@apply grid gap-3}
 .payments-toolbar__label,.payments-search span{@apply text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500}
 .payments-pill-row{@apply mt-2 flex flex-wrap gap-2}
-.payments-filter-pill{@apply rounded-full border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs font-bold text-zinc-200}
+.payments-filter-pill{@apply min-h-11 rounded-full border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs font-bold text-zinc-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-lime-300}
 .payments-filter-pill--active{@apply border-cyan-300 bg-cyan-300 text-black}
 .payments-card{@apply space-y-3 rounded-3xl border border-zinc-800 bg-zinc-950/95 p-4 shadow-xl}
 .payments-card--pending{@apply border-amber-400/25 bg-[radial-gradient(circle_at_top_right,rgba(251,191,36,0.12),transparent_30%),rgba(9,9,11,0.98)]}
@@ -204,23 +235,23 @@ button{min-height:44px}
 .home-hero{@apply p-4}
 .home-hero__meta{@apply flex flex-wrap gap-2}
 .home-metrics{@apply mt-4 grid gap-2 min-[520px]:grid-cols-2 xl:grid-cols-4}
-.home-metric-card{@apply rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3 text-left}
-.home-metric-card__label{@apply text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500}
+.home-metric-card{@apply rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-lime-300}
+.home-metric-card__label{@apply text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-500}
 .home-metric-card__value{@apply mt-2 text-2xl font-black text-zinc-50}
 .home-metric-card__hint{@apply mt-1 text-[11px] text-zinc-400}
 .home-side-card{@apply p-4}
 .home-quick-actions{@apply mt-4 grid gap-2 min-[520px]:grid-cols-2 xl:grid-cols-1}
-.quick-action-card{@apply flex items-start gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3 text-left}
+.quick-action-card{@apply flex items-start gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-lime-300}
 .quick-action-card__icon{@apply inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-950 text-cyan-100}
 .quick-action-card__label{@apply text-sm font-bold text-zinc-50}
 .quick-action-card__hint{@apply mt-1 text-[11px] text-zinc-400}
 .admin-workspace-header{@apply overflow-hidden}
 .admin-workspace-header__actions{@apply flex w-full flex-col gap-2 xl:max-w-[460px] xl:items-stretch}
-.admin-back-button{@apply min-h-11 w-full justify-center rounded-xl px-3 py-2 text-sm font-black}
+.admin-back-button{@apply min-h-11 w-full justify-center rounded-xl px-3 py-2 text-sm font-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-lime-300}
 .admin-nav-shell{@apply rounded-2xl border border-zinc-800 bg-zinc-950/60 p-2}
 .admin-nav-shell__title{@apply mb-2 px-1 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500}
 .admin-nav{@apply grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 xl:grid-cols-3}
-.admin-nav__button{@apply flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-left text-sm font-semibold text-zinc-300}
+.admin-nav__button{@apply flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-left text-sm font-semibold text-zinc-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-lime-300}
 .admin-nav__button--active{@apply border-cyan-300/50 bg-cyan-400/10 text-cyan-100}
 .admin-nav__icon{@apply inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-950 text-cyan-100}
 .admin-nav__copy{@apply min-w-0}
@@ -234,7 +265,7 @@ button{min-height:44px}
 .admin-module-group__desc{@apply mt-1 text-sm text-zinc-400}
 .admin-module-group__count{@apply inline-flex min-h-8 w-fit items-center rounded-full border border-zinc-800 bg-zinc-900/70 px-3 text-[11px] font-black uppercase tracking-[0.16em] text-zinc-400}
 .admin-module-grid{@apply grid gap-3 md:grid-cols-2 xl:grid-cols-3}
-.admin-module-card{@apply flex min-h-[180px] cursor-pointer flex-col justify-between gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/75 p-4 text-left no-underline}
+.admin-module-card{@apply flex min-h-[180px] cursor-pointer flex-col justify-between gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/75 p-4 text-left no-underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-lime-300}
 .admin-module-card--link{@apply text-zinc-100}
 .admin-module-card__top{@apply flex items-start justify-between gap-3}
 .admin-module-card__icon{@apply inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-900 text-cyan-100}
