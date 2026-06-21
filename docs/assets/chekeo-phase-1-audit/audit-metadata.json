@@ -1,0 +1,1514 @@
+{
+  "previewUrl": "https://burgers-exe-internal-v2-preview.pages.dev/",
+  "reviewedAt": "2026-06-21T16:54:56.169Z",
+  "screenshots": [
+    {
+      "label": "Login mobile 390",
+      "filename": "login-preview-mobile.png",
+      "url": "https://burgers-exe-internal-v2-preview.pages.dev/",
+      "title": "Burgers.exe Internal Chekeo V2",
+      "text": "PREVIEW\n\nBurgers.exe\n\nCHEKEO\n\nPreview: valida sin tocar producción.\n\nPREVIEW\nNO ACTIVA\n\nNo asumas datos reales hasta ver D1 activo.\n\nVer Burgers.exe Preview\nPIN de acceso\nEntrar",
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "scrollHeight": 844,
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflowX": false,
+      "firstViewportText": "PREVIEWBurgers.exeChekeoPreview: valida sin tocar producción.PREVIEWNo activaNo asumas datos reales hasta ver D1 activo.Ver Burgers.exe PreviewPIN de accesoEntrar",
+      "buttons": [
+        "Entrar"
+      ],
+      "links": [
+        {
+          "text": "Ver Burgers.exe Preview",
+          "href": "https://burgers-exe-public-v2-preview.pages.dev/"
+        }
+      ],
+      "inputs": [
+        {
+          "tag": "input",
+          "type": "password",
+          "id": "pin",
+          "placeholder": "••••",
+          "label": "PIN de acceso"
+        }
+      ]
+    },
+    {
+      "label": "Home mobile 390",
+      "filename": "home-mobile-390.png",
+      "url": "https://burgers-exe-internal-v2-preview.pages.dev/",
+      "title": "Burgers.exe Internal Chekeo V2",
+      "text": "OPERACIÓN DE HOY\n\nPREVIEW\nChekeo Burgers.exe\nCerrar sesion\n\nESTADO OPERATIVO\n\nOperando en preview\nActualizar\n\nENTORNO\n\nPREVIEW\n\nSESIÓN\n\nACTIVA\nHome\nPedidos\nCocina\nPagos\nAdmin\n\nOPERACIÓN DE HOY\n\nBase operativa para Home\n\nHome concentra lectura rápida, accesos directos y el estado mínimo para arrancar sin mezclar módulos técnicos.\n\nDATOS LIVE\nPREVIEW\n\nPEDIDOS ACTIVOS\n\n0\n\nPedidos hoy que siguen abiertos\n\nPAGOS PENDIENTES\n\n0\n\nConfirmaciones por revisar\n\nPEDIDOS DE HOY\n\n0\n\nLectura del corte actual\n\nVENTA DE HOY\n\n$0.00\n\nSin cálculo de utilidad en este PR\n\nMINI RESUMEN K\n\nLectura rápida de producción\nBurgers / combos\n0\nGuarniciones\n0\nIngredientes\n0\nCosto estimado\n—\nAbrir Cocina\n\nACCESOS DIRECTOS\n\nMoverse sin ruido\n5 accesos\n\nPedidos\n\nEntregados y cancelaciones viven aquí\n\nCocina\n\nChecklist y producción actual\n\nPagos\n\nPendiente y pagado\n\nHistorial\n\nPasa a Admin\n\nCierre actual\n\nCorte y venta del día\n\nRESUMEN DE OPERACIÓN\n\nPedidos por resolver\n0 abiertos\n\nSin pedidos abiertos por resolver. Cuando entre uno nuevo aparecerá aquí.",
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "scrollHeight": 2019,
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflowX": false,
+      "firstViewportText": "Operación de hoyPREVIEWChekeo Burgers.exeOperando en previewVer Burgers.exe PreviewCerrar sesionPuedes validar flujo sin tocar producción.",
+      "buttons": [
+        "Cerrar sesion",
+        "Actualizar",
+        "Home",
+        "Pedidos",
+        "Cocina",
+        "Pagos",
+        "Admin",
+        "PEDIDOS ACTIVOS\n\n0\n\nPedidos hoy que siguen abiertos",
+        "PAGOS PENDIENTES\n\n0\n\nConfirmaciones por revisar",
+        "PEDIDOS DE HOY\n\n0\n\nLectura del corte actual",
+        "VENTA DE HOY\n\n$0.00\n\nSin cálculo de utilidad en este PR",
+        "Abrir Cocina",
+        "Pedidos\n\nEntregados y cancelaciones viven aquí",
+        "Cocina\n\nChecklist y producción actual",
+        "Pagos\n\nPendiente y pagado",
+        "Historial\n\nPasa a Admin",
+        "Cierre actual\n\nCorte y venta del día"
+      ],
+      "links": [
+        {
+          "text": "Ver Burgers.exe Preview",
+          "href": "https://burgers-exe-public-v2-preview.pages.dev/"
+        }
+      ],
+      "inputs": []
+    },
+    {
+      "label": "Pedidos mobile 390",
+      "filename": "pedidos-mobile-390.png",
+      "url": "https://burgers-exe-internal-v2-preview.pages.dev/",
+      "title": "Burgers.exe Internal Chekeo V2",
+      "text": "OPERACIÓN DE HOY\n\nPREVIEW\nChekeo Burgers.exe\nCerrar sesion\n\nESTADO OPERATIVO\n\nOperando en preview\nActualizar\n\nENTORNO\n\nPREVIEW\n\nSESIÓN\n\nACTIVA\nHome\nPedidos\nCocina\nPagos\nAdmin\nPREVIEW D1\nACTIVA\nOPERABLE EN PREVIEW\nINCLUYE TERMINALES\n\nCOMMAND CENTER\n\nPedidos activos\n0 VISIBLES\n0 LISTOS\n0 PAGO PENDIENTE\nBUSCAR POR FOLIO O CLIENTE\nESTADO\nTodos\nRecibido\nListo\nEntregado\nCancelado\nRANGO\nHoy\nSemana\nTodo\n\nTodavía no hay pedidos para revisar.\n\nCuando entre un pedido nuevo, aparecerá aquí.\n\nNo hay pedidos para ese filtro.\n\nAjusta estado, rango o búsqueda para volver a mostrar pedidos.",
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "scrollHeight": 1062,
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflowX": false,
+      "firstViewportText": "Operación de hoyPREVIEWChekeo Burgers.exeOperando en previewVer Burgers.exe PreviewCerrar sesionPuedes validar flujo sin tocar producción.",
+      "buttons": [
+        "Cerrar sesion",
+        "Actualizar",
+        "Home",
+        "Pedidos",
+        "Cocina",
+        "Pagos",
+        "Admin",
+        "Actualizar",
+        "Todos",
+        "Recibido",
+        "Listo",
+        "Entregado",
+        "Cancelado",
+        "Hoy",
+        "Semana",
+        "Todo"
+      ],
+      "links": [
+        {
+          "text": "Ver Burgers.exe Preview",
+          "href": "https://burgers-exe-public-v2-preview.pages.dev/"
+        }
+      ],
+      "inputs": [
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "",
+          "placeholder": "Ej. BX-102 o Andrea",
+          "label": "BUSCAR POR FOLIO O CLIENTE"
+        }
+      ]
+    },
+    {
+      "label": "Estado vacio mobile",
+      "filename": "estado-vacio-mobile.png",
+      "url": "https://burgers-exe-internal-v2-preview.pages.dev/",
+      "title": "Burgers.exe Internal Chekeo V2",
+      "text": "OPERACIÓN DE HOY\n\nPREVIEW\nChekeo Burgers.exe\nCerrar sesion\n\nESTADO OPERATIVO\n\nOperando en preview\nActualizar\n\nENTORNO\n\nPREVIEW\n\nSESIÓN\n\nACTIVA\nHome\nPedidos\nCocina\nPagos\nAdmin\nPREVIEW D1\nACTIVA\nOPERABLE EN PREVIEW\nINCLUYE TERMINALES\n\nCOMMAND CENTER\n\nPedidos activos\n0 VISIBLES\n0 LISTOS\n0 PAGO PENDIENTE\nBUSCAR POR FOLIO O CLIENTE\nESTADO\nTodos\nRecibido\nListo\nEntregado\nCancelado\nRANGO\nHoy\nSemana\nTodo\n\nTodavía no hay pedidos para revisar.\n\nCuando entre un pedido nuevo, aparecerá aquí.\n\nNo hay pedidos para ese filtro.\n\nAjusta estado, rango o búsqueda para volver a mostrar pedidos.",
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "scrollHeight": 1062,
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflowX": false,
+      "firstViewportText": "Operación de hoyPREVIEWChekeo Burgers.exeOperando en previewVer Burgers.exe PreviewCerrar sesionPuedes validar flujo sin tocar producción.",
+      "buttons": [
+        "Cerrar sesion",
+        "Actualizar",
+        "Home",
+        "Pedidos",
+        "Cocina",
+        "Pagos",
+        "Admin",
+        "Actualizar",
+        "Todos",
+        "Recibido",
+        "Listo",
+        "Entregado",
+        "Cancelado",
+        "Hoy",
+        "Semana",
+        "Todo"
+      ],
+      "links": [
+        {
+          "text": "Ver Burgers.exe Preview",
+          "href": "https://burgers-exe-public-v2-preview.pages.dev/"
+        }
+      ],
+      "inputs": [
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "",
+          "placeholder": "Ej. BX-102 o Andrea",
+          "label": "BUSCAR POR FOLIO O CLIENTE"
+        }
+      ]
+    },
+    {
+      "label": "Cocina mobile 390",
+      "filename": "cocina-mobile-390.png",
+      "url": "https://burgers-exe-internal-v2-preview.pages.dev/",
+      "title": "Burgers.exe Internal Chekeo V2",
+      "text": "OPERACIÓN DE HOY\n\nPREVIEW\nChekeo Burgers.exe\nCerrar sesion\n\nESTADO OPERATIVO\n\nOperando en preview\nActualizar\n\nENTORNO\n\nPREVIEW\n\nSESIÓN\n\nACTIVA\nHome\nPedidos\nCocina\nPagos\nAdmin\n\nPRODUCCIÓN ACTUAL\n\nCocina conectada a preview\n\nProducción actual por item, ordenada por llegada.\n\nActualizado: 10:55 a.m.\nActualizar\n0\n\nPOR HACER\n\n0\n\nHECHO\n\n0\n\nLISTOS\n\n0\n\nSIDE QUEST\n\nPreparación\n0\n\nPOR ITEM\n\nListos\n0\n\nCOMPACTO\n\nSide Quest\n0\n\nEXTRAS\n\nResumen K\n0\n\nTOTAL\n\nPOR HACER\n\nProducción accionable\n\nIncluye pedidos en Preparación y pedidos Listos con items pendientes.\n\n0 items\n\nSin items por hacer.\n\nSIGUIENTE EN COCINA\n\nSin items por hacer\nAbrir lista",
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "scrollHeight": 1599,
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflowX": false,
+      "firstViewportText": "Operación de hoyPREVIEWChekeo Burgers.exeOperando en previewVer Burgers.exe PreviewCerrar sesionPuedes validar flujo sin tocar producción.",
+      "buttons": [
+        "Cerrar sesion",
+        "Actualizar",
+        "Home",
+        "Pedidos",
+        "Cocina",
+        "Pagos",
+        "Admin",
+        "Actualizar",
+        "Preparación\n0\n\nPOR ITEM",
+        "Listos\n0\n\nCOMPACTO",
+        "Side Quest\n0\n\nEXTRAS",
+        "Resumen K\n0\n\nTOTAL",
+        "Abrir lista"
+      ],
+      "links": [
+        {
+          "text": "Ver Burgers.exe Preview",
+          "href": "https://burgers-exe-public-v2-preview.pages.dev/"
+        }
+      ],
+      "inputs": []
+    },
+    {
+      "label": "Resumen K mobile 390",
+      "filename": "resumen-k-mobile-390.png",
+      "url": "https://burgers-exe-internal-v2-preview.pages.dev/",
+      "title": "Burgers.exe Internal Chekeo V2",
+      "text": "OPERACIÓN DE HOY\n\nPREVIEW\nChekeo Burgers.exe\nCerrar sesion\n\nESTADO OPERATIVO\n\nOperando en preview\nActualizar\n\nENTORNO\n\nPREVIEW\n\nSESIÓN\n\nACTIVA\nHome\nPedidos\nCocina\nPagos\nAdmin\n\nPRODUCCIÓN ACTUAL\n\nCocina conectada a preview\n\nProducción actual por item, ordenada por llegada.\n\nActualizado: 10:55 a.m.\nActualizar\n0\n\nPOR HACER\n\n0\n\nHECHO\n\n0\n\nLISTOS\n\n0\n\nSIDE QUEST\n\nPreparación\n0\n\nPOR ITEM\n\nListos\n0\n\nCOMPACTO\n\nSide Quest\n0\n\nEXTRAS\n\nResumen K\n0\n\nTOTAL\n\nTOTAL BURGERS\n\n0\n\nTOTAL GUARNICIONES\n\n0\n\nCOMBOS DESGLOSADOS\n\n0\n\nSIDE QUEST\n\n0\n\nPOR HACER\n\n0\n\nHECHO\n\n0\n\nEXTRAS\n\n0\n\nCOSTO ESTIMADO\n\n—\n\nPREVIEW · BURGERS\n\nSin burgers del día.\n\nPREVIEW · GUARNICIONES\n\nSin guarniciones del día.\n\nINGREDIENTES ESTIMADOS\n\nSin ingredientes estimados.",
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "scrollHeight": 2490,
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflowX": false,
+      "firstViewportText": "Producción actualCocina conectada a previewProducción actual por item, ordenada por llegada.Actualizado: 10:55 a.m.Actualizar0Por hacer0Hecho0Listos0Side QuestPreparación0Por itemListos0CompactoSide Quest0ExtrasResumen K0Total",
+      "buttons": [
+        "Cerrar sesion",
+        "Actualizar",
+        "Home",
+        "Pedidos",
+        "Cocina",
+        "Pagos",
+        "Admin",
+        "Actualizar",
+        "Preparación\n0\n\nPOR ITEM",
+        "Listos\n0\n\nCOMPACTO",
+        "Side Quest\n0\n\nEXTRAS",
+        "Resumen K\n0\n\nTOTAL"
+      ],
+      "links": [
+        {
+          "text": "Ver Burgers.exe Preview",
+          "href": "https://burgers-exe-public-v2-preview.pages.dev/"
+        }
+      ],
+      "inputs": []
+    },
+    {
+      "label": "Pagos mobile 390",
+      "filename": "pago-mobile-390.png",
+      "url": "https://burgers-exe-internal-v2-preview.pages.dev/",
+      "title": "Burgers.exe Internal Chekeo V2",
+      "text": "OPERACIÓN DE HOY\n\nPREVIEW\nChekeo Burgers.exe\nCerrar sesion\n\nESTADO OPERATIVO\n\nOperando en preview\nActualizar\n\nENTORNO\n\nPREVIEW\n\nSESIÓN\n\nACTIVA\nHome\nPedidos\nCocina\nPagos\nAdmin\nPREVIEW D1\nACTIVA\nOPERABLE EN PREVIEW\nINCLUYE TERMINALES\n\nPAGOS POR CONFIRMAR\n\nCentro operativo de cobros\n\nRevisa pendientes, confirma pagos y abre el mensaje correcto de WhatsApp sin mezclar entregas, cancelaciones ni ticket visual.\n\nActualizar lista\nVISIBLES\n0\nPENDIENTES\n0\nPAGADOS\n0\nTRANSFERENCIA\n0\nTOTAL VISIBLE\n$0.00\nBUSCAR POR FOLIO O CLIENTE\n\nESTADO DE PAGO\n\nTodos\nPendiente\nPagado\n\nRANGO\n\nHoy\nSemana\nTodo\n\nNo hay coincidencias con este filtro.\n\nAjusta rango, estado o busqueda para recuperar registros.\n\nLimpiar vista",
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "scrollHeight": 1610,
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflowX": false,
+      "firstViewportText": "Operación de hoyPREVIEWChekeo Burgers.exeOperando en previewVer Burgers.exe PreviewCerrar sesionPuedes validar flujo sin tocar producción.",
+      "buttons": [
+        "Cerrar sesion",
+        "Actualizar",
+        "Home",
+        "Pedidos",
+        "Cocina",
+        "Pagos",
+        "Admin",
+        "Actualizar",
+        "Actualizar lista",
+        "Todos",
+        "Pendiente",
+        "Pagado",
+        "Hoy",
+        "Semana",
+        "Todo",
+        "Limpiar vista"
+      ],
+      "links": [
+        {
+          "text": "Ver Burgers.exe Preview",
+          "href": "https://burgers-exe-public-v2-preview.pages.dev/"
+        }
+      ],
+      "inputs": [
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "",
+          "placeholder": "Ej. RDY-401 o Andrea",
+          "label": "BUSCAR POR FOLIO O CLIENTE"
+        }
+      ]
+    },
+    {
+      "label": "Pagos mobile 390 alias",
+      "filename": "pagos-mobile-390.png",
+      "url": "https://burgers-exe-internal-v2-preview.pages.dev/",
+      "title": "Burgers.exe Internal Chekeo V2",
+      "text": "OPERACIÓN DE HOY\n\nPREVIEW\nChekeo Burgers.exe\nCerrar sesion\n\nESTADO OPERATIVO\n\nOperando en preview\nActualizar\n\nENTORNO\n\nPREVIEW\n\nSESIÓN\n\nACTIVA\nHome\nPedidos\nCocina\nPagos\nAdmin\nPREVIEW D1\nACTIVA\nOPERABLE EN PREVIEW\nINCLUYE TERMINALES\n\nPAGOS POR CONFIRMAR\n\nCentro operativo de cobros\n\nRevisa pendientes, confirma pagos y abre el mensaje correcto de WhatsApp sin mezclar entregas, cancelaciones ni ticket visual.\n\nActualizar lista\nVISIBLES\n0\nPENDIENTES\n0\nPAGADOS\n0\nTRANSFERENCIA\n0\nTOTAL VISIBLE\n$0.00\nBUSCAR POR FOLIO O CLIENTE\n\nESTADO DE PAGO\n\nTodos\nPendiente\nPagado\n\nRANGO\n\nHoy\nSemana\nTodo\n\nNo hay coincidencias con este filtro.\n\nAjusta rango, estado o busqueda para recuperar registros.\n\nLimpiar vista",
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "scrollHeight": 1610,
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflowX": false,
+      "firstViewportText": "Operación de hoyPREVIEWChekeo Burgers.exeOperando en previewVer Burgers.exe PreviewCerrar sesionPuedes validar flujo sin tocar producción.",
+      "buttons": [
+        "Cerrar sesion",
+        "Actualizar",
+        "Home",
+        "Pedidos",
+        "Cocina",
+        "Pagos",
+        "Admin",
+        "Actualizar",
+        "Actualizar lista",
+        "Todos",
+        "Pendiente",
+        "Pagado",
+        "Hoy",
+        "Semana",
+        "Todo",
+        "Limpiar vista"
+      ],
+      "links": [
+        {
+          "text": "Ver Burgers.exe Preview",
+          "href": "https://burgers-exe-public-v2-preview.pages.dev/"
+        }
+      ],
+      "inputs": [
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "",
+          "placeholder": "Ej. RDY-401 o Andrea",
+          "label": "BUSCAR POR FOLIO O CLIENTE"
+        }
+      ]
+    },
+    {
+      "label": "Admin hub mobile 390",
+      "filename": "admin-hub-mobile-390.png",
+      "url": "https://burgers-exe-internal-v2-preview.pages.dev/",
+      "title": "Burgers.exe Internal Chekeo V2",
+      "text": "OPERACIÓN DE HOY\n\nPREVIEW\nChekeo Burgers.exe\nCerrar sesion\n\nESTADO OPERATIVO\n\nOperando en preview\nActualizar\n\nENTORNO\n\nPREVIEW\n\nSESIÓN\n\nACTIVA\nHome\nPedidos\nCocina\nPagos\nAdmin\n\nADMIN\n\nHub de módulos de Chekeo\n\nDatos bancarios, historial, cierre, catálogo, sorteos y reportes viven aquí para mantener la navegación principal enfocada en operación.\n\nNAVEGACIÓN ADMIN\n\nHub\nMÓDULOS\nDatos bancarios\nTRANSFERENCIA\nHistorial\nENTREGADOS/CANCELADOS\nCierre\nCORTE ACTUAL\nCatálogo\nMENÚ Y STOCK\nSorteos\nCAMPAÑAS\nReportes\nEXPORTES\n\nModo seguro global activo. Toda la app sigue pidiendo PIN antes de abrir.\n\nOperación\n\nCierre actual e historial fuera del flujo diario.\n\n2 MÓDULOS\nBase lista\nHistorial\nENTREGADOS/CANCELADOS\nPedidos entregados y cancelados sin saturar el centro operativo.\nVer módulo\n→\nBase lista\nCierre\nCORTE ACTUAL\nResumen de operación por rango y descarga del corte actual.\nVer módulo\n→\nConfiguración\n\nDatos y catálogo que alimentan módulos internos.\n\n2 MÓDULOS\nSolo lectura\nDatos bancarios\nTRANSFERENCIA\nFuente central de transferencia para Pagos y mensajes operativos.\nVer módulo\n→\nBase lista\nCatálogo\nMENÚ Y STOCK\nProductos, promos, banners e ingredientes con el panel existente.\nVer módulo\n→\nDatos\n\nExportes, reportes y enlaces de estado.\n\n1 MÓDULO\nBásico\nReportes\nEXPORTES\nExportes y contexto técnico sin mezclarlo con operación diaria.\nVer módulo\n→\nPromos/Sorteos\n\nCampañas, referidos y ajustes manuales auditable.\n\n1 MÓDULO\nBásico\nSorteos\nCAMPAÑAS\nCampañas, participantes, referidos y tickets extra manuales.\nVer módulo\n→\nPágina pública\n\nEnlace de estado a la experiencia de clientes; este PR no la modifica.\n\nBase lista\nBase lista\nPágina pública\nVER BURGERS.EXE PREVIEW\nAcceso rápido para revisar la ruta pública activa sin cambiar su implementación.\nAbrir página",
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "scrollHeight": 3513,
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflowX": false,
+      "firstViewportText": "Operación de hoyPREVIEWChekeo Burgers.exeOperando en previewVer Burgers.exe PreviewCerrar sesionPuedes validar flujo sin tocar producción.",
+      "buttons": [
+        "Cerrar sesion",
+        "Actualizar",
+        "Home",
+        "Pedidos",
+        "Cocina",
+        "Pagos",
+        "Admin",
+        "Hub\nMÓDULOS",
+        "Datos bancarios\nTRANSFERENCIA",
+        "Historial\nENTREGADOS/CANCELADOS",
+        "Cierre\nCORTE ACTUAL",
+        "Catálogo\nMENÚ Y STOCK",
+        "Sorteos\nCAMPAÑAS",
+        "Reportes\nEXPORTES",
+        "Base lista\nHistorial\nENTREGADOS/CANCELADOS\nPedidos entregados y cancelados sin saturar el centro operativo.\nVer módulo\n→",
+        "Base lista\nCierre\nCORTE ACTUAL\nResumen de operación por rango y descarga del corte actual.\nVer módulo\n→",
+        "Solo lectura\nDatos bancarios\nTRANSFERENCIA\nFuente central de transferencia para Pagos y mensajes operativos.\nVer módulo\n→",
+        "Base lista\nCatálogo\nMENÚ Y STOCK\nProductos, promos, banners e ingredientes con el panel existente.\nVer módulo\n→",
+        "Básico\nReportes\nEXPORTES\nExportes y contexto técnico sin mezclarlo con operación diaria.\nVer módulo\n→",
+        "Básico\nSorteos\nCAMPAÑAS\nCampañas, participantes, referidos y tickets extra manuales.\nVer módulo\n→"
+      ],
+      "links": [
+        {
+          "text": "Ver Burgers.exe Preview",
+          "href": "https://burgers-exe-public-v2-preview.pages.dev/"
+        },
+        {
+          "text": "Base lista\nPágina pública\nVER BURGERS.EXE PREVIEW\nAcceso rápido para revisar la ruta pública activa sin cambiar su implementación.\nAbrir página",
+          "href": "https://burgers-exe-public-v2-preview.pages.dev/"
+        }
+      ],
+      "inputs": []
+    },
+    {
+      "label": "Configuracion mobile 390",
+      "filename": "configuracion-mobile-390.png",
+      "url": "https://burgers-exe-internal-v2-preview.pages.dev/",
+      "title": "Burgers.exe Internal Chekeo V2",
+      "text": "OPERACIÓN DE HOY\n\nPREVIEW\nChekeo Burgers.exe\nCerrar sesion\n\nESTADO OPERATIVO\n\nOperando en preview\nActualizar\n\nENTORNO\n\nPREVIEW\n\nSESIÓN\n\nACTIVA\nHome\nPedidos\nCocina\nPagos\nAdmin\n\nADMIN\n\nDatos bancarios\n\nFuente central de transferencia para Pagos y mensajes operativos.\n\nVolver al hub\n\nNAVEGACIÓN ADMIN\n\nHub\nMÓDULOS\nDatos bancarios\nTRANSFERENCIA\nHistorial\nENTREGADOS/CANCELADOS\nCierre\nCORTE ACTUAL\nCatálogo\nMENÚ Y STOCK\nSorteos\nCAMPAÑAS\nReportes\nEXPORTES\n\nModo seguro global activo. Toda la app sigue pidiendo PIN antes de abrir.\n\nCONFIGURACIÓN DE PAGO\n\nDatos bancarios\n\nFuente central compartida para transferencias. Pagos la consume para el mensaje operativo y esta vista la expone solo dentro de Admin.\n\nSolo lectura\n\nBANCO\n\nBBVA\n\nTITULAR\n\nYolitzin Ameyali Zarate Otero\n\nCUENTA / CLABE\n\n012180015645465369\n\nALCANCE\n\nSolo transferencia. Pedidos, ticket, Home y Cocina no deben mostrar estos datos.\n\nEstado de edición\n\nLa configuración actual es de solo lectura y vive en la capa compartida del proyecto. La edición persistente queda pendiente hasta definir una fuente segura en backend.\n\nFuente\n\nshared-config compartida por Pagos, Admin y la integración de transferencia donde aplica.",
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "scrollHeight": 1999,
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflowX": false,
+      "firstViewportText": "Operación de hoyPREVIEWChekeo Burgers.exeOperando en previewVer Burgers.exe PreviewCerrar sesionPuedes validar flujo sin tocar producción.",
+      "buttons": [
+        "Cerrar sesion",
+        "Actualizar",
+        "Home",
+        "Pedidos",
+        "Cocina",
+        "Pagos",
+        "Admin",
+        "Volver al hub",
+        "Hub\nMÓDULOS",
+        "Datos bancarios\nTRANSFERENCIA",
+        "Historial\nENTREGADOS/CANCELADOS",
+        "Cierre\nCORTE ACTUAL",
+        "Catálogo\nMENÚ Y STOCK",
+        "Sorteos\nCAMPAÑAS",
+        "Reportes\nEXPORTES"
+      ],
+      "links": [
+        {
+          "text": "Ver Burgers.exe Preview",
+          "href": "https://burgers-exe-public-v2-preview.pages.dev/"
+        }
+      ],
+      "inputs": []
+    },
+    {
+      "label": "Corte mobile 390",
+      "filename": "corte-mobile-390.png",
+      "url": "https://burgers-exe-internal-v2-preview.pages.dev/",
+      "title": "Burgers.exe Internal Chekeo V2",
+      "text": "OPERACIÓN DE HOY\n\nPREVIEW\nChekeo Burgers.exe\nCerrar sesion\n\nESTADO OPERATIVO\n\nOperando en preview\nActualizar\n\nENTORNO\n\nPREVIEW\n\nSESIÓN\n\nACTIVA\nHome\nPedidos\nCocina\nPagos\nAdmin\n\nADMIN\n\nCierre\n\nResumen de operación por rango y descarga del corte actual.\n\nVolver al hub\n\nNAVEGACIÓN ADMIN\n\nHub\nMÓDULOS\nDatos bancarios\nTRANSFERENCIA\nHistorial\nENTREGADOS/CANCELADOS\nCierre\nCORTE ACTUAL\nCatálogo\nMENÚ Y STOCK\nSorteos\nCAMPAÑAS\nReportes\nEXPORTES\n\nModo seguro global activo. Toda la app sigue pidiendo PIN antes de abrir.\n\nCIERRE OPERATIVO\n\nCierre\n\nPagos declarados · Corte por rango operativo.\n\nDescargar reporte\nDesde\nHasta\nIncluir terminales\nActualizar cierre\n\nCierre actualizado\n\nRango calculado: 2026-06-21T00:00:00.000Z a 2026-06-21T23:59:59.999Z · generado 21/06/26, 10:55 a.m.\n\nNo hay datos de cierre para el rango seleccionado.\n\nVenta bruta\n\n$0.00\n\nÓrdenes no canceladas\n\nVenta entregada\n\n$0.00\n\nSolo delivered\n\nÓrdenes totales\n\n0\n\nEntregadas\n\n0\n\nCanceladas\n\n0\n\nTicket promedio\n\n$0.00\n\nVenta bruta / no canceladas\n\nPor estado\nPedido listo para revisar\n0\nEn preparación\n0\nListo para entregar\n0\nEntregado\n0\nCancelado\n0\nTiempos promedio\n\nNuevo a listo\n\n0s\n\nNuevo a entregado\n\n0s\n\nPor método de pago declarado\n\nSin métodos en el rango.\n\nPara recoger vs entrega\n\nSin modos en el rango.\n\nProductos destacados\n\nSin productos no cancelados en el rango.\n\nÓrdenes recientes\n\nSin órdenes recientes en el rango.",
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "scrollHeight": 3209,
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflowX": false,
+      "firstViewportText": "Operación de hoyPREVIEWChekeo Burgers.exeOperando en previewVer Burgers.exe PreviewCerrar sesionPuedes validar flujo sin tocar producción.",
+      "buttons": [
+        "Cerrar sesion",
+        "Actualizar",
+        "Home",
+        "Pedidos",
+        "Cocina",
+        "Pagos",
+        "Admin",
+        "Volver al hub",
+        "Hub\nMÓDULOS",
+        "Datos bancarios\nTRANSFERENCIA",
+        "Historial\nENTREGADOS/CANCELADOS",
+        "Cierre\nCORTE ACTUAL",
+        "Catálogo\nMENÚ Y STOCK",
+        "Sorteos\nCAMPAÑAS",
+        "Reportes\nEXPORTES",
+        "Descargar reporte",
+        "Actualizar cierre"
+      ],
+      "links": [
+        {
+          "text": "Ver Burgers.exe Preview",
+          "href": "https://burgers-exe-public-v2-preview.pages.dev/"
+        }
+      ],
+      "inputs": [
+        {
+          "tag": "input",
+          "type": "date",
+          "id": "",
+          "placeholder": "",
+          "label": "Desde"
+        },
+        {
+          "tag": "input",
+          "type": "date",
+          "id": "",
+          "placeholder": "",
+          "label": "Hasta"
+        },
+        {
+          "tag": "input",
+          "type": "checkbox",
+          "id": "",
+          "placeholder": "",
+          "label": "Incluir terminales"
+        }
+      ]
+    },
+    {
+      "label": "Sorteo mobile 390",
+      "filename": "sorteo-mobile-390.png",
+      "url": "https://burgers-exe-internal-v2-preview.pages.dev/",
+      "title": "Burgers.exe Internal Chekeo V2",
+      "text": "OPERACIÓN DE HOY\n\nPREVIEW\nChekeo Burgers.exe\nCerrar sesion\n\nESTADO OPERATIVO\n\nOperando en preview\nActualizar\n\nENTORNO\n\nPREVIEW\n\nSESIÓN\n\nACTIVA\nHome\nPedidos\nCocina\nPagos\nAdmin\n\nADMIN\n\nSorteos\n\nCampañas, participantes, referidos y tickets extra manuales.\n\nVolver al hub\n\nNAVEGACIÓN ADMIN\n\nHub\nMÓDULOS\nDatos bancarios\nTRANSFERENCIA\nHistorial\nENTREGADOS/CANCELADOS\nCierre\nCORTE ACTUAL\nCatálogo\nMENÚ Y STOCK\nSorteos\nCAMPAÑAS\nReportes\nEXPORTES\n\nModo seguro global activo. Toda la app sigue pidiendo PIN antes de abrir.\n\nSORTEOS\n\nPRIMER GRAN SORTE.exe\n\nLa campaña activa todavía no tiene descripción visible.\n\nActualizado: 03/06/26, 11:25 a.m.\n\nPrueba · Preview\nCampaña activa\nRecargar\n\nPREMIO VISIBLE\n\nPRIMER GRAN SORTE.exe\n\nVálido del 03 al 30 de junio de 2026. 1 burger comprada = 1 ticket. Referido válido = +2 tickets si usa tu código, paga y ordena al menos 1 burger. Premio: $500 MXN o 4 burgers gratis. No aplican pedidos cancelados, no pagados, duplicados o de prueba. Ganador: primer sábado de julio 2026. Sujeto a verificación por Burgers.exe.\n\nTICKET POR BURGER\n\n1\n\nTICKET POR REFERIDO\n\n2\n\nPARTICIPANTES\n\n19\n\nTICKETS BASE\n\n42\n\nTICKETS EXTRA\n\n0\n\nTICKETS TOTALES\n\n42\nCampañas\nNueva\n\nPRIMER GRAN SORTE.exe\n\nActiva\n\nCreada: 03/06/26, 4:42 a.m.\n\nCrear / editar\nTítulo\nDescripción\nReglas\nBanner image URL\nBanner image key\nInicia\nTermina\nTickets por burger\nTickets por referido\nActivar al guardar\nGuardar cambios\nDesactivar\nOcultar sorteo\nImágenes del sorteo\n\nImágenes protegidas con sesión interna para campañas activas.\n\nBanner horizontal\n\nRecomendado: 1600x900 px. JPG, PNG, WebP o AVIF hasta 5 MB.\n\nraffles/banners/raffle-peimer-gran-sorte-202606-20260603T071818Z.png\nSubir\nQuitar\nImagen vertical de detalles\n\nRecomendado: 1080x1350 px. JPG, PNG, WebP o AVIF hasta 5 MB.\n\nraffles/details/raffle-peimer-gran-sorte-202606-20260603T153634Z.png\nSubir\nQuitar\nCódigos de invitado\nNombre participante\nTeléfono participante\nPalabra burger\nBURGER\nSMASH\nBACON\nPICKLES\nPICKLE\nCHEESE\nFRIES\nPAPAS\nTOCINO\nQUESO\nCRUNCH\nBBQ\nCOMBO\nOG\nCHEDDAR\nKETCHUP\nMOSTAZA\nNúmero 1–100\nCrear código\nBuscar códigos\n\nALEJANDRO-COMBO-78\n\nAlejandro Plata Quintero · ****7974\n\nActivo\nDesactivar\n\nDIANA-PICKLES-09\n\nDiana González · ****4216\n\nActivo\nDesactivar\n\nHAYAT-TOCINO-07\n\nHayat Pichardo · ****7766\n\nActivo\nDesactivar\n\nANDREA-MOSTAZA-58\n\nAndrea · ****6441\n\nActivo\nDesactivar\n\nGABO-MOSTAZA-68\n\nGabo · ****0760\n\nActivo\nDesactivar\n\nJESSICA-OG-90\n\nJessica León · ****9830\n\nActivo\nDesactivar\n\nAAAA-BURGER-18\n\naaaa · ****1232\n\nActivo\nDesactivar\n\nALINE-OG-86\n\nAline · ****7816\n\nActivo\nDesactivar\n\nANGEL-COMBO-88\n\nÁngel Ferrari Fierro · ****7951\n\nActivo\nDesactivar\n\nJONATTO-CHEDDAR-14\n\nJonatto · ****0555\n\nActivo\nDesactivar\n\nLIAM-QUESO-81\n\nLiam Romero Flores · ****5737\n\nActivo\nDesactivar\n\nGEMMA-COMBO-35\n\nGemma · ****6739\n\nActivo\nDesactivar\n\nKARINA-BACON-28\n\nKarina Flores · ****5118\n\nActivo\nDesactivar\n\nSASHENKA-PAPAS-83\n\nSashenka · ****2970\n\nActivo\nDesactivar\n\nADRIAN-PICKLES-95\n\nAdrián Hernandez Fajardo · ****3850\n\nActivo\nDesactivar\n\nALAN-QUESO-36\n\nAlan Andre Castillo Calderón · ****5018\n\nActivo\nDesactivar\n\nINGRID-OG-88\n\nIngrid · ****9563\n\nActivo\nDesactivar\n\nADRIAN-CRUNCH-23\n\nAdrian · ****9429\n\nActivo\nDesactivar\n\nHAZA-TOCINO-60\n\nHaza · ****0010\n\nActivo\nDesactivar\n\nABRAHAM-CHEDDAR-74\n\nAbraham Obregon · ****8712\n\nActivo\nDesactivar\n\nOS-BURGER-94\n\nÓs Valera · ****3680\n\nActivo\nDesactivar\n\nJOSUE-OG-76\n\nJosué Arturo Rojas Paredes · ****1519\n\nActivo\nDesactivar\n\nARTURO-CHEESE-79\n\nArturo Ramírez · ****3806\n\nInactivo\nActivar\n\nYOLI-BURGER-35\n\nYoli · ****1702\n\nInactivo\nActivar\nBuscar participante\n\nBusca por nombre, teléfono normalizado, folio o código. La vista nunca muestra el teléfono completo.\n\nTop participantes\n10 PARTICIPANTES\n\nGemma\n\nElegible\nCódigo activo\n\n****6739 · Último folio BX-04H0COZ4AD\n\nÚltimo cambio: 10/06/26, 10:34 p.m.\n\nCódigo: GEMMA-COMBO-35\n\nTICKETS TOTALES\n\n6\nImagen\nBase: 6\nExtra manual: 0\nTotal: 6\nPEDIDOS\nREFERIDOS\nVer participante\nAgregar tickets\nCompartir\n\nSashenka\n\nElegible\nCódigo activo\n\n****2970 · Último folio BX-04I0EIF0RZ\n\nÚltimo cambio: 11/06/26, 11:13 p.m.\n\nCódigo: SASHENKA-PAPAS-83\n\nTICKETS TOTALES\n\n4\nImagen\nBase: 4\nExtra manual: 0\nTotal: 4\nPEDIDOS\nVer participante\nAgregar tickets\nCompartir\n\nLiam Romero Flores\n\nElegible\nCódigo activo\n\n****5737 · Último folio BX-20260604-138873\n\nÚltimo cambio: 04/06/26, 4:14 p.m.\n\nCódigo: LIAM-QUESO-81\n\nTICKETS TOTALES\n\n4\nImagen\nBase: 4\nExtra manual: 0\nTotal: 4\nPEDIDOS\nREFERIDOS\nVer participante\nAgregar tickets\nCompartir\n\nAndrea\n\nElegible\nCódigo activo\n\n****6441 · Último folio BX-04I151AHRH\n\nÚltimo cambio: 12/06/26, 8:46 a.m.\n\nCódigo: ANDREA-MOSTAZA-58\n\nTICKETS TOTALES\n\n3\nImagen\nBase: 3\nExtra manual: 0\nTotal: 3\nPEDIDOS\nVer participante\nAgregar tickets\nCompartir\n\nAbraham\n\nElegible\nCódigo activo\n\n****8712 · Último folio BX-04I1A3DTW2\n\nÚltimo cambio: 12/06/26, 10:35 a.m.\n\nCódigo: ABRAHAM-CHEDDAR-74\n\nTICKETS TOTALES\n\n2\nImagen\nBase: 2\nExtra manual: 0\nTotal: 2\nPEDIDOS\nVer participante\nAgregar tickets\nCompartir\n\nAdrián\n\nElegible\nCódigo activo\n\n****9429 · Último folio BX-04I12G0F1T\n\nÚltimo cambio: 12/06/26, 7:50 a.m.\n\nCódigo: ADRIAN-CRUNCH-23\n\nTICKETS TOTALES\n\n2\nImagen\nBase: 2\nExtra manual: 0\nTotal: 2\nPEDIDOS\nVer participante\nAgregar tickets\nCompartir\n\nJessica\n\nElegible\nCódigo activo\n\n****9830 · Último folio BX-04I11REXUB\n\nÚltimo cambio: 12/06/26, 7:35 a.m.\n\nCódigo: JESSICA-OG-90\n\nTICKETS TOTALES\n\n2\nImagen\nBase: 2\nExtra manual: 0\nTotal: 2\nPEDIDOS\nVer participante\nAgregar tickets\nCompartir\n\nAdrián Daniel Hernandez Fajardo\n\nElegible\nCódigo activo\n\n****3850 · Último folio BX-04H1GFSUXX\n\nÚltimo cambio: 11/06/26, 12:52 p.m.\n\nCódigo: ADRIAN-PICKLES-95\n\nTICKETS TOTALES\n\n2\nImagen\nBase: 2\nExtra manual: 0\nTotal: 2\nPEDIDOS\nVer participante\nAgregar tickets\nCompartir\n\nÓs\n\nElegible\nCódigo activo\n\n****3680 · Último folio BX-04H1GEKXV6\n\nÚltimo cambio: 11/06/26, 12:51 p.m.\n\nCódigo: OS-BURGER-94\n\nTICKETS TOTALES\n\n2\nImagen\nBase: 2\nExtra manual: 0\nTotal: 2\nPEDIDOS\nVer participante\nAgregar tickets\nCompartir\n\nAngel Fierro Vader\n\nElegible\nCódigo activo\n\n****7951 · Último folio BX-04H1G3JIWG\n\nÚltimo cambio: 11/06/26, 12:45 p.m.\n\nCódigo: ANGEL-COMBO-88\n\nTICKETS TOTALES\n\n2\nImagen\nBase: 2\nExtra manual: 0\nTotal: 2\nPEDIDOS\nVer participante\nAgregar tickets\nCompartir\n\nDETALLE\n\nSelecciona un participante\n\nAbre un participante desde resultados o top para agregar tickets extras o revisar ajustes.\n\nSelecciona un participante para ver su detalle y agregar tickets manuales.\n\nCAMBIOS RECIENTES\n\nÚltimos ajustes\n0\n\nAún no hay cambios manuales.\n\nBuscar pedidos referidos\nFiltro\nTodos\nPendientes\nVálidos\nInválidos\n\nLIAM-QUESO-81 · BX-20260604-81C4DE\n\nDueño: Liam Romero Flores (****5737)\n\nCliente referido: Jonatto (****0555)\n\n04/06/26, 4:17 p.m. · 2 tickets\n\nvalid\nMarcar válido\nReabrir pendiente\nInvalidar\n\nGEMMA-COMBO-35 · BX-20260604-138873\n\nDueño: Gemma (****6739)\n\nCliente referido: Liam Romero Flores (****5737)\n\n04/06/26, 4:14 p.m. · 2 tickets\n\nvalid\nMarcar válido\nReabrir pendiente\nInvalidar\n\nNotas operativas\n\nTickets base = pedidos + referidos. Tickets extra = ajustes manuales activos. Real solo cuando el entorno es producción; Prueba cubre preview/local.",
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "scrollHeight": 13735,
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflowX": false,
+      "firstViewportText": "AdminSorteosCampañas, participantes, referidos y tickets extra manuales.Volver al hubNavegación AdminHubMódulosDatos bancariosTransferenciaHistorialEntregados/canceladosCierreCorte actualCatálogoMenú y stockSorteosCampañasReportesExportesModo seguro global activo. Toda la app sigue pidiendo PIN ante",
+      "buttons": [
+        "Cerrar sesion",
+        "Actualizar",
+        "Home",
+        "Pedidos",
+        "Cocina",
+        "Pagos",
+        "Admin",
+        "Volver al hub",
+        "Hub\nMÓDULOS",
+        "Datos bancarios\nTRANSFERENCIA",
+        "Historial\nENTREGADOS/CANCELADOS",
+        "Cierre\nCORTE ACTUAL",
+        "Catálogo\nMENÚ Y STOCK",
+        "Sorteos\nCAMPAÑAS",
+        "Reportes\nEXPORTES",
+        "Recargar",
+        "Nueva",
+        "PRIMER GRAN SORTE.exe\n\nActiva\n\nCreada: 03/06/26, 4:42 a.m.",
+        "Guardar cambios",
+        "Desactivar",
+        "Ocultar sorteo",
+        "Subir",
+        "Quitar",
+        "Subir",
+        "Quitar",
+        "Crear código",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Activar",
+        "Activar",
+        "Imagen",
+        "Ver participante",
+        "Agregar tickets",
+        "Compartir",
+        "Imagen",
+        "Ver participante",
+        "Agregar tickets",
+        "Compartir",
+        "Imagen",
+        "Ver participante",
+        "Agregar tickets",
+        "Compartir",
+        "Imagen",
+        "Ver participante",
+        "Agregar tickets",
+        "Compartir",
+        "Imagen",
+        "Ver participante",
+        "Agregar tickets",
+        "Compartir",
+        "Imagen",
+        "Ver participante",
+        "Agregar tickets",
+        "Compartir",
+        "Imagen",
+        "Ver participante",
+        "Agregar tickets",
+        "Compartir",
+        "Imagen",
+        "Ver participante",
+        "Agregar tickets",
+        "Compartir",
+        "Imagen",
+        "Ver participante",
+        "Agregar tickets",
+        "Compartir",
+        "Imagen",
+        "Ver participante",
+        "Agregar tickets",
+        "Compartir",
+        "Marcar válido",
+        "Reabrir pendiente",
+        "Invalidar",
+        "Marcar válido",
+        "Reabrir pendiente",
+        "Invalidar"
+      ],
+      "links": [
+        {
+          "text": "Ver Burgers.exe Preview",
+          "href": "https://burgers-exe-public-v2-preview.pages.dev/"
+        }
+      ],
+      "inputs": [
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "",
+          "placeholder": "",
+          "label": "Título"
+        },
+        {
+          "tag": "textarea",
+          "type": "textarea",
+          "id": "",
+          "placeholder": "",
+          "label": "Descripción"
+        },
+        {
+          "tag": "textarea",
+          "type": "textarea",
+          "id": "",
+          "placeholder": "",
+          "label": "Reglas"
+        },
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "",
+          "placeholder": "",
+          "label": "Banner image URL"
+        },
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "",
+          "placeholder": "",
+          "label": "Banner image key"
+        },
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "",
+          "placeholder": "YYYY-MM-DD o ISO",
+          "label": "Inicia"
+        },
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "",
+          "placeholder": "YYYY-MM-DD o ISO",
+          "label": "Termina"
+        },
+        {
+          "tag": "input",
+          "type": "number",
+          "id": "",
+          "placeholder": "",
+          "label": "Tickets por burger"
+        },
+        {
+          "tag": "input",
+          "type": "number",
+          "id": "",
+          "placeholder": "",
+          "label": "Tickets por referido"
+        },
+        {
+          "tag": "input",
+          "type": "checkbox",
+          "id": "",
+          "placeholder": "",
+          "label": "Activar al guardar"
+        },
+        {
+          "tag": "input",
+          "type": "file",
+          "id": "",
+          "placeholder": "",
+          "label": ""
+        },
+        {
+          "tag": "input",
+          "type": "file",
+          "id": "",
+          "placeholder": "",
+          "label": ""
+        },
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "",
+          "placeholder": "",
+          "label": "Nombre participante"
+        },
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "",
+          "placeholder": "",
+          "label": "Teléfono participante"
+        },
+        {
+          "tag": "select",
+          "type": "select-one",
+          "id": "",
+          "label": "Palabra burger BURGER SMASH BACON PICKLES PICKLE CHEESE FRIES PAPAS TOCINO QUESO CRUNCH BBQ COMBO OG CHEDDAR KETCHUP MOSTAZA"
+        },
+        {
+          "tag": "input",
+          "type": "number",
+          "id": "",
+          "placeholder": "",
+          "label": "Número 1–100"
+        },
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "",
+          "placeholder": "Nombre, teléfono o código",
+          "label": "Buscar códigos"
+        },
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "",
+          "placeholder": "Nombre, folio, teléfono o código",
+          "label": "Buscar participante"
+        },
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "",
+          "placeholder": "Código, nombre, teléfono o folio",
+          "label": "Buscar pedidos referidos"
+        },
+        {
+          "tag": "select",
+          "type": "select-one",
+          "id": "",
+          "label": "Filtro Todos Pendientes Válidos Inválidos"
+        },
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "",
+          "placeholder": "Razón para invalidar",
+          "label": ""
+        },
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "",
+          "placeholder": "Razón para invalidar",
+          "label": ""
+        }
+      ]
+    },
+    {
+      "label": "Sorteos mobile 390 alias",
+      "filename": "sorteos-mobile-390.png",
+      "url": "https://burgers-exe-internal-v2-preview.pages.dev/",
+      "title": "Burgers.exe Internal Chekeo V2",
+      "text": "OPERACIÓN DE HOY\n\nPREVIEW\nChekeo Burgers.exe\nCerrar sesion\n\nESTADO OPERATIVO\n\nOperando en preview\nActualizar\n\nENTORNO\n\nPREVIEW\n\nSESIÓN\n\nACTIVA\nHome\nPedidos\nCocina\nPagos\nAdmin\n\nADMIN\n\nSorteos\n\nCampañas, participantes, referidos y tickets extra manuales.\n\nVolver al hub\n\nNAVEGACIÓN ADMIN\n\nHub\nMÓDULOS\nDatos bancarios\nTRANSFERENCIA\nHistorial\nENTREGADOS/CANCELADOS\nCierre\nCORTE ACTUAL\nCatálogo\nMENÚ Y STOCK\nSorteos\nCAMPAÑAS\nReportes\nEXPORTES\n\nModo seguro global activo. Toda la app sigue pidiendo PIN antes de abrir.\n\nSORTEOS\n\nPRIMER GRAN SORTE.exe\n\nLa campaña activa todavía no tiene descripción visible.\n\nActualizado: 03/06/26, 11:25 a.m.\n\nPrueba · Preview\nCampaña activa\nRecargar\n\nPREMIO VISIBLE\n\nPRIMER GRAN SORTE.exe\n\nVálido del 03 al 30 de junio de 2026. 1 burger comprada = 1 ticket. Referido válido = +2 tickets si usa tu código, paga y ordena al menos 1 burger. Premio: $500 MXN o 4 burgers gratis. No aplican pedidos cancelados, no pagados, duplicados o de prueba. Ganador: primer sábado de julio 2026. Sujeto a verificación por Burgers.exe.\n\nTICKET POR BURGER\n\n1\n\nTICKET POR REFERIDO\n\n2\n\nPARTICIPANTES\n\n19\n\nTICKETS BASE\n\n42\n\nTICKETS EXTRA\n\n0\n\nTICKETS TOTALES\n\n42\nCampañas\nNueva\n\nPRIMER GRAN SORTE.exe\n\nActiva\n\nCreada: 03/06/26, 4:42 a.m.\n\nCrear / editar\nTítulo\nDescripción\nReglas\nBanner image URL\nBanner image key\nInicia\nTermina\nTickets por burger\nTickets por referido\nActivar al guardar\nGuardar cambios\nDesactivar\nOcultar sorteo\nImágenes del sorteo\n\nImágenes protegidas con sesión interna para campañas activas.\n\nBanner horizontal\n\nRecomendado: 1600x900 px. JPG, PNG, WebP o AVIF hasta 5 MB.\n\nraffles/banners/raffle-peimer-gran-sorte-202606-20260603T071818Z.png\nSubir\nQuitar\nImagen vertical de detalles\n\nRecomendado: 1080x1350 px. JPG, PNG, WebP o AVIF hasta 5 MB.\n\nraffles/details/raffle-peimer-gran-sorte-202606-20260603T153634Z.png\nSubir\nQuitar\nCódigos de invitado\nNombre participante\nTeléfono participante\nPalabra burger\nBURGER\nSMASH\nBACON\nPICKLES\nPICKLE\nCHEESE\nFRIES\nPAPAS\nTOCINO\nQUESO\nCRUNCH\nBBQ\nCOMBO\nOG\nCHEDDAR\nKETCHUP\nMOSTAZA\nNúmero 1–100\nCrear código\nBuscar códigos\n\nALEJANDRO-COMBO-78\n\nAlejandro Plata Quintero · ****7974\n\nActivo\nDesactivar\n\nDIANA-PICKLES-09\n\nDiana González · ****4216\n\nActivo\nDesactivar\n\nHAYAT-TOCINO-07\n\nHayat Pichardo · ****7766\n\nActivo\nDesactivar\n\nANDREA-MOSTAZA-58\n\nAndrea · ****6441\n\nActivo\nDesactivar\n\nGABO-MOSTAZA-68\n\nGabo · ****0760\n\nActivo\nDesactivar\n\nJESSICA-OG-90\n\nJessica León · ****9830\n\nActivo\nDesactivar\n\nAAAA-BURGER-18\n\naaaa · ****1232\n\nActivo\nDesactivar\n\nALINE-OG-86\n\nAline · ****7816\n\nActivo\nDesactivar\n\nANGEL-COMBO-88\n\nÁngel Ferrari Fierro · ****7951\n\nActivo\nDesactivar\n\nJONATTO-CHEDDAR-14\n\nJonatto · ****0555\n\nActivo\nDesactivar\n\nLIAM-QUESO-81\n\nLiam Romero Flores · ****5737\n\nActivo\nDesactivar\n\nGEMMA-COMBO-35\n\nGemma · ****6739\n\nActivo\nDesactivar\n\nKARINA-BACON-28\n\nKarina Flores · ****5118\n\nActivo\nDesactivar\n\nSASHENKA-PAPAS-83\n\nSashenka · ****2970\n\nActivo\nDesactivar\n\nADRIAN-PICKLES-95\n\nAdrián Hernandez Fajardo · ****3850\n\nActivo\nDesactivar\n\nALAN-QUESO-36\n\nAlan Andre Castillo Calderón · ****5018\n\nActivo\nDesactivar\n\nINGRID-OG-88\n\nIngrid · ****9563\n\nActivo\nDesactivar\n\nADRIAN-CRUNCH-23\n\nAdrian · ****9429\n\nActivo\nDesactivar\n\nHAZA-TOCINO-60\n\nHaza · ****0010\n\nActivo\nDesactivar\n\nABRAHAM-CHEDDAR-74\n\nAbraham Obregon · ****8712\n\nActivo\nDesactivar\n\nOS-BURGER-94\n\nÓs Valera · ****3680\n\nActivo\nDesactivar\n\nJOSUE-OG-76\n\nJosué Arturo Rojas Paredes · ****1519\n\nActivo\nDesactivar\n\nARTURO-CHEESE-79\n\nArturo Ramírez · ****3806\n\nInactivo\nActivar\n\nYOLI-BURGER-35\n\nYoli · ****1702\n\nInactivo\nActivar\nBuscar participante\n\nBusca por nombre, teléfono normalizado, folio o código. La vista nunca muestra el teléfono completo.\n\nTop participantes\n10 PARTICIPANTES\n\nGemma\n\nElegible\nCódigo activo\n\n****6739 · Último folio BX-04H0COZ4AD\n\nÚltimo cambio: 10/06/26, 10:34 p.m.\n\nCódigo: GEMMA-COMBO-35\n\nTICKETS TOTALES\n\n6\nImagen\nBase: 6\nExtra manual: 0\nTotal: 6\nPEDIDOS\nREFERIDOS\nVer participante\nAgregar tickets\nCompartir\n\nSashenka\n\nElegible\nCódigo activo\n\n****2970 · Último folio BX-04I0EIF0RZ\n\nÚltimo cambio: 11/06/26, 11:13 p.m.\n\nCódigo: SASHENKA-PAPAS-83\n\nTICKETS TOTALES\n\n4\nImagen\nBase: 4\nExtra manual: 0\nTotal: 4\nPEDIDOS\nVer participante\nAgregar tickets\nCompartir\n\nLiam Romero Flores\n\nElegible\nCódigo activo\n\n****5737 · Último folio BX-20260604-138873\n\nÚltimo cambio: 04/06/26, 4:14 p.m.\n\nCódigo: LIAM-QUESO-81\n\nTICKETS TOTALES\n\n4\nImagen\nBase: 4\nExtra manual: 0\nTotal: 4\nPEDIDOS\nREFERIDOS\nVer participante\nAgregar tickets\nCompartir\n\nAndrea\n\nElegible\nCódigo activo\n\n****6441 · Último folio BX-04I151AHRH\n\nÚltimo cambio: 12/06/26, 8:46 a.m.\n\nCódigo: ANDREA-MOSTAZA-58\n\nTICKETS TOTALES\n\n3\nImagen\nBase: 3\nExtra manual: 0\nTotal: 3\nPEDIDOS\nVer participante\nAgregar tickets\nCompartir\n\nAbraham\n\nElegible\nCódigo activo\n\n****8712 · Último folio BX-04I1A3DTW2\n\nÚltimo cambio: 12/06/26, 10:35 a.m.\n\nCódigo: ABRAHAM-CHEDDAR-74\n\nTICKETS TOTALES\n\n2\nImagen\nBase: 2\nExtra manual: 0\nTotal: 2\nPEDIDOS\nVer participante\nAgregar tickets\nCompartir\n\nAdrián\n\nElegible\nCódigo activo\n\n****9429 · Último folio BX-04I12G0F1T\n\nÚltimo cambio: 12/06/26, 7:50 a.m.\n\nCódigo: ADRIAN-CRUNCH-23\n\nTICKETS TOTALES\n\n2\nImagen\nBase: 2\nExtra manual: 0\nTotal: 2\nPEDIDOS\nVer participante\nAgregar tickets\nCompartir\n\nJessica\n\nElegible\nCódigo activo\n\n****9830 · Último folio BX-04I11REXUB\n\nÚltimo cambio: 12/06/26, 7:35 a.m.\n\nCódigo: JESSICA-OG-90\n\nTICKETS TOTALES\n\n2\nImagen\nBase: 2\nExtra manual: 0\nTotal: 2\nPEDIDOS\nVer participante\nAgregar tickets\nCompartir\n\nAdrián Daniel Hernandez Fajardo\n\nElegible\nCódigo activo\n\n****3850 · Último folio BX-04H1GFSUXX\n\nÚltimo cambio: 11/06/26, 12:52 p.m.\n\nCódigo: ADRIAN-PICKLES-95\n\nTICKETS TOTALES\n\n2\nImagen\nBase: 2\nExtra manual: 0\nTotal: 2\nPEDIDOS\nVer participante\nAgregar tickets\nCompartir\n\nÓs\n\nElegible\nCódigo activo\n\n****3680 · Último folio BX-04H1GEKXV6\n\nÚltimo cambio: 11/06/26, 12:51 p.m.\n\nCódigo: OS-BURGER-94\n\nTICKETS TOTALES\n\n2\nImagen\nBase: 2\nExtra manual: 0\nTotal: 2\nPEDIDOS\nVer participante\nAgregar tickets\nCompartir\n\nAngel Fierro Vader\n\nElegible\nCódigo activo\n\n****7951 · Último folio BX-04H1G3JIWG\n\nÚltimo cambio: 11/06/26, 12:45 p.m.\n\nCódigo: ANGEL-COMBO-88\n\nTICKETS TOTALES\n\n2\nImagen\nBase: 2\nExtra manual: 0\nTotal: 2\nPEDIDOS\nVer participante\nAgregar tickets\nCompartir\n\nDETALLE\n\nSelecciona un participante\n\nAbre un participante desde resultados o top para agregar tickets extras o revisar ajustes.\n\nSelecciona un participante para ver su detalle y agregar tickets manuales.\n\nCAMBIOS RECIENTES\n\nÚltimos ajustes\n0\n\nAún no hay cambios manuales.\n\nBuscar pedidos referidos\nFiltro\nTodos\nPendientes\nVálidos\nInválidos\n\nLIAM-QUESO-81 · BX-20260604-81C4DE\n\nDueño: Liam Romero Flores (****5737)\n\nCliente referido: Jonatto (****0555)\n\n04/06/26, 4:17 p.m. · 2 tickets\n\nvalid\nMarcar válido\nReabrir pendiente\nInvalidar\n\nGEMMA-COMBO-35 · BX-20260604-138873\n\nDueño: Gemma (****6739)\n\nCliente referido: Liam Romero Flores (****5737)\n\n04/06/26, 4:14 p.m. · 2 tickets\n\nvalid\nMarcar válido\nReabrir pendiente\nInvalidar\n\nNotas operativas\n\nTickets base = pedidos + referidos. Tickets extra = ajustes manuales activos. Real solo cuando el entorno es producción; Prueba cubre preview/local.",
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "scrollHeight": 13735,
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflowX": false,
+      "firstViewportText": "AdminSorteosCampañas, participantes, referidos y tickets extra manuales.Volver al hubNavegación AdminHubMódulosDatos bancariosTransferenciaHistorialEntregados/canceladosCierreCorte actualCatálogoMenú y stockSorteosCampañasReportesExportesModo seguro global activo. Toda la app sigue pidiendo PIN ante",
+      "buttons": [
+        "Cerrar sesion",
+        "Actualizar",
+        "Home",
+        "Pedidos",
+        "Cocina",
+        "Pagos",
+        "Admin",
+        "Volver al hub",
+        "Hub\nMÓDULOS",
+        "Datos bancarios\nTRANSFERENCIA",
+        "Historial\nENTREGADOS/CANCELADOS",
+        "Cierre\nCORTE ACTUAL",
+        "Catálogo\nMENÚ Y STOCK",
+        "Sorteos\nCAMPAÑAS",
+        "Reportes\nEXPORTES",
+        "Recargar",
+        "Nueva",
+        "PRIMER GRAN SORTE.exe\n\nActiva\n\nCreada: 03/06/26, 4:42 a.m.",
+        "Guardar cambios",
+        "Desactivar",
+        "Ocultar sorteo",
+        "Subir",
+        "Quitar",
+        "Subir",
+        "Quitar",
+        "Crear código",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Desactivar",
+        "Activar",
+        "Activar",
+        "Imagen",
+        "Ver participante",
+        "Agregar tickets",
+        "Compartir",
+        "Imagen",
+        "Ver participante",
+        "Agregar tickets",
+        "Compartir",
+        "Imagen",
+        "Ver participante",
+        "Agregar tickets",
+        "Compartir",
+        "Imagen",
+        "Ver participante",
+        "Agregar tickets",
+        "Compartir",
+        "Imagen",
+        "Ver participante",
+        "Agregar tickets",
+        "Compartir",
+        "Imagen",
+        "Ver participante",
+        "Agregar tickets",
+        "Compartir",
+        "Imagen",
+        "Ver participante",
+        "Agregar tickets",
+        "Compartir",
+        "Imagen",
+        "Ver participante",
+        "Agregar tickets",
+        "Compartir",
+        "Imagen",
+        "Ver participante",
+        "Agregar tickets",
+        "Compartir",
+        "Imagen",
+        "Ver participante",
+        "Agregar tickets",
+        "Compartir",
+        "Marcar válido",
+        "Reabrir pendiente",
+        "Invalidar",
+        "Marcar válido",
+        "Reabrir pendiente",
+        "Invalidar"
+      ],
+      "links": [
+        {
+          "text": "Ver Burgers.exe Preview",
+          "href": "https://burgers-exe-public-v2-preview.pages.dev/"
+        }
+      ],
+      "inputs": [
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "",
+          "placeholder": "",
+          "label": "Título"
+        },
+        {
+          "tag": "textarea",
+          "type": "textarea",
+          "id": "",
+          "placeholder": "",
+          "label": "Descripción"
+        },
+        {
+          "tag": "textarea",
+          "type": "textarea",
+          "id": "",
+          "placeholder": "",
+          "label": "Reglas"
+        },
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "",
+          "placeholder": "",
+          "label": "Banner image URL"
+        },
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "",
+          "placeholder": "",
+          "label": "Banner image key"
+        },
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "",
+          "placeholder": "YYYY-MM-DD o ISO",
+          "label": "Inicia"
+        },
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "",
+          "placeholder": "YYYY-MM-DD o ISO",
+          "label": "Termina"
+        },
+        {
+          "tag": "input",
+          "type": "number",
+          "id": "",
+          "placeholder": "",
+          "label": "Tickets por burger"
+        },
+        {
+          "tag": "input",
+          "type": "number",
+          "id": "",
+          "placeholder": "",
+          "label": "Tickets por referido"
+        },
+        {
+          "tag": "input",
+          "type": "checkbox",
+          "id": "",
+          "placeholder": "",
+          "label": "Activar al guardar"
+        },
+        {
+          "tag": "input",
+          "type": "file",
+          "id": "",
+          "placeholder": "",
+          "label": ""
+        },
+        {
+          "tag": "input",
+          "type": "file",
+          "id": "",
+          "placeholder": "",
+          "label": ""
+        },
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "",
+          "placeholder": "",
+          "label": "Nombre participante"
+        },
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "",
+          "placeholder": "",
+          "label": "Teléfono participante"
+        },
+        {
+          "tag": "select",
+          "type": "select-one",
+          "id": "",
+          "label": "Palabra burger BURGER SMASH BACON PICKLES PICKLE CHEESE FRIES PAPAS TOCINO QUESO CRUNCH BBQ COMBO OG CHEDDAR KETCHUP MOSTAZA"
+        },
+        {
+          "tag": "input",
+          "type": "number",
+          "id": "",
+          "placeholder": "",
+          "label": "Número 1–100"
+        },
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "",
+          "placeholder": "Nombre, teléfono o código",
+          "label": "Buscar códigos"
+        },
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "",
+          "placeholder": "Nombre, folio, teléfono o código",
+          "label": "Buscar participante"
+        },
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "",
+          "placeholder": "Código, nombre, teléfono o folio",
+          "label": "Buscar pedidos referidos"
+        },
+        {
+          "tag": "select",
+          "type": "select-one",
+          "id": "",
+          "label": "Filtro Todos Pendientes Válidos Inválidos"
+        },
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "",
+          "placeholder": "Razón para invalidar",
+          "label": ""
+        },
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "",
+          "placeholder": "Razón para invalidar",
+          "label": ""
+        }
+      ]
+    },
+    {
+      "label": "Pedidos mobile 320",
+      "filename": "pedidos-mobile-320.png",
+      "url": "https://burgers-exe-internal-v2-preview.pages.dev/",
+      "title": "Burgers.exe Internal Chekeo V2",
+      "text": "OPERACIÓN DE HOY\n\nPREVIEW\nChekeo Burgers.exe\nCerrar sesion\n\nESTADO OPERATIVO\n\nOperando en preview\nActualizar\n\nENTORNO\n\nPREVIEW\n\nSESIÓN\n\nACTIVA\nHome\nPedidos\nCocina\nPagos\nAdmin\nPREVIEW D1\nACTIVA\nOPERABLE EN PREVIEW\nINCLUYE TERMINALES\n\nCOMMAND CENTER\n\nPedidos activos\n0 VISIBLES\n0 LISTOS\n0 PAGO PENDIENTE\nBUSCAR POR FOLIO O CLIENTE\nESTADO\nTodos\nRecibido\nListo\nEntregado\nCancelado\nRANGO\nHoy\nSemana\nTodo\n\nTodavía no hay pedidos para revisar.\n\nCuando entre un pedido nuevo, aparecerá aquí.\n\nNo hay pedidos para ese filtro.\n\nAjusta estado, rango o búsqueda para volver a mostrar pedidos.",
+      "scrollWidth": 320,
+      "clientWidth": 320,
+      "scrollHeight": 1090,
+      "viewport": {
+        "width": 320,
+        "height": 844
+      },
+      "overflowX": false,
+      "firstViewportText": "Operación de hoyPREVIEWChekeo Burgers.exeOperando en previewVer Burgers.exe PreviewCerrar sesionPuedes validar flujo sin tocar producción.",
+      "buttons": [
+        "Cerrar sesion",
+        "Actualizar",
+        "Home",
+        "Pedidos",
+        "Cocina",
+        "Pagos",
+        "Admin",
+        "Actualizar",
+        "Todos",
+        "Recibido",
+        "Listo",
+        "Entregado",
+        "Cancelado",
+        "Hoy",
+        "Semana",
+        "Todo"
+      ],
+      "links": [
+        {
+          "text": "Ver Burgers.exe Preview",
+          "href": "https://burgers-exe-public-v2-preview.pages.dev/"
+        }
+      ],
+      "inputs": [
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "",
+          "placeholder": "Ej. BX-102 o Andrea",
+          "label": "BUSCAR POR FOLIO O CLIENTE"
+        }
+      ]
+    },
+    {
+      "label": "Pedidos mobile 430",
+      "filename": "pedidos-mobile-430.png",
+      "url": "https://burgers-exe-internal-v2-preview.pages.dev/",
+      "title": "Burgers.exe Internal Chekeo V2",
+      "text": "OPERACIÓN DE HOY\n\nPREVIEW\nChekeo Burgers.exe\nCerrar sesion\n\nESTADO OPERATIVO\n\nOperando en preview\nActualizar\n\nENTORNO\n\nPREVIEW\n\nSESIÓN\n\nACTIVA\nHome\nPedidos\nCocina\nPagos\nAdmin\nPREVIEW D1\nACTIVA\nOPERABLE EN PREVIEW\nINCLUYE TERMINALES\n\nCOMMAND CENTER\n\nPedidos activos\n0 VISIBLES\n0 LISTOS\n0 PAGO PENDIENTE\nBUSCAR POR FOLIO O CLIENTE\nESTADO\nTodos\nRecibido\nListo\nEntregado\nCancelado\nRANGO\nHoy\nSemana\nTodo\n\nTodavía no hay pedidos para revisar.\n\nCuando entre un pedido nuevo, aparecerá aquí.\n\nNo hay pedidos para ese filtro.\n\nAjusta estado, rango o búsqueda para volver a mostrar pedidos.",
+      "scrollWidth": 430,
+      "clientWidth": 430,
+      "scrollHeight": 1013,
+      "viewport": {
+        "width": 430,
+        "height": 844
+      },
+      "overflowX": false,
+      "firstViewportText": "Operación de hoyPREVIEWChekeo Burgers.exeOperando en previewVer Burgers.exe PreviewCerrar sesionPuedes validar flujo sin tocar producción.",
+      "buttons": [
+        "Cerrar sesion",
+        "Actualizar",
+        "Home",
+        "Pedidos",
+        "Cocina",
+        "Pagos",
+        "Admin",
+        "Actualizar",
+        "Todos",
+        "Recibido",
+        "Listo",
+        "Entregado",
+        "Cancelado",
+        "Hoy",
+        "Semana",
+        "Todo"
+      ],
+      "links": [
+        {
+          "text": "Ver Burgers.exe Preview",
+          "href": "https://burgers-exe-public-v2-preview.pages.dev/"
+        }
+      ],
+      "inputs": [
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "",
+          "placeholder": "Ej. BX-102 o Andrea",
+          "label": "BUSCAR POR FOLIO O CLIENTE"
+        }
+      ]
+    },
+    {
+      "label": "Home desktop",
+      "filename": "home-desktop.png",
+      "url": "https://burgers-exe-internal-v2-preview.pages.dev/",
+      "title": "Burgers.exe Internal Chekeo V2",
+      "text": "OPERACIÓN DE HOY\n\nPREVIEW\nChekeo Burgers.exe\n\nOperando en preview\n\nVer Burgers.exe Preview\nCerrar sesion\n\nPuedes validar flujo sin tocar producción.\n\nESTADO OPERATIVO\n\nOperando en preview\n\nPuedes validar flujo sin tocar producción.\n\nActualizar\n\nRefresca preview antes de validar.\n\nENTORNO\n\nPREVIEW\n\nSESIÓN\n\nACTIVA\n\nDATOS\n\nPREVIEW D1\n\nCAPACIDAD\n\nOPERABLE EN PREVIEW\n\nCARGA\n\n0 ACTIVOS\n\nACTUALIZACIÓN\n\n10:55 A.M.\n\nOPERACIÓN DE HOY\n\nADMIN TÉCNICO AL FINAL\n\nHome\nRESUMEN\nPedidos\nSEGUIMIENTO\nCocina\nPRODUCCIÓN\nPagos\nCONFIRMACIÓN\nAdmin\nMÓDULOS\n\nOPERACIÓN DE HOY\n\nBase operativa para Home\n\nHome concentra lectura rápida, accesos directos y el estado mínimo para arrancar sin mezclar módulos técnicos.\n\nDATOS LIVE\nPREVIEW\n\nPEDIDOS ACTIVOS\n\n0\n\nPedidos hoy que siguen abiertos\n\nPAGOS PENDIENTES\n\n0\n\nConfirmaciones por revisar\n\nPEDIDOS DE HOY\n\n0\n\nLectura del corte actual\n\nVENTA DE HOY\n\n$0.00\n\nSin cálculo de utilidad en este PR\n\nMINI RESUMEN K\n\nLectura rápida de producción\nBurgers / combos\n0\nGuarniciones\n0\nIngredientes\n0\nCosto estimado\n—\nAbrir Cocina\n\nACCESOS DIRECTOS\n\nMoverse sin ruido\n5 accesos\n\nPedidos\n\nEntregados y cancelaciones viven aquí\n\nCocina\n\nChecklist y producción actual\n\nPagos\n\nPendiente y pagado\n\nHistorial\n\nPasa a Admin\n\nCierre actual\n\nCorte y venta del día\n\nRESUMEN DE OPERACIÓN\n\nPedidos por resolver\n0 abiertos\n\nSin pedidos abiertos por resolver. Cuando entre uno nuevo aparecerá aquí.",
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "scrollHeight": 1286,
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "overflowX": false,
+      "firstViewportText": "Operación de hoyPREVIEWChekeo Burgers.exeOperando en previewVer Burgers.exe PreviewCerrar sesionPuedes validar flujo sin tocar producción.Estado operativoOperando en previewPuedes validar flujo sin tocar producción.ActualizarRefresca preview antes de validar.EntornoPREVIEWSesiónActivaDatosPreview D1",
+      "buttons": [
+        "Cerrar sesion",
+        "Actualizar",
+        "Home\nRESUMEN",
+        "Pedidos\nSEGUIMIENTO",
+        "Cocina\nPRODUCCIÓN",
+        "Pagos\nCONFIRMACIÓN",
+        "Admin\nMÓDULOS",
+        "PEDIDOS ACTIVOS\n\n0\n\nPedidos hoy que siguen abiertos",
+        "PAGOS PENDIENTES\n\n0\n\nConfirmaciones por revisar",
+        "PEDIDOS DE HOY\n\n0\n\nLectura del corte actual",
+        "VENTA DE HOY\n\n$0.00\n\nSin cálculo de utilidad en este PR",
+        "Abrir Cocina",
+        "Pedidos\n\nEntregados y cancelaciones viven aquí",
+        "Cocina\n\nChecklist y producción actual",
+        "Pagos\n\nPendiente y pagado",
+        "Historial\n\nPasa a Admin",
+        "Cierre actual\n\nCorte y venta del día"
+      ],
+      "links": [
+        {
+          "text": "Ver Burgers.exe Preview",
+          "href": "https://burgers-exe-public-v2-preview.pages.dev/"
+        }
+      ],
+      "inputs": []
+    },
+    {
+      "label": "Pedidos desktop",
+      "filename": "pedidos-desktop.png",
+      "url": "https://burgers-exe-internal-v2-preview.pages.dev/",
+      "title": "Burgers.exe Internal Chekeo V2",
+      "text": "OPERACIÓN DE HOY\n\nPREVIEW\nChekeo Burgers.exe\n\nOperando en preview\n\nVer Burgers.exe Preview\nCerrar sesion\n\nPuedes validar flujo sin tocar producción.\n\nESTADO OPERATIVO\n\nOperando en preview\n\nPuedes validar flujo sin tocar producción.\n\nActualizar\n\nRefresca preview antes de validar.\n\nENTORNO\n\nPREVIEW\n\nSESIÓN\n\nACTIVA\n\nDATOS\n\nPREVIEW D1\n\nCAPACIDAD\n\nOPERABLE EN PREVIEW\n\nCARGA\n\n0 ACTIVOS\n\nACTUALIZACIÓN\n\n10:55 A.M.\n\nOPERACIÓN DE HOY\n\nADMIN TÉCNICO AL FINAL\n\nHome\nRESUMEN\nPedidos\nSEGUIMIENTO\nCocina\nPRODUCCIÓN\nPagos\nCONFIRMACIÓN\nAdmin\nMÓDULOS\nPREVIEW D1\nACTIVA\nOPERABLE EN PREVIEW\nINCLUYE TERMINALES\n\nLee y escribe sobre D1 preview.\n\nActualizado 10:55 a.m.\nActualizar\n\nCOMMAND CENTER\n\nPedidos activos\n\nQueue operativa: detecta prioridad, abre ticket y resuelve el siguiente movimiento.\n\n0 VISIBLES\n0 LISTOS\n0 PAGO PENDIENTE\nBUSCAR POR FOLIO O CLIENTE\nESTADO\nTodos\nRecibido\nListo\nEntregado\nCancelado\nRANGO\nHoy\nSemana\nTodo\n\nTodavía no hay pedidos para revisar.\n\nCuando entre un pedido nuevo, aparecerá aquí.\n\nNo hay pedidos para ese filtro.\n\nAjusta estado, rango o búsqueda para volver a mostrar pedidos.",
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "scrollHeight": 1000,
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "overflowX": false,
+      "firstViewportText": "Operación de hoyPREVIEWChekeo Burgers.exeOperando en previewVer Burgers.exe PreviewCerrar sesionPuedes validar flujo sin tocar producción.Estado operativoOperando en previewPuedes validar flujo sin tocar producción.ActualizarRefresca preview antes de validar.EntornoPREVIEWSesiónActivaDatosPreview D1",
+      "buttons": [
+        "Cerrar sesion",
+        "Actualizar",
+        "Home\nRESUMEN",
+        "Pedidos\nSEGUIMIENTO",
+        "Cocina\nPRODUCCIÓN",
+        "Pagos\nCONFIRMACIÓN",
+        "Admin\nMÓDULOS",
+        "Actualizar",
+        "Todos",
+        "Recibido",
+        "Listo",
+        "Entregado",
+        "Cancelado",
+        "Hoy",
+        "Semana",
+        "Todo"
+      ],
+      "links": [
+        {
+          "text": "Ver Burgers.exe Preview",
+          "href": "https://burgers-exe-public-v2-preview.pages.dev/"
+        }
+      ],
+      "inputs": [
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "",
+          "placeholder": "Ej. BX-102 o Andrea",
+          "label": "BUSCAR POR FOLIO O CLIENTE"
+        }
+      ]
+    },
+    {
+      "label": "Cocina desktop",
+      "filename": "cocina-desktop.png",
+      "url": "https://burgers-exe-internal-v2-preview.pages.dev/",
+      "title": "Burgers.exe Internal Chekeo V2",
+      "text": "OPERACIÓN DE HOY\n\nPREVIEW\nChekeo Burgers.exe\n\nOperando en preview\n\nVer Burgers.exe Preview\nCerrar sesion\n\nPuedes validar flujo sin tocar producción.\n\nESTADO OPERATIVO\n\nOperando en preview\n\nPuedes validar flujo sin tocar producción.\n\nActualizar\n\nRefresca preview antes de validar.\n\nENTORNO\n\nPREVIEW\n\nSESIÓN\n\nACTIVA\n\nDATOS\n\nPREVIEW D1\n\nCAPACIDAD\n\nOPERABLE EN PREVIEW\n\nCARGA\n\n0 ACTIVOS\n\nACTUALIZACIÓN\n\n10:55 A.M.\n\nOPERACIÓN DE HOY\n\nADMIN TÉCNICO AL FINAL\n\nHome\nRESUMEN\nPedidos\nSEGUIMIENTO\nCocina\nPRODUCCIÓN\nPagos\nCONFIRMACIÓN\nAdmin\nMÓDULOS\n\nPRODUCCIÓN ACTUAL\n\nCocina conectada a preview\n\nProducción actual por item, ordenada por llegada.\n\nActualizado: 10:55 a.m.\nActualizar\n0\n\nPOR HACER\n\n0\n\nHECHO\n\n0\n\nLISTOS\n\n0\n\nSIDE QUEST\n\nPreparación\n0\n\nPOR ITEM\n\nListos\n0\n\nCOMPACTO\n\nSide Quest\n0\n\nEXTRAS\n\nResumen K\n0\n\nTOTAL\n\nPOR HACER\n\nProducción accionable\n\nIncluye pedidos en Preparación y pedidos Listos con items pendientes.\n\n0 items\n\nSin items por hacer.\n\nSIGUIENTE EN COCINA\n\nSin items por hacer\nAbrir lista",
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "scrollHeight": 1087,
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "overflowX": false,
+      "firstViewportText": "Operación de hoyPREVIEWChekeo Burgers.exeOperando en previewVer Burgers.exe PreviewCerrar sesionPuedes validar flujo sin tocar producción.Estado operativoOperando en previewPuedes validar flujo sin tocar producción.ActualizarRefresca preview antes de validar.EntornoPREVIEWSesiónActivaDatosPreview D1",
+      "buttons": [
+        "Cerrar sesion",
+        "Actualizar",
+        "Home\nRESUMEN",
+        "Pedidos\nSEGUIMIENTO",
+        "Cocina\nPRODUCCIÓN",
+        "Pagos\nCONFIRMACIÓN",
+        "Admin\nMÓDULOS",
+        "Actualizar",
+        "Preparación\n0\n\nPOR ITEM",
+        "Listos\n0\n\nCOMPACTO",
+        "Side Quest\n0\n\nEXTRAS",
+        "Resumen K\n0\n\nTOTAL",
+        "Abrir lista"
+      ],
+      "links": [
+        {
+          "text": "Ver Burgers.exe Preview",
+          "href": "https://burgers-exe-public-v2-preview.pages.dev/"
+        }
+      ],
+      "inputs": []
+    },
+    {
+      "label": "Historial mobile 390",
+      "filename": "historial-mobile-390.png",
+      "url": "https://burgers-exe-internal-v2-preview.pages.dev/",
+      "title": "Burgers.exe Internal Chekeo V2",
+      "text": "OPERACIÓN DE HOY\n\nPREVIEW\nChekeo Burgers.exe\nCerrar sesion\n\nESTADO OPERATIVO\n\nOperando en preview\nActualizar\n\nENTORNO\n\nPREVIEW\n\nSESIÓN\n\nACTIVA\nHome\nPedidos\nCocina\nPagos\nAdmin\n\nADMIN\n\nHistorial\n\nPedidos entregados y cancelados sin saturar el centro operativo.\n\nVolver al hub\n\nNAVEGACIÓN ADMIN\n\nHub\nMÓDULOS\nDatos bancarios\nTRANSFERENCIA\nHistorial\nENTREGADOS/CANCELADOS\nCierre\nCORTE ACTUAL\nCatálogo\nMENÚ Y STOCK\nSorteos\nCAMPAÑAS\nReportes\nEXPORTES\n\nModo seguro global activo. Toda la app sigue pidiendo PIN antes de abrir.\n\nPREVIEW D1\nACTIVA\nOPERABLE EN PREVIEW\nINCLUYE TERMINALES\nHistorial de pedidos\n\nAún no hay pedidos entregados o cancelados.",
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "scrollHeight": 1300,
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflowX": false,
+      "buttons": [
+        "Cerrar sesion",
+        "Actualizar",
+        "Home",
+        "Pedidos",
+        "Cocina",
+        "Pagos",
+        "Admin",
+        "Volver al hub",
+        "Hub\nMÓDULOS",
+        "Datos bancarios\nTRANSFERENCIA",
+        "Historial\nENTREGADOS/CANCELADOS",
+        "Cierre\nCORTE ACTUAL",
+        "Catálogo\nMENÚ Y STOCK",
+        "Sorteos\nCAMPAÑAS",
+        "Reportes\nEXPORTES",
+        "Actualizar"
+      ],
+      "inputs": []
+    },
+    {
+      "label": "Catalogo mobile 390",
+      "filename": "catalogo-mobile-390.png",
+      "url": "https://burgers-exe-internal-v2-preview.pages.dev/",
+      "title": "Burgers.exe Internal Chekeo V2",
+      "text": "OPERACIÓN DE HOY\n\nPREVIEW\nChekeo Burgers.exe\nCerrar sesion\n\nESTADO OPERATIVO\n\nOperando en preview\nActualizar\n\nENTORNO\n\nPREVIEW\n\nSESIÓN\n\nACTIVA\nHome\nPedidos\nCocina\nPagos\nAdmin\n\nADMIN\n\nCatálogo\n\nProductos, promos, banners e ingredientes con el panel existente.\n\nVolver al hub\n\nNAVEGACIÓN ADMIN\n\nHub\nMÓDULOS\nDatos bancarios\nTRANSFERENCIA\nHistorial\nENTREGADOS/CANCELADOS\nCierre\nCORTE ACTUAL\nCatálogo\nMENÚ Y STOCK\nSorteos\nCAMPAÑAS\nReportes\nEXPORTES\n\nModo seguro global activo. Toda la app sigue pidiendo PIN antes de abrir.\n\nCatálogo\n\nEstado: Listo para editar\n\nSesión activa\nCatálogo\nProductos\nPromos\nBanners\nIngredientes\nTodas categorías\nBurgers\nGuarniciones\nCombos\nExtras\nTodos\nDisponibles\nAgotados\nRecargar\nCrear producto\nBURGERS\n2 productos\n\nOG (OG)\n\nDISPONIBLE\n\nCarne \"Especial\" 250g aprox, tocino, queso americano, queso manchego, jitomate, lechuga, pepinillos, catsup, mostaza y mayonesa.\n\n$85 · burgers · Orden 1\n\nStock no gestionado\n\nAsset: menu/og-20260603T065423Z.webp\n\nDisponible\nAgotado\nEditar detalle\n\nBBQ (BBQ)\n\nDISPONIBLE\n\nCarne \"Especial\" 250g aprox, tocino, queso americano, queso manchego, aros de cebolla, pepinillos y salsa BBQ.\n\n$85 · burgers · Orden 2\n\nStock no gestionado\n\nAsset: menu/bbq-20260603T065437Z.webp\n\nDisponible\nAgotado\nEditar detalle\nCOMBOS\n2 productos\n\nOG Full Loaded (0001)\n\nDISPONIBLE\n\nCombo cargadito pa que no falte\n\n$99 · combos · Orden 1\n\nStock: 44 / 50 · gestionado\n\nAsset: menu/0001-20260609T214453Z.png\n\nDisponible\nAgotado\nEditar detalle\n\nCombo BBQ (COMBO-BBQ)\n\nDISPONIBLE\n\nCombo cargadito pa que no falte\n\n$99 · combos · Orden 2\n\nStock no gestionado\n\nAsset: menu/combo-bbq-20260611T214022Z.png\n\nDisponible\nAgotado\nEditar detalle\nGUARNICIONES\n4 productos\n\nPapas a la francesa OG (PAPAS_OG)\n\nDISPONIBLE\n\nPapas clásicas, sal y crunch.\n\n$25 · guarniciones · Orden 10\n\nStock no gestionado\n\nAsset: menu/papas-og-20260603T065501Z.webp\n\nDisponible\nAgotado\nEditar detalle\n\nPapas a la francesa Especiales (PAPAS_ESPECIALES)\n\nDISPONIBLE\n\nPapas con sazón especial de la casa.\n\n$25 · guarniciones · Orden 11\n\nStock no gestionado\n\nAsset: menu/papas-especiales-20260603T065519Z.webp\n\nDisponible\nAgotado\nEditar detalle\n\nPapas a la francesa Lemon&Pepper (PAPAS_LEMON_PEPPER)\n\nDISPONIBLE\n\nPapas con toque cítrico y pimienta.\n\n$25 · guarniciones · Orden 12\n\nStock no gestionado\n\nAsset: menu/papas-lemon-pepper-20260603T065533Z.webp\n\nDisponible\nAgotado\nEditar detalle\n\nAros de Cebolla (AROS_CEBOLLA)\n\nDISPONIBLE\n\nAros crujientes estilo burger joint.\n\n$30 · guarniciones · Orden 13\n\nStock no gestionado\n\nAsset: menu/aros-cebolla-20260603T065550Z.webp\n\nDisponible\nAgotado\nEditar detalle\nEXTRAS\n7 productos\n\nPepinillos (EXTRA_PEPINILLOS)\n\nDISPONIBLE\n\nToque ácido/crunch.\n\n$5 · extras · Orden 20\n\nStock no gestionado\n\nAsset: menu/extra-pepinillos-20260603T071434Z.webp\n\nDisponible\nAgotado\nEditar detalle\n\nQueso americano (EXTRA_QUESO_AMERICANO)\n\nDISPONIBLE\n\nExtra cremoso clásico.\n\n$7 · extras · Orden 21\n\nStock no gestionado\n\nAsset: menu/extra-queso-americano-20260603T071448Z.webp\n\nDisponible\nAgotado\nEditar detalle\n\nQueso manchego (EXTRA_QUESO_MANCHEGO)\n\nDISPONIBLE\n\nExtra fundido intenso.\n\n$7 · extras · Orden 22\n\nStock no gestionado\n\nAsset: menu/extra-queso-manchego-20260603T071503Z.webp\n\nDisponible\nAgotado\nEditar detalle\n\nTocino (EXTRA_TOCINO)\n\nDISPONIBLE\n\nCrunch ahumado.\n\n$10 · extras · Orden 23\n\nStock no gestionado\n\nAsset: menu/extra-tocino-20260603T065613Z.webp\n\nDisponible\nAgotado\nEditar detalle\n\nCatsup (EXTRA_CATSUP)\n\nDISPONIBLE\n\nDulce clásica.\n\n$1 · extras · Orden 24\n\nStock no gestionado\n\nAsset: menu/extra-catsup-20260603T071349Z.webp\n\nDisponible\nAgotado\nEditar detalle\n\nMostaza (EXTRA_MOSTAZA)\n\nDISPONIBLE\n\nPunch ácido.\n\n$1 · extras · Orden 25\n\nStock no gestionado\n\nAsset: menu/extra-mostaza-20260603T071408Z.webp\n\nDisponible\nAgotado\nEditar detalle\n\nTomate (EXTRA_TOMATE)\n\nDISPONIBLE\n\nFrescura extra.\n\n$5 · extras · Orden 26\n\nStock no gestionado\n\nAsset: menu/extra-tomate-20260603T071516Z.webp\n\nDisponible\nAgotado\nEditar detalle",
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "scrollHeight": 5563,
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflowX": false,
+      "buttons": [
+        "Cerrar sesion",
+        "Actualizar",
+        "Home",
+        "Pedidos",
+        "Cocina",
+        "Pagos",
+        "Admin",
+        "Volver al hub",
+        "Hub\nMÓDULOS",
+        "Datos bancarios\nTRANSFERENCIA",
+        "Historial\nENTREGADOS/CANCELADOS",
+        "Cierre\nCORTE ACTUAL",
+        "Catálogo\nMENÚ Y STOCK",
+        "Sorteos\nCAMPAÑAS",
+        "Reportes\nEXPORTES",
+        "Productos",
+        "Promos",
+        "Banners",
+        "Ingredientes",
+        "Recargar",
+        "Crear producto",
+        "Disponible",
+        "Agotado",
+        "Editar detalle",
+        "Disponible",
+        "Agotado",
+        "Editar detalle",
+        "Disponible",
+        "Agotado",
+        "Editar detalle",
+        "Disponible",
+        "Agotado",
+        "Editar detalle",
+        "Disponible",
+        "Agotado",
+        "Editar detalle",
+        "Disponible",
+        "Agotado",
+        "Editar detalle",
+        "Disponible",
+        "Agotado",
+        "Editar detalle",
+        "Disponible",
+        "Agotado",
+        "Editar detalle",
+        "Disponible",
+        "Agotado",
+        "Editar detalle",
+        "Disponible",
+        "Agotado",
+        "Editar detalle",
+        "Disponible",
+        "Agotado",
+        "Editar detalle",
+        "Disponible",
+        "Agotado",
+        "Editar detalle",
+        "Disponible",
+        "Agotado",
+        "Editar detalle",
+        "Disponible",
+        "Agotado",
+        "Editar detalle",
+        "Disponible",
+        "Agotado",
+        "Editar detalle"
+      ],
+      "inputs": [
+        {
+          "tag": "input",
+          "type": "text",
+          "id": "",
+          "placeholder": "Buscar por SKU o texto",
+          "label": ""
+        },
+        {
+          "tag": "select",
+          "type": "select-one",
+          "id": "",
+          "label": ""
+        },
+        {
+          "tag": "select",
+          "type": "select-one",
+          "id": "",
+          "label": ""
+        }
+      ]
+    },
+    {
+      "label": "Reportes mobile 390",
+      "filename": "reportes-mobile-390.png",
+      "url": "https://burgers-exe-internal-v2-preview.pages.dev/",
+      "title": "Burgers.exe Internal Chekeo V2",
+      "text": "OPERACIÓN DE HOY\n\nPREVIEW\nChekeo Burgers.exe\nCerrar sesion\n\nESTADO OPERATIVO\n\nOperando en preview\nActualizar\n\nENTORNO\n\nPREVIEW\n\nSESIÓN\n\nACTIVA\nHome\nPedidos\nCocina\nPagos\nAdmin\n\nADMIN\n\nReportes\n\nExportes y contexto técnico sin mezclarlo con operación diaria.\n\nVolver al hub\n\nNAVEGACIÓN ADMIN\n\nHub\nMÓDULOS\nDatos bancarios\nTRANSFERENCIA\nHistorial\nENTREGADOS/CANCELADOS\nCierre\nCORTE ACTUAL\nCatálogo\nMENÚ Y STOCK\nSorteos\nCAMPAÑAS\nReportes\nEXPORTES\n\nModo seguro global activo. Toda la app sigue pidiendo PIN antes de abrir.\n\nREPORTES Y EXPORTES\n\nExportes operativos\n\nDescarga cortes y listas filtradas sin volver a mezclar estos controles con Pedidos, Cocina o Pagos.\n\nDescargar reporte\n\nBaja los pedidos filtrados para revisión o cierre.\n\nIncluir entregados y cancelados\nEstado\nTodos\nNuevo\nEn preparación\nListo\nEntregado\nCancelado\nMáximo de registros\nDesde\nHasta\nDescargar reporte\n\nESTADO TÉCNICO\n\nContexto actual del backend\nFuente de datos\nD1\nSesión\nActiva\nÚltima actualización\n10:59 a.m.\n\nModo seguro global activo. Toda la app sigue pidiendo PIN antes de abrir.",
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "scrollHeight": 2008,
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "overflowX": false,
+      "buttons": [
+        "Cerrar sesion",
+        "Actualizar",
+        "Home",
+        "Pedidos",
+        "Cocina",
+        "Pagos",
+        "Admin",
+        "Volver al hub",
+        "Hub\nMÓDULOS",
+        "Datos bancarios\nTRANSFERENCIA",
+        "Historial\nENTREGADOS/CANCELADOS",
+        "Cierre\nCORTE ACTUAL",
+        "Catálogo\nMENÚ Y STOCK",
+        "Sorteos\nCAMPAÑAS",
+        "Reportes\nEXPORTES",
+        "Descargar reporte"
+      ],
+      "inputs": [
+        {
+          "tag": "input",
+          "type": "checkbox",
+          "id": "",
+          "placeholder": "",
+          "label": "Incluir entregados y cancelados"
+        },
+        {
+          "tag": "select",
+          "type": "select-one",
+          "id": "",
+          "label": "Estado Todos Nuevo En preparación Listo Entregado Cancelado"
+        },
+        {
+          "tag": "input",
+          "type": "number",
+          "id": "",
+          "placeholder": "",
+          "label": "Máximo de registros"
+        },
+        {
+          "tag": "input",
+          "type": "date",
+          "id": "",
+          "placeholder": "",
+          "label": "Desde"
+        },
+        {
+          "tag": "input",
+          "type": "date",
+          "id": "",
+          "placeholder": "",
+          "label": "Hasta"
+        }
+      ]
+    }
+  ],
+  "consoleMessages": [
+    {
+      "page": "mobile390",
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 ()"
+    },
+    {
+      "page": "mobile390",
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 ()"
+    }
+  ],
+  "notes": [
+    "Preview real usado con PIN temporal 0485.",
+    "No se crearon datos ni servidor local para estas capturas."
+  ],
+  "network404": [
+    {
+      "status": 404,
+      "url": "https://burgers-exe-internal-v2-preview.pages.dev/api/assets-v2/raffles/banners/raffle-peimer-gran-sorte-202606-20260603T071818Z.png"
+    },
+    {
+      "status": 404,
+      "url": "https://burgers-exe-internal-v2-preview.pages.dev/api/assets-v2/raffles/details/raffle-peimer-gran-sorte-202606-20260603T153634Z.png"
+    }
+  ]
+}
