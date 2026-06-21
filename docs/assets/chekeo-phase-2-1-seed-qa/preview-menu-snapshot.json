@@ -1,0 +1,344 @@
+{
+  "categories": [
+    {
+      "id": "cat-burgers",
+      "key": "burgers",
+      "name": "Burgers",
+      "sortOrder": 1,
+      "updatedAt": "2026-06-02 19:34:23"
+    },
+    {
+      "id": "cat-guarniciones",
+      "key": "guarniciones",
+      "name": "Guarniciones",
+      "sortOrder": 2,
+      "updatedAt": "2026-06-02 19:34:23"
+    },
+    {
+      "id": "cat-combos",
+      "key": "combos",
+      "name": "Combos",
+      "sortOrder": 2,
+      "updatedAt": "2026-06-11 20:16:54"
+    },
+    {
+      "id": "cat-extras",
+      "key": "extras",
+      "name": "Extras",
+      "sortOrder": 3,
+      "updatedAt": "2026-06-02 19:34:23"
+    }
+  ],
+  "items": [
+    {
+      "sku": "OG",
+      "category": "burgers",
+      "name": "OG",
+      "description": "Carne \"Especial\" 250g aprox, tocino, queso americano, queso manchego, jitomate, lechuga, pepinillos, catsup, mostaza y mayonesa.",
+      "price": 85,
+      "tags": [
+        "burger"
+      ],
+      "isAvailable": true,
+      "stockManaged": false,
+      "isFeatured": true,
+      "sortOrder": 1,
+      "imageKey": "menu/og-20260603T065423Z.webp",
+      "comboLinks": [],
+      "upsellItems": [],
+      "updatedAt": "2026-06-16 16:46:54"
+    },
+    {
+      "sku": "0001",
+      "category": "combos",
+      "name": "OG Full Loaded",
+      "description": "Combo cargadito pa que no falte",
+      "price": 99,
+      "tags": [],
+      "badge": "Hack",
+      "promoLabel": "Hack Price",
+      "isAvailable": true,
+      "stockManaged": true,
+      "stockLimit": 50,
+      "stockRemaining": 44,
+      "isFeatured": true,
+      "sortOrder": 1,
+      "imageKey": "menu/0001-20260609T214453Z.png",
+      "comboLinks": [
+        "PAPAS_OG",
+        "OG"
+      ],
+      "upsellItems": [],
+      "updatedAt": "2026-06-16 16:46:56"
+    },
+    {
+      "sku": "BBQ",
+      "category": "burgers",
+      "name": "BBQ",
+      "description": "Carne \"Especial\" 250g aprox, tocino, queso americano, queso manchego, aros de cebolla, pepinillos y salsa BBQ.",
+      "price": 85,
+      "tags": [
+        "burger"
+      ],
+      "isAvailable": true,
+      "stockManaged": false,
+      "isFeatured": true,
+      "sortOrder": 2,
+      "imageKey": "menu/bbq-20260603T065437Z.webp",
+      "comboLinks": [],
+      "upsellItems": [],
+      "updatedAt": "2026-06-16 16:46:54"
+    },
+    {
+      "sku": "COMBO-BBQ",
+      "category": "combos",
+      "name": "Combo BBQ",
+      "description": "Combo cargadito pa que no falte",
+      "price": 99,
+      "tags": [
+        "combo"
+      ],
+      "promoLabel": "Hack Price",
+      "isAvailable": true,
+      "stockManaged": false,
+      "isFeatured": true,
+      "sortOrder": 2,
+      "imageKey": "menu/combo-bbq-20260611T214022Z.png",
+      "comboLinks": [
+        "PAPAS_OG",
+        "BBQ"
+      ],
+      "upsellItems": [],
+      "updatedAt": "2026-06-16 16:46:57"
+    },
+    {
+      "sku": "PAPAS_OG",
+      "category": "guarniciones",
+      "name": "Papas a la francesa OG",
+      "description": "Papas clásicas, sal y crunch.",
+      "price": 25,
+      "tags": [
+        "side"
+      ],
+      "isAvailable": true,
+      "stockManaged": false,
+      "isFeatured": false,
+      "sortOrder": 10,
+      "imageKey": "menu/papas-og-20260603T065501Z.webp",
+      "comboLinks": [],
+      "upsellItems": [],
+      "updatedAt": "2026-06-16 16:46:59"
+    },
+    {
+      "sku": "PAPAS_ESPECIALES",
+      "category": "guarniciones",
+      "name": "Papas a la francesa Especiales",
+      "description": "Papas con sazón especial de la casa.",
+      "price": 25,
+      "tags": [
+        "side"
+      ],
+      "isAvailable": true,
+      "stockManaged": false,
+      "isFeatured": false,
+      "sortOrder": 11,
+      "imageKey": "menu/papas-especiales-20260603T065519Z.webp",
+      "comboLinks": [],
+      "upsellItems": [],
+      "updatedAt": "2026-06-16 16:47:00"
+    },
+    {
+      "sku": "PAPAS_LEMON_PEPPER",
+      "category": "guarniciones",
+      "name": "Papas a la francesa Lemon&Pepper",
+      "description": "Papas con toque cítrico y pimienta.",
+      "price": 25,
+      "tags": [
+        "side"
+      ],
+      "isAvailable": true,
+      "stockManaged": false,
+      "isFeatured": false,
+      "sortOrder": 12,
+      "imageKey": "menu/papas-lemon-pepper-20260603T065533Z.webp",
+      "comboLinks": [],
+      "upsellItems": [],
+      "updatedAt": "2026-06-16 16:47:01"
+    },
+    {
+      "sku": "AROS_CEBOLLA",
+      "category": "guarniciones",
+      "name": "Aros de Cebolla",
+      "description": "Aros crujientes estilo burger joint.",
+      "price": 30,
+      "tags": [
+        "side"
+      ],
+      "isAvailable": true,
+      "stockManaged": false,
+      "isFeatured": false,
+      "sortOrder": 13,
+      "imageKey": "menu/aros-cebolla-20260603T065550Z.webp",
+      "comboLinks": [],
+      "upsellItems": [],
+      "updatedAt": "2026-06-16 16:47:02"
+    },
+    {
+      "sku": "EXTRA_PEPINILLOS",
+      "category": "extras",
+      "name": "Pepinillos",
+      "description": "Toque ácido/crunch.",
+      "price": 5,
+      "tags": [
+        "extra"
+      ],
+      "isAvailable": true,
+      "stockManaged": false,
+      "isFeatured": false,
+      "sortOrder": 20,
+      "imageKey": "menu/extra-pepinillos-20260603T071434Z.webp",
+      "comboLinks": [],
+      "upsellItems": [],
+      "updatedAt": "2026-06-16 16:47:03"
+    },
+    {
+      "sku": "EXTRA_QUESO_AMERICANO",
+      "category": "extras",
+      "name": "Queso americano",
+      "description": "Extra cremoso clásico.",
+      "price": 7,
+      "tags": [
+        "extra"
+      ],
+      "isAvailable": true,
+      "stockManaged": false,
+      "isFeatured": false,
+      "sortOrder": 21,
+      "imageKey": "menu/extra-queso-americano-20260603T071448Z.webp",
+      "comboLinks": [],
+      "upsellItems": [],
+      "updatedAt": "2026-06-16 16:47:04"
+    },
+    {
+      "sku": "EXTRA_QUESO_MANCHEGO",
+      "category": "extras",
+      "name": "Queso manchego",
+      "description": "Extra fundido intenso.",
+      "price": 7,
+      "tags": [
+        "extra"
+      ],
+      "isAvailable": true,
+      "stockManaged": false,
+      "isFeatured": false,
+      "sortOrder": 22,
+      "imageKey": "menu/extra-queso-manchego-20260603T071503Z.webp",
+      "comboLinks": [],
+      "upsellItems": [],
+      "updatedAt": "2026-06-16 16:47:05"
+    },
+    {
+      "sku": "EXTRA_TOCINO",
+      "category": "extras",
+      "name": "Tocino",
+      "description": "Crunch ahumado.",
+      "price": 10,
+      "tags": [
+        "extra"
+      ],
+      "isAvailable": true,
+      "stockManaged": false,
+      "isFeatured": false,
+      "sortOrder": 23,
+      "imageKey": "menu/extra-tocino-20260603T065613Z.webp",
+      "comboLinks": [],
+      "upsellItems": [],
+      "updatedAt": "2026-06-16 16:47:06"
+    },
+    {
+      "sku": "EXTRA_CATSUP",
+      "category": "extras",
+      "name": "Catsup",
+      "description": "Dulce clásica.",
+      "price": 1,
+      "tags": [
+        "extra"
+      ],
+      "isAvailable": true,
+      "stockManaged": false,
+      "isFeatured": false,
+      "sortOrder": 24,
+      "imageKey": "menu/extra-catsup-20260603T071349Z.webp",
+      "comboLinks": [],
+      "upsellItems": [],
+      "updatedAt": "2026-06-16 16:47:07"
+    },
+    {
+      "sku": "EXTRA_MOSTAZA",
+      "category": "extras",
+      "name": "Mostaza",
+      "description": "Punch ácido.",
+      "price": 1,
+      "tags": [
+        "extra"
+      ],
+      "isAvailable": true,
+      "stockManaged": false,
+      "isFeatured": false,
+      "sortOrder": 25,
+      "imageKey": "menu/extra-mostaza-20260603T071408Z.webp",
+      "comboLinks": [],
+      "upsellItems": [],
+      "updatedAt": "2026-06-16 16:47:08"
+    },
+    {
+      "sku": "EXTRA_TOMATE",
+      "category": "extras",
+      "name": "Tomate",
+      "description": "Frescura extra.",
+      "price": 5,
+      "tags": [
+        "extra"
+      ],
+      "isAvailable": true,
+      "stockManaged": false,
+      "isFeatured": false,
+      "sortOrder": 26,
+      "imageKey": "menu/extra-tomate-20260603T071516Z.webp",
+      "comboLinks": [],
+      "upsellItems": [],
+      "updatedAt": "2026-06-16 16:47:10"
+    }
+  ],
+  "promos": [],
+  "categoryBanners": [
+    {
+      "categoryKey": "burgers",
+      "imageKey": "category-banners/burgers/burgers-20260608T211635Z.png",
+      "updatedAt": "2026-06-08 21:16:42"
+    },
+    {
+      "categoryKey": "combos",
+      "imageKey": "category-banners/combos/combos-20260612T145127Z.png",
+      "updatedAt": "2026-06-12 14:51:33"
+    },
+    {
+      "categoryKey": "guarniciones",
+      "imageKey": "category-banners/guarniciones/guarniciones-20260609T183816Z.png",
+      "updatedAt": "2026-06-09 18:38:19"
+    }
+  ],
+  "siteConfig": {
+    "brandName": "Burgers.exe",
+    "currency": "MXN",
+    "orderModes": [
+      "pickup",
+      "delivery"
+    ],
+    "supportPhone": "+52 55 0000 0000",
+    "heroCta": "Pedir ahora",
+    "notice": ""
+  },
+  "updatedAt": "2026-06-16 16:47:10",
+  "source": "d1"
+}
