@@ -749,14 +749,12 @@ export const KitchenQueue = ({
       <div className="kitchen-hero">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-lime-200">
-              Producción actual
-            </p>
+            <p className="home-section-label">Preparación</p>
             <h2 className="mt-1 text-2xl font-black text-zinc-50 md:text-3xl">
-              {kitchenTitle}
+              Cocina
             </h2>
             <p className="mt-1 max-w-3xl text-sm text-zinc-400">
-              {kitchenHint}
+              {kitchenTitle}. {kitchenHint}
             </p>
           </div>
           <div className="kitchen-hero__actions">
@@ -821,6 +819,14 @@ export const KitchenQueue = ({
         >
           {runtime.error}
         </p>
+      ) : null}
+
+      {view !== "summaryK" ? (
+        <NextInKitchen
+          pendingItems={pendingItems}
+          doneItems={doneItems}
+          onOpenItem={(item) => onOpenOrder(item.order)}
+        />
       ) : null}
 
       {view === "preparacion" ? (
@@ -888,14 +894,6 @@ export const KitchenQueue = ({
         <KitchenSummaryKPanel
           environment={runtime.environment}
           localSummary={localSummary}
-        />
-      ) : null}
-
-      {view !== "summaryK" ? (
-        <NextInKitchen
-          pendingItems={pendingItems}
-          doneItems={doneItems}
-          onOpenItem={(item) => onOpenOrder(item.order)}
         />
       ) : null}
     </section>

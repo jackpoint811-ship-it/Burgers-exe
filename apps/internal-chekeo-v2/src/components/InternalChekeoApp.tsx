@@ -253,11 +253,11 @@ const primaryTabs: Array<{
   hint: string;
   icon: NavIcon;
 }> = [
-  { key: "home", label: "Home", hint: "Resumen", icon: House },
-  { key: "pedidos", label: "Pedidos", hint: "Seguimiento", icon: ShoppingBag },
-  { key: "cocina", label: "Cocina", hint: "Producción", icon: ChefHat },
-  { key: "pagos", label: "Pagos", hint: "Confirmación", icon: WalletCards },
-  { key: "admin", label: "Admin", hint: "Módulos", icon: Shield },
+  { key: "home", label: "Operación", hint: "Prioridad", icon: House },
+  { key: "pedidos", label: "Pedidos", hint: "Cola", icon: ShoppingBag },
+  { key: "cocina", label: "Cocina", hint: "Prep", icon: ChefHat },
+  { key: "pagos", label: "Pagos", hint: "Cobros", icon: WalletCards },
+  { key: "admin", label: "Admin", hint: "Más", icon: Shield },
 ];
 const adminModuleGroups: Array<{
   key: AdminModuleCategory;
@@ -449,20 +449,6 @@ const truthToneClassName: Record<TruthTone, string> = {
   warning: "truth-pill truth-pill--warning",
   danger: "truth-pill truth-pill--danger",
   neutral: "truth-pill truth-pill--neutral",
-};
-const truthBannerClassName: Record<TruthTone, string> = {
-  system: "truth-banner truth-banner--system",
-  success: "truth-banner truth-banner--success",
-  warning: "truth-banner truth-banner--warning",
-  danger: "truth-banner truth-banner--danger",
-  neutral: "truth-banner truth-banner--neutral",
-};
-const truthActionClassName: Record<TruthTone, string> = {
-  system: "truth-action truth-action--system",
-  success: "truth-action truth-action--success",
-  warning: "truth-action truth-action--warning",
-  danger: "truth-action truth-action--danger",
-  neutral: "truth-action truth-action--neutral",
 };
 const sessionStateLabel: Record<SessionState, TruthItem> = {
   checking: { label: "Sesión", value: "Verificando", tone: "system" },
@@ -1357,72 +1343,33 @@ const NewOrderBanner = ({
     </section>
   ) : null;
 
-const SourcePanel = ({
-  runtime,
-  runtimeEnvironment,
-  includeTerminal = false,
-}: {
-  runtime: OrdersRuntime;
-  runtimeEnvironment: ChekeoRuntimeEnvironment;
-  includeTerminal?: boolean;
-}) => {
-  const truth = getOperationalTruth({
-    runtime,
-    runtimeEnvironment,
-    activeCount: 0,
-  });
+const RuntimeNoticeStack = ({ runtime }: { runtime: OrdersRuntime }) => {
+  const notices = [
+    runtime.limitWarning
+      ? { key: "limit", tone: "warning" as const, message: runtime.limitWarning }
+      : null,
+    runtime.error
+      ? { key: "error", tone: "error" as const, message: runtime.error }
+      : null,
+    runtime.notice
+      ? { key: "notice", tone: "success" as const, message: runtime.notice }
+      : null,
+  ].filter(Boolean) as Array<{
+    key: string;
+    tone: "warning" | "error" | "success";
+    message: string;
+  }>;
+
+  if (!notices.length) return null;
+
   return (
-    <Card className="source-panel-card mb-2.5 p-3">
-      <div className="surface-status">
-        <div className="surface-status__copy">
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusPill className={truthToneClassName[truth.data.tone]}>
-              {truth.sourceBadge}
-            </StatusPill>
-            <StatusPill className={truthToneClassName[truth.session.tone]}>
-              {truth.session.value}
-            </StatusPill>
-            <StatusPill className={truthToneClassName[truth.capability.tone]}>
-              {truth.capability.value}
-            </StatusPill>
-            {includeTerminal ? (
-              <StatusPill className={truthToneClassName.neutral}>
-                Incluye terminales
-              </StatusPill>
-            ) : null}
-          </div>
-          <p className="text-sm font-bold text-zinc-100">{truth.sourceMessage}</p>
-          <p className="text-[11px] text-zinc-400">{truth.sourceHint}</p>
-        </div>
-        <div className="surface-status__meta">
-          <span className="text-[11px] text-zinc-500">
-            {runtime.lastUpdated ? `Actualizado ${runtime.lastUpdated}` : "Sin sync confirmado"}
-          </span>
-          <Button
-            className="border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs disabled:opacity-40"
-            onClick={() => runtime.reload(includeTerminal)}
-            disabled={runtime.loading || runtime.sessionState !== "active"}
-          >
-            {runtime.loading ? "Actualizando..." : truth.action.label}
-          </Button>
-        </div>
-      </div>
-      {runtime.limitWarning ? (
-        <p className="state-message state-message--warning mt-3">
-          {runtime.limitWarning}
+    <section className="runtime-notices" aria-live="polite">
+      {notices.map((notice) => (
+        <p key={notice.key} className={`state-message state-message--${notice.tone}`}>
+          {notice.message}
         </p>
-      ) : null}
-      {runtime.error ? (
-        <p className="state-message state-message--error mt-2">
-          {runtime.error}
-        </p>
-      ) : null}
-      {runtime.notice ? (
-        <p className="state-message state-message--success mt-2">
-          {runtime.notice}
-        </p>
-      ) : null}
-    </Card>
+      ))}
+    </section>
   );
 };
 
@@ -1447,38 +1394,17 @@ const InternalLogin = ({
 
   return (
     <main className="shell flex items-center justify-center py-8">
-      <section className="login card w-full max-w-md border-cyan-400/20 bg-zinc-950/95 p-5 shadow-cyan-950/30">
-        <div className="mb-6 text-center">
-          <EnvironmentBadge environment={runtimeEnvironment} className="mx-auto mb-3" />
+      <section className="login card w-full max-w-md border-cyan-400/20 bg-zinc-950/95 p-4 shadow-cyan-950/30">
+        <div className="mb-4 text-center">
           <p className="text-2xl font-black tracking-tight text-zinc-50">
             Burgers<span className="text-cyan-300">.exe</span>
           </p>
-          <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.35em] text-cyan-200">
+          <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.18em] text-cyan-200">
             Chekeo
           </p>
         </div>
-        <div className="runtime-login-notice">
-          <p className="text-sm font-semibold text-zinc-50">{copy.primary}</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <StatusPill className={truthToneClassName.system}>
-              {runtimeEnvironmentLabel[runtimeEnvironment]}
-            </StatusPill>
-            <StatusPill className={truthToneClassName[sessionStateLabel[sessionState].tone]}>
-              {sessionStateLabel[sessionState].value}
-            </StatusPill>
-          </div>
-          <p className="mt-2 text-xs text-zinc-300">{copy.secondary}</p>
-          <a
-            className="runtime-environment-link mt-3 w-full"
-            href={publicOrderUrl}
-            target="_blank"
-            rel="noreferrer"
-          >
-            {publicOrderLabel}
-          </a>
-        </div>
         {authMode === "admin-only" ? (
-          <p className="state-message state-message--warning mb-4">
+          <p className="state-message state-message--warning mb-3">
             {getAdminAuthModeHint(authMode)}
           </p>
         ) : null}
@@ -1491,6 +1417,26 @@ const InternalLogin = ({
           disabled={checkingSession}
           notice={sessionMessage}
         />
+        <div className="runtime-login-notice">
+          <p className="text-xs font-semibold text-zinc-50">{copy.primary}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <StatusPill className={truthToneClassName.system}>
+              {runtimeEnvironmentLabel[runtimeEnvironment]}
+            </StatusPill>
+            <StatusPill className={truthToneClassName[sessionStateLabel[sessionState].tone]}>
+              {sessionStateLabel[sessionState].value}
+            </StatusPill>
+          </div>
+          <p className="mt-2 text-xs text-zinc-300">{copy.secondary}</p>
+          <a
+            className="runtime-environment-link runtime-environment-link--muted mt-3 w-full"
+            href={publicOrderUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {publicOrderLabel}
+          </a>
+        </div>
       </section>
     </main>
   );
@@ -1604,10 +1550,14 @@ const EnvironmentBadge = ({
 
 const OperatorHeader = ({
   runtimeEnvironment,
+  runtime,
+  onRefresh,
   onLogout,
   truth,
 }: {
   runtimeEnvironment: ChekeoRuntimeEnvironment;
+  runtime: OrdersRuntime;
+  onRefresh: () => void;
   onLogout: () => void;
   truth: OperationalTruth;
 }) => {
@@ -1615,100 +1565,57 @@ const OperatorHeader = ({
   const publicOrderLabel = getPublicOrderLabelForEnvironment(runtimeEnvironment);
 
   return (
-    <header className={`card shell-header shell-header--${runtimeEnvironment}`}>
+    <header className={`shell-header shell-header--${runtimeEnvironment}`}>
       <div className="shell-header__layout">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="shell-header__eyebrow">
-              Operación de hoy
-            </p>
-            <EnvironmentBadge environment={runtimeEnvironment} />
+        <div className="shell-header__brand">
+          <div className="shell-header__mark" aria-hidden="true">
+            Bx
           </div>
-          <h1 className="shell-header__title">
-            Chekeo Burgers.exe
-          </h1>
-          <p className="shell-header__summary">
-            {truth.headline}
-          </p>
+          <div className="min-w-0">
+            <p className="shell-header__title">
+              Chekeo <span>Burgers.exe</span>
+            </p>
+            <div className="shell-header__signals" aria-label="Estado de consola">
+              <EnvironmentBadge environment={runtimeEnvironment} />
+              <StatusPill className={truthToneClassName[truth.data.tone]}>
+                {truth.sourceBadge}
+              </StatusPill>
+              <StatusPill className={truthToneClassName[truth.session.tone]}>
+                {truth.session.value}
+              </StatusPill>
+            </div>
+          </div>
         </div>
         <div className="shell-header__actions">
+          <span className="shell-header__sync">
+            {runtime.lastUpdated ? `Sync ${runtime.lastUpdated}` : "Sin sync"}
+          </span>
+          <Button
+            className="shell-icon-button"
+            aria-label="Actualizar datos"
+            onClick={onRefresh}
+            disabled={runtime.loading || runtime.sessionState !== "active"}
+          >
+            <RefreshCw size={16} aria-hidden="true" />
+          </Button>
           <a
-            className="runtime-environment-link w-full"
+            className="shell-icon-button"
             href={publicOrderUrl}
             target="_blank"
             rel="noreferrer"
+            aria-label={publicOrderLabel}
           >
-            {publicOrderLabel}
+            <ExternalLink size={16} aria-hidden="true" />
           </a>
           <Button
-            className="min-h-11 border border-zinc-700 bg-zinc-900 px-3 py-2 text-[11px]"
+            className="shell-logout-button"
             onClick={onLogout}
           >
-            Cerrar sesion
+            Salir
           </Button>
-          <p className="text-[11px] text-zinc-500 sm:text-right">
-            {truth.summary}
-          </p>
         </div>
       </div>
     </header>
-  );
-};
-
-const OperationalStatusBar = ({
-  truth,
-  onPrimaryAction,
-  disabled,
-}: {
-  truth: OperationalTruth;
-  onPrimaryAction: () => void;
-  disabled: boolean;
-}) => {
-  const items = [
-    truth.environment,
-    truth.session,
-    truth.data,
-    truth.capability,
-    truth.activity,
-    truth.freshness,
-  ];
-
-  return (
-    <section className="truth-shell" aria-label="Estado operativo actual">
-      <div className="truth-shell__top">
-        <div className="truth-shell__intro">
-          <p className="truth-shell__eyebrow">Estado operativo</p>
-          <h2 className="truth-shell__title">{truth.headline}</h2>
-          <p className="truth-shell__summary">{truth.summary}</p>
-        </div>
-        <div className="truth-shell__action">
-          <Button
-            className={`${truthActionClassName[truth.action.tone]} disabled:opacity-40`}
-            onClick={onPrimaryAction}
-            disabled={disabled}
-          >
-            {truth.action.label}
-          </Button>
-          <p className="text-[11px] text-zinc-500">{truth.action.helper}</p>
-        </div>
-      </div>
-      <div className="truth-shell__grid">
-        {items.map((item) => (
-          <div key={item.label} className="truth-shell__card">
-            <p className="truth-shell__label">{item.label}</p>
-            <StatusPill className={truthToneClassName[item.tone]}>
-              {item.value}
-            </StatusPill>
-          </div>
-        ))}
-      </div>
-      {truth.banner ? (
-        <div className={truthBannerClassName[truth.banner.tone]}>
-          <strong>{truth.banner.title}</strong>
-          <span>{truth.banner.message}</span>
-        </div>
-      ) : null}
-    </section>
   );
 };
 
@@ -1839,7 +1746,7 @@ const HomePanel = ({
     },
   ];
 
-  const quickActions: Array<{
+  const commandActions: Array<{
     label: string;
     hint: string;
     icon: NavIcon;
@@ -1847,61 +1754,80 @@ const HomePanel = ({
   }> = [
     {
       label: "Pedidos",
-      hint: "Entregados y cancelaciones viven aquí",
+      hint: "Cola y detalle",
       icon: ShoppingBag,
       onClick: () => onOpenTab("pedidos"),
     },
     {
       label: "Cocina",
-      hint: "Checklist y producción actual",
+      hint: "Preparación",
       icon: ChefHat,
       onClick: () => onOpenTab("cocina"),
     },
     {
       label: "Pagos",
-      hint: "Pendiente y pagado",
+      hint: "Cobros",
       icon: WalletCards,
       onClick: () => onOpenTab("pagos"),
     },
     {
-      label: "Historial",
-      hint: "Pasa a Admin",
-      icon: History,
-      onClick: () => onOpenAdminView("historial"),
-    },
-    {
-      label: "Cierre actual",
-      hint: "Corte y venta del día",
+      label: "Corte",
+      hint: "Caja",
       icon: CreditCard,
       onClick: () => onOpenAdminView("cierre"),
     },
   ];
+  const nextAction =
+    summary.paymentsToReview > 0
+      ? {
+          title: "Confirmar pagos pendientes",
+          detail: `${summary.paymentsToReview} pedido${summary.paymentsToReview === 1 ? "" : "s"} necesitan revisión de cobro.`,
+          label: "Abrir Pagos",
+          onClick: () => onOpenTab("pagos"),
+        }
+      : summary.pendingOrders > 0 || summary.preparingOrders > 0
+        ? {
+            title: "Revisar cocina",
+            detail: `${summary.pendingOrders + summary.preparingOrders} pedido${summary.pendingOrders + summary.preparingOrders === 1 ? "" : "s"} siguen antes de listo.`,
+            label: "Abrir Cocina",
+            onClick: () => onOpenTab("cocina"),
+          }
+        : summary.readyOrders > 0
+          ? {
+              title: "Entregar pedidos listos",
+              detail: `${summary.readyOrders} pedido${summary.readyOrders === 1 ? "" : "s"} ya pueden cerrarse.`,
+              label: "Abrir Pedidos",
+              onClick: () => onOpenTab("pedidos"),
+            }
+          : {
+              title: "Operación sin pendientes",
+              detail: "No hay pedidos abiertos que requieran acción inmediata.",
+              label: "Ver Pedidos",
+              onClick: () => onOpenTab("pedidos"),
+            };
 
   return (
-    <section className="space-y-3">
-      <div className="home-grid">
+    <section className="operation-console">
+      <div className="operation-console__main">
         <Card className="home-hero">
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+          <div className="home-hero__head">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
-                Operación de hoy
-              </p>
-              <h2 className="mt-1 text-2xl font-black text-zinc-50 md:text-3xl">
-                Base operativa para Home
-              </h2>
-              <p className="mt-1 max-w-2xl text-sm text-zinc-400">
-                Home concentra lectura rápida, accesos directos y el estado mínimo para arrancar sin mezclar módulos técnicos.
+              <p className="home-section-label">Operación</p>
+              <h2>Prioridad de turno</h2>
+              <p>
+                Lectura compacta para decidir el siguiente movimiento sin entrar a módulos técnicos.
               </p>
             </div>
             <div className="home-hero__meta">
               <StatusPill className={truthToneClassName[runtime.source === "d1" ? "success" : "warning"]}>
-                {runtime.source === "d1" ? "Datos live" : "Vista de respaldo"}
+                {runtime.source === "d1" ? "Datos live" : "Respaldo"}
               </StatusPill>
               <StatusPill className={truthToneClassName[runtimeEnvironment === "production" ? "danger" : "system"]}>
                 {runtimeEnvironmentLabel[runtimeEnvironment]}
               </StatusPill>
             </div>
           </div>
+
           <div className="home-metrics">
             {metricCards.map((card) => (
               <button
@@ -1916,136 +1842,107 @@ const HomePanel = ({
               </button>
             ))}
           </div>
-          {todayError ? (
-            <p className="mt-3 rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-100">
-              {todayError}
-            </p>
-          ) : null}
-        </Card>
 
-        <Card className="home-side-card">
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-200">
-            Mini Resumen K
-          </p>
-          <h3 className="mt-1 text-lg font-black text-zinc-50">
-            Lectura rápida de producción
-          </h3>
-          {kitchenSummary ? (
-            <div className="mt-3 grid gap-2">
-              <div className="row">
-                <span>Burgers / combos</span>
-                <strong>{kitchenSummary.totals.burgers}</strong>
-              </div>
-              <div className="row">
-                <span>Guarniciones</span>
-                <strong>{kitchenSummary.totals.garnishes}</strong>
-              </div>
-              <div className="row">
-                <span>Ingredientes</span>
-                <strong>{kitchenSummary.totals.ingredients}</strong>
-              </div>
-              <div className="row">
-                <span>Costo estimado</span>
-                <strong>
-                  {kitchenSummary.totals.estimatedCostCents === null
-                    ? "—"
-                    : formatCurrency(
-                        kitchenSummary.totals.estimatedCostCents / 100,
-                      )}
-                </strong>
-              </div>
-            </div>
-          ) : (
-            <p className="mt-3 text-sm text-zinc-400">
-              {todayLoading
-                ? "Cargando resumen..."
-                : "Sin datos disponibles para el mini Resumen K."}
-            </p>
-          )}
-          <Button
-            className="mt-3 border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm"
-            onClick={() => onOpenTab("cocina")}
-          >
-            Abrir Cocina
-          </Button>
-        </Card>
-      </div>
-
-      <div className="home-grid home-grid--secondary">
-        <Card className="p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
-                Accesos directos
-              </p>
-              <h3 className="mt-1 text-lg font-black text-zinc-50">
-                Moverse sin ruido
-              </h3>
-            </div>
-            <StatusPill className="border-cyan-400/40 text-cyan-100">
-              5 accesos
-            </StatusPill>
-          </div>
-          <div className="home-quick-actions">
-            {quickActions.map((action) => {
+          <div className="home-command-strip" aria-label="Comandos principales">
+            {commandActions.map((action) => {
               const Icon = action.icon;
               return (
                 <button
                   key={action.label}
                   type="button"
-                  className="quick-action-card"
+                  className="home-command-button"
                   onClick={action.onClick}
                 >
-                  <span className="quick-action-card__icon">
-                    <Icon size={18} aria-hidden="true" />
+                  <Icon size={17} aria-hidden="true" />
+                  <span>
+                    <strong>{action.label}</strong>
+                    <small>{action.hint}</small>
                   </span>
-                  <div className="min-w-0">
-                    <p className="quick-action-card__label">{action.label}</p>
-                    <p className="quick-action-card__hint">{action.hint}</p>
-                  </div>
                 </button>
               );
             })}
           </div>
+
+          {todayError ? (
+            <p className="state-message state-message--warning mt-3">
+              {todayError}
+            </p>
+          ) : null}
         </Card>
 
-        <Card className="p-4">
-          <div className="flex items-start justify-between gap-3">
+        <Card className="home-next-action">
+          <div className="home-next-action__head">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-200">
-                Resumen de operación
-              </p>
-              <h3 className="mt-1 text-lg font-black text-zinc-50">
-                Pedidos por resolver
-              </h3>
+              <p className="home-section-label">Siguiente acción</p>
+              <h3>{nextAction.title}</h3>
+              <p>{nextAction.detail}</p>
             </div>
-            <StatusPill className="border-amber-400/40 text-amber-100">
-              {summary.actionableOrders} abiertos
-            </StatusPill>
+            <Button
+              className="home-next-action__button"
+              onClick={nextAction.onClick}
+            >
+              {nextAction.label}
+            </Button>
           </div>
-          <div className="mt-3 space-y-2">
+          <div className="home-next-list">
             {actionableOrders.length ? (
               actionableOrders.map((order) => (
-                <div key={order.id} className="row items-start">
-                  <div className="min-w-0">
-                    <p className="break-words text-sm font-bold text-zinc-50">
-                      {order.folio} · {order.customer}
-                    </p>
-                    <p className="text-[11px] text-zinc-400">
-                      {channelLabel[order.channel]} · {getPaymentStatusLabel(order.paymentState)} · {formatCurrency(order.total)}
-                    </p>
-                  </div>
-                  <StatusBadge status={order.status} />
-                </div>
+                <button
+                  key={order.id}
+                  type="button"
+                  className="home-next-row"
+                  onClick={() => onOpenTab(order.paymentState === "pending" ? "pagos" : "pedidos")}
+                >
+                  <span>
+                    <strong>{order.folio}</strong>
+                    <small>{order.customer}</small>
+                  </span>
+                  <span>
+                    <small>{getPaymentStatusLabel(order.paymentState)}</small>
+                    <strong>{formatCurrency(order.total)}</strong>
+                  </span>
+                </button>
               ))
             ) : (
-              <p className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3 text-sm text-zinc-400">
-                Sin pedidos abiertos por resolver. Cuando entre uno nuevo aparecerá aquí.
+              <p className="home-empty-line">
+                Sin pedidos abiertos por resolver.
               </p>
             )}
           </div>
         </Card>
       </div>
+
+      <Card className="home-production-strip">
+        <div>
+          <p className="home-section-label">Mini Resumen K</p>
+          <h3>Producción</h3>
+        </div>
+        {kitchenSummary ? (
+          <div className="home-production-grid">
+            <span>Burgers <strong>{kitchenSummary.totals.burgers}</strong></span>
+            <span>Guarniciones <strong>{kitchenSummary.totals.garnishes}</strong></span>
+            <span>Ingredientes <strong>{kitchenSummary.totals.ingredients}</strong></span>
+            <span>
+              Costo{" "}
+              <strong>
+                {kitchenSummary.totals.estimatedCostCents === null
+                  ? "-"
+                  : formatCurrency(kitchenSummary.totals.estimatedCostCents / 100)}
+              </strong>
+            </span>
+          </div>
+        ) : (
+          <p className="text-sm text-zinc-400">
+            {todayLoading ? "Cargando resumen..." : "Sin Resumen K disponible."}
+          </p>
+        )}
+        <Button
+          className="home-production-button"
+          onClick={() => onOpenTab("cocina")}
+        >
+          Abrir Cocina
+        </Button>
+      </Card>
     </section>
   );
 };
@@ -2210,7 +2107,6 @@ const AdminWorkspace = ({
       <HistoryPanel
         orders={orders}
         runtime={runtime}
-        runtimeEnvironment={runtimeEnvironment}
         onArchiveCancelled={onArchiveCancelled}
       />
     ) : view === "cierre" ? (
@@ -2299,11 +2195,9 @@ const AdminWorkspace = ({
       <Card className="admin-workspace-header p-4">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
-              Admin
-            </p>
+            <p className="home-section-label">Admin</p>
             <h2 className="mt-1 text-xl font-black text-zinc-50">
-              {view === "launcher" ? "Hub de módulos de Chekeo" : activeView.label}
+              {view === "launcher" ? "Módulos secundarios" : activeView.label}
             </h2>
             <p className="mt-1 max-w-3xl text-sm text-zinc-400">
               {view === "launcher"
@@ -2321,31 +2215,21 @@ const AdminWorkspace = ({
                 Volver al hub
               </Button>
             ) : null}
-            <div className="admin-nav-shell" aria-label="Navegación Admin">
-              <p className="admin-nav-shell__title">Navegación Admin</p>
-              <div className="admin-nav">
-                {adminViews.map((option) => {
-                  const Icon = option.icon;
-                  return (
-                    <button
-                      key={option.key}
-                      type="button"
-                      aria-label={option.label}
-                      className={`admin-nav__button ${view === option.key ? "admin-nav__button--active" : ""}`}
-                      onClick={() => setView(option.key)}
-                    >
-                      <span className="admin-nav__icon">
-                        <Icon size={16} aria-hidden="true" />
-                      </span>
-                      <span className="admin-nav__copy">
-                        <span className="admin-nav__label">{option.label}</span>
-                        <span className="admin-nav__hint">{option.hint}</span>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            {view !== "launcher" ? (
+              <label className="admin-compact-select">
+                Cambiar módulo
+                <select
+                  value={view}
+                  onChange={(event) => setView(event.target.value as AdminViewKey)}
+                >
+                  {adminViews.map((option) => (
+                    <option key={option.key} value={option.key}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
           </div>
         </div>
         <p className="mt-3 text-xs text-zinc-500">
@@ -3064,14 +2948,12 @@ const OrdersBoard = ({
   orders,
   setSelected,
   runtime,
-  runtimeEnvironment,
   move,
   requestCancellation,
 }: {
   orders: InternalOrder[];
   setSelected: (o: InternalOrder) => void;
   runtime: OrdersRuntime;
-  runtimeEnvironment: ChekeoRuntimeEnvironment;
   move: MoveOrderStatus;
   requestCancellation: (
     order: InternalOrder,
@@ -3124,23 +3006,15 @@ const OrdersBoard = ({
 
   return (
     <section className="orders-command">
-      <SourcePanel
-        runtime={runtime}
-        runtimeEnvironment={runtimeEnvironment}
-        includeTerminal
-      />
-
       <Card className="orders-board-shell">
         <div className="orders-board-shell__header">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
-              Command center
-            </p>
+            <p className="home-section-label">Cola compacta</p>
             <h2 className="mt-1 text-2xl font-black text-zinc-50">
-              Pedidos activos
+              Pedidos
             </h2>
             <p className="mt-1 max-w-3xl text-sm text-zinc-400">
-              Queue operativa: detecta prioridad, abre ticket y resuelve el siguiente movimiento.
+              Prioriza folio, cliente, estado, pago, total y siguiente acción.
             </p>
           </div>
           <div className="orders-board-shell__summary">
@@ -3156,60 +3030,89 @@ const OrdersBoard = ({
           </div>
         </div>
 
-        <div className="orders-filters">
-          <label className="orders-search">
-            <span>Buscar por folio o cliente</span>
-            <input
-              className="input mt-1 text-sm"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Ej. BX-102 o Andrea"
-            />
-          </label>
-          <div className="orders-filter-group">
-            <span>Estado</span>
-            <div className="orders-filter-pills">
-              {ordersStatusFilterOptions.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  className={`orders-filter-pill ${statusFilter === option.value ? "orders-filter-pill--active" : ""}`}
-                  onClick={() => setStatusFilter(option.value)}
-                >
-                  {option.label}
-                </button>
-              ))}
+        {orders.length ? (
+          <details className="orders-filter-drawer">
+            <summary>
+              Filtros y búsqueda
+              <span>
+                {statusFilter === "all" ? "Todos" : ordersStatusLabel[statusFilter]} / {rangeFilter}
+              </span>
+            </summary>
+            <div className="orders-filters">
+              <label className="orders-search">
+                <span>Buscar por folio o cliente</span>
+                <input
+                  className="input mt-1 text-sm"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Ej. BX-102 o Andrea"
+                />
+              </label>
+              <div className="orders-filter-group">
+                <span>Estado</span>
+                <div className="orders-filter-pills">
+                  {ordersStatusFilterOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={`orders-filter-pill ${statusFilter === option.value ? "orders-filter-pill--active" : ""}`}
+                      onClick={() => setStatusFilter(option.value)}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="orders-filter-group">
+                <span>Rango</span>
+                <div className="orders-filter-pills">
+                  {ordersRangeFilterOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={`orders-filter-pill ${rangeFilter === option.value ? "orders-filter-pill--active" : ""}`}
+                      onClick={() => setRangeFilter(option.value)}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="orders-filter-group">
-            <span>Rango</span>
-            <div className="orders-filter-pills">
-              {ordersRangeFilterOptions.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  className={`orders-filter-pill ${rangeFilter === option.value ? "orders-filter-pill--active" : ""}`}
-                  onClick={() => setRangeFilter(option.value)}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
+          </details>
+        ) : null}
       </Card>
 
-      {runtime.source === "d1" && orders.length === 0 ? (
+      {orders.length === 0 ? (
         <EmptyOrdersState
-          title="Todavía no hay pedidos para revisar."
-          description="Cuando entre un pedido nuevo, aparecerá aquí."
+          title="Sin pedidos activos."
+          description="La cola está vacía en este entorno. Cuando entre un pedido nuevo, aparecerá aquí."
+          action={
+            <Button
+              className="orders-secondary-action"
+              onClick={() => runtime.reload(true)}
+              disabled={runtime.loading || !runtime.sessionActive}
+            >
+              {runtime.loading ? "Actualizando..." : "Actualizar"}
+            </Button>
+          }
         />
-      ) : null}
-
-      {!filteredOrders.length ? (
+      ) : !filteredOrders.length ? (
         <EmptyOrdersState
           title="No hay pedidos para ese filtro."
           description="Ajusta estado, rango o búsqueda para volver a mostrar pedidos."
+          action={
+            <Button
+              className="orders-secondary-action"
+              onClick={() => {
+                setStatusFilter("all");
+                setRangeFilter("today");
+                setSearch("");
+              }}
+            >
+              Limpiar filtros
+            </Button>
+          }
         />
       ) : (
         <div className="orders-command__workspace">
@@ -3368,12 +3271,10 @@ const OperationalClosePanel = ({
       <Card className="p-3">
         <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-200">
-              Cierre operativo
-            </p>
+            <p className="home-section-label">Cierre de caja</p>
             <h2 className="text-xl font-black">Cierre</h2>
             <p className="text-sm text-zinc-400">
-              Pagos declarados · Corte por rango operativo.
+              Rango, total, órdenes y exporte sin estados repetidos.
             </p>
           </div>
           <Button
@@ -3450,7 +3351,7 @@ const OperationalClosePanel = ({
       ) : null}
       {!loading && summary && !hasData ? <EmptyCloseState /> : null}
 
-      {summary ? (
+      {summary && hasData ? (
         <>
           <section className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             <CloseMetricCard
@@ -3858,12 +3759,10 @@ const PaymentDetailModal = ({
 const PaymentNotesPanel = ({
   orders,
   runtime,
-  runtimeEnvironment,
   onUpdatePayment,
 }: {
   orders: InternalOrder[];
   runtime: OrdersRuntime;
-  runtimeEnvironment: ChekeoRuntimeEnvironment;
   onUpdatePayment: (
     orderId: string,
     paymentStatus: OrderV2PaymentStatus,
@@ -4062,19 +3961,13 @@ const PaymentNotesPanel = ({
 
   return (
     <section className="payments-shell">
-      <SourcePanel
-        runtime={runtime}
-        runtimeEnvironment={runtimeEnvironment}
-        includeTerminal
-      />
       <Card className="payments-hero">
         <div className="payments-hero__header">
           <div>
-            <p className="payments-hero__eyebrow">Pagos por confirmar</p>
-            <h3 className="payments-hero__title">Centro operativo de cobros</h3>
+            <p className="home-section-label">Bandeja de cobros</p>
+            <h3 className="payments-hero__title">Pagos</h3>
             <p className="payments-hero__summary">
-              Revisa pendientes, confirma pagos y abre el mensaje correcto de
-              WhatsApp sin mezclar entregas, cancelaciones ni ticket visual.
+              Pendientes primero. WhatsApp, nota y confirmación viven en esta vista.
             </p>
           </div>
           <Button
@@ -4086,28 +3979,28 @@ const PaymentNotesPanel = ({
           </Button>
         </div>
 
-        <div className="payments-summary-grid">
-          <div className="payments-summary-card">
-            <span>Visibles</span>
-            <strong>{paymentMetrics.visible}</strong>
+        {filteredOrders.length ? (
+          <div className="payments-summary-grid">
+            <div className="payments-summary-card payments-summary-card--priority">
+              <span>Pendientes</span>
+              <strong>{paymentMetrics.pending}</strong>
+            </div>
+            <div className="payments-summary-card">
+              <span>Pagados</span>
+              <strong>{paymentMetrics.paid}</strong>
+            </div>
+            {paymentMetrics.transfer ? (
+              <div className="payments-summary-card">
+                <span>Transferencia</span>
+                <strong>{paymentMetrics.transfer}</strong>
+              </div>
+            ) : null}
+            <div className="payments-summary-card">
+              <span>Total visible</span>
+              <strong>{formatCurrency(paymentMetrics.total)}</strong>
+            </div>
           </div>
-          <div className="payments-summary-card">
-            <span>Pendientes</span>
-            <strong>{paymentMetrics.pending}</strong>
-          </div>
-          <div className="payments-summary-card">
-            <span>Pagados</span>
-            <strong>{paymentMetrics.paid}</strong>
-          </div>
-          <div className="payments-summary-card">
-            <span>Transferencia</span>
-            <strong>{paymentMetrics.transfer}</strong>
-          </div>
-          <div className="payments-summary-card">
-            <span>Total visible</span>
-            <strong>{formatCurrency(paymentMetrics.total)}</strong>
-          </div>
-        </div>
+        ) : null}
 
         <div className="payments-toolbar">
           <label className="payments-search">
@@ -4160,13 +4053,13 @@ const PaymentNotesPanel = ({
       {paymentOrders.length === 0 ? (
         <EmptyOrdersState
           title={
-            filter === "all" && !search.trim()
-              ? "Todavia no hay pagos para revisar."
+            filteredOrders.length === 0
+              ? "Sin pagos para revisar."
               : "No hay coincidencias con este filtro."
           }
           description={
-            filter === "all" && !search.trim()
-              ? "Cuando entre un pedido aparecera aqui."
+            filteredOrders.length === 0
+              ? "Cuando exista un pedido con cobro registrado, aparecerá aquí."
               : "Ajusta rango, estado o busqueda para recuperar registros."
           }
           action={
@@ -4328,22 +4221,15 @@ const PaymentNotesPanel = ({
 const HistoryPanel = ({
   orders,
   runtime,
-  runtimeEnvironment,
   onArchiveCancelled,
 }: {
   orders: InternalOrder[];
   runtime: OrdersRuntime;
-  runtimeEnvironment: ChekeoRuntimeEnvironment;
   onArchiveCancelled: (order: InternalOrder) => Promise<void>;
 }) => {
   const terminalOrders = orders.filter((o) => terminalStatuses.has(o.status));
   return (
     <section>
-      <SourcePanel
-        runtime={runtime}
-        runtimeEnvironment={runtimeEnvironment}
-        includeTerminal
-      />
       <Card className="p-3">
         <h3 className="mb-2">
           Historial {runtime.source === "d1" ? "de pedidos" : "de esta vista"}
@@ -4702,16 +4588,13 @@ const OperatorTabs = ({
     onValueChange={(v) => setTab(v as TabKey)}
   >
     <div className="tabs-shell">
-      <div className="tabs-shell__meta">
-        <p>Operación de hoy</p>
-        <p>Admin técnico al final</p>
-      </div>
-      <Tabs.List className="tabs">
+      <Tabs.List className="tabs app-nav" aria-label="Navegación principal">
         {primaryTabs.map(({ key, label, hint, icon: Icon }) => (
           <Tabs.Trigger
             key={key}
             value={key}
             className={`tab ${key === "admin" ? "tab--admin" : ""}`}
+            aria-label={`${label}: ${hint}`}
           >
             <span className="tab__icon">
               <Icon size={16} aria-hidden="true" />
@@ -5283,7 +5166,6 @@ export function InternalChekeoApp() {
         orders={orders}
         setSelected={setSelected}
         runtime={runtime}
-        runtimeEnvironment={runtimeEnvironment}
         move={move}
         requestCancellation={requestCancellation}
       />
@@ -5301,7 +5183,6 @@ export function InternalChekeoApp() {
       <PaymentNotesPanel
         orders={orders}
         runtime={runtime}
-        runtimeEnvironment={runtimeEnvironment}
         onUpdatePayment={updatePayment}
       />
     ),
@@ -5336,9 +5217,17 @@ export function InternalChekeoApp() {
     );
   return (
     <main className="shell">
+      <a className="skip-link" href="#chekeo-main-content">
+        Saltar al contenido
+      </a>
       <OperatorHeader
         runtimeEnvironment={runtimeEnvironment}
+        runtime={runtime}
         truth={shellTruth}
+        onRefresh={() => {
+          if (runtime.sessionState !== "active") return;
+          void runtime.reload(shouldIncludeTerminalOrders(tab, adminView));
+        }}
         onLogout={() => {
           void logoutInternal();
           loggedRef.current = false;
@@ -5358,14 +5247,7 @@ export function InternalChekeoApp() {
           setLimitWarning(null);
         }}
       />
-      <OperationalStatusBar
-        truth={shellTruth}
-        onPrimaryAction={() => {
-          if (runtime.sessionState !== "active") return;
-          void runtime.reload(shouldIncludeTerminalOrders(tab, adminView));
-        }}
-        disabled={runtime.loading || runtime.sessionState !== "active"}
-      />
+      <RuntimeNoticeStack runtime={runtime} />
       <NewOrderBanner
         notice={newOrderNotice}
         onDismiss={() => setNewOrderNotice(null)}
@@ -5381,7 +5263,8 @@ export function InternalChekeoApp() {
               animate={{ opacity: 1, y: 0 }}
               exit={reduce ? {} : { opacity: 0, y: -8 }}
               transition={{ duration: 0.18 }}
-              className="mt-2"
+              className="tab-panel"
+              id="chekeo-main-content"
             >
               {content}
             </motion.div>
