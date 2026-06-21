@@ -773,9 +773,6 @@ const doneCardByItem = (page: Page, itemName: string) =>
 const primaryTab = (page: Page, label: string) =>
   page.locator("button.tab").filter({ hasText: new RegExp(label, "i") }).first();
 
-const adminNavButton = (page: Page, label: string) =>
-  page.getByRole("button", { name: new RegExp(`^${label}$`, "i") }).first();
-
 const adminModuleCard = (page: Page, label: string) =>
   page.locator("button.admin-module-card").filter({ hasText: new RegExp(label, "i") });
 
@@ -790,6 +787,19 @@ const paymentCardByFolio = (page: Page, folio: string) =>
 
 const paymentFilterButton = (page: Page, label: string) =>
   page.locator("button.payments-filter-pill").filter({ hasText: new RegExp(`^${label}$`, "i") }).first();
+
+const operationHeading = (page: Page) =>
+  page.getByRole("heading", { name: "Prioridad de turno" });
+
+const kitchenConnectedCopy = (page: Page) =>
+  page.getByText(/Cocina conectada a (preview|D1 real)/i);
+
+const openOrdersFilters = async (page: Page) => {
+  const drawer = page.locator("details.orders-filter-drawer");
+  if (!(await drawer.count())) return;
+  const isOpen = await drawer.evaluate((node) => node.hasAttribute("open"));
+  if (!isOpen) await drawer.locator("summary").click();
+};
 
 const kitchenViewTab = (page: Page, label: string) =>
   page
@@ -1003,7 +1013,7 @@ const loginToChekeo = async (page: Page) => {
   await page.goto("/", { waitUntil: "networkidle" });
   await page.locator('input[type="password"]').fill(validInternalPin);
   await page.getByRole("button", { name: /Entrar/i }).click();
-  await expect(page.getByRole("heading", { name: "Base operativa para Home" })).toBeVisible();
+  await expect(operationHeading(page)).toBeVisible();
   await expect(page.getByText("Mini Resumen K")).toBeVisible();
   await expect(page.locator("button.tab")).toHaveCount(5);
 };
@@ -1014,16 +1024,19 @@ const openPrimaryTab = async (page: Page, label: string) => {
 };
 
 const openAdminSection = async (page: Page, label: string) => {
-  await adminNavButton(page, label).click();
+  const moduleCard = adminModuleCard(page, label).first();
+  if (await moduleCard.isVisible().catch(() => false)) {
+    await moduleCard.click();
+  } else {
+    await page.getByLabel("Cambiar módulo").selectOption({ label });
+  }
   await page.waitForTimeout(200);
 };
 
 const openKitchenFromHome = async (page: Page) => {
   await openPrimaryTab(page, "Cocina");
-  await expect(page.getByText("Producción actual", { exact: true })).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: /Cocina conectada a (preview|D1 real)/i }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Cocina" })).toBeVisible();
+  await expect(kitchenConnectedCopy(page)).toBeVisible();
 };
 
 test.describe("internal chekeo kitchen production board", () => {
@@ -1035,21 +1048,21 @@ test.describe("internal chekeo kitchen production board", () => {
 
     await expect(page.getByLabel("PIN de acceso")).toBeVisible();
     await expect(page.locator("button.tab")).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: "Base operativa para Home" })).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: "Hub de módulos de Chekeo" })).toHaveCount(0);
+    await expect(operationHeading(page)).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Módulos secundarios" })).toHaveCount(0);
 
     await page.locator('input[type="password"]').fill(validInternalPin);
     await page.getByRole("button", { name: /Entrar/i }).click();
-    await expect(page.getByRole("heading", { name: "Base operativa para Home" })).toBeVisible();
+    await expect(operationHeading(page)).toBeVisible();
 
     await openPrimaryTab(page, "Admin");
-    await expect(page.getByRole("heading", { name: "Hub de módulos de Chekeo" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Módulos secundarios" })).toBeVisible();
 
-    await page.getByRole("button", { name: /Cerrar sesion/i }).click();
+    await page.getByRole("button", { name: /Salir/i }).click();
     await expect(page.getByLabel("PIN de acceso")).toBeVisible();
     await expect(page.locator("button.tab")).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: "Base operativa para Home" })).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: "Hub de módulos de Chekeo" })).toHaveCount(0);
+    await expect(operationHeading(page)).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Módulos secundarios" })).toHaveCount(0);
   });
 
   test("keeps the restructured operation shell stable", async ({ page }) => {
@@ -1057,8 +1070,8 @@ test.describe("internal chekeo kitchen production board", () => {
     await loginToChekeo(page);
 
     await expect(page.getByText("Pedidos activos")).toBeVisible();
-    await expect(page.getByText("Pagos pendientes")).toBeVisible();
-    await expect(primaryTab(page, "Home")).toBeVisible();
+    await expect(page.getByText("Pagos pendientes").first()).toBeVisible();
+    await expect(primaryTab(page, "Operación")).toBeVisible();
     await expect(primaryTab(page, "Pedidos")).toBeVisible();
     await expect(primaryTab(page, "Cocina")).toBeVisible();
     await expect(primaryTab(page, "Pagos")).toBeVisible();
@@ -1141,9 +1154,7 @@ test.describe("internal chekeo kitchen production board", () => {
     await expect(page.getByText("Combos desglosados")).toBeVisible();
     await expect(page.getByText("Side Quest").nth(2)).toBeVisible();
     await openKitchenView(page, "Preparación");
-    await expect(
-      page.getByRole("heading", { name: /Cocina conectada a (preview|D1 real)/i }),
-    ).toBeVisible();
+    await expect(kitchenConnectedCopy(page)).toBeVisible();
 
     await productionCardByFolio(page, "CRIT-001")
       .first()
@@ -1155,25 +1166,21 @@ test.describe("internal chekeo kitchen production board", () => {
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).toHaveCount(0);
 
-    await page
-      .getByLabel("Estado operativo actual")
-      .getByRole("button", { name: /^Actualizar$/i })
-      .click();
-    await expect(
-      page.getByRole("heading", { name: /Cocina conectada a (preview|D1 real)/i }),
-    ).toBeVisible();
+    await page.locator(".kitchen-hero").getByRole("button", { name: /^Actualizar$/i }).click();
+    await expect(kitchenConnectedCopy(page)).toBeVisible();
 
     await openPrimaryTab(page, "Pedidos");
-    await expect(page.getByRole("heading", { name: "Centro operativo de pedidos" })).toBeVisible();
+    await expect(page.getByText("Cola compacta", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Pedidos" })).toBeVisible();
+    await openOrdersFilters(page);
     await expect(page.getByPlaceholder("Ej. BX-102 o Andrea")).toBeVisible();
     await expect(orderCardByFolio(page, "CRIT-001")).toHaveCount(1);
     await expect(page.getByText("Preview D1").first()).toBeVisible();
-    await expect(page.getByText("Operable en preview").first()).toBeVisible();
     await expect(page.getByText("Operación en vivo")).toHaveCount(0);
     await ordersFilterButton(page, "Listo").click();
     await expect(orderCardByFolio(page, "RDY-401")).toHaveCount(1);
     await expect(orderCardByFolio(page, "RDY-402")).toHaveCount(1);
-    await orderCardByFolio(page, "RDY-402")
+    await page.locator(".orders-command-detail").filter({ hasText: "RDY-402" })
       .getByRole("button", { name: /^Entregado$/i })
       .click();
     await expect(orderCardByFolio(page, "RDY-402")).toHaveCount(0);
@@ -1191,13 +1198,15 @@ test.describe("internal chekeo kitchen production board", () => {
     await expect(page.getByText("Power")).toBeVisible();
     await expect(page.getByRole("dialog").getByText("Ubicación: Mostrador", { exact: true })).toBeVisible();
     await expect(page.getByText(/CLABE|BBVA|Banorte|Santander/i)).toHaveCount(0);
-    await expect(page.getByRole("button", { name: /Copiar mensaje/i })).toHaveCount(1);
+    await page.getByRole("dialog").getByText("Mensaje y ticket para WhatsApp").click();
+    await expect(page.getByRole("dialog").getByRole("button", { name: /Copiar mensaje/i })).toHaveCount(1);
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await page.getByPlaceholder("Ej. BX-102 o Andrea").fill("");
 
     await openPrimaryTab(page, "Pagos");
-    await expect(page.getByRole("heading", { name: "Centro operativo de cobros" })).toBeVisible();
+    await expect(page.getByText("Bandeja de cobros", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Pagos" })).toBeVisible();
     await expect(paymentCardByFolio(page, "RDY-401")).toHaveCount(1);
     await expect(paymentCardByFolio(page, "TRF-701")).toHaveCount(1);
     await expect(paymentCardByFolio(page, "TRF-701").getByText("Ubicacion: GGA")).toBeVisible();
@@ -1256,7 +1265,7 @@ test.describe("internal chekeo kitchen production board", () => {
     await expect(page.locator("#payment-detail-title")).toHaveCount(0);
 
     await openPrimaryTab(page, "Admin");
-    await expect(page.getByRole("heading", { name: "Hub de módulos de Chekeo" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Módulos secundarios" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Operación" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Configuración" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Datos" })).toBeVisible();
@@ -1284,7 +1293,7 @@ test.describe("internal chekeo kitchen production board", () => {
     await expect(page.getByText("012180015645465369", { exact: true }).first()).toBeVisible();
     await expect(page.getByText(/Solo transferencia/i)).toBeVisible();
     await page.getByRole("button", { name: /Volver al hub/i }).click();
-    await expect(page.getByRole("heading", { name: "Hub de módulos de Chekeo" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Módulos secundarios" })).toBeVisible();
 
     await openAdminSection(page, "Historial");
     await expect(page.getByRole("heading", { name: /Historial (de pedidos|de esta vista)/i })).toBeVisible();
@@ -1315,6 +1324,7 @@ test.describe("internal chekeo kitchen production board", () => {
     await openPrimaryTab(page, "Admin");
     await openAdminSection(page, "Sorteos");
     await expect(page.getByRole("heading", { name: "Rifa Burger Lovers" })).toBeVisible();
+    await page.getByRole("button", { name: /Participantes/i }).click();
 
     const raffleSearch = page.getByPlaceholder("Nombre, folio, teléfono o código");
     await expect(raffleSearch).toBeVisible();
@@ -1323,7 +1333,7 @@ test.describe("internal chekeo kitchen production board", () => {
     await page.getByRole("button", { name: "Ver participante" }).first().click();
     await expect(page.getByRole("heading", { name: "Luna Smash" })).toBeVisible();
 
-    const participantDetailCard = page.getByRole("heading", { name: "Luna Smash" }).locator("xpath=ancestor::div[contains(@class,'rounded-2xl')][1]");
+    const participantDetailCard = page.getByRole("heading", { name: "Luna Smash" }).locator("xpath=ancestor::div[contains(@class,'p-4')][1]");
     const participantMetricCard = (label: string) => participantDetailCard.locator("div:has(> strong)").filter({ hasText: label });
     const baseTicketsCard = participantMetricCard("Tickets base");
     const extraTicketsCard = participantMetricCard("Tickets extra");
@@ -1367,12 +1377,10 @@ test.describe("internal chekeo kitchen production board", () => {
       });
 
       expect(overflow).toBeLessThanOrEqual(1);
-      await expect(page.getByRole("heading", { name: "Base operativa para Home" })).toBeVisible();
+      await expect(operationHeading(page)).toBeVisible();
 
       await openPrimaryTab(page, "Cocina");
-      await expect(
-        page.getByRole("heading", { name: /Cocina conectada a (preview|D1 real)/i }),
-      ).toBeVisible();
+      await expect(kitchenConnectedCopy(page)).toBeVisible();
 
       const kitchenOverflow = await page.evaluate(() => {
         const root = document.documentElement;
@@ -1382,7 +1390,7 @@ test.describe("internal chekeo kitchen production board", () => {
       expect(kitchenOverflow).toBeLessThanOrEqual(1);
 
       await openPrimaryTab(page, "Pedidos");
-      await expect(page.getByRole("heading", { name: "Centro operativo de pedidos" })).toBeVisible();
+      await expect(page.getByText("Cola compacta", { exact: true })).toBeVisible();
 
       const ordersOverflow = await page.evaluate(() => {
         const root = document.documentElement;
@@ -1392,7 +1400,7 @@ test.describe("internal chekeo kitchen production board", () => {
       expect(ordersOverflow).toBeLessThanOrEqual(1);
 
       await openPrimaryTab(page, "Pagos");
-      await expect(page.getByRole("heading", { name: "Centro operativo de cobros" })).toBeVisible();
+      await expect(page.getByText("Bandeja de cobros", { exact: true })).toBeVisible();
 
       const paymentsOverflow = await page.evaluate(() => {
         const root = document.documentElement;
@@ -1402,7 +1410,7 @@ test.describe("internal chekeo kitchen production board", () => {
       expect(paymentsOverflow).toBeLessThanOrEqual(1);
 
       await openPrimaryTab(page, "Admin");
-      await expect(page.getByRole("heading", { name: "Hub de módulos de Chekeo" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Módulos secundarios" })).toBeVisible();
 
       const adminOverflow = await page.evaluate(() => {
         const root = document.documentElement;
@@ -1444,7 +1452,7 @@ test.describe("internal chekeo admin-only security mode", () => {
 
     await expect(page.getByLabel("PIN de acceso")).toBeVisible();
     await expect(page.locator("button.tab")).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: "Base operativa para Home" })).toHaveCount(0);
+    await expect(operationHeading(page)).toHaveCount(0);
     await expect(
       page.getByText(/Modo admin-only preparado\. Chekeo sigue pidiendo PIN global/i),
     ).toBeVisible();
@@ -1457,11 +1465,11 @@ test.describe("internal chekeo admin-only security mode", () => {
 
     await page.getByLabel("PIN de acceso").fill(validInternalPin);
     await page.getByRole("button", { name: /Entrar/i }).click();
-    await expect(page.getByRole("heading", { name: "Base operativa para Home" })).toBeVisible();
+    await expect(operationHeading(page)).toBeVisible();
     await expect(page.locator("button.tab")).toHaveCount(5);
 
     await openPrimaryTab(page, "Admin");
-    await expect(page.getByRole("heading", { name: "Hub de módulos de Chekeo" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Módulos secundarios" })).toBeVisible();
     await expect(
       page.getByText(/Modo admin-only preparado\. Chekeo sigue pidiendo PIN global/i),
     ).toBeVisible();
@@ -1472,7 +1480,7 @@ test.describe("internal chekeo admin-only security mode", () => {
     });
     expect(shellOverflow).toBeLessThanOrEqual(1);
 
-    await page.getByRole("button", { name: /Cerrar sesion/i }).click();
+    await page.getByRole("button", { name: /Salir/i }).click();
     await expect(page.getByLabel("PIN de acceso")).toBeVisible();
     await expect(page.locator("button.tab")).toHaveCount(0);
   });

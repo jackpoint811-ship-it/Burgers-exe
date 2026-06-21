@@ -29,8 +29,16 @@ const SAFE_IMAGE_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._/-]*$/;
 
 type ReferralCodeForm = { ownerName: string; ownerPhone: string; burgerWord: typeof BURGER_WORDS[number]; number: string };
 type AdjustmentForm = { ticketsDelta: string; reason: string; actor: string };
+type RaffleModule = "campaign" | "participants" | "referrals" | "assets" | "adjustments";
 const emptyReferralCodeForm = (): ReferralCodeForm => ({ ownerName: "", ownerPhone: "", burgerWord: "BURGER", number: "27" });
 const emptyAdjustmentForm = (): AdjustmentForm => ({ ticketsDelta: "1", reason: "", actor: "internal-v2" });
+const raffleModules: Array<{ key: RaffleModule; label: string; hint: string }> = [
+  { key: "campaign", label: "Campaña", hint: "Activa y reglas" },
+  { key: "participants", label: "Participantes", hint: "Tickets" },
+  { key: "referrals", label: "Referidos", hint: "Códigos" },
+  { key: "assets", label: "Assets", hint: "Imágenes" },
+  { key: "adjustments", label: "Ajustes", hint: "Manual" },
+];
 
 const emptyForm = (): RaffleForm => ({
   title: "",
@@ -346,6 +354,7 @@ const ParticipantList = ({
 );
 
 export const RafflesAdminPanel = ({ runtimeEnvironment }: { runtimeEnvironment: ChekeoRuntimeEnvironment }) => {
+  const [module, setModule] = useState<RaffleModule>("campaign");
   const [campaigns, setCampaigns] = useState<RaffleCampaignV2[]>([]);
   const [summary, setSummary] = useState<RaffleSummary | null>(null);
   const [selectedCampaignId, setSelectedCampaignId] = useState("");
@@ -737,7 +746,21 @@ export const RafflesAdminPanel = ({ runtimeEnvironment }: { runtimeEnvironment: 
       </div>
       <div className="mt-3 overflow-hidden rounded-xl border border-zinc-800 bg-black/40">
         {options.preview ? (
-          <img src={options.preview} alt={options.title} className={`w-full ${options.kind === "banner" ? "aspect-video object-cover" : "max-h-[420px] object-contain"}`} onError={(event) => { event.currentTarget.style.display = "none"; }} />
+          <>
+            <img
+              src={options.preview}
+              alt={options.title}
+              className={`w-full ${options.kind === "banner" ? "aspect-video object-cover" : "max-h-[420px] object-contain"}`}
+              onError={(event) => {
+                event.currentTarget.hidden = true;
+                const fallback = event.currentTarget.nextElementSibling;
+                if (fallback instanceof HTMLElement) fallback.hidden = false;
+              }}
+            />
+            <div hidden className="raffle-asset-fallback">
+              Asset no disponible. Revisa la carga o cambia la imagen.
+            </div>
+          </>
         ) : (
           <div className="grid min-h-32 place-items-center px-4 py-8 text-center text-sm text-zinc-500">Sin imagen cargada.</div>
         )}
@@ -757,7 +780,7 @@ export const RafflesAdminPanel = ({ runtimeEnvironment }: { runtimeEnvironment: 
   );
 
   return (
-    <section className="grid gap-3 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.15fr)]">
+    <section className="raffle-console">
       <div className="space-y-3">
         <Card className="p-4">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
@@ -830,6 +853,22 @@ export const RafflesAdminPanel = ({ runtimeEnvironment }: { runtimeEnvironment: 
           </div>
         </Card>
 
+        <div className="raffle-module-tabs" aria-label="Módulos de Sorteos">
+          {raffleModules.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              className={`raffle-module-tab ${module === item.key ? "raffle-module-tab--active" : ""}`}
+              onClick={() => setModule(item.key)}
+            >
+              <span>{item.label}</span>
+              <small>{item.hint}</small>
+            </button>
+          ))}
+        </div>
+
+        {module === "campaign" ? (
+        <>
         <Card className="p-4">
           <div className="mb-3 flex items-center justify-between gap-2">
             <h3 className="font-black text-zinc-100">Campañas</h3>
@@ -926,7 +965,10 @@ export const RafflesAdminPanel = ({ runtimeEnvironment }: { runtimeEnvironment: 
             </div>
           </form>
         </Card>
+        </>
+        ) : null}
 
+        {module === "assets" ? (
         <Card className="p-4">
           <div className="mb-3">
             <h3 className="font-black text-zinc-100">Imágenes del sorteo</h3>
@@ -937,7 +979,9 @@ export const RafflesAdminPanel = ({ runtimeEnvironment }: { runtimeEnvironment: 
             {renderImageBlock({ kind: "detail", title: "Imagen vertical de detalles", recommendation: "1080x1350 px", preview: currentDetailPreview, currentKey: form.detailImageKey, state: detailUpload })}
           </div>
         </Card>
+        ) : null}
 
+        {module === "referrals" ? (
         <Card className="p-4">
           <h3 className="font-black text-zinc-100">Códigos de invitado</h3>
           <form className="mt-3 grid gap-2" onSubmit={(event) => void createReferralCode(event)}>
@@ -989,9 +1033,13 @@ export const RafflesAdminPanel = ({ runtimeEnvironment }: { runtimeEnvironment: 
             )) : <p className="rounded-xl border border-zinc-800 p-3 text-sm text-zinc-400">Sin códigos para este sorteo.</p>}
           </div>
         </Card>
+        ) : null}
       </div>
 
+      {module === "participants" || module === "adjustments" || module === "referrals" ? (
       <div className="space-y-3">
+        {module === "participants" ? (
+        <>
         <Card className="p-4">
           <label className="text-xs font-bold text-zinc-300">
             Buscar participante
@@ -1019,7 +1067,10 @@ export const RafflesAdminPanel = ({ runtimeEnvironment }: { runtimeEnvironment: 
             selectedKey={selectedParticipantKey}
           />
         ) : null}
+        </>
+        ) : null}
 
+        {module === "participants" || module === "adjustments" ? (
         <Card className="p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -1106,6 +1157,9 @@ export const RafflesAdminPanel = ({ runtimeEnvironment }: { runtimeEnvironment: 
                 </div>
               </div>
 
+              {error ? <p className="mt-4 rounded-lg bg-rose-500/10 px-3 py-2 text-sm text-rose-100">{error}</p> : null}
+              {notice ? <p className="mt-4 rounded-lg bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">{notice}</p> : null}
+
               <form className="mt-4 grid gap-3" onSubmit={(event) => void createAdjustment(event)}>
                 <div className="grid gap-2 sm:grid-cols-2">
                   <label className="text-xs font-bold text-zinc-300">
@@ -1137,7 +1191,9 @@ export const RafflesAdminPanel = ({ runtimeEnvironment }: { runtimeEnvironment: 
             </p>
           )}
         </Card>
+        ) : null}
 
+        {module === "adjustments" ? (
         <Card className="p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -1174,7 +1230,9 @@ export const RafflesAdminPanel = ({ runtimeEnvironment }: { runtimeEnvironment: 
             )) : <p className="rounded-xl border border-zinc-800 p-3 text-sm text-zinc-400">Aún no hay cambios manuales.</p>}
           </div>
         </Card>
+        ) : null}
 
+        {module === "referrals" ? (
         <Card className="p-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <label className="text-xs font-bold text-zinc-300">
@@ -1218,12 +1276,14 @@ export const RafflesAdminPanel = ({ runtimeEnvironment }: { runtimeEnvironment: 
             )) : <p className="rounded-xl border border-zinc-800 p-3 text-sm text-zinc-400">Sin pedidos referidos con esos filtros.</p>}
           </div>
         </Card>
+        ) : null}
 
         <Card className="p-4 text-xs text-zinc-400">
           <p className="font-bold text-zinc-200">Notas operativas</p>
           <p className="mt-1">Tickets base = pedidos + referidos. Tickets extra = ajustes manuales activos. <span className="font-bold text-zinc-200">Real</span> solo cuando el entorno es producción; <span className="font-bold text-zinc-200">Prueba</span> cubre preview/local.</p>
         </Card>
       </div>
+      ) : null}
 
       {shareImageData ? <RaffleShareImageModal data={shareImageData} onClose={() => setShareParticipant(null)} /> : null}
     </section>
