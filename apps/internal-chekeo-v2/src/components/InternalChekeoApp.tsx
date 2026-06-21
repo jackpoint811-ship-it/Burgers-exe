@@ -1372,7 +1372,7 @@ const SourcePanel = ({
     activeCount: 0,
   });
   return (
-    <Card className="mb-2.5 p-3">
+    <Card className="source-panel-card mb-2.5 p-3">
       <div className="surface-status">
         <div className="surface-status__copy">
           <div className="flex flex-wrap items-center gap-2">
@@ -2899,75 +2899,164 @@ const CompactRow = ({
   const canDeliver = order.status === "ready";
   const canCancel = !terminalStatuses.has(order.status);
   return (
-    <div className="orders-card">
-      <div className="orders-card__head">
-        <div className="orders-card__identity">
-          <p className="orders-card__folio">
-            <span className="truncate">{order.folio}</span>
-            {previewOrder ? (
-              <span className="orders-preview-chip">
-                Prueba
-              </span>
-            ) : null}
-          </p>
-          <p className="orders-card__customer">
-            {order.customer}
-          </p>
-          <p className="orders-card__timestamp">
-            {order.createdAt} · {channelLabel[order.channel]}
-          </p>
+    <div className={`orders-card orders-card--${order.status}`}>
+      <span className={`orders-status-rail orders-status-rail--${order.status}`} aria-hidden="true" />
+      <div className="orders-card__body">
+        <div className="orders-card__head">
+          <div className="orders-card__identity">
+            <p className="orders-card__folio">
+              <span className="truncate">{order.folio}</span>
+              {previewOrder ? (
+                <span className="orders-preview-chip">
+                  Prueba
+                </span>
+              ) : null}
+            </p>
+            <p className="orders-card__customer">
+              {order.customer}
+            </p>
+            <p className="orders-card__timestamp">
+              {order.createdAt} · {channelLabel[order.channel]}
+            </p>
+          </div>
+          <div className="orders-card__badges">
+            <OrdersStatusBadge status={order.status} />
+            <PaymentStatusBadge status={order.paymentState} />
+          </div>
         </div>
-        <div className="orders-card__badges">
-          <OrdersStatusBadge status={order.status} />
-          <PaymentStatusBadge status={order.paymentState} />
+
+        <div className="orders-card__facts">
+          <OrderFact label="Total" value={formatCurrency(order.total)} emphasis />
+          <OrderFact label="Entrega" value={location} />
+          <OrderFact
+            label="Pago"
+            value={`${getPaymentMethodLabel(order.paymentMethod)} · ${getPaymentStatusLabel(order.paymentState)}`}
+          />
+        </div>
+
+        <div className="orders-card__actions">
+          <Button
+            className="orders-primary-action"
+            onClick={onOpen}
+          >
+            Ver ticket
+          </Button>
+          <details className="orders-card__more">
+            <summary>Mas acciones</summary>
+            <div className="orders-card__secondary-actions">
+              <span className="orders-card__items-pill">Items: {itemCount}</span>
+              {order.note ? (
+                <p className="orders-note">Nota: {order.note}</p>
+              ) : null}
+              {canDeliver ? (
+                <Button
+                  className="orders-secondary-action"
+                  onClick={() => void onMove(order.id, "delivered")}
+                  disabled={busy}
+                >
+                  {busy ? "Actualizando…" : "Entregado"}
+                </Button>
+              ) : null}
+              {canCancel ? (
+                <Button
+                  className="orders-danger-action"
+                  onClick={() => onCancel(order)}
+                  disabled={busy}
+                >
+                  {busy ? "Cancelando…" : "Cancelar pedido"}
+                </Button>
+              ) : null}
+            </div>
+          </details>
         </div>
       </div>
+    </div>
+  );
+};
 
-      <div className="orders-card__facts">
-        <OrderFact label="Total" value={formatCurrency(order.total)} emphasis />
-        <OrderFact label="Entrega" value={location} />
+const OrderCommandPanel = ({
+  order,
+  onOpen,
+  onMove,
+  onCancel,
+  busy,
+}: {
+  order: InternalOrder;
+  onOpen: () => void;
+  onMove: MoveOrderStatus;
+  onCancel: (order: InternalOrder) => void;
+  busy: boolean;
+}) => {
+  const itemCount = getOrderItemCount(order);
+  const location = getOrderLocationLabel(order);
+  const canDeliver = order.status === "ready";
+  const canCancel = !terminalStatuses.has(order.status);
+  const visibleItems = order.items.slice(0, 3);
+  return (
+    <aside className="orders-command-detail" aria-label={`Detalle rapido ${order.folio}`}>
+      <div className="orders-command-detail__hero">
+        <div className="min-w-0">
+          <p className="orders-command-detail__eyebrow">Ticket abierto</p>
+          <h3>{order.folio}</h3>
+          <p>{order.customer} · {location}</p>
+        </div>
+        <strong>{formatCurrency(order.total)}</strong>
+      </div>
+      <div className="orders-command-detail__facts">
+        <OrderFact label="Estado" value={statusLabel[order.status]} />
         <OrderFact
           label="Pago"
           value={`${getPaymentMethodLabel(order.paymentMethod)} · ${getPaymentStatusLabel(order.paymentState)}`}
         />
         <OrderFact label="Items" value={itemCount} />
       </div>
-
-      {order.note ? (
-        <p className="orders-note">Nota para revisar: {order.note}</p>
-      ) : null}
-
-      <div className="orders-card__actions">
-        <Button
-          className="orders-primary-action"
-          onClick={onOpen}
-        >
-          Ver ticket
-        </Button>
-        {canDeliver || canCancel ? (
-          <div className="orders-card__secondary-actions">
-            {canDeliver ? (
-              <Button
-                className="orders-secondary-action"
-                onClick={() => void onMove(order.id, "delivered")}
-                disabled={busy}
-              >
-                {busy ? "Actualizando…" : "Entregado"}
-              </Button>
-            ) : null}
-            {canCancel ? (
-              <Button
-                className="orders-danger-action"
-                onClick={() => onCancel(order)}
-                disabled={busy}
-              >
-                {busy ? "Cancelando…" : "Cancelar pedido"}
-              </Button>
-            ) : null}
-          </div>
+      <div className="orders-command-detail__panel">
+        <div className="orders-command-detail__panel-head">
+          <p>Resumen</p>
+          <Button className="orders-ghost-action" onClick={onOpen}>
+            Ver ticket
+          </Button>
+        </div>
+        <div className="orders-command-detail__items">
+          {visibleItems.map((item, index) => (
+            <div key={`${order.id}-panel-${index}`} className="orders-command-detail__item">
+              <span>{item.qty}x {item.name}</span>
+              <strong>{formatCurrency(item.lineTotal ?? item.qty * item.price)}</strong>
+            </div>
+          ))}
+        </div>
+        {order.note ? (
+          <details className="orders-card__more orders-card__more--panel">
+            <summary>Nota operativa</summary>
+            <p className="orders-note">{order.note}</p>
+          </details>
         ) : null}
       </div>
-    </div>
+      <div className="orders-command-detail__actions">
+        {canDeliver ? (
+          <Button
+            className="orders-primary-action"
+            onClick={() => void onMove(order.id, "delivered")}
+            disabled={busy}
+          >
+            {busy ? "Actualizando…" : "Entregado"}
+          </Button>
+        ) : (
+          <Button className="orders-primary-action" onClick={onOpen}>
+            Ver ticket
+          </Button>
+        )}
+        {canCancel ? (
+          <Button
+            className="orders-danger-action"
+            onClick={() => onCancel(order)}
+            disabled={busy}
+          >
+            {busy ? "Cancelando…" : "Cancelar pedido"}
+          </Button>
+        ) : null}
+      </div>
+    </aside>
   );
 };
 
@@ -3028,9 +3117,13 @@ const OrdersBoard = ({
         return haystack.includes(normalizedSearch);
       });
   }, [orders, rangeFilter, search, statusFilter]);
+  const commandOrder =
+    filteredOrders.find((order) => order.status === "ready") ??
+    filteredOrders.find((order) => order.paymentState === "pending") ??
+    filteredOrders[0];
 
   return (
-    <section className="space-y-3">
+    <section className="orders-command">
       <SourcePanel
         runtime={runtime}
         runtimeEnvironment={runtimeEnvironment}
@@ -3041,13 +3134,13 @@ const OrdersBoard = ({
         <div className="orders-board-shell__header">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
-              Pedidos de hoy
+              Command center
             </p>
             <h2 className="mt-1 text-2xl font-black text-zinc-50">
-              Centro operativo de pedidos
+              Pedidos activos
             </h2>
             <p className="mt-1 max-w-3xl text-sm text-zinc-400">
-              Revisa estado, abre ticket y marca entregado o cancelado sin mezclar Cocina, Pagos o reportes.
+              Queue operativa: detecta prioridad, abre ticket y resuelve el siguiente movimiento.
             </p>
           </div>
           <div className="orders-board-shell__summary">
@@ -3119,24 +3212,35 @@ const OrdersBoard = ({
           description="Ajusta estado, rango o búsqueda para volver a mostrar pedidos."
         />
       ) : (
-        <div className="grid gap-3">
-          {filteredOrders.map((order) => {
-            const highlighted = runtime.highlightedOrderIds.has(order.id);
-            return (
-              <Card
-                key={order.id}
-                className={`orders-card-shell ${highlighted ? "orders-card-shell--highlighted" : ""}`}
-              >
-                <CompactRow
-                  order={order}
-                  onOpen={() => setSelected(order)}
-                  onMove={move}
-                  onCancel={(nextOrder) => requestCancellation(nextOrder, "pedidos")}
-                  busy={runtime.actionOrderId === order.id}
-                />
-              </Card>
-            );
-          })}
+        <div className="orders-command__workspace">
+          <div className="orders-command__queue">
+            {filteredOrders.map((order) => {
+              const highlighted = runtime.highlightedOrderIds.has(order.id);
+              return (
+                <Card
+                  key={order.id}
+                  className={`orders-card-shell ${highlighted ? "orders-card-shell--highlighted" : ""}`}
+                >
+                  <CompactRow
+                    order={order}
+                    onOpen={() => setSelected(order)}
+                    onMove={move}
+                    onCancel={(nextOrder) => requestCancellation(nextOrder, "pedidos")}
+                    busy={runtime.actionOrderId === order.id}
+                  />
+                </Card>
+              );
+            })}
+          </div>
+          {commandOrder ? (
+            <OrderCommandPanel
+              order={commandOrder}
+              onOpen={() => setSelected(commandOrder)}
+              onMove={move}
+              onCancel={(nextOrder) => requestCancellation(nextOrder, "pedidos")}
+              busy={runtime.actionOrderId === commandOrder.id}
+            />
+          ) : null}
         </div>
       )}
     </section>
@@ -4472,7 +4576,7 @@ const OrderDetailModal = ({
         <div className="order-detail__header">
           <div className="order-detail__identity">
             <p className="order-detail__eyebrow">
-              Ver ticket
+              Ticket abierto
             </p>
             <h2 id="order-title" className="order-detail__title">
               {selected.folio}
@@ -4500,8 +4604,32 @@ const OrderDetailModal = ({
             <PaymentStatusBadge status={selected.paymentState} />
           </div>
         </div>
+        <div className="order-detail__actions order-detail__actions--priority">
+          {canAdvance
+            ? detailActions.map((action) => (
+                <Button
+                  key={action.status}
+                  onClick={() => void runAction(action.status)}
+                  className="orders-primary-action order-detail__action disabled:opacity-40"
+                  disabled={busy}
+                >
+                  {busy ? "Actualizando…" : "Entregado"}
+                </Button>
+              ))
+            : null}
+          {canCancel ? (
+            <Button
+              onClick={() => onRequestCancellation(selected, "detalle")}
+              className="orders-danger-action order-detail__action disabled:opacity-40"
+              disabled={busy}
+            >
+              {busy ? "Cancelando…" : "Cancelar pedido"}
+            </Button>
+          ) : null}
+        </div>
         <OrderTicketPreview order={selected} />
-        <div className="order-detail__panel order-detail__panel--message">
+        <details className="order-detail__panel order-detail__panel--message">
+          <summary className="order-detail__summary-trigger">Mensaje y ticket para WhatsApp</summary>
           <label className="text-[11px] font-semibold text-cyan-100">
             Copiar mensaje
             <select
@@ -4528,9 +4656,9 @@ const OrderDetailModal = ({
             template={whatsappTemplate}
             showHint
           />
-        </div>
-        <div className="order-detail__panel order-detail__timeline">
-          <p className="order-detail__panel-title">Actividad del pedido</p>
+        </details>
+        <details className="order-detail__panel order-detail__timeline">
+          <summary className="order-detail__summary-trigger">Actividad del pedido</summary>
           {selected.timeline.map((t) => (
             <div key={t.id} className="order-detail__timeline-item">
               <p className="order-detail__timeline-main">
@@ -4548,30 +4676,7 @@ const OrderDetailModal = ({
               ) : null}
             </div>
           ))}
-        </div>
-        <div className="order-detail__actions">
-          {canAdvance
-            ? detailActions.map((action) => (
-                <Button
-                  key={action.status}
-                  onClick={() => void runAction(action.status)}
-                  className="orders-secondary-action order-detail__action disabled:opacity-40"
-                  disabled={busy}
-                >
-                  {busy ? "Actualizando…" : "Entregado"}
-                </Button>
-              ))
-            : null}
-          {canCancel ? (
-            <Button
-              onClick={() => onRequestCancellation(selected, "detalle")}
-              className="orders-danger-action order-detail__action disabled:opacity-40"
-              disabled={busy}
-            >
-              {busy ? "Cancelando…" : "Cancelar pedido"}
-            </Button>
-          ) : null}
-        </div>
+        </details>
         <Button
           className="order-detail__close"
           onClick={onClose}
