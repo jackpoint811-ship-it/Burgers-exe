@@ -167,25 +167,66 @@ a,button,[role="button"],input,select,textarea,.tab{touch-action:manipulation}
 .orders-filter-pills{@apply flex flex-wrap gap-2}
 .orders-filter-pill{@apply min-h-11 rounded-full border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs font-bold text-zinc-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-lime-300}
 .orders-filter-pill--active{@apply border-cyan-300 bg-cyan-300 text-black}
-.orders-card{@apply space-y-3}
-.orders-card__head{@apply flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between}
-.orders-location-chip{@apply inline-flex rounded-full border border-cyan-400/35 bg-cyan-400/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-100}
-.orders-card__meta{@apply grid gap-2 text-xs text-zinc-300 min-[420px]:grid-cols-2 lg:grid-cols-4}
-.orders-note{@apply rounded-xl border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-100}
-.orders-card__actions{@apply flex flex-col gap-2 sm:flex-row sm:flex-wrap}
-.orders-primary-action{@apply w-full bg-cyan-300 px-3 py-2 text-sm font-black text-black sm:w-auto}
-.orders-secondary-action{@apply border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm font-black text-zinc-100}
-.orders-danger-action{@apply border border-rose-700 bg-rose-950/60 px-3 py-2 text-sm font-black text-rose-100}
-.orders-ticket-preview{@apply rounded-[28px] border border-cyan-400/30 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.14),transparent_30%),linear-gradient(145deg,rgba(9,9,11,0.98),rgba(17,24,39,0.96))] p-4 shadow-xl}
-.orders-ticket-preview__hero{@apply flex flex-col gap-3 border-b border-zinc-800 pb-4 sm:flex-row sm:items-start sm:justify-between}
-.orders-ticket-preview__stats{@apply mt-4 grid gap-2 min-[420px]:grid-cols-2 xl:grid-cols-4}
-.orders-ticket-stat{@apply rounded-2xl border border-zinc-800 bg-zinc-950/70 p-3}
-.orders-ticket-stat span{@apply text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500}
-.orders-ticket-stat strong{@apply mt-2 block text-xl font-black text-zinc-50}
+.orders-card-shell{@apply p-3 transition-colors}
+.orders-card-shell--highlighted{@apply border-cyan-300/70 bg-cyan-400/10 shadow-lg shadow-cyan-950/30}
+.orders-card{@apply min-w-0 space-y-3}
+.orders-card__head{@apply grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-start}
+.orders-card__identity{@apply min-w-0}
+.orders-card__folio{@apply flex min-w-0 flex-wrap items-center gap-2 text-lg font-black tracking-tight text-zinc-50}
+.orders-preview-chip{@apply inline-flex min-h-7 items-center rounded-full bg-amber-300 px-2.5 text-[10px] font-black uppercase tracking-[0.12em] text-amber-950}
+.orders-card__customer{@apply mt-1 break-words text-sm font-semibold text-zinc-100}
+.orders-card__timestamp{@apply mt-0.5 text-xs text-zinc-400}
+.orders-card__badges{@apply flex flex-wrap gap-1.5 md:max-w-[17rem] md:justify-end}
+.orders-location-chip{@apply inline-flex min-h-8 items-center rounded-full border border-cyan-400/35 bg-cyan-400/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100}
+.orders-card__facts{@apply grid gap-2 min-[520px]:grid-cols-2 xl:grid-cols-4}
+.orders-fact{@apply min-w-0 rounded-xl border border-zinc-800 bg-zinc-950/70 px-3 py-2}
+.orders-fact span{@apply block text-[10px] font-black uppercase tracking-[0.14em] text-zinc-500}
+.orders-fact strong{@apply mt-1 block truncate text-sm font-black text-zinc-100}
+.orders-fact--emphasis{@apply border-lime-300/35 bg-lime-300/10}
+.orders-fact--emphasis strong{@apply text-lg text-lime-100}
+.orders-note{@apply rounded-xl border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-xs leading-5 text-amber-100}
+.orders-card__actions{@apply grid gap-2 sm:grid-cols-[minmax(11rem,auto)_1fr] sm:items-center}
+.orders-card__secondary-actions{@apply grid gap-2 sm:grid-cols-[repeat(auto-fit,minmax(9rem,1fr))]}
+.orders-primary-action{@apply min-h-11 w-full bg-lime-300 px-3 py-2 text-sm font-black text-lime-950 shadow-[0_0_18px_rgba(132,204,22,0.16)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-lime-300}
+.orders-secondary-action{@apply min-h-11 border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm font-black text-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-lime-300}
+.orders-danger-action{@apply min-h-11 border border-rose-700/75 bg-rose-950/45 px-3 py-2 text-sm font-black text-rose-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-lime-300}
+.orders-ticket-preview{@apply rounded-2xl border border-cyan-400/25 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),transparent_30%),linear-gradient(145deg,rgba(9,9,11,0.98),rgba(17,24,39,0.94))] p-3 shadow-xl md:p-4}
+.orders-ticket-preview__hero{@apply grid gap-3 border-b border-zinc-800 pb-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-start}
+.orders-ticket-preview__identity{@apply min-w-0}
+.orders-ticket-preview__eyebrow{@apply text-[11px] font-black uppercase tracking-[0.18em] text-cyan-200}
+.orders-ticket-preview__folio{@apply mt-1 break-words text-2xl font-black tracking-tight text-zinc-50 md:text-3xl}
+.orders-ticket-preview__customer{@apply mt-1 break-words text-base font-semibold text-zinc-100}
+.orders-ticket-preview__timestamp{@apply mt-1 text-xs text-zinc-400}
+.orders-ticket-preview__badges{@apply flex flex-wrap gap-2 md:max-w-[18rem] md:justify-end}
+.orders-ticket-preview__stats{@apply mt-3 grid gap-2 min-[420px]:grid-cols-2 xl:grid-cols-4}
+.orders-ticket-stat{@apply rounded-xl border border-zinc-800 bg-zinc-950/70 p-3}
+.orders-ticket-stat span{@apply text-[11px] font-black uppercase tracking-[0.14em] text-zinc-500}
+.orders-ticket-stat strong{@apply mt-1 block text-xl font-black text-zinc-50}
 .orders-ticket-preview__meta{@apply mt-3 flex flex-wrap gap-2}
 .orders-ticket-preview__body{@apply mt-4 space-y-3}
 .orders-ticket-items{@apply mt-3 space-y-2}
 .orders-ticket-item{@apply grid gap-2 rounded-2xl border border-zinc-800 bg-zinc-950/65 p-3 sm:grid-cols-[1fr_auto] sm:items-start}
+.modal--order-detail{@apply max-h-[calc(100vh-1rem)] max-w-4xl overflow-y-auto p-3 md:p-4}
+.order-detail__header{@apply mb-3 grid gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-start}
+.order-detail__identity{@apply min-w-0}
+.order-detail__eyebrow{@apply text-[11px] font-black uppercase tracking-[0.18em] text-cyan-200}
+.order-detail__title{@apply mt-1 break-words text-2xl font-black tracking-tight text-zinc-50}
+.order-detail__customer{@apply mt-1 break-words text-sm font-semibold text-zinc-100}
+.order-detail__timestamp{@apply mt-1 text-xs text-zinc-400}
+.order-detail__phone{@apply mt-1 text-xs text-zinc-500}
+.order-detail__phone-link{@apply inline-flex min-h-11 items-center rounded-md px-1 text-cyan-200 underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-lime-300}
+.order-detail__badges{@apply flex flex-wrap gap-1.5 md:max-w-[16rem] md:justify-end}
+.order-detail__panel{@apply mt-3 rounded-2xl border border-zinc-800 bg-zinc-900/55 p-3}
+.order-detail__panel--message{@apply border-cyan-400/20 bg-cyan-400/5}
+.order-detail__panel-title{@apply text-sm font-black text-zinc-100}
+.order-detail__timeline{@apply space-y-2 text-xs text-zinc-300}
+.order-detail__timeline-item{@apply rounded-xl border border-zinc-800 bg-zinc-950/55 px-3 py-2}
+.order-detail__timeline-main{@apply text-zinc-200}
+.order-detail__timeline-meta{@apply mt-1 text-zinc-500}
+.order-detail__timeline-reason{@apply mt-1 text-amber-200}
+.order-detail__actions{@apply mt-3 grid gap-2 sm:grid-cols-2}
+.order-detail__action{@apply w-full}
+.order-detail__close{@apply mt-2 min-h-11 w-full border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm font-black text-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-lime-300}
 .payments-shell{@apply space-y-3}
 .payments-hero{@apply rounded-3xl border border-zinc-800 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),transparent_32%),linear-gradient(145deg,rgba(9,9,11,0.98),rgba(17,24,39,0.95))] p-4 shadow-xl}
 .payments-hero__header{@apply flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between}
