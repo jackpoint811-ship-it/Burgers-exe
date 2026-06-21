@@ -2865,6 +2865,21 @@ const OrderItems = ({ order }: { order: InternalOrder }) => (
   </div>
 );
 
+const OrderFact = ({
+  label,
+  value,
+  emphasis = false,
+}: {
+  label: string;
+  value: ReactNode;
+  emphasis?: boolean;
+}) => (
+  <span className={`orders-fact ${emphasis ? "orders-fact--emphasis" : ""}`}>
+    <span>{label}</span>
+    <strong>{value}</strong>
+  </span>
+);
+
 const CompactRow = ({
   order,
   onOpen,
@@ -2886,36 +2901,36 @@ const CompactRow = ({
   return (
     <div className="orders-card">
       <div className="orders-card__head">
-        <div className="min-w-0">
-          <p className="flex flex-wrap items-center gap-2 text-base font-black text-zinc-50">
-            <span>{order.folio}</span>
+        <div className="orders-card__identity">
+          <p className="orders-card__folio">
+            <span className="truncate">{order.folio}</span>
             {previewOrder ? (
-              <span className="rounded-full bg-amber-300 px-2 py-0.5 text-[10px] font-black text-amber-950">
+              <span className="orders-preview-chip">
                 Prueba
               </span>
             ) : null}
           </p>
-          <p className="mt-1 break-words text-sm font-semibold text-zinc-100">
+          <p className="orders-card__customer">
             {order.customer}
           </p>
-          <p className="text-xs text-zinc-400">
+          <p className="orders-card__timestamp">
             {order.createdAt} · {channelLabel[order.channel]}
           </p>
         </div>
-        <div className="flex flex-wrap gap-1 sm:justify-end">
+        <div className="orders-card__badges">
           <OrdersStatusBadge status={order.status} />
           <PaymentStatusBadge status={order.paymentState} />
-          <span className="orders-location-chip">Ubicación: {location}</span>
         </div>
       </div>
 
-      <div className="orders-card__meta">
-        <span className="info-pill">
-          Total: <strong>{formatCurrency(order.total)}</strong>
-        </span>
-        <span className="info-pill">Pago: {getPaymentMethodLabel(order.paymentMethod)}</span>
-        <span className="info-pill">Estado pago: {getPaymentStatusLabel(order.paymentState)}</span>
-        <span className="info-pill">Items: {itemCount}</span>
+      <div className="orders-card__facts">
+        <OrderFact label="Total" value={formatCurrency(order.total)} emphasis />
+        <OrderFact label="Entrega" value={location} />
+        <OrderFact
+          label="Pago"
+          value={`${getPaymentMethodLabel(order.paymentMethod)} · ${getPaymentStatusLabel(order.paymentState)}`}
+        />
+        <OrderFact label="Items" value={itemCount} />
       </div>
 
       {order.note ? (
@@ -2929,23 +2944,27 @@ const CompactRow = ({
         >
           Ver ticket
         </Button>
-        {canDeliver ? (
-          <Button
-            className="orders-secondary-action"
-            onClick={() => void onMove(order.id, "delivered")}
-            disabled={busy}
-          >
-            {busy ? "Actualizando…" : "Entregado"}
-          </Button>
-        ) : null}
-        {canCancel ? (
-          <Button
-            className="orders-danger-action"
-            onClick={() => onCancel(order)}
-            disabled={busy}
-          >
-            {busy ? "Cancelando…" : "Cancelar pedido"}
-          </Button>
+        {canDeliver || canCancel ? (
+          <div className="orders-card__secondary-actions">
+            {canDeliver ? (
+              <Button
+                className="orders-secondary-action"
+                onClick={() => void onMove(order.id, "delivered")}
+                disabled={busy}
+              >
+                {busy ? "Actualizando…" : "Entregado"}
+              </Button>
+            ) : null}
+            {canCancel ? (
+              <Button
+                className="orders-danger-action"
+                onClick={() => onCancel(order)}
+                disabled={busy}
+              >
+                {busy ? "Cancelando…" : "Cancelar pedido"}
+              </Button>
+            ) : null}
+          </div>
         ) : null}
       </div>
     </div>
@@ -3106,7 +3125,7 @@ const OrdersBoard = ({
             return (
               <Card
                 key={order.id}
-                className={`p-3 transition-colors ${highlighted ? "border-cyan-300/70 bg-cyan-400/10 shadow-lg shadow-cyan-950/30" : ""}`}
+                className={`orders-card-shell ${highlighted ? "orders-card-shell--highlighted" : ""}`}
               >
                 <CompactRow
                   order={order}
@@ -4331,21 +4350,21 @@ const OrderTicketPreview = ({ order }: { order: InternalOrder }) => {
   return (
     <section className="orders-ticket-preview">
       <div className="orders-ticket-preview__hero">
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-200">
+        <div className="orders-ticket-preview__identity">
+          <p className="orders-ticket-preview__eyebrow">
             Ticket
           </p>
-          <h3 className="mt-2 text-3xl font-black text-zinc-50">
+          <h3 className="orders-ticket-preview__folio">
             {order.folio}
           </h3>
-          <p className="mt-2 break-words text-base font-semibold text-zinc-100">
+          <p className="orders-ticket-preview__customer">
             {order.customer}
           </p>
-          <p className="mt-1 text-xs text-zinc-400">
+          <p className="orders-ticket-preview__timestamp">
             {order.createdAt} · {channelLabel[order.channel]}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2 sm:justify-end">
+        <div className="orders-ticket-preview__badges">
           <OrdersStatusBadge status={order.status} />
           <PaymentStatusBadge status={order.paymentState} />
           <span className="orders-location-chip">Ubicación: {location}</span>
@@ -4447,28 +4466,28 @@ const OrderDetailModal = ({
       onClick={onClose}
     >
       <section
-        className="modal max-h-[calc(100vh-1rem)] overflow-y-auto"
+        className="modal modal--order-detail"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
+        <div className="order-detail__header">
+          <div className="order-detail__identity">
+            <p className="order-detail__eyebrow">
               Ver ticket
             </p>
-            <h2 id="order-title" className="text-lg font-black">
+            <h2 id="order-title" className="order-detail__title">
               {selected.folio}
             </h2>
-            <p className="break-words text-sm font-semibold text-zinc-100">
+            <p className="order-detail__customer">
               {selected.customer}
             </p>
-            <p className="text-xs text-zinc-400">
+            <p className="order-detail__timestamp">
               {selected.createdAt} · {channelLabel[selected.channel]} · {sourceLabel(selected.source)}
             </p>
             {selected.customerPhone ? (
-              <p className="text-xs text-zinc-500">
+              <p className="order-detail__phone">
                 Tel:{" "}
                 <a
-                  className="text-cyan-200 underline-offset-2 hover:underline"
+                  className="order-detail__phone-link"
                   href={`tel:${selected.customerPhone}`}
                 >
                   {selected.customerPhone}
@@ -4476,13 +4495,13 @@ const OrderDetailModal = ({
               </p>
             ) : null}
           </div>
-          <div className="flex flex-wrap gap-1 sm:justify-end">
+          <div className="order-detail__badges">
             <OrdersStatusBadge status={selected.status} />
             <PaymentStatusBadge status={selected.paymentState} />
           </div>
         </div>
         <OrderTicketPreview order={selected} />
-        <div className="mt-3 rounded-lg border border-cyan-400/20 bg-cyan-400/5 p-3">
+        <div className="order-detail__panel order-detail__panel--message">
           <label className="text-[11px] font-semibold text-cyan-100">
             Copiar mensaje
             <select
@@ -4510,33 +4529,33 @@ const OrderDetailModal = ({
             showHint
           />
         </div>
-        <div className="mt-3 space-y-2 rounded-lg border border-zinc-800 bg-zinc-900/60 p-2 text-xs text-zinc-300">
-          <p className="font-bold text-zinc-100">Actividad del pedido</p>
+        <div className="order-detail__panel order-detail__timeline">
+          <p className="order-detail__panel-title">Actividad del pedido</p>
           {selected.timeline.map((t) => (
-            <div key={t.id}>
-              <p>
+            <div key={t.id} className="order-detail__timeline-item">
+              <p className="order-detail__timeline-main">
                 {t.time} · {t.label}
                 {t.actor ? ` · ${t.actor}` : ""}
               </p>
               {t.previousStatus || t.nextStatus ? (
-                <p className="text-zinc-500">
+                <p className="order-detail__timeline-meta">
                   Antes: {t.previousStatus ? statusLabel[t.previousStatus] : "Sin dato"} ·{" "}
                   Ahora: {t.nextStatus ? statusLabel[t.nextStatus] : "Sin dato"}
                 </p>
               ) : null}
               {t.reason ? (
-                <p className="text-amber-200">Razón: {t.reason}</p>
+                <p className="order-detail__timeline-reason">Razón: {t.reason}</p>
               ) : null}
             </div>
           ))}
         </div>
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="order-detail__actions">
           {canAdvance
             ? detailActions.map((action) => (
                 <Button
                   key={action.status}
                   onClick={() => void runAction(action.status)}
-                  className="orders-secondary-action flex-1 disabled:opacity-40"
+                  className="orders-secondary-action order-detail__action disabled:opacity-40"
                   disabled={busy}
                 >
                   {busy ? "Actualizando…" : "Entregado"}
@@ -4546,7 +4565,7 @@ const OrderDetailModal = ({
           {canCancel ? (
             <Button
               onClick={() => onRequestCancellation(selected, "detalle")}
-              className="orders-danger-action flex-1 disabled:opacity-40"
+              className="orders-danger-action order-detail__action disabled:opacity-40"
               disabled={busy}
             >
               {busy ? "Cancelando…" : "Cancelar pedido"}
@@ -4554,7 +4573,7 @@ const OrderDetailModal = ({
           ) : null}
         </div>
         <Button
-          className="mt-2 w-full border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm"
+          className="order-detail__close"
           onClick={onClose}
         >
           Cerrar
