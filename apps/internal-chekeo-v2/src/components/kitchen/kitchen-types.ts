@@ -9,7 +9,7 @@ export type KitchenItemKind = Extract<
   "burger" | "combo" | "garnish"
 >;
 
-export type KitchenView = "preparacion" | "listos" | "sideQuest" | "summaryK";
+export type KitchenView = "preparacion" | "sideQuest" | "summaryK";
 export type KitchenPrepState = "por-hacer" | "hecho";
 
 export type KitchenOrderItem = {

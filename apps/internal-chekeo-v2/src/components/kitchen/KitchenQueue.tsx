@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button, Card, StatusPill } from "@ui/index";
+import { Button, Card } from "@ui/index";
 import {
   CheckCircle2,
-  Eye,
-  ListChecks,
   MapPin,
   PanelTopOpen,
   RefreshCw,
@@ -12,13 +10,11 @@ import type {
   KitchenSummaryKResponse,
   OrderStatus,
   OrderV2Environment,
-  OrderV2PaymentStatus,
 } from "@config/index";
 import { fetchKitchenSummaryK } from "../../lib/ingredients-v2-admin";
 import {
   buildKitchenLocalSummary,
   buildKitchenProductionItems,
-  buildKitchenSideQuestItems,
   extractKitchenLocation,
   getComboBurgerNotes,
   getKitchenItemActionKind,
@@ -31,7 +27,6 @@ import type {
   KitchenOrder,
   KitchenOrdersRuntime,
   KitchenProductionItem,
-  KitchenSideQuestItem,
   KitchenView,
   MoveKitchenOrderStatus,
   ToggleKitchenItemDone,
@@ -40,34 +35,6 @@ import type {
 type KitchenSummaryK = NonNullable<KitchenSummaryKResponse["data"]>;
 
 const terminalStatuses = new Set<OrderStatus>(["delivered", "cancelled"]);
-
-const statusLabel: Record<OrderStatus, string> = {
-  new: "Por hacer",
-  preparing: "Preparación",
-  ready: "Listo",
-  delivered: "Entregado",
-  cancelled: "Cancelado",
-};
-
-const statusTone: Record<OrderStatus, string> = {
-  new: "border-sky-400/40 text-sky-200",
-  preparing: "border-amber-400/40 text-amber-200",
-  ready: "border-emerald-400/40 text-emerald-200",
-  delivered: "border-zinc-500/40 text-zinc-200",
-  cancelled: "border-rose-500/40 text-rose-300",
-};
-
-const paymentStatusLabel: Record<OrderV2PaymentStatus, string> = {
-  pending: "Pago pendiente",
-  paid: "Pago confirmado",
-  cancelled: "Cancelado",
-};
-
-const paymentStatusTone: Record<OrderV2PaymentStatus, string> = {
-  pending: "border-amber-400/40 text-amber-200",
-  paid: "border-emerald-400/40 text-emerald-200",
-  cancelled: "border-rose-500/40 text-rose-300",
-};
 
 const orderEnvironmentLabel: Record<OrderV2Environment, string> = {
   production: "Producción",
@@ -80,49 +47,16 @@ const kitchenViews: Array<{
   hint: string;
 }> = [
   { key: "preparacion", label: "Preparación", hint: "Por item" },
-  { key: "listos", label: "Listos", hint: "Compacto" },
-  { key: "sideQuest", label: "Side Quest", hint: "Extras" },
+  { key: "sideQuest", label: "Side Quest", hint: "Hecha" },
   { key: "summaryK", label: "Resumen K", hint: "Total" },
 ];
 
-const isOrderV2PaymentStatus = (
-  value: string,
-): value is OrderV2PaymentStatus =>
-  value === "pending" || value === "paid" || value === "cancelled";
-
 const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
-
-const KitchenStatusBadge = ({ status }: { status: OrderStatus }) => (
-  <StatusPill className={statusTone[status]}>{statusLabel[status]}</StatusPill>
-);
-
-const KitchenPaymentStatusBadge = ({ status }: { status: string }) => {
-  const label = isOrderV2PaymentStatus(status)
-    ? paymentStatusLabel[status]
-    : status || "Por confirmar";
-  const tone = isOrderV2PaymentStatus(status)
-    ? paymentStatusTone[status]
-    : "border-zinc-500/40 text-zinc-200";
-  return <StatusPill className={tone}>{label}</StatusPill>;
-};
 
 const KitchenEmptyState = ({ title }: { title: string }) => (
   <Card className="border-dashed border-zinc-700/90 p-5 text-center">
     <p className="text-base font-black text-zinc-100">{title}</p>
   </Card>
-);
-
-const KitchenMetricCard = ({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | number;
-}) => (
-  <div className="kitchen-metric-card">
-    <span>{value}</span>
-    <p>{label}</p>
-  </div>
 );
 
 const ItemDetailList = ({ item }: { item: KitchenProductionItem }) => {
@@ -172,12 +106,10 @@ const KitchenProductionCard = ({
   entry,
   busy,
   onToggle,
-  onOpen,
 }: {
   entry: KitchenProductionItem;
   busy: boolean;
   onToggle: (entry: KitchenProductionItem, done: boolean) => void;
-  onOpen: (order: KitchenOrder) => void;
 }) => {
   const [expanded, setExpanded] = useState(!entry.collapsedByDefault);
   const location = extractKitchenLocation(entry.order.note);
@@ -192,12 +124,8 @@ const KitchenProductionCard = ({
     >
       <div className="kitchen-production-card__head">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="kitchen-production-card__folio">{entry.order.folio}</p>
-            <KitchenStatusBadge status={entry.order.status} />
-            <KitchenPaymentStatusBadge status={entry.order.paymentState} />
-          </div>
-          <p className="mt-1 break-words text-base font-extrabold text-zinc-100">
+          <p className="kitchen-production-card__folio">{entry.order.folio}</p>
+          <p className="kitchen-production-card__customer">
             {entry.order.customer}
           </p>
         </div>
@@ -216,7 +144,7 @@ const KitchenProductionCard = ({
           </p>
         </div>
         <span className={entry.done ? "kitchen-dot kitchen-dot--done" : "kitchen-dot"}>
-          {entry.done ? "Hecho" : "Por hacer"}
+          {entry.done ? "Hecha" : "Por hacer"}
         </span>
       </div>
 
@@ -229,7 +157,7 @@ const KitchenProductionCard = ({
           onClick={() => setExpanded((current) => !current)}
         >
           <PanelTopOpen size={16} aria-hidden="true" />
-          {expanded ? "Contraer item" : "Abrir item"}
+          {expanded ? "Ocultar item" : "Mostrar item"}
         </button>
       ) : null}
 
@@ -251,87 +179,12 @@ const KitchenProductionCard = ({
             </>
           ) : (
             <>
-              <CheckCircle2 size={16} aria-hidden="true" /> Hecho
+              <CheckCircle2 size={16} aria-hidden="true" /> Hecha
             </>
           )}
         </Button>
-        <Button className="kitchen-secondary-action" onClick={() => onOpen(entry.order)}>
-          <Eye size={16} aria-hidden="true" /> Ver pedido
-        </Button>
       </div>
     </article>
-  );
-};
-
-const ReadyOrderCard = ({
-  order,
-  items,
-  onOpen,
-}: {
-  order: KitchenOrder;
-  items: KitchenProductionItem[];
-  onOpen: (order: KitchenOrder) => void;
-}) => {
-  const [expanded, setExpanded] = useState(false);
-  const doneCount = items.filter((item) => item.done).length;
-  const pendingCount = items.length - doneCount;
-  return (
-    <Card className="kitchen-ready-card">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-xl font-black text-zinc-50">{order.folio}</p>
-            <KitchenStatusBadge status={order.status} />
-            <KitchenPaymentStatusBadge status={order.paymentState} />
-          </div>
-          <p className="mt-1 break-words text-sm font-bold text-zinc-200">
-            {order.customer}
-          </p>
-        </div>
-        <span className="kitchen-location-chip">
-          <MapPin size={14} aria-hidden="true" />
-          {extractKitchenLocation(order.note)}
-        </span>
-      </div>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <span className="kitchen-note-chip">{items.length} items</span>
-        <span className="kitchen-note-chip">{doneCount} hechos</span>
-        {pendingCount ? (
-          <span className="kitchen-note-chip">{pendingCount} por hacer</span>
-        ) : null}
-      </div>
-      {pendingCount ? (
-        <p className="mt-3 text-sm font-semibold text-amber-100">
-          Este pedido sigue teniendo items por hacer en Preparación.
-        </p>
-      ) : null}
-      {expanded ? (
-        <div className="mt-3 grid gap-2">
-          {items.map((entry) => (
-            <div key={entry.id} className="kitchen-ready-line">
-              <span>{entry.done ? "Hecho" : "Por hacer"}</span>
-              <div className="min-w-0">
-                <strong>{entry.item.name}</strong>
-                <p className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-zinc-500">
-                  {getKitchenItemLabel(entry.item)}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : null}
-      <div className="mt-3 grid gap-2 sm:grid-cols-2">
-        <Button
-          className="kitchen-secondary-action"
-          onClick={() => setExpanded((current) => !current)}
-        >
-          {expanded ? "Contraer" : "Ver items"}
-        </Button>
-        <Button className="kitchen-secondary-action" onClick={() => onOpen(order)}>
-          <Eye size={16} aria-hidden="true" /> Ver pedido
-        </Button>
-      </div>
-    </Card>
   );
 };
 
@@ -339,19 +192,17 @@ const DoneItemsSection = ({
   items,
   busyLineKey,
   onToggle,
-  onOpen,
 }: {
   items: KitchenProductionItem[];
   busyLineKey: string | null;
   onToggle: (entry: KitchenProductionItem, done: boolean) => void;
-  onOpen: (order: KitchenOrder) => void;
 }) => {
   const [expanded, setExpanded] = useState(false);
 
   if (!items.length) return null;
 
   return (
-    <section className="kitchen-done-section">
+    <section id="kitchen-done" className="kitchen-done-section">
       <div className="kitchen-done-section__header">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-200">
@@ -381,7 +232,6 @@ const DoneItemsSection = ({
               entry={entry}
               busy={busyLineKey === entry.lineKey}
               onToggle={onToggle}
-              onOpen={onOpen}
             />
           ))}
         </div>
@@ -390,99 +240,37 @@ const DoneItemsSection = ({
   );
 };
 
-const SideQuestPanel = ({ items }: { items: KitchenSideQuestItem[] }) => (
-  <section className="kitchen-sidequest-grid">
-    {items.length ? (
-      items.map((item) => (
-        <Card key={item.id} className="kitchen-sidequest-card">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-200">
-                {item.order.folio}
-              </p>
-              <h3 className="mt-1 break-words text-lg font-black text-zinc-50">
-                {item.label}
-              </h3>
-              <p className="mt-1 text-sm text-zinc-400">{item.detail}</p>
-            </div>
-            <span className={item.done ? "kitchen-dot kitchen-dot--done" : "kitchen-dot"}>
-              {item.done ? "Hecho" : "Por hacer"}
-            </span>
-          </div>
-        </Card>
-      ))
-    ) : (
-      <KitchenEmptyState title="Sin Side Quest en producción actual." />
-    )}
-  </section>
-);
-
-const NextInKitchen = ({
-  pendingItems,
-  doneItems,
-  onOpenItem,
-}: {
-  pendingItems: KitchenProductionItem[];
-  doneItems: KitchenProductionItem[];
-  onOpenItem: (item: KitchenProductionItem) => void;
-}) => {
-  const [expanded, setExpanded] = useState(false);
-  const firstPending = pendingItems[0];
-  const items = expanded ? [...pendingItems, ...doneItems].slice(0, 12) : [];
-
-  return (
-    <Card className="kitchen-next-card">
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <div className="min-w-0">
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-lime-200">
-            Siguiente en cocina
-          </p>
-          {firstPending ? (
-            <>
-              <h3 className="mt-1 break-words text-xl font-black text-zinc-50">
-                {firstPending.order.folio} · {firstPending.item.name}
-              </h3>
-              <p className="mt-1 text-sm text-zinc-400">
-                {firstPending.order.customer} · {extractKitchenLocation(firstPending.order.note)}
-              </p>
-            </>
-          ) : (
-            <h3 className="mt-1 text-xl font-black text-zinc-50">
-              Sin items por hacer
-            </h3>
-          )}
-        </div>
-        <Button
-          className="kitchen-secondary-action"
-          onClick={() => setExpanded((current) => !current)}
-        >
-          <ListChecks size={16} aria-hidden="true" />
-          {expanded ? "Ocultar lista" : "Abrir lista"}
-        </Button>
-      </div>
-      {expanded ? (
-        <div className="kitchen-next-list">
-          {items.length ? (
-            items.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className="kitchen-next-list__item"
-                onClick={() => onOpenItem(item)}
-              >
-                <span>{item.done ? "Hecho" : "Por hacer"}</span>
-                <strong>{item.order.folio}</strong>
-                <p>{item.item.name}</p>
-              </button>
-            ))
-          ) : (
-            <p className="text-sm text-zinc-400">No hay items para mostrar.</p>
-          )}
-        </div>
-      ) : null}
-    </Card>
-  );
+const scrollToKitchenSection = (id: string) => {
+  document.getElementById(id)?.scrollIntoView({
+    block: "start",
+    behavior: "smooth",
+  });
 };
+
+const KitchenAnchorControls = ({
+  pendingCount,
+  doneCount,
+}: {
+  pendingCount: number;
+  doneCount: number;
+}) => (
+  <div className="kitchen-anchor-controls" aria-label="Filtros de preparación">
+    <button
+      type="button"
+      className="kitchen-anchor-button kitchen-anchor-button--active"
+      onClick={() => scrollToKitchenSection("kitchen-pending")}
+    >
+      Por hacer <strong>{pendingCount}</strong>
+    </button>
+    <button
+      type="button"
+      className="kitchen-anchor-button"
+      onClick={() => scrollToKitchenSection("kitchen-done")}
+    >
+      Hechas <strong>{doneCount}</strong>
+    </button>
+  </div>
+);
 
 const SummaryMetric = ({
   label,
@@ -541,7 +329,7 @@ const KitchenSummaryKPanel = ({
       </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryMetric label="Por hacer" value={localSummary.pendingItems} />
-        <SummaryMetric label="Hecho" value={localSummary.doneItems} />
+        <SummaryMetric label="Hechas" value={localSummary.doneItems} />
         <SummaryMetric label="Extras" value={localSummary.extras} />
         <SummaryMetric label="Costo estimado" value={costText} />
       </div>
@@ -650,13 +438,11 @@ export const KitchenQueue = ({
   runtime,
   onToggleKitchenItem,
   onMove,
-  onOpenOrder,
 }: {
   orders: KitchenOrder[];
   runtime: KitchenOrdersRuntime;
   onToggleKitchenItem: ToggleKitchenItemDone;
   onMove: MoveKitchenOrderStatus;
-  onOpenOrder: (order: KitchenOrder) => void;
 }) => {
   const [view, setView] = useState<KitchenView>("preparacion");
   const [busyLineKey, setBusyLineKey] = useState<string | null>(null);
@@ -677,20 +463,23 @@ export const KitchenQueue = ({
     () => productionItems.filter((entry) => entry.done),
     [productionItems],
   );
-  const readyOrders = useMemo(() => {
-    const byOrder = new Map<string, { order: KitchenOrder; items: KitchenProductionItem[] }>();
-    productionItems.forEach((entry) => {
-      const current = byOrder.get(entry.order.id) ?? { order: entry.order, items: [] };
-      current.items.push(entry);
-      byOrder.set(entry.order.id, current);
-    });
-    return [...byOrder.values()].filter(
-      ({ order, items }) => order.status === "ready" || items.every((item) => item.done),
-    );
-  }, [productionItems]);
-  const sideQuestItems = useMemo(
-    () => buildKitchenSideQuestItems(productionItems),
+  const sideQuestProductionItems = useMemo(
+    () =>
+      productionItems.filter(
+        (entry) =>
+          entry.kind === "garnish" ||
+          Boolean(entry.item.garnish) ||
+          entry.item.sideQuestExtras.some((extra) => extra.itemKind !== "drink"),
+      ),
     [productionItems],
+  );
+  const sideQuestPendingItems = useMemo(
+    () => sideQuestProductionItems.filter((entry) => !entry.done),
+    [sideQuestProductionItems],
+  );
+  const sideQuestDoneItems = useMemo(
+    () => sideQuestProductionItems.filter((entry) => entry.done),
+    [sideQuestProductionItems],
   );
   const localSummary = useMemo(
     () => buildKitchenLocalSummary(productionItems),
@@ -739,8 +528,7 @@ export const KitchenQueue = ({
 
   const viewCounts: Record<KitchenView, number | string> = {
     preparacion: pendingItems.length,
-    listos: readyOrders.length,
-    sideQuest: sideQuestItems.length,
+    sideQuest: sideQuestPendingItems.length,
     summaryK: localSummary.totalItems,
   };
 
@@ -772,12 +560,6 @@ export const KitchenQueue = ({
               {runtime.loading ? "Actualizando..." : "Actualizar"}
             </Button>
           </div>
-        </div>
-        <div className="kitchen-command-strip">
-          <KitchenMetricCard label="Por hacer" value={pendingItems.length} />
-          <KitchenMetricCard label="Hecho" value={localSummary.doneItems} />
-          <KitchenMetricCard label="Listos" value={readyOrders.length} />
-          <KitchenMetricCard label="Side Quest" value={sideQuestItems.length} />
         </div>
         <div className="kitchen-view-tabs">
           {kitchenViews.map((option) => (
@@ -821,17 +603,13 @@ export const KitchenQueue = ({
         </p>
       ) : null}
 
-      {view !== "summaryK" ? (
-        <NextInKitchen
-          pendingItems={pendingItems}
-          doneItems={doneItems}
-          onOpenItem={(item) => onOpenOrder(item.order)}
-        />
-      ) : null}
-
       {view === "preparacion" ? (
         <section className="space-y-4">
-          <div className="kitchen-section">
+          <KitchenAnchorControls
+            pendingCount={pendingItems.length}
+            doneCount={doneItems.length}
+          />
+          <div id="kitchen-pending" className="kitchen-section">
             <div className="kitchen-section__header">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-lime-200">
@@ -841,7 +619,7 @@ export const KitchenQueue = ({
                   Producción accionable
                 </h3>
                 <p className="mt-1 text-sm text-zinc-400">
-                  Incluye pedidos en Preparación y pedidos Listos con items pendientes.
+                  Incluye pedidos nuevos y en preparación con items pendientes.
                 </p>
               </div>
               <span className="kitchen-note-chip">{pendingItems.length} items</span>
@@ -854,7 +632,6 @@ export const KitchenQueue = ({
                     entry={entry}
                     busy={busyLineKey === entry.lineKey}
                     onToggle={toggleKitchenItem}
-                    onOpen={onOpenOrder}
                   />
                 ))
               ) : (
@@ -866,29 +643,55 @@ export const KitchenQueue = ({
             items={doneItems}
             busyLineKey={busyLineKey}
             onToggle={toggleKitchenItem}
-            onOpen={onOpenOrder}
           />
         </section>
       ) : null}
 
-      {view === "listos" ? (
-        <section className="kitchen-ready-grid">
-          {readyOrders.length ? (
-            readyOrders.map(({ order, items }) => (
-              <ReadyOrderCard
-                key={order.id}
-                order={order}
-                items={items}
-                onOpen={onOpenOrder}
-              />
-            ))
-          ) : (
-            <KitchenEmptyState title="Sin pedidos listos." />
-          )}
+      {view === "sideQuest" ? (
+        <section className="space-y-4">
+          <KitchenAnchorControls
+            pendingCount={sideQuestPendingItems.length}
+            doneCount={sideQuestDoneItems.length}
+          />
+          <div id="kitchen-pending" className="kitchen-section">
+            <div className="kitchen-section__header">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-200">
+                  Side Quest
+                </p>
+                <h3 className="mt-1 text-lg font-black text-zinc-50">
+                  Extras accionables
+                </h3>
+                <p className="mt-1 text-sm text-zinc-400">
+                  Guarniciones y extras se marcan con el mismo checklist real de Cocina.
+                </p>
+              </div>
+              <span className="kitchen-note-chip">
+                {sideQuestPendingItems.length} items
+              </span>
+            </div>
+            <div className="kitchen-item-grid">
+              {sideQuestPendingItems.length ? (
+                sideQuestPendingItems.map((entry) => (
+                  <KitchenProductionCard
+                    key={entry.id}
+                    entry={entry}
+                    busy={busyLineKey === entry.lineKey}
+                    onToggle={toggleKitchenItem}
+                  />
+                ))
+              ) : (
+                <KitchenEmptyState title="Sin Side Quest por hacer." />
+              )}
+            </div>
+          </div>
+          <DoneItemsSection
+            items={sideQuestDoneItems}
+            busyLineKey={busyLineKey}
+            onToggle={toggleKitchenItem}
+          />
         </section>
       ) : null}
-
-      {view === "sideQuest" ? <SideQuestPanel items={sideQuestItems} /> : null}
 
       {view === "summaryK" ? (
         <KitchenSummaryKPanel

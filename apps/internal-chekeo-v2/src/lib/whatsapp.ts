@@ -38,7 +38,7 @@ export type WhatsappBankDetails = {
 
 const formatWhatsappCurrency = (value?: number) => `$${(Number.isFinite(value) ? value ?? 0 : 0).toFixed(2)}`;
 
-const safeText = (value: string | undefined, fallback = '—') => {
+const safeText = (value: string | undefined, fallback = '-') => {
   const trimmed = value?.replace(/\s+/g, ' ').trim();
   return trimmed || fallback;
 };
@@ -47,7 +47,6 @@ const getCustomerName = (order: WhatsappOrderMessageInput) => order.customer?.tr
 const getFolio = (order: WhatsappOrderMessageInput) => order.folio?.trim() || 'tu pedido';
 const getPaymentMethod = (order: WhatsappOrderMessageInput) => order.paymentMethod?.trim() || 'no especificado';
 const getPaymentStatus = (order: WhatsappOrderMessageInput) => order.paymentState?.trim() || order.paymentStatus?.trim() || 'pendiente';
-const isPreviewOrder = (order: WhatsappOrderMessageInput) => order.source === 'public-v2-preview';
 const isTransferPaymentMethod = (paymentMethod?: string) => {
   const normalized = paymentMethod?.trim().toLowerCase();
   return normalized === 'transfer' || normalized === 'transferencia' || normalized === 'spei';
@@ -87,10 +86,7 @@ const hasBankDetails = (bankDetails?: WhatsappBankDetails | null) =>
 
 const buildBankDetailLines = (bankDetails?: WhatsappBankDetails | null) => {
   if (!hasBankDetails(bankDetails)) {
-    return [
-      'Datos bancarios:',
-      'Confirmar cuenta bancaria con operacion antes de compartir este cobro.',
-    ];
+    return [];
   }
 
   const lines = ['Datos bancarios:'];
@@ -142,33 +138,28 @@ export const buildWhatsappOrderMessage = (
   const name = getCustomerName(order);
   const folio = getFolio(order);
   const total = formatWhatsappCurrency(order.total);
-  const paymentMethod = getPaymentMethod(order);
-  const paymentStatus = getPaymentStatus(order);
-  const statusLine =
-    type === 'preparing'
-      ? 'Tu quest ya está en preparación.'
-      : type === 'ready'
-        ? 'Tu loot ya está listo para recoger/entregar.'
-        : type === 'delivered'
-          ? 'Marcamos tu pedido como entregado. ¡Gracias por jugar con nosotros!'
-          : 'Recibimos tu pedido y lo dejamos listo para operación.';
+  const paymentMethod = getPaymentMethodMessageLabel(getPaymentMethod(order));
+  const paymentStatus = getPaymentStatusMessageLabel(getPaymentStatus(order));
+  const deliveryDetail = safeText(order.deliveryDetail, 'Entrega por confirmar');
   const note = safeText(order.note, '');
 
   return [
-    ...(isPreviewOrder(order) ? ['PEDIDO DE PRUEBA — NO PREPARAR', ''] : []),
-    `🍔 Burgers.exe — ${statusLine}`,
+    `Hola ${name},`,
     '',
+    'Tu pedido Burgers.exe queda asi:',
     `Folio: ${folio}`,
-    `Cliente: ${name}`,
     `Total: ${total}`,
-    `Pago: ${paymentMethod}`,
-    `Estado de pago: ${paymentStatus}`,
+    `Entrega: ${deliveryDetail}`,
+    `Pago: ${paymentMethod} (${paymentStatus})`,
     '',
     'Resumen del pedido:',
     ...buildWhatsappOrderSummaryLines(order),
+    ...(isTransferPaymentMethod(order.paymentMethod)
+      ? ['', ...buildBankDetailLines(order.bankDetails)]
+      : []),
     ...(note ? ['', `Notas: ${note}`] : []),
     '',
-    'Nota Burgers.exe: WhatsApp abre este texto; si hay ticket PNG, descárgalo y adjúntalo manualmente.',
+    'Gracias por pedir en Burgers.exe.',
   ].join('\n');
 };
 
@@ -180,7 +171,6 @@ export const buildWhatsappPaymentMessage = (
   const total = formatWhatsappCurrency(order.total);
   const paymentMethod = getPaymentMethodMessageLabel(order.paymentMethod);
   const paymentStatus = getPaymentStatusMessageLabel(getPaymentStatus(order));
-  const orderStatus = safeText(order.orderStatus, 'Pedido en operacion');
   const deliveryDetail = safeText(order.deliveryDetail, 'Sin detalle de entrega');
   const note = safeText(order.note, '');
   const summaryLines = buildWhatsappOrderSummaryLines(order);
@@ -194,7 +184,6 @@ export const buildWhatsappPaymentMessage = (
     `Total: ${total}`,
     `Metodo de pago: ${paymentMethod}`,
     `Estado de pago: ${paymentStatus}`,
-    `Estado del pedido: ${orderStatus}`,
     `Detalle de entrega: ${deliveryDetail}`,
     '',
     'Resumen del pedido:',

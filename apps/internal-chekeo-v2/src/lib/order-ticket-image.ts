@@ -21,13 +21,10 @@ const PANEL_WIDTH = IMAGE_WIDTH - PANEL_X * 2;
 const formatCurrency = (value?: number) =>
   `$${(Number.isFinite(value) ? value ?? 0 : 0).toFixed(2)}`;
 
-const safeText = (value: string | undefined, fallback = "—") => {
+const safeText = (value: string | undefined, fallback = "-") => {
   const trimmed = value?.replace(/\s+/g, " ").trim();
   return trimmed || fallback;
 };
-
-const isPreviewOrder = (order: OrderTicketImageData) =>
-  order.source === "public-v2-preview";
 
 const truncate = (value: string, maxLength: number) =>
   value.length > maxLength
@@ -104,7 +101,7 @@ const buildTicketItemLines = (item: TicketItem, index: number) => {
     item.lineTotal ??
     (Number.isFinite(item.price) ? (item.price ?? 0) * item.qty : undefined);
   const lines = [
-    `${item.qty}x ${safeText(item.name, `Producto ${index + 1}`)}${total !== undefined ? ` — ${formatCurrency(total)}` : ""}`,
+    `${item.qty}x ${safeText(item.name, `Producto ${index + 1}`)}${total !== undefined ? ` - ${formatCurrency(total)}` : ""}`,
   ];
 
   if (item.comboBurgers?.length) {
@@ -150,28 +147,6 @@ const buildTicketSections = (order: OrderTicketImageData) => {
     { title: "Guarniciones", lines: sections.garnishes },
     { title: "Extras", lines: sections.others },
   ].filter((section) => section.lines.length);
-};
-
-const getOrderPower = (order: OrderTicketImageData) => {
-  const items = getTicketItems(order);
-  const modifiers = items.reduce(
-    (total, item) =>
-      total +
-      (item.extras?.length ?? 0) +
-      (item.sideQuestExtras?.length ?? 0) +
-      (item.comboBurgers?.length ?? 0),
-    0,
-  );
-  const itemQty = items.reduce((total, item) => total + (item.qty ?? 0), 0);
-  return Math.max(10, Math.round((order.total ?? 0) / 120) + itemQty * 12 + modifiers * 6);
-};
-
-const getOrderRarity = (order: OrderTicketImageData) => {
-  const power = getOrderPower(order);
-  if (power >= 220) return "Legendario";
-  if (power >= 160) return "Épico";
-  if (power >= 110) return "Raro";
-  return "Base";
 };
 
 const drawMetricCard = (
@@ -227,22 +202,16 @@ const drawParagraph = (
 };
 
 export const buildOrderTicketSummaryText = (order: OrderTicketImageData) => [
-  ...(isPreviewOrder(order) ? ["PEDIDO DE PRUEBA - NO PREPARAR", ""] : []),
-  "Burgers.exe - Ticket operativo",
+  "Burgers.exe - Ticket",
   `Folio: ${safeText(order.folio)}`,
   `Cliente: ${safeText(order.customer ?? order.customerName)}`,
-  `Ubicación: ${extractLocation(order.note)}`,
+  `Entrega: ${extractLocation(order.note)}`,
   `Total: ${formatCurrency(order.total)}`,
   `Pago: ${safeText(order.paymentMethod, "no especificado")}`,
   `Estado de pago: ${safeText(order.paymentState ?? order.paymentStatus, "pendiente")}`,
-  `Pedido: ${safeText(order.orderStatus, "Recibido")}`,
-  `Rareza: ${getOrderRarity(order)}`,
-  `Power: ${getOrderPower(order)}`,
   "",
   "Resumen del pedido:",
   ...buildWhatsappOrderSummaryLines(order),
-  "",
-  "Descarga este ticket y adjuntalo manualmente si lo envias por WhatsApp.",
 ].join("\n");
 
 export const generateOrderTicketImage = async (
@@ -266,17 +235,6 @@ export const generateOrderTicketImage = async (
     ctx.fillRect(0, y, IMAGE_WIDTH, 1);
   }
 
-  if (isPreviewOrder(order)) {
-    ctx.save();
-    ctx.translate(IMAGE_WIDTH / 2, IMAGE_HEIGHT / 2);
-    ctx.rotate(-0.45);
-    ctx.textAlign = "center";
-    ctx.fillStyle = "rgba(250, 204, 21, 0.12)";
-    ctx.font = "900 110px 'Fira Sans', Arial, sans-serif";
-    ctx.fillText("PREVIEW", 0, 0);
-    ctx.restore();
-  }
-
   drawRoundedRect(
     ctx,
     SAFE_PADDING,
@@ -295,8 +253,6 @@ export const generateOrderTicketImage = async (
   ctx.shadowBlur = 0;
 
   const location = extractLocation(order.note);
-  const rarity = getOrderRarity(order);
-  const power = getOrderPower(order);
   const items = getTicketItems(order);
   const itemCount = items.reduce((total, item) => total + item.qty, 0);
 
@@ -321,7 +277,6 @@ export const generateOrderTicketImage = async (
   ctx.fillStyle = "#cbd5e1";
   ctx.font = "700 16px 'Fira Sans', Arial, sans-serif";
   ctx.fillText(`Pago ${safeText(order.paymentState ?? order.paymentStatus, "pendiente")}`, PANEL_X + PANEL_WIDTH, 136);
-  ctx.fillText(`Rareza ${rarity} · Power ${power}`, PANEL_X + PANEL_WIDTH, 164);
 
   drawMetricCard(ctx, "TOTAL", formatCurrency(order.total), PANEL_X, 272, 150);
   drawMetricCard(ctx, "ITEMS", String(itemCount), PANEL_X + 166, 272, 110);
@@ -367,11 +322,11 @@ export const generateOrderTicketImage = async (
   ctx.textAlign = "center";
   ctx.fillStyle = "#67e8f9";
   ctx.font = "900 18px 'Fira Sans', Arial, sans-serif";
-  ctx.fillText("Ticket visual 800x1200 para Pedidos", IMAGE_WIDTH / 2, 1128);
+  ctx.fillText("Burgers.exe", IMAGE_WIDTH / 2, 1128);
   ctx.font = "600 14px 'Fira Sans', Arial, sans-serif";
   drawParagraph(
     ctx,
-    "WhatsApp abre texto. Descarga este ticket y adjuntalo manualmente si hace falta.",
+    "Gracias por tu pedido.",
     PANEL_X,
     1150,
     PANEL_WIDTH,
