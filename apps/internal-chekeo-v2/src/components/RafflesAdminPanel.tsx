@@ -29,15 +29,16 @@ const SAFE_IMAGE_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._/-]*$/;
 
 type ReferralCodeForm = { ownerName: string; ownerPhone: string; burgerWord: typeof BURGER_WORDS[number]; number: string };
 type AdjustmentForm = { ticketsDelta: string; reason: string; actor: string };
-type RaffleModule = "campaign" | "participants" | "referrals" | "assets" | "adjustments";
+type RaffleModule = "campaign" | "participants" | "ticketAdjustments" | "referrals" | "assets" | "settings";
 const emptyReferralCodeForm = (): ReferralCodeForm => ({ ownerName: "", ownerPhone: "", burgerWord: "BURGER", number: "27" });
 const emptyAdjustmentForm = (): AdjustmentForm => ({ ticketsDelta: "1", reason: "", actor: "internal-v2" });
 const raffleModules: Array<{ key: RaffleModule; label: string; hint: string }> = [
   { key: "campaign", label: "Campaña", hint: "Activa y reglas" },
   { key: "participants", label: "Participantes", hint: "Tickets" },
+  { key: "ticketAdjustments", label: "Tickets extra", hint: "Manual" },
   { key: "referrals", label: "Referidos", hint: "Códigos" },
   { key: "assets", label: "Assets", hint: "Imágenes" },
-  { key: "adjustments", label: "Ajustes", hint: "Manual" },
+  { key: "settings", label: "Ajustes", hint: "Panel" },
 ];
 
 const emptyForm = (): RaffleForm => ({
@@ -274,14 +275,14 @@ const ParticipantList = ({
   title,
   participants,
   empty,
-  onImage,
+  onAddTickets,
   onSelect,
   selectedKey,
 }: {
   title: string;
   participants: RaffleParticipantSummary[];
   empty: string;
-  onImage: (participant: RaffleParticipantSummary) => void;
+  onAddTickets: (participant: RaffleParticipantSummary) => void;
   onSelect: (participant: RaffleParticipantSummary) => void;
   selectedKey?: string | null;
 }) => (
@@ -328,7 +329,7 @@ const ParticipantList = ({
                   <p className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">Tickets totales</p>
                   <strong className="block text-3xl font-black text-emerald-300">{participant.totalTickets}</strong>
                 </div>
-                <Button type="button" className="border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-black text-emerald-100" onClick={() => onImage(participant)}>Imagen</Button>
+                <Button type="button" className="border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-black text-emerald-100" onClick={() => onAddTickets(participant)}>+ tickets</Button>
               </div>
             </div>
             <div className="mt-3 grid gap-2 sm:grid-cols-3">
@@ -342,9 +343,7 @@ const ParticipantList = ({
               {participant.manualExtraTickets > 0 ? <span className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-2.5 py-1 text-cyan-100">Extras manuales</span> : null}
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              <Button type="button" className="border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs font-black text-zinc-100" onClick={() => onSelect(participant)}>Ver participante</Button>
-              <Button type="button" className="border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-black text-emerald-100" onClick={() => onSelect(participant)}>Agregar tickets</Button>
-              <Button type="button" className="border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-xs font-black text-cyan-100" onClick={() => onImage(participant)}>Compartir</Button>
+              <Button type="button" className="border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs font-black text-zinc-100" onClick={() => onSelect(participant)}>Ver</Button>
             </div>
           </article>
         );
@@ -370,6 +369,7 @@ export const RafflesAdminPanel = ({ runtimeEnvironment }: { runtimeEnvironment: 
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   const [invalidReasons, setInvalidReasons] = useState<Record<string, string>>({});
   const [selectedParticipantKey, setSelectedParticipantKey] = useState<string | null>(null);
+  const [quickAdjustmentParticipantKey, setQuickAdjustmentParticipantKey] = useState<string | null>(null);
   const [adjustmentForm, setAdjustmentForm] = useState<AdjustmentForm>(() => emptyAdjustmentForm());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -388,6 +388,10 @@ export const RafflesAdminPanel = ({ runtimeEnvironment }: { runtimeEnvironment: 
     () => participantPool.find((participant) => participant.participantKey === selectedParticipantKey) ?? null,
     [participantPool, selectedParticipantKey],
   );
+  const quickAdjustmentParticipant = useMemo(
+    () => participantPool.find((participant) => participant.participantKey === quickAdjustmentParticipantKey) ?? null,
+    [participantPool, quickAdjustmentParticipantKey],
+  );
   const recentAdjustments = summary?.recentAdjustments ?? [];
   const selectedParticipantAdjustments = useMemo(
     () => selectedParticipant ? recentAdjustments.filter((adjustment) => adjustment.participantKey === selectedParticipant.participantKey) : [],
@@ -400,6 +404,12 @@ export const RafflesAdminPanel = ({ runtimeEnvironment }: { runtimeEnvironment: 
     if (participantPool.some((participant) => participant.participantKey === selectedParticipantKey)) return;
     setSelectedParticipantKey(null);
   }, [participantPool, selectedParticipantKey]);
+
+  useEffect(() => {
+    if (!quickAdjustmentParticipantKey) return;
+    if (participantPool.some((participant) => participant.participantKey === quickAdjustmentParticipantKey)) return;
+    setQuickAdjustmentParticipantKey(null);
+  }, [participantPool, quickAdjustmentParticipantKey]);
 
   const imageStateForKind = (kind: RaffleImageKind) => (kind === "banner" ? bannerUpload : detailUpload);
   const setImageStateForKind = (kind: RaffleImageKind, updater: (current: ImageUploadState) => ImageUploadState) => {
@@ -681,6 +691,14 @@ export const RafflesAdminPanel = ({ runtimeEnvironment }: { runtimeEnvironment: 
     setAdjustmentForm(emptyAdjustmentForm());
   };
 
+  const openQuickAdjustment = (participant: RaffleParticipantSummary) => {
+    setSelectedParticipantKey(participant.participantKey);
+    setQuickAdjustmentParticipantKey(participant.participantKey);
+    setAdjustmentForm(emptyAdjustmentForm());
+    setError(null);
+    setNotice(null);
+  };
+
   const createAdjustment = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedCampaign) { setError("Selecciona una campaña."); return; }
@@ -709,6 +727,7 @@ export const RafflesAdminPanel = ({ runtimeEnvironment }: { runtimeEnvironment: 
       });
       setNotice("Ajuste guardado.");
       setAdjustmentForm(emptyAdjustmentForm());
+      setQuickAdjustmentParticipantKey(null);
       await reload();
       setSelectedParticipantKey(selectedParticipant.participantKey);
     } catch (adjustmentError) {
@@ -1034,11 +1053,45 @@ export const RafflesAdminPanel = ({ runtimeEnvironment }: { runtimeEnvironment: 
           </div>
         </Card>
         ) : null}
+
+        {module === "settings" ? (
+        <Card className="p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-emerald-200">Ajustes</p>
+              <h3 className="text-lg font-black text-zinc-50">Estado del módulo</h3>
+              <p className="mt-1 text-sm text-zinc-400">
+                Reglas, fechas y activación se editan en Campaña. Este panel concentra el estado operativo para evitar mezclarlo con tickets manuales.
+              </p>
+            </div>
+            <StatusPill className={environmentMeta.badge}>
+              {environmentMeta.label} · {environmentMeta.helper}
+            </StatusPill>
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3">
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500">Campaña</p>
+              <strong className="mt-2 block text-sm text-zinc-100">{selectedCampaign?.title ?? "Sin campaña"}</strong>
+            </div>
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3">
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500">Ticket por burger</p>
+              <strong className="mt-2 block text-2xl font-black text-emerald-200">{selectedCampaign?.ticketPerBurger ?? "-"}</strong>
+            </div>
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3">
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500">Ticket por referido</p>
+              <strong className="mt-2 block text-2xl font-black text-cyan-200">{selectedCampaign?.ticketPerReferral ?? "-"}</strong>
+            </div>
+          </div>
+          <Button type="button" className="mt-4 border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs" onClick={() => setModule("campaign")}>
+            Editar campaña
+          </Button>
+        </Card>
+        ) : null}
       </div>
 
-      {module === "participants" || module === "adjustments" || module === "referrals" ? (
+      {module === "participants" || module === "ticketAdjustments" || module === "referrals" ? (
       <div className="space-y-3">
-        {module === "participants" ? (
+        {module === "participants" || module === "ticketAdjustments" ? (
         <>
         <Card className="p-4">
           <label className="text-xs font-bold text-zinc-300">
@@ -1052,7 +1105,7 @@ export const RafflesAdminPanel = ({ runtimeEnvironment }: { runtimeEnvironment: 
           title={debouncedSearch ? "Resultados de búsqueda" : "Top participantes"}
           participants={debouncedSearch ? (summary?.participantResults ?? []) : (summary?.topParticipants ?? [])}
           empty={debouncedSearch ? "Sin participantes encontrados." : "Aún no hay participantes con tickets para esta campaña."}
-          onImage={setShareParticipant}
+          onAddTickets={openQuickAdjustment}
           onSelect={selectParticipant}
           selectedKey={selectedParticipantKey}
         />
@@ -1062,7 +1115,7 @@ export const RafflesAdminPanel = ({ runtimeEnvironment }: { runtimeEnvironment: 
             title="Top participantes"
             participants={summary?.topParticipants ?? []}
             empty="Aún no hay participantes con tickets para esta campaña."
-            onImage={setShareParticipant}
+            onAddTickets={openQuickAdjustment}
             onSelect={selectParticipant}
             selectedKey={selectedParticipantKey}
           />
@@ -1070,7 +1123,7 @@ export const RafflesAdminPanel = ({ runtimeEnvironment }: { runtimeEnvironment: 
         </>
         ) : null}
 
-        {module === "participants" || module === "adjustments" ? (
+        {module === "participants" || module === "ticketAdjustments" ? (
         <Card className="p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -1087,9 +1140,17 @@ export const RafflesAdminPanel = ({ runtimeEnvironment }: { runtimeEnvironment: 
               )}
             </div>
             {selectedParticipant ? (
-              <StatusPill className={selectedParticipant.totalTickets > 0 ? "border-emerald-400/40 text-emerald-200" : "border-zinc-700 text-zinc-400"}>
-                {selectedParticipant.totalTickets > 0 ? "Elegible" : "No elegible"}
-              </StatusPill>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <StatusPill className={selectedParticipant.totalTickets > 0 ? "border-emerald-400/40 text-emerald-200" : "border-zinc-700 text-zinc-400"}>
+                  {selectedParticipant.totalTickets > 0 ? "Elegible" : "No elegible"}
+                </StatusPill>
+                <Button type="button" className="border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs font-black text-emerald-100" onClick={() => openQuickAdjustment(selectedParticipant)}>
+                  + tickets
+                </Button>
+                <Button type="button" className="border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-xs font-black text-cyan-100" onClick={() => setShareParticipant(selectedParticipant)}>
+                  Imagen
+                </Button>
+              </div>
             ) : null}
           </div>
 
@@ -1193,7 +1254,7 @@ export const RafflesAdminPanel = ({ runtimeEnvironment }: { runtimeEnvironment: 
         </Card>
         ) : null}
 
-        {module === "adjustments" ? (
+        {module === "ticketAdjustments" ? (
         <Card className="p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -1283,6 +1344,62 @@ export const RafflesAdminPanel = ({ runtimeEnvironment }: { runtimeEnvironment: 
           <p className="mt-1">Tickets base = pedidos + referidos. Tickets extra = ajustes manuales activos. <span className="font-bold text-zinc-200">Real</span> solo cuando el entorno es producción; <span className="font-bold text-zinc-200">Prueba</span> cubre preview/local.</p>
         </Card>
       </div>
+      ) : null}
+
+      {quickAdjustmentParticipant ? (
+        <div
+          className="overlay raffle-ticket-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="raffle-ticket-sheet-title"
+          onClick={() => setQuickAdjustmentParticipantKey(null)}
+        >
+          <section
+            className="modal raffle-ticket-sheet"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.25em] text-emerald-200">Tickets extra</p>
+                <h3 id="raffle-ticket-sheet-title" className="text-lg font-black text-zinc-50">
+                  {quickAdjustmentParticipant.customerName}
+                </h3>
+                <p className="mt-1 text-xs text-zinc-400">
+                  {quickAdjustmentParticipant.customerPhoneMasked} · Total actual {quickAdjustmentParticipant.totalTickets}
+                </p>
+              </div>
+              <Button type="button" className="modal-close-button" onClick={() => setQuickAdjustmentParticipantKey(null)}>
+                Cerrar
+              </Button>
+            </div>
+            <form className="mt-4 grid gap-3" onSubmit={(event) => void createAdjustment(event)}>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className="text-xs font-bold text-zinc-300">
+                  Tickets extra
+                  <input className="input mt-1" type="number" min="1" max="100" step="1" value={adjustmentForm.ticketsDelta} onChange={(event) => setAdjustmentForm((current) => ({ ...current, ticketsDelta: event.target.value }))} />
+                </label>
+                <label className="text-xs font-bold text-zinc-300">
+                  Actor
+                  <input className="input mt-1" value={adjustmentForm.actor} readOnly />
+                </label>
+              </div>
+              <label className="text-xs font-bold text-zinc-300">
+                Motivo
+                <textarea className="input mt-1 min-h-20" required value={adjustmentForm.reason} onChange={(event) => setAdjustmentForm((current) => ({ ...current, reason: event.target.value }))} placeholder="Ajuste operativo, regalo, corrección, etc." />
+              </label>
+              {error ? <p className="rounded-lg bg-rose-500/10 px-3 py-2 text-sm text-rose-100">{error}</p> : null}
+              {notice ? <p className="rounded-lg bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">{notice}</p> : null}
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Button className="bg-emerald-400 px-4 py-3 font-black text-emerald-950 disabled:opacity-50" disabled={saving}>
+                  {saving ? "Guardando…" : "Guardar tickets"}
+                </Button>
+                <Button type="button" className="border border-zinc-700 bg-zinc-900 px-4 py-3 font-black text-zinc-100" onClick={() => setQuickAdjustmentParticipantKey(null)}>
+                  Cancelar
+                </Button>
+              </div>
+            </form>
+          </section>
+        </div>
       ) : null}
 
       {shareImageData ? <RaffleShareImageModal data={shareImageData} onClose={() => setShareParticipant(null)} /> : null}

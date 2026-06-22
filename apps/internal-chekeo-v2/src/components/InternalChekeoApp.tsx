@@ -73,11 +73,8 @@ import {
   type WhatsappOrderMessageType,
 } from "../lib/whatsapp";
 import {
-  buildOrderTicketSummaryText,
-  canShareOrderTicketImage,
   downloadOrderTicketImage,
   generateOrderTicketImage,
-  shareOrderTicketImage,
 } from "../lib/order-ticket-image";
 import { CatalogAdminPanel } from "./CatalogAdminPanel";
 import { RafflesAdminPanel } from "./RafflesAdminPanel";
@@ -104,6 +101,7 @@ type AdminViewKey =
   | "sorteos"
   | "reportes";
 type OrdersSource = "d1" | "mock" | "fallback";
+type BackHandler = () => boolean;
 type OrdersV2Summary = NonNullable<OrdersV2SummaryResponse["data"]>;
 type KitchenSummaryK = NonNullable<KitchenSummaryKResponse["data"]>;
 type KitchenItemKind = Extract<OrderV2ItemKind, "burger" | "combo" | "garnish">;
@@ -731,27 +729,6 @@ const getOrdersStatusLabel = (status: OrderStatus) =>
   ordersStatusLabel[getOrdersStatusFilterValue(status)];
 const getOrderLocationLabel = (order: Pick<InternalOrder, "note">) =>
   extractKitchenLocation(order.note);
-const getOrderPower = (order: InternalOrder) => {
-  const extrasCount = order.items.reduce(
-    (total, item) =>
-      total +
-      item.extras.length +
-      item.sideQuestExtras.length +
-      item.comboBurgers.reduce((comboTotal, burger) => comboTotal + burger.extras.length, 0),
-    0,
-  );
-  return Math.max(
-    10,
-    Math.round(order.total / 120) + getOrderItemCount(order) * 12 + extrasCount * 6,
-  );
-};
-const getOrderRarity = (order: InternalOrder) => {
-  const power = getOrderPower(order);
-  if (power >= 220) return "Legendario";
-  if (power >= 160) return "Épico";
-  if (power >= 110) return "Raro";
-  return "Base";
-};
 const getOperationalSummary = (orders: InternalOrder[]) => {
   const visibleOrders = orders.filter((order) => !terminalStatuses.has(order.status));
   const participants = new Set(
@@ -774,16 +751,6 @@ const getOperationalSummary = (orders: InternalOrder[]) => {
     paymentsToReview: visibleOrders.filter((order) => order.paymentState === "pending").length,
   };
 };
-const whatsappTemplateLabels: Array<{
-  value: Exclude<WhatsappOrderMessageType, "custom">;
-  label: string;
-}> = [
-  { value: "received", label: "Recibido" },
-  { value: "preparing", label: "En preparación" },
-  { value: "ready", label: "Listo" },
-  { value: "delivered", label: "Entregado" },
-];
-
 const cancellationReasonPresets = [
   "Cliente canceló",
   "Sin stock",
@@ -833,6 +800,7 @@ const asInternalOrders = (orders: MockOrder[]): InternalOrder[] =>
   }));
 const AUTO_REFRESH_INTERVAL_MS = 25_000;
 const NEW_ORDER_HIGHLIGHT_MS = 12_000;
+const NEW_ORDER_NOTICE_MS = 5_000;
 const formatOrderRefreshTime = (reason?: "manual" | "auto" | "session") => {
   const time = new Date().toLocaleTimeString("es-MX", {
     hour: "2-digit",
@@ -1624,13 +1592,11 @@ const HomePanel = ({
   runtime,
   runtimeEnvironment,
   onOpenTab,
-  onOpenAdminView,
 }: {
   orders: InternalOrder[];
   runtime: OrdersRuntime;
   runtimeEnvironment: ChekeoRuntimeEnvironment;
   onOpenTab: (tab: TabKey) => void;
-  onOpenAdminView: (view: AdminViewKey) => void;
 }) => {
   const summary = useMemo(() => getOperationalSummary(orders), [orders]);
   const [todaySummary, setTodaySummary] = useState<OrdersV2Summary | null>(null);
@@ -1724,6 +1690,12 @@ const HomePanel = ({
       action: () => onOpenTab("pedidos"),
     },
     {
+      label: "Cocina pendiente",
+      value: summary.pendingOrders + summary.preparingOrders,
+      hint: "Items antes de listo",
+      action: () => onOpenTab("cocina"),
+    },
+    {
       label: "Pagos pendientes",
       value: summary.paymentsToReview,
       hint: "Confirmaciones por revisar",
@@ -1733,48 +1705,7 @@ const HomePanel = ({
       label: "Pedidos de hoy",
       value: todaySummary?.totals.orders ?? "—",
       hint: todayLoading ? "Actualizando..." : "Lectura del corte actual",
-      action: () => onOpenAdminView("cierre"),
-    },
-    {
-      label: "Venta de hoy",
-      value:
-        todaySummary?.totals.grossSales !== undefined
-          ? formatCurrency(todaySummary.totals.grossSales)
-          : "—",
-      hint: "Sin cálculo de utilidad en este PR",
-      action: () => onOpenAdminView("cierre"),
-    },
-  ];
-
-  const commandActions: Array<{
-    label: string;
-    hint: string;
-    icon: NavIcon;
-    onClick: () => void;
-  }> = [
-    {
-      label: "Pedidos",
-      hint: "Cola y detalle",
-      icon: ShoppingBag,
-      onClick: () => onOpenTab("pedidos"),
-    },
-    {
-      label: "Cocina",
-      hint: "Preparación",
-      icon: ChefHat,
-      onClick: () => onOpenTab("cocina"),
-    },
-    {
-      label: "Pagos",
-      hint: "Cobros",
-      icon: WalletCards,
-      onClick: () => onOpenTab("pagos"),
-    },
-    {
-      label: "Corte",
-      hint: "Caja",
-      icon: CreditCard,
-      onClick: () => onOpenAdminView("cierre"),
+      action: () => onOpenTab("pedidos"),
     },
   ];
   const nextAction =
@@ -1841,26 +1772,6 @@ const HomePanel = ({
                 <p className="home-metric-card__hint">{card.hint}</p>
               </button>
             ))}
-          </div>
-
-          <div className="home-command-strip" aria-label="Comandos principales">
-            {commandActions.map((action) => {
-              const Icon = action.icon;
-              return (
-                <button
-                  key={action.label}
-                  type="button"
-                  className="home-command-button"
-                  onClick={action.onClick}
-                >
-                  <Icon size={17} aria-hidden="true" />
-                  <span>
-                    <strong>{action.label}</strong>
-                    <small>{action.hint}</small>
-                  </span>
-                </button>
-              );
-            })}
           </div>
 
           {todayError ? (
@@ -2396,23 +2307,25 @@ type WhatsappNotice = { tone: "success" | "error"; message: string } | null;
 
 const WhatsappOrderActions = ({
   order,
-  template = getWhatsappTemplateForStatus(order.status),
-  showHint = false,
 }: {
   order: InternalOrder;
-  template?: WhatsappOrderMessageType;
-  showHint?: boolean;
 }) => {
   const [notice, setNotice] = useState<WhatsappNotice>(null);
   const [ticketBlob, setTicketBlob] = useState<Blob | null>(null);
   const [generatingTicket, setGeneratingTicket] = useState(false);
   const phone = normalizeWhatsappPhone(order.customerPhone ?? "");
-  const message = buildWhatsappOrderMessage(order, template);
+  const message = buildWhatsappOrderMessage(
+    {
+      ...order,
+      bankDetails: isTransferPaymentMethod(order.paymentMethod)
+        ? bankPaymentConfig
+        : null,
+      deliveryDetail: getPaymentDeliveryDetail(order),
+      note: stripLocationFromNotes(order.note),
+    },
+    getWhatsappTemplateForStatus(order.status),
+  );
   const whatsappUrl = phone ? buildWhatsappUrl(phone, message) : "";
-  const canAttemptFileShare =
-    typeof navigator !== "undefined" &&
-    typeof navigator.share === "function" &&
-    typeof navigator.canShare === "function";
 
   useEffect(() => {
     if (!notice) return;
@@ -2470,57 +2383,24 @@ const WhatsappOrderActions = ({
     try {
       if (!navigator.clipboard?.writeText)
         throw new Error("Clipboard no disponible en este navegador");
-      await navigator.clipboard.writeText(buildOrderTicketSummaryText(order));
-      setNotice({ tone: "success", message: "Resumen copiado" });
+      await navigator.clipboard.writeText(message);
+      setNotice({ tone: "success", message: "WhatsApp copiado" });
     } catch {
       setNotice({
         tone: "error",
-        message:
-          "No se pudo copiar el resumen. Copia manualmente desde un navegador seguro.",
-      });
-    }
-  };
-
-  const shareTicket = async () => {
-    setNotice(null);
-    try {
-      const blob = await getTicketBlob();
-      if (!canShareOrderTicketImage(blob, order.folio)) {
-        setNotice({
-          tone: "error",
-          message: "Descarga la imagen y adjúntala manualmente en WhatsApp.",
-        });
-        return;
-      }
-      await shareOrderTicketImage(blob, order);
-      setNotice({ tone: "success", message: "Imagen lista para compartir" });
-    } catch {
-      setNotice({
-        tone: "error",
-        message: "Descarga la imagen y adjúntala manualmente en WhatsApp.",
+        message: "No se pudo copiar el mensaje. Copia manualmente desde un navegador seguro.",
       });
     }
   };
 
   return (
     <div className="mt-2 rounded-lg border border-cyan-400/20 bg-cyan-400/5 p-2">
-      {showHint ? (
-        <p className="mb-2 text-[11px] text-cyan-100">
-          Acción manual: abre WhatsApp con texto prellenado. WhatsApp vía
-          wa.me no adjunta el PNG automáticamente.
-        </p>
-      ) : null}
       {!phone ? (
         <p className="mb-2 rounded bg-amber-500/10 px-2 py-1 text-[11px] text-amber-200">
           Teléfono inválido para WhatsApp
         </p>
       ) : null}
-      {!canAttemptFileShare ? (
-        <p className="mb-2 rounded bg-zinc-800/70 px-2 py-1 text-[11px] text-zinc-300">
-          Descarga la imagen y adjúntala manualmente en WhatsApp.
-        </p>
-      ) : null}
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         <Button
           className="border border-amber-700 bg-amber-950/50 px-2 py-1.5 text-[11px] text-amber-100 disabled:opacity-40"
           onClick={() => void downloadTicket()}
@@ -2532,7 +2412,7 @@ const WhatsappOrderActions = ({
           className="border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-[11px]"
           onClick={() => void copySummary()}
         >
-          Copiar mensaje
+          Copiar WhatsApp
         </Button>
         <Button
           className="border border-emerald-700 bg-emerald-950/50 px-2 py-1.5 text-[11px] text-emerald-100 disabled:opacity-40"
@@ -2540,13 +2420,6 @@ const WhatsappOrderActions = ({
           disabled={!phone}
         >
           Abrir WhatsApp
-        </Button>
-        <Button
-          className="border border-cyan-700 bg-cyan-950/50 px-2 py-1.5 text-[11px] text-cyan-100 disabled:opacity-40"
-          onClick={() => void shareTicket()}
-          disabled={generatingTicket || !canAttemptFileShare}
-        >
-          Compartir imagen
         </Button>
       </div>
       {notice ? (
@@ -3569,6 +3442,9 @@ const PaymentDetailModal = ({
   onMarkPaid: () => Promise<void>;
   onMarkPending: () => Promise<void>;
 }) => {
+  const dialogRef = useRef<HTMLElement | null>(null);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
     if (!order) return undefined;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -3577,6 +3453,19 @@ const PaymentDetailModal = ({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [onClose, order]);
+
+  useEffect(() => {
+    if (!order) return undefined;
+    restoreFocusRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    const timeout = window.setTimeout(() => dialogRef.current?.focus(), 0);
+    return () => {
+      window.clearTimeout(timeout);
+      restoreFocusRef.current?.focus();
+    };
+  }, [order?.id]);
 
   if (!order) return null;
 
@@ -3595,6 +3484,8 @@ const PaymentDetailModal = ({
       onClick={onClose}
     >
       <section
+        ref={dialogRef}
+        tabIndex={-1}
         className="modal modal--wide max-h-[calc(100vh-1rem)] overflow-y-auto"
         onClick={(event) => event.stopPropagation()}
       >
@@ -3618,6 +3509,13 @@ const PaymentDetailModal = ({
           <div className="flex flex-wrap gap-1 sm:justify-end">
             <PaymentStatusBadge status={order.paymentState} />
             <StatusBadge status={order.status} />
+            <Button
+              className="modal-close-button"
+              onClick={onClose}
+              aria-label="Cerrar pago"
+            >
+              Cerrar
+            </Button>
           </div>
         </div>
 
@@ -3704,7 +3602,7 @@ const PaymentDetailModal = ({
           </div>
         </div>
 
-        <div className="payments-detail__actions">
+        <div className="payments-detail__actions modal-action-footer">
           {order.paymentState === "paid" ? (
             <Button
               className="payments-secondary-action disabled:opacity-40"
@@ -3726,7 +3624,7 @@ const PaymentDetailModal = ({
             className="payments-secondary-action"
             onClick={() => void onCopyMessage()}
           >
-            Copiar mensaje de pago
+            Copiar WhatsApp
           </Button>
           <Button
             className="payments-secondary-action disabled:opacity-40"
@@ -3760,6 +3658,7 @@ const PaymentNotesPanel = ({
   orders,
   runtime,
   onUpdatePayment,
+  registerBackHandler,
 }: {
   orders: InternalOrder[];
   runtime: OrdersRuntime;
@@ -3769,6 +3668,7 @@ const PaymentNotesPanel = ({
     notes?: string,
     reason?: string,
   ) => Promise<void>;
+  registerBackHandler?: (handler: BackHandler) => () => void;
 }) => {
   const [filter, setFilter] = useState<PaymentFilter>("pending");
   const [rangeFilter, setRangeFilter] = useState<OrdersRangeFilter>("today");
@@ -3809,6 +3709,15 @@ const PaymentNotesPanel = ({
       setSelectedOrderId(null);
     }
   }, [orders, selectedOrderId]);
+
+  useEffect(() => {
+    if (!selectedOrderId || !registerBackHandler) return undefined;
+    return registerBackHandler(() => {
+      setSelectedOrderId(null);
+      return true;
+    });
+  }, [registerBackHandler, selectedOrderId]);
+
 
   const filteredOrders = useMemo(() => {
     const now = new Date();
@@ -4131,39 +4040,53 @@ const PaymentNotesPanel = ({
               ) : null}
               <div className="payments-card__actions">
                 <Button
-                  className="payments-primary-action"
-                  onClick={() => setSelectedOrderId(order.id)}
-                >
-                  Ver pago
-                </Button>
-                <Button
-                  className={`${order.paymentState === "paid" ? "payments-secondary-action" : "payments-success-action"} disabled:opacity-40`}
+                  className="payments-success-action disabled:opacity-40"
                   onClick={() =>
                     void runPaymentAction(
                       order,
-                      order.paymentState === "paid" ? "pending" : "paid",
+                      "paid",
                     )
                   }
-                  disabled={busy || !runtime.sessionActive}
+                  disabled={
+                    busy || !runtime.sessionActive || order.paymentState === "paid"
+                  }
                 >
-                  {busy
-                    ? "Actualizando…"
-                    : order.paymentState === "paid"
-                      ? "Regresar a pendiente"
-                      : "Marcar pagado"}
+                  {busy ? "Actualizando…" : "Marcar pagado"}
                 </Button>
-                <Button
-                  className="payments-secondary-action"
-                  onClick={() => void copyPaymentMessage(order)}
-                >
-                  Copiar mensaje de pago
-                </Button>
-                <Button
-                  className="payments-secondary-action"
-                  onClick={() => openPaymentWhatsapp(order)}
-                >
-                  Abrir WhatsApp
-                </Button>
+                <details className="payments-more">
+                  <summary className="payments-more__trigger">Más</summary>
+                  <div className="payments-more__menu">
+                    <Button
+                      className="payments-secondary-action"
+                      onClick={() => void copyPaymentMessage(order)}
+                    >
+                      Copiar WhatsApp
+                    </Button>
+                    <Button
+                      className="payments-secondary-action"
+                      onClick={() => openPaymentWhatsapp(order)}
+                    >
+                      Abrir WhatsApp
+                    </Button>
+                    <Button
+                      className="payments-secondary-action"
+                      onClick={() => setSelectedOrderId(order.id)}
+                    >
+                      Ver detalle
+                    </Button>
+                    {order.paymentState === "paid" ? (
+                      <Button
+                        className="payments-secondary-action disabled:opacity-40"
+                        onClick={() =>
+                          void runPaymentAction(order, "pending")
+                        }
+                        disabled={busy || !runtime.sessionActive}
+                      >
+                        Regresar a pendiente
+                      </Button>
+                    ) : null}
+                  </div>
+                </details>
               </div>
               {notice ? (
                 <p
@@ -4335,8 +4258,6 @@ const TicketPreviewItems = ({ order }: { order: InternalOrder }) => (
 const OrderTicketPreview = ({ order }: { order: InternalOrder }) => {
   const itemCount = getOrderItemCount(order);
   const location = getOrderLocationLabel(order);
-  const power = getOrderPower(order);
-  const rarity = getOrderRarity(order);
   return (
     <section className="orders-ticket-preview">
       <div className="orders-ticket-preview__hero">
@@ -4370,20 +4291,11 @@ const OrderTicketPreview = ({ order }: { order: InternalOrder }) => {
           <span>Items</span>
           <strong>{itemCount}</strong>
         </div>
-        <div className="orders-ticket-stat">
-          <span>Rareza</span>
-          <strong>{rarity}</strong>
-        </div>
-        <div className="orders-ticket-stat">
-          <span>Power</span>
-          <strong>{power}</strong>
-        </div>
       </div>
 
       <div className="orders-ticket-preview__meta">
         <span className="info-pill">Pago: {getPaymentMethodLabel(order.paymentMethod)}</span>
         <span className="info-pill">Estado pago: {getPaymentStatusLabel(order.paymentState)}</span>
-        <span className="info-pill">Origen: {sourceLabel(order.source)}</span>
         {order.customerPhone ? (
           <span className="info-pill">Tel: {order.customerPhone}</span>
         ) : null}
@@ -4420,18 +4332,28 @@ const OrderDetailModal = ({
   ) => void;
   actionOrderId: string | null;
 }) => {
-  const [whatsappTemplate, setWhatsappTemplate] =
-    useState<Exclude<WhatsappOrderMessageType, "custom">>("received");
+  const dialogRef = useRef<HTMLElement | null>(null);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
+    if (!selected) return undefined;
     const h = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
-  }, [onClose]);
+  }, [onClose, selected]);
+
   useEffect(() => {
-    if (selected)
-      setWhatsappTemplate(getWhatsappTemplateForStatus(selected.status));
-  }, [selected?.id, selected?.status]);
+    if (!selected) return undefined;
+    restoreFocusRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    const timeout = window.setTimeout(() => dialogRef.current?.focus(), 0);
+    return () => {
+      window.clearTimeout(timeout);
+      restoreFocusRef.current?.focus();
+    };
+  }, [selected?.id]);
 
   if (!selected) return null;
   const nextStatus = getNextStatus(selected.status);
@@ -4456,6 +4378,8 @@ const OrderDetailModal = ({
       onClick={onClose}
     >
       <section
+        ref={dialogRef}
+        tabIndex={-1}
         className="modal modal--order-detail"
         onClick={(e) => e.stopPropagation()}
       >
@@ -4488,6 +4412,13 @@ const OrderDetailModal = ({
           <div className="order-detail__badges">
             <OrdersStatusBadge status={selected.status} />
             <PaymentStatusBadge status={selected.paymentState} />
+            <Button
+              className="modal-close-button"
+              onClick={onClose}
+              aria-label="Cerrar detalle"
+            >
+              Cerrar
+            </Button>
           </div>
         </div>
         <div className="order-detail__actions order-detail__actions--priority">
@@ -4515,33 +4446,8 @@ const OrderDetailModal = ({
         </div>
         <OrderTicketPreview order={selected} />
         <details className="order-detail__panel order-detail__panel--message">
-          <summary className="order-detail__summary-trigger">Mensaje y ticket para WhatsApp</summary>
-          <label className="text-[11px] font-semibold text-cyan-100">
-            Copiar mensaje
-            <select
-              className="input mt-1 text-xs"
-              value={whatsappTemplate}
-              onChange={(event) =>
-                setWhatsappTemplate(
-                  event.target.value as Exclude<
-                    WhatsappOrderMessageType,
-                    "custom"
-                  >,
-                )
-              }
-            >
-              {whatsappTemplateLabels.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <WhatsappOrderActions
-            order={selected}
-            template={whatsappTemplate}
-            showHint
-          />
+          <summary className="order-detail__summary-trigger">Ticket y WhatsApp</summary>
+          <WhatsappOrderActions order={selected} />
         </details>
         <details className="order-detail__panel order-detail__timeline">
           <summary className="order-detail__summary-trigger">Actividad del pedido</summary>
@@ -4644,14 +4550,30 @@ export function InternalChekeoApp() {
   const reduce = useReducedMotion();
   const orderKeysRef = useRef<Set<string> | null>(null);
   const loggedRef = useRef(logged);
+  const tabRef = useRef(tab);
+  const adminViewRef = useRef(adminView);
+  const selectedRef = useRef(selected);
   const actionOrderIdRef = useRef(actionOrderId);
   const cancellationRequestRef = useRef(cancellationRequest);
   const loadingOrdersRef = useRef(loadingOrders);
   const checkingSessionRef = useRef(checkingSession);
+  const modalBackHandlersRef = useRef<BackHandler[]>([]);
 
   useEffect(() => {
     loggedRef.current = logged;
   }, [logged]);
+
+  useEffect(() => {
+    tabRef.current = tab;
+  }, [tab]);
+
+  useEffect(() => {
+    adminViewRef.current = adminView;
+  }, [adminView]);
+
+  useEffect(() => {
+    selectedRef.current = selected;
+  }, [selected]);
 
   useEffect(() => {
     actionOrderIdRef.current = actionOrderId;
@@ -4668,6 +4590,75 @@ export function InternalChekeoApp() {
   useEffect(() => {
     checkingSessionRef.current = checkingSession;
   }, [checkingSession]);
+
+  const registerBackHandler = useCallback((handler: BackHandler) => {
+    modalBackHandlersRef.current = [...modalBackHandlersRef.current, handler];
+    return () => {
+      modalBackHandlersRef.current = modalBackHandlersRef.current.filter(
+        (entry) => entry !== handler,
+      );
+    };
+  }, []);
+
+  const closeTopInternalView = useCallback(() => {
+    const customHandler =
+      modalBackHandlersRef.current[modalBackHandlersRef.current.length - 1];
+    if (customHandler?.()) return true;
+
+    if (cancellationRequestRef.current) {
+      cancellationRequestRef.current = null;
+      setCancellationRequest(null);
+      return true;
+    }
+
+    if (selectedRef.current) {
+      selectedRef.current = null;
+      setSelected(null);
+      return true;
+    }
+
+    if (adminViewRef.current !== "launcher") {
+      adminViewRef.current = "launcher";
+      setAdminView("launcher");
+      return true;
+    }
+
+    if (tabRef.current !== "home") {
+      tabRef.current = "home";
+      adminViewRef.current = "launcher";
+      setTab("home");
+      setAdminView("launcher");
+      return true;
+    }
+
+    return false;
+  }, []);
+
+  useEffect(() => {
+    if (!logged) return undefined;
+    window.history.replaceState(
+      { ...(window.history.state ?? {}), chekeoRoot: true },
+      "",
+      window.location.href,
+    );
+    window.history.pushState(
+      { chekeoInternal: true },
+      "",
+      window.location.href,
+    );
+
+    const onPopState = () => {
+      if (!closeTopInternalView()) return;
+      window.history.pushState(
+        { chekeoInternal: true },
+        "",
+        window.location.href,
+      );
+    };
+
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [closeTopInternalView, logged]);
 
   const expireSession = useCallback(() => {
     setLogged(false);
@@ -4712,18 +4703,15 @@ export function InternalChekeoApp() {
 
       const newIds = new Set(newOrders.map((order) => order.id));
       setHighlightedOrderIds((current) => new Set([...current, ...newIds]));
-      setNewOrderNotice({
-        message:
-          newOrders.length === 1
-            ? "Entró 1 pedido nuevo"
-            : `Entraron ${newOrders.length} pedidos nuevos`,
-        orderFolios: newOrders.map((order) => order.folio),
-      });
-      setOrdersNotice(
-        `${newOrders.length === 1 ? "Pedido nuevo" : "Pedidos nuevos"}: ${newOrders
-          .map((order) => order.folio)
-          .join(", ")}`,
-      );
+      if (tabRef.current !== "pedidos") {
+        setNewOrderNotice({
+          message:
+            newOrders.length === 1
+              ? "Entró 1 pedido nuevo"
+              : `Entraron ${newOrders.length} pedidos nuevos`,
+          orderFolios: newOrders.map((order) => order.folio),
+        });
+      }
       window.setTimeout(() => {
         setHighlightedOrderIds((current) => {
           const next = new Set(current);
@@ -4870,7 +4858,7 @@ export function InternalChekeoApp() {
     if (!newOrderNotice) return;
     const timeout = window.setTimeout(
       () => setNewOrderNotice(null),
-      NEW_ORDER_HIGHLIGHT_MS,
+      NEW_ORDER_NOTICE_MS,
     );
     return () => window.clearTimeout(timeout);
   }, [newOrderNotice]);
@@ -5158,7 +5146,6 @@ export function InternalChekeoApp() {
         runtime={runtime}
         runtimeEnvironment={runtimeEnvironment}
         onOpenTab={openPrimaryTab}
-        onOpenAdminView={openAdminView}
       />
     ),
     pedidos: (
@@ -5176,7 +5163,6 @@ export function InternalChekeoApp() {
         runtime={runtime}
         onToggleKitchenItem={toggleKitchenItemDone}
         onMove={move}
-        onOpenOrder={(order) => setSelected(order as InternalOrder)}
       />
     ),
     pagos: (
@@ -5184,6 +5170,7 @@ export function InternalChekeoApp() {
         orders={orders}
         runtime={runtime}
         onUpdatePayment={updatePayment}
+        registerBackHandler={registerBackHandler}
       />
     ),
     admin: (

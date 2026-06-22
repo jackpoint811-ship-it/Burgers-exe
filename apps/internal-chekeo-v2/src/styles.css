@@ -1632,3 +1632,205 @@ body{
     min-width:0;
   }
 }
+
+/* Phase 2.2B targeted polish */
+.home-command-strip{
+  display:none;
+}
+.kitchen-view-tabs{
+  grid-template-columns:repeat(3,minmax(0,1fr));
+}
+.kitchen-anchor-controls{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
+}
+.kitchen-anchor-button{
+  min-height:44px;
+  border:1px solid rgba(148,163,184,.18);
+  border-radius:14px;
+  background:#05070d;
+  color:#cbd5e1;
+  padding:0 12px;
+  font-size:.82rem;
+  font-weight:950;
+}
+.kitchen-anchor-button--active{
+  border-color:rgba(190,242,100,.42);
+  background:rgba(190,242,100,.12);
+  color:#ecfccb;
+}
+.kitchen-anchor-button strong{
+  margin-left:6px;
+  color:#f8fafc;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+}
+.kitchen-production-card{
+  border-radius:18px;
+}
+.kitchen-production-card__folio{
+  color:#94a3b8;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+  font-size:.72rem;
+  font-weight:900;
+  letter-spacing:.08em;
+  line-height:1.1;
+  text-transform:uppercase;
+}
+.kitchen-production-card__customer{
+  margin-top:4px;
+  overflow-wrap:anywhere;
+  color:#f8fafc;
+  font-size:1.24rem;
+  font-weight:950;
+  line-height:1.08;
+}
+.kitchen-production-card__actions{
+  grid-template-columns:1fr;
+}
+.kitchen-item-action{
+  width:100%;
+}
+.orders-card__folio{
+  color:#94a3b8;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+  font-size:.72rem;
+  font-weight:900;
+  letter-spacing:.08em;
+  line-height:1.2;
+  text-transform:uppercase;
+}
+.orders-card__customer{
+  color:#f8fafc;
+  font-size:1.08rem;
+  font-weight:900;
+}
+.orders-ticket-preview__folio,
+.order-detail__title{
+  color:#94a3b8;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+  font-size:.86rem;
+  font-weight:900;
+  letter-spacing:.08em;
+  line-height:1.2;
+  text-transform:uppercase;
+}
+.orders-ticket-preview__customer,
+.order-detail__customer{
+  color:#f8fafc;
+  font-size:1.28rem;
+  font-weight:950;
+  line-height:1.1;
+}
+.orders-ticket-preview__stats{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+}
+.modal-close-button{
+  min-height:36px;
+  border:1px solid rgba(148,163,184,.22);
+  border-radius:11px;
+  background:#05070d;
+  color:#e2e8f0;
+  padding:0 10px;
+  font-size:.74rem;
+  font-weight:950;
+}
+.modal-action-footer{
+  position:sticky;
+  bottom:-16px;
+  margin-inline:-4px;
+  border-top:1px solid rgba(148,163,184,.16);
+  background:linear-gradient(180deg,rgba(7,10,17,.76),#070a11 32%);
+  padding:12px 4px 4px;
+}
+.payments-card__actions{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:8px;
+  align-items:start;
+}
+.payments-more{
+  position:relative;
+}
+.payments-more__trigger{
+  display:inline-flex;
+  min-height:44px;
+  cursor:pointer;
+  align-items:center;
+  justify-content:center;
+  border:1px solid rgba(148,163,184,.2);
+  border-radius:14px;
+  background:#05070d;
+  color:#e2e8f0;
+  padding:0 14px;
+  font-size:.82rem;
+  font-weight:950;
+  list-style:none;
+}
+.payments-more__trigger::-webkit-details-marker{
+  display:none;
+}
+.payments-more__menu{
+  position:absolute;
+  right:0;
+  z-index:30;
+  display:grid;
+  min-width:220px;
+  gap:7px;
+  margin-top:8px;
+  border:1px solid rgba(148,163,184,.2);
+  border-radius:16px;
+  background:#070a11;
+  padding:8px;
+  box-shadow:0 18px 42px rgba(0,0,0,.45);
+}
+.payments-more:not([open]) .payments-more__menu{
+  display:none;
+}
+.raffle-module-tabs{
+  grid-template-columns:repeat(6,minmax(0,1fr));
+}
+.raffle-ticket-sheet{
+  width:min(560px,calc(100% - 16px));
+  max-width:560px;
+  border-color:rgba(34,197,94,.34);
+  border-radius:22px;
+}
+@media (max-width:700px){
+  .overlay{
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+    overflow:hidden;
+    padding-top:24px;
+  }
+  .modal,
+  .modal--order-detail,
+  .modal--wide,
+  .raffle-ticket-sheet{
+    position:relative;
+    left:auto;
+    top:auto;
+    width:100%;
+    max-width:none;
+    max-height:min(88dvh,calc(100dvh - 24px));
+    border-radius:22px 22px 0 0;
+    transform:none;
+  }
+  .modal-action-footer{
+    bottom:-12px;
+  }
+  .payments-more{
+    position:static;
+  }
+  .payments-more__menu{
+    position:fixed;
+    right:8px;
+    bottom:calc(12px + env(safe-area-inset-bottom));
+    left:8px;
+    min-width:0;
+  }
+  .kitchen-view-tabs{
+    grid-template-columns:1fr;
+  }
+}
