@@ -163,6 +163,14 @@ export const buildWhatsappOrderMessage = (
   ].join('\n');
 };
 
+export const buildWhatsappOrderConfirmationMessage = (
+  order: WhatsappOrderMessageInput,
+): string => {
+  const name = getCustomerName(order);
+  const total = formatWhatsappCurrency(order.total);
+  return `Hola ${name}. Tu pedido en Burgers.exe quedó registrado. Total a pagar: ${total}.`;
+};
+
 export const buildWhatsappPaymentMessage = (
   order: WhatsappOrderMessageInput,
 ): string => {
