@@ -1,0 +1,20 @@
+{
+  "checkedAt": "2026-06-22T15:45:13.343Z",
+  "url": "https://burgers-exe-internal-v2-preview.pages.dev/",
+  "pinUsed": "0485",
+  "seedMarkers": 3,
+  "folios": [
+    "PVW-04S14POPQI",
+    "PVW-04R1SNRCWM",
+    "PVW-04R1SNPQKI",
+    "PVW-04R1SNNMPC"
+  ],
+  "errors": [],
+  "screenshots": [
+    "preview-live-admin-390.png",
+    "preview-live-cocina-390.png",
+    "preview-live-operacion-390.png",
+    "preview-live-pagos-390.png",
+    "preview-live-pedidos-390.png"
+  ]
+}

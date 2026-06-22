@@ -1,0 +1,1060 @@
+{
+  "checkedAt": "2026-06-22T15:47:16.670Z",
+  "endpoints": {
+    "/api/orders-v2-admin": {
+      "status": 401,
+      "ok": false,
+      "json": {
+        "ok": false,
+        "error": {
+          "code": "UNAUTHORIZED",
+          "message": "Unauthorized."
+        }
+      }
+    },
+    "/api/orders-v2-admin/summary": {
+      "status": 200,
+      "ok": true,
+      "json": {
+        "ok": true,
+        "data": {
+          "source": "d1",
+          "range": {
+            "from": "",
+            "to": "",
+            "fromUtc": "",
+            "toUtc": ""
+          },
+          "totals": {
+            "orders": 32,
+            "activeOrders": 0,
+            "deliveredOrders": 32,
+            "cancelledOrders": 0,
+            "grossSales": 3752,
+            "deliveredSales": 3752,
+            "averageTicket": 117.25
+          },
+          "byStatus": {
+            "new": 0,
+            "preparing": 0,
+            "ready": 0,
+            "delivered": 32,
+            "cancelled": 0
+          },
+          "byPaymentMethod": [
+            {
+              "paymentMethod": "transfer",
+              "orders": 18,
+              "total": 2429
+            },
+            {
+              "paymentMethod": "unknown",
+              "orders": 9,
+              "total": 914
+            },
+            {
+              "paymentMethod": "cash",
+              "orders": 5,
+              "total": 409
+            }
+          ],
+          "byOrderMode": [
+            {
+              "orderMode": "pickup",
+              "orders": 32,
+              "total": 3752
+            }
+          ],
+          "topItems": [
+            {
+              "sku": "BBQ",
+              "name": "BBQ",
+              "qty": 18,
+              "total": 1590,
+              "orders": 16
+            },
+            {
+              "sku": "OG",
+              "name": "OG",
+              "qty": 11,
+              "total": 947,
+              "orders": 10
+            },
+            {
+              "sku": "AROS_CEBOLLA",
+              "name": "Aros de Cebolla",
+              "qty": 7,
+              "total": 210,
+              "orders": 7
+            },
+            {
+              "sku": "PAPAS_LEMON_PEPPER",
+              "name": "Papas a la francesa Lemon&Pepper",
+              "qty": 7,
+              "total": 175,
+              "orders": 5
+            },
+            {
+              "sku": "0001",
+              "name": "OG Full Loaded",
+              "qty": 6,
+              "total": 656,
+              "orders": 5
+            },
+            {
+              "sku": "PAPAS_ESPECIALES",
+              "name": "Papas a la francesa Especiales",
+              "qty": 2,
+              "total": 50,
+              "orders": 2
+            },
+            {
+              "sku": "COMBO-BBQ",
+              "name": "Combo BBQ",
+              "qty": 1,
+              "total": 99,
+              "orders": 1
+            },
+            {
+              "sku": "PAPAS_OG",
+              "name": "Papas a la francesa OG",
+              "qty": 1,
+              "total": 25,
+              "orders": 1
+            }
+          ],
+          "recentOrders": [
+            {
+              "id": "ord_f35097bf-e245-4914-953e-b739d9e74090",
+              "folio": "BX-04I1A3DTW2",
+              "createdAt": "2026-06-12T16:35:37.893Z",
+              "status": "delivered",
+              "customerName": "Abraham",
+              "orderMode": "pickup",
+              "paymentMethod": "transfer",
+              "paymentStatus": "paid",
+              "total": 92
+            },
+            {
+              "id": "ord_14df27ae-d007-4fcb-a770-6a5a52e90df2",
+              "folio": "BX-04I151AHRH",
+              "createdAt": "2026-06-12T14:46:22.725Z",
+              "status": "delivered",
+              "customerName": "Andrea",
+              "orderMode": "pickup",
+              "paymentMethod": "unknown",
+              "paymentStatus": "paid",
+              "total": 85
+            },
+            {
+              "id": "ord_47de54d6-56db-4be6-8fdc-d3c4159ac11c",
+              "folio": "BX-04I12G0F1T",
+              "createdAt": "2026-06-12T13:50:24.969Z",
+              "status": "delivered",
+              "customerName": "Adrián",
+              "orderMode": "pickup",
+              "paymentMethod": "transfer",
+              "paymentStatus": "paid",
+              "total": 85
+            },
+            {
+              "id": "ord_19ce3634-7915-491b-afc3-6ed6fe93275b",
+              "folio": "BX-04I11REXUB",
+              "createdAt": "2026-06-12T13:35:38.917Z",
+              "status": "delivered",
+              "customerName": "Jessica",
+              "orderMode": "pickup",
+              "paymentMethod": "transfer",
+              "paymentStatus": "paid",
+              "total": 115
+            },
+            {
+              "id": "ord_f2149381-dd93-493d-99ea-d5e747d5b1b5",
+              "folio": "BX-04I0EIF0RZ",
+              "createdAt": "2026-06-12T05:13:27.539Z",
+              "status": "delivered",
+              "customerName": "Sashenka",
+              "orderMode": "pickup",
+              "paymentMethod": "transfer",
+              "paymentStatus": "paid",
+              "total": 170
+            },
+            {
+              "id": "ord_0aa9bd8a-9db5-48f7-ad6b-2be3532f72a3",
+              "folio": "BX-04H1NPB7L9",
+              "createdAt": "2026-06-11T21:29:35.646Z",
+              "status": "delivered",
+              "customerName": "Alejandro Plata Quintero",
+              "orderMode": "pickup",
+              "paymentMethod": "cash",
+              "paymentStatus": "cancelled",
+              "total": 30
+            },
+            {
+              "id": "ord_5ffec18f-a22c-4b30-95c1-78c506857c8a",
+              "folio": "BX-04H1NMN0HM",
+              "createdAt": "2026-06-11T21:27:59.085Z",
+              "status": "delivered",
+              "customerName": "Diana González",
+              "orderMode": "pickup",
+              "paymentMethod": "cash",
+              "paymentStatus": "paid",
+              "total": 99
+            },
+            {
+              "id": "ord_df2cca2c-b01f-48bf-8b43-f07cad836af2",
+              "folio": "BX-04H1GLDZQB",
+              "createdAt": "2026-06-11T18:56:01.297Z",
+              "status": "delivered",
+              "customerName": "Hayat Pichardo",
+              "orderMode": "pickup",
+              "paymentMethod": "transfer",
+              "paymentStatus": "paid",
+              "total": 99
+            },
+            {
+              "id": "ord_bb169724-1430-4d73-8714-77de2841d838",
+              "folio": "BX-04H1GFSUXX",
+              "createdAt": "2026-06-11T18:52:40.130Z",
+              "status": "delivered",
+              "customerName": "Adrián Daniel Hernandez Fajardo",
+              "orderMode": "pickup",
+              "paymentMethod": "unknown",
+              "paymentStatus": "paid",
+              "total": 104
+            },
+            {
+              "id": "ord_a27b4a9a-a33b-4432-860e-d8505e3d9c47",
+              "folio": "BX-04H1GEKXV6",
+              "createdAt": "2026-06-11T18:51:56.505Z",
+              "status": "delivered",
+              "customerName": "Ós",
+              "orderMode": "pickup",
+              "paymentMethod": "transfer",
+              "paymentStatus": "paid",
+              "total": 104
+            },
+            {
+              "id": "ord_e594b374-a1c2-46fb-b1b6-5db03dc12c9f",
+              "folio": "BX-04H1G4P7LJ",
+              "createdAt": "2026-06-11T18:46:01.498Z",
+              "status": "delivered",
+              "customerName": "Andrea",
+              "orderMode": "pickup",
+              "paymentMethod": "transfer",
+              "paymentStatus": "paid",
+              "total": 170
+            },
+            {
+              "id": "ord_db02b938-92b8-44bf-b463-c4e4ccb05acf",
+              "folio": "BX-04H1G3JIWG",
+              "createdAt": "2026-06-11T18:45:19.619Z",
+              "status": "delivered",
+              "customerName": "Angel Fierro Vader",
+              "orderMode": "pickup",
+              "paymentMethod": "transfer",
+              "paymentStatus": "paid",
+              "total": 99
+            },
+            {
+              "id": "ord_beb2fd60-5fc1-44db-8754-d98d476dac85",
+              "folio": "BX-04H0COZ4AD",
+              "createdAt": "2026-06-11T04:34:11.911Z",
+              "status": "delivered",
+              "customerName": "Gemma",
+              "orderMode": "pickup",
+              "paymentMethod": "transfer",
+              "paymentStatus": "paid",
+              "total": 250
+            },
+            {
+              "id": "ord_4e0eefca-f1f8-4d94-9af9-47950db91203",
+              "folio": "BX-04G1U738T7",
+              "createdAt": "2026-06-10T23:49:51.036Z",
+              "status": "delivered",
+              "customerName": "Josué Arturo Rojas Paredes",
+              "orderMode": "pickup",
+              "paymentMethod": "transfer",
+              "paymentStatus": "paid",
+              "total": 105
+            },
+            {
+              "id": "ord_b13b4ef8-60f5-402d-8ae8-2f1b25a1a485",
+              "folio": "BX-20260605-60DF47",
+              "createdAt": "2026-06-05T15:35:44.314Z",
+              "status": "delivered",
+              "customerName": "Gabo",
+              "orderMode": "pickup",
+              "paymentMethod": "unknown",
+              "paymentStatus": "paid",
+              "total": 85
+            },
+            {
+              "id": "ord_0eec9b92-d284-4fde-90bb-65ec530cca8f",
+              "folio": "BX-20260605-8FA4DD",
+              "createdAt": "2026-06-05T15:13:25.079Z",
+              "status": "delivered",
+              "customerName": "Jessica León",
+              "orderMode": "pickup",
+              "paymentMethod": "transfer",
+              "paymentStatus": "paid",
+              "total": 85
+            },
+            {
+              "id": "ord_24389920-91d1-4d2e-a763-9875ce41ebef",
+              "folio": "BX-20260605-0BF0AC",
+              "createdAt": "2026-06-05T02:48:58.036Z",
+              "status": "delivered",
+              "customerName": "Norman",
+              "orderMode": "pickup",
+              "paymentMethod": "unknown",
+              "paymentStatus": "paid",
+              "total": 110
+            },
+            {
+              "id": "ord_64d33fbe-9f2a-4c6e-980d-279a58166d56",
+              "folio": "BX-20260605-D123E2",
+              "createdAt": "2026-06-05T02:15:39.683Z",
+              "status": "delivered",
+              "customerName": "Aline",
+              "orderMode": "pickup",
+              "paymentMethod": "transfer",
+              "paymentStatus": "paid",
+              "total": 85
+            },
+            {
+              "id": "ord_f5b72351-cfd2-4372-9ee2-380a4d04a27b",
+              "folio": "BX-20260604-78637B",
+              "createdAt": "2026-06-04T23:09:34.964Z",
+              "status": "delivered",
+              "customerName": "Ángel Ferrari Fierro",
+              "orderMode": "pickup",
+              "paymentMethod": "cash",
+              "paymentStatus": "paid",
+              "total": 115
+            },
+            {
+              "id": "ord_490a17b8-e1de-4d2c-aaa3-798f500291ac",
+              "folio": "BX-20260604-81C4DE",
+              "createdAt": "2026-06-04T22:17:37.846Z",
+              "status": "delivered",
+              "customerName": "Jonatto",
+              "orderMode": "pickup",
+              "paymentMethod": "transfer",
+              "paymentStatus": "paid",
+              "total": 110
+            },
+            {
+              "id": "ord_d55f65f5-fa29-436f-9544-e5b7d306ae69",
+              "folio": "BX-20260604-138873",
+              "createdAt": "2026-06-04T22:14:49.542Z",
+              "status": "delivered",
+              "customerName": "Liam Romero Flores",
+              "orderMode": "pickup",
+              "paymentMethod": "unknown",
+              "paymentStatus": "paid",
+              "total": 115
+            },
+            {
+              "id": "ord_5b5649e0-45e1-4e43-8fd0-93574b22b79a",
+              "folio": "BX-20260604-1EB60E",
+              "createdAt": "2026-06-04T22:13:32.229Z",
+              "status": "delivered",
+              "customerName": "Gemma",
+              "orderMode": "pickup",
+              "paymentMethod": "transfer",
+              "paymentStatus": "paid",
+              "total": 265
+            },
+            {
+              "id": "ord_67c0034e-ff6f-44c8-a06e-f9a8c59d4fb7",
+              "folio": "BX-20260604-3595A0",
+              "createdAt": "2026-06-04T20:26:33.030Z",
+              "status": "delivered",
+              "customerName": "Karina Flores",
+              "orderMode": "pickup",
+              "paymentMethod": "cash",
+              "paymentStatus": "paid",
+              "total": 55
+            },
+            {
+              "id": "ord_20c488d6-002a-48b7-af2e-712bffb79e8f",
+              "folio": "BX-20260604-B894C8",
+              "createdAt": "2026-06-04T20:19:39.322Z",
+              "status": "delivered",
+              "customerName": "Sashenka",
+              "orderMode": "pickup",
+              "paymentMethod": "transfer",
+              "paymentStatus": "paid",
+              "total": 170
+            },
+            {
+              "id": "ord_6439aa1c-5d6d-4e50-a263-614a36f7fda7",
+              "folio": "BX-20260604-0C92D2",
+              "createdAt": "2026-06-04T02:56:29.986Z",
+              "status": "delivered",
+              "customerName": "Adrián Hernandez Fajardo",
+              "orderMode": "pickup",
+              "paymentMethod": "unknown",
+              "paymentStatus": "paid",
+              "total": 110
+            },
+            {
+              "id": "ord_ef74a15d-9d2b-4c9e-b043-88dafb9b9b9b",
+              "folio": "BX-20260604-B73523",
+              "createdAt": "2026-06-04T02:34:16.901Z",
+              "status": "delivered",
+              "customerName": "Alan Andre Castillo Calderón",
+              "orderMode": "pickup",
+              "paymentMethod": "transfer",
+              "paymentStatus": "paid",
+              "total": 225
+            },
+            {
+              "id": "ord_4cbf4476-dbaf-4b2e-a376-e46c4ae78f9b",
+              "folio": "BX-20260604-1F0ADF",
+              "createdAt": "2026-06-04T01:41:59.298Z",
+              "status": "delivered",
+              "customerName": "Ingrid",
+              "orderMode": "pickup",
+              "paymentMethod": "cash",
+              "paymentStatus": "paid",
+              "total": 110
+            },
+            {
+              "id": "ord_fc17c30a-773b-499a-8160-c6d577f37ae8",
+              "folio": "BX-20260603-236141",
+              "createdAt": "2026-06-03T22:20:43.491Z",
+              "status": "delivered",
+              "customerName": "Adrian",
+              "orderMode": "pickup",
+              "paymentMethod": "unknown",
+              "paymentStatus": "paid",
+              "total": 85
+            },
+            {
+              "id": "ord_04b871f1-c4cb-4a60-b21a-693724307f05",
+              "folio": "BX-20260603-DFDBC9",
+              "createdAt": "2026-06-03T22:18:10.734Z",
+              "status": "delivered",
+              "customerName": "Haza",
+              "orderMode": "pickup",
+              "paymentMethod": "transfer",
+              "paymentStatus": "paid",
+              "total": 110
+            },
+            {
+              "id": "ord_6dcc6347-9d0b-440a-a0c9-beaa3483d235",
+              "folio": "BX-20260603-50E34F",
+              "createdAt": "2026-06-03T22:04:29.773Z",
+              "status": "delivered",
+              "customerName": "Abraham Obregon",
+              "orderMode": "pickup",
+              "paymentMethod": "unknown",
+              "paymentStatus": "paid",
+              "total": 115
+            },
+            {
+              "id": "ord_355bcc7f-d2f7-4ca1-90e6-a196753750a1",
+              "folio": "BX-20260603-E6C1D5",
+              "createdAt": "2026-06-03T21:04:20.945Z",
+              "status": "delivered",
+              "customerName": "Ós Valera",
+              "orderMode": "pickup",
+              "paymentMethod": "transfer",
+              "paymentStatus": "paid",
+              "total": 90
+            },
+            {
+              "id": "ord_46d01c61-6e5a-464b-8087-ff3f479a1a37",
+              "folio": "BX-20260603-963292",
+              "createdAt": "2026-06-03T20:59:07.765Z",
+              "status": "delivered",
+              "customerName": "Josué Arturo Rojas Paredes",
+              "orderMode": "pickup",
+              "paymentMethod": "unknown",
+              "paymentStatus": "paid",
+              "total": 105
+            }
+          ],
+          "durations": {
+            "newToReadyAvgSeconds": 243583.40625,
+            "newToDeliveredAvgSeconds": 243619.125
+          },
+          "generatedAt": "2026-06-22T15:47:15.396Z"
+        }
+      }
+    },
+    "/api/kitchen-v2-admin/summary-k": {
+      "status": 200,
+      "ok": true,
+      "json": {
+        "ok": true,
+        "data": {
+          "source": "d1",
+          "range": {
+            "date": "2026-06-22",
+            "fromUtc": "2026-06-22T00:00:00.000Z",
+            "toUtc": "2026-06-22T23:59:59.999Z"
+          },
+          "hasRecipes": true,
+          "totals": {
+            "burgers": 0,
+            "garnishes": 0,
+            "ingredients": 0,
+            "estimatedCostCents": null
+          },
+          "burgers": [],
+          "garnishes": [],
+          "ingredients": [],
+          "generatedAt": "2026-06-22T15:47:15.599Z"
+        }
+      }
+    },
+    "/api/menu-v2": {
+      "status": 200,
+      "ok": true,
+      "json": {
+        "categories": [
+          {
+            "id": "cat-burgers",
+            "key": "burgers",
+            "name": "Burgers",
+            "sortOrder": 1,
+            "updatedAt": "2026-06-02 19:34:23"
+          },
+          {
+            "id": "cat-guarniciones",
+            "key": "guarniciones",
+            "name": "Guarniciones",
+            "sortOrder": 2,
+            "updatedAt": "2026-06-02 19:34:23"
+          },
+          {
+            "id": "cat-combos",
+            "key": "combos",
+            "name": "Combos",
+            "sortOrder": 2,
+            "updatedAt": "2026-06-11 20:16:54"
+          },
+          {
+            "id": "cat-extras",
+            "key": "extras",
+            "name": "Extras",
+            "sortOrder": 3,
+            "updatedAt": "2026-06-02 19:34:23"
+          }
+        ],
+        "items": [
+          {
+            "sku": "OG",
+            "category": "burgers",
+            "name": "OG",
+            "description": "Carne \"Especial\" 250g aprox, tocino, queso americano, queso manchego, jitomate, lechuga, pepinillos, catsup, mostaza y mayonesa.",
+            "price": 85,
+            "tags": [
+              "burger"
+            ],
+            "isAvailable": true,
+            "stockManaged": false,
+            "isFeatured": true,
+            "sortOrder": 1,
+            "imageKey": "menu/og-20260603T065423Z.webp",
+            "comboLinks": [],
+            "upsellItems": [],
+            "updatedAt": "2026-06-16 16:46:54"
+          },
+          {
+            "sku": "0001",
+            "category": "combos",
+            "name": "OG Full Loaded",
+            "description": "Combo cargadito pa que no falte",
+            "price": 99,
+            "tags": [],
+            "badge": "Hack",
+            "promoLabel": "Hack Price",
+            "isAvailable": true,
+            "stockManaged": true,
+            "stockLimit": 50,
+            "stockRemaining": 44,
+            "isFeatured": true,
+            "sortOrder": 1,
+            "imageKey": "menu/0001-20260609T214453Z.png",
+            "comboLinks": [
+              "PAPAS_OG",
+              "OG"
+            ],
+            "upsellItems": [],
+            "updatedAt": "2026-06-16 16:46:56"
+          },
+          {
+            "sku": "BBQ",
+            "category": "burgers",
+            "name": "BBQ",
+            "description": "Carne \"Especial\" 250g aprox, tocino, queso americano, queso manchego, aros de cebolla, pepinillos y salsa BBQ.",
+            "price": 85,
+            "tags": [
+              "burger"
+            ],
+            "isAvailable": true,
+            "stockManaged": false,
+            "isFeatured": true,
+            "sortOrder": 2,
+            "imageKey": "menu/bbq-20260603T065437Z.webp",
+            "comboLinks": [],
+            "upsellItems": [],
+            "updatedAt": "2026-06-16 16:46:54"
+          },
+          {
+            "sku": "COMBO-BBQ",
+            "category": "combos",
+            "name": "Combo BBQ",
+            "description": "Combo cargadito pa que no falte",
+            "price": 99,
+            "tags": [
+              "combo"
+            ],
+            "promoLabel": "Hack Price",
+            "isAvailable": true,
+            "stockManaged": false,
+            "isFeatured": true,
+            "sortOrder": 2,
+            "imageKey": "menu/combo-bbq-20260611T214022Z.png",
+            "comboLinks": [
+              "PAPAS_OG",
+              "BBQ"
+            ],
+            "upsellItems": [],
+            "updatedAt": "2026-06-16 16:46:57"
+          },
+          {
+            "sku": "PAPAS_OG",
+            "category": "guarniciones",
+            "name": "Papas a la francesa OG",
+            "description": "Papas clásicas, sal y crunch.",
+            "price": 25,
+            "tags": [
+              "side"
+            ],
+            "isAvailable": true,
+            "stockManaged": false,
+            "isFeatured": false,
+            "sortOrder": 10,
+            "imageKey": "menu/papas-og-20260603T065501Z.webp",
+            "comboLinks": [],
+            "upsellItems": [],
+            "updatedAt": "2026-06-16 16:46:59"
+          },
+          {
+            "sku": "PAPAS_ESPECIALES",
+            "category": "guarniciones",
+            "name": "Papas a la francesa Especiales",
+            "description": "Papas con sazón especial de la casa.",
+            "price": 25,
+            "tags": [
+              "side"
+            ],
+            "isAvailable": true,
+            "stockManaged": false,
+            "isFeatured": false,
+            "sortOrder": 11,
+            "imageKey": "menu/papas-especiales-20260603T065519Z.webp",
+            "comboLinks": [],
+            "upsellItems": [],
+            "updatedAt": "2026-06-16 16:47:00"
+          },
+          {
+            "sku": "PAPAS_LEMON_PEPPER",
+            "category": "guarniciones",
+            "name": "Papas a la francesa Lemon&Pepper",
+            "description": "Papas con toque cítrico y pimienta.",
+            "price": 25,
+            "tags": [
+              "side"
+            ],
+            "isAvailable": true,
+            "stockManaged": false,
+            "isFeatured": false,
+            "sortOrder": 12,
+            "imageKey": "menu/papas-lemon-pepper-20260603T065533Z.webp",
+            "comboLinks": [],
+            "upsellItems": [],
+            "updatedAt": "2026-06-16 16:47:01"
+          },
+          {
+            "sku": "AROS_CEBOLLA",
+            "category": "guarniciones",
+            "name": "Aros de Cebolla",
+            "description": "Aros crujientes estilo burger joint.",
+            "price": 30,
+            "tags": [
+              "side"
+            ],
+            "isAvailable": true,
+            "stockManaged": false,
+            "isFeatured": false,
+            "sortOrder": 13,
+            "imageKey": "menu/aros-cebolla-20260603T065550Z.webp",
+            "comboLinks": [],
+            "upsellItems": [],
+            "updatedAt": "2026-06-16 16:47:02"
+          },
+          {
+            "sku": "EXTRA_PEPINILLOS",
+            "category": "extras",
+            "name": "Pepinillos",
+            "description": "Toque ácido/crunch.",
+            "price": 5,
+            "tags": [
+              "extra"
+            ],
+            "isAvailable": true,
+            "stockManaged": false,
+            "isFeatured": false,
+            "sortOrder": 20,
+            "imageKey": "menu/extra-pepinillos-20260603T071434Z.webp",
+            "comboLinks": [],
+            "upsellItems": [],
+            "updatedAt": "2026-06-16 16:47:03"
+          },
+          {
+            "sku": "EXTRA_QUESO_AMERICANO",
+            "category": "extras",
+            "name": "Queso americano",
+            "description": "Extra cremoso clásico.",
+            "price": 7,
+            "tags": [
+              "extra"
+            ],
+            "isAvailable": true,
+            "stockManaged": false,
+            "isFeatured": false,
+            "sortOrder": 21,
+            "imageKey": "menu/extra-queso-americano-20260603T071448Z.webp",
+            "comboLinks": [],
+            "upsellItems": [],
+            "updatedAt": "2026-06-16 16:47:04"
+          },
+          {
+            "sku": "EXTRA_QUESO_MANCHEGO",
+            "category": "extras",
+            "name": "Queso manchego",
+            "description": "Extra fundido intenso.",
+            "price": 7,
+            "tags": [
+              "extra"
+            ],
+            "isAvailable": true,
+            "stockManaged": false,
+            "isFeatured": false,
+            "sortOrder": 22,
+            "imageKey": "menu/extra-queso-manchego-20260603T071503Z.webp",
+            "comboLinks": [],
+            "upsellItems": [],
+            "updatedAt": "2026-06-16 16:47:05"
+          },
+          {
+            "sku": "EXTRA_TOCINO",
+            "category": "extras",
+            "name": "Tocino",
+            "description": "Crunch ahumado.",
+            "price": 10,
+            "tags": [
+              "extra"
+            ],
+            "isAvailable": true,
+            "stockManaged": false,
+            "isFeatured": false,
+            "sortOrder": 23,
+            "imageKey": "menu/extra-tocino-20260603T065613Z.webp",
+            "comboLinks": [],
+            "upsellItems": [],
+            "updatedAt": "2026-06-16 16:47:06"
+          },
+          {
+            "sku": "EXTRA_CATSUP",
+            "category": "extras",
+            "name": "Catsup",
+            "description": "Dulce clásica.",
+            "price": 1,
+            "tags": [
+              "extra"
+            ],
+            "isAvailable": true,
+            "stockManaged": false,
+            "isFeatured": false,
+            "sortOrder": 24,
+            "imageKey": "menu/extra-catsup-20260603T071349Z.webp",
+            "comboLinks": [],
+            "upsellItems": [],
+            "updatedAt": "2026-06-16 16:47:07"
+          },
+          {
+            "sku": "EXTRA_MOSTAZA",
+            "category": "extras",
+            "name": "Mostaza",
+            "description": "Punch ácido.",
+            "price": 1,
+            "tags": [
+              "extra"
+            ],
+            "isAvailable": true,
+            "stockManaged": false,
+            "isFeatured": false,
+            "sortOrder": 25,
+            "imageKey": "menu/extra-mostaza-20260603T071408Z.webp",
+            "comboLinks": [],
+            "upsellItems": [],
+            "updatedAt": "2026-06-16 16:47:08"
+          },
+          {
+            "sku": "EXTRA_TOMATE",
+            "category": "extras",
+            "name": "Tomate",
+            "description": "Frescura extra.",
+            "price": 5,
+            "tags": [
+              "extra"
+            ],
+            "isAvailable": true,
+            "stockManaged": false,
+            "isFeatured": false,
+            "sortOrder": 26,
+            "imageKey": "menu/extra-tomate-20260603T071516Z.webp",
+            "comboLinks": [],
+            "upsellItems": [],
+            "updatedAt": "2026-06-16 16:47:10"
+          }
+        ],
+        "promos": [],
+        "categoryBanners": [
+          {
+            "categoryKey": "burgers",
+            "imageKey": "category-banners/burgers/burgers-20260608T211635Z.png",
+            "updatedAt": "2026-06-08 21:16:42"
+          },
+          {
+            "categoryKey": "combos",
+            "imageKey": "category-banners/combos/combos-20260612T145127Z.png",
+            "updatedAt": "2026-06-12 14:51:33"
+          },
+          {
+            "categoryKey": "guarniciones",
+            "imageKey": "category-banners/guarniciones/guarniciones-20260609T183816Z.png",
+            "updatedAt": "2026-06-09 18:38:19"
+          }
+        ],
+        "siteConfig": {
+          "brandName": "Burgers.exe",
+          "currency": "MXN",
+          "orderModes": [
+            "pickup",
+            "delivery"
+          ],
+          "supportPhone": "+52 55 0000 0000",
+          "heroCta": "Pedir ahora",
+          "notice": ""
+        },
+        "updatedAt": "2026-06-16 16:47:10",
+        "source": "d1"
+      }
+    },
+    "/api/raffles-v2-admin/summary": {
+      "status": 200,
+      "ok": true,
+      "json": {
+        "ok": true,
+        "data": {
+          "campaign": {
+            "id": "raffle_peimer_gran_sorte_202606",
+            "title": "PRIMER GRAN SORTE.exe",
+            "rulesText": "Válido del 03 al 30 de junio de 2026. 1 burger comprada = 1 ticket. Referido válido = +2 tickets si usa tu código, paga y ordena al menos 1 burger. Premio: $500 MXN o 4 burgers gratis. No aplican pedidos cancelados, no pagados, duplicados o de prueba. Ganador: primer sábado de julio 2026. Sujeto a verificación por Burgers.exe.",
+            "bannerImageKey": "raffles/banners/raffle-peimer-gran-sorte-202606-20260603T071818Z.png",
+            "detailImageKey": "raffles/details/raffle-peimer-gran-sorte-202606-20260603T153634Z.png",
+            "startsAt": "2026-06-03",
+            "endsAt": "2026-06-30",
+            "isActive": true,
+            "ticketPerBurger": 1,
+            "ticketPerReferral": 2,
+            "createdAt": "2026-06-03 04:42:00",
+            "updatedAt": "2026-06-03T17:25:06.845Z"
+          },
+          "baseTickets": 42,
+          "extraTickets": 0,
+          "totalTickets": 42,
+          "totalParticipants": 19,
+          "topParticipants": [
+            {
+              "participantKey": "pk-1gh2p4d-a",
+              "customerName": "Gemma",
+              "customerPhoneMasked": "****6739",
+              "burgerTickets": 4,
+              "referralTickets": 2,
+              "manualExtraTickets": 0,
+              "totalTickets": 6,
+              "lastOrderFolio": "BX-04H0COZ4AD",
+              "lastOrderAt": "2026-06-11T04:34:11.911Z",
+              "referralCode": "GEMMA-COMBO-35",
+              "referralCodeIsActive": true
+            },
+            {
+              "participantKey": "pk-f5s5w1-a",
+              "customerName": "Sashenka",
+              "customerPhoneMasked": "****2970",
+              "burgerTickets": 4,
+              "referralTickets": 0,
+              "manualExtraTickets": 0,
+              "totalTickets": 4,
+              "lastOrderFolio": "BX-04I0EIF0RZ",
+              "lastOrderAt": "2026-06-12T05:13:27.539Z",
+              "referralCode": "SASHENKA-PAPAS-83",
+              "referralCodeIsActive": true
+            },
+            {
+              "participantKey": "pk-t5ox34-a",
+              "customerName": "Liam Romero Flores",
+              "customerPhoneMasked": "****5737",
+              "burgerTickets": 1,
+              "referralTickets": 3,
+              "manualExtraTickets": 0,
+              "totalTickets": 4,
+              "lastOrderFolio": "BX-20260604-138873",
+              "lastOrderAt": "2026-06-04T22:14:49.542Z",
+              "referralCode": "LIAM-QUESO-81",
+              "referralCodeIsActive": true
+            },
+            {
+              "participantKey": "pk-1bviiuu-a",
+              "customerName": "Andrea",
+              "customerPhoneMasked": "****6441",
+              "burgerTickets": 3,
+              "referralTickets": 0,
+              "manualExtraTickets": 0,
+              "totalTickets": 3,
+              "lastOrderFolio": "BX-04I151AHRH",
+              "lastOrderAt": "2026-06-12T14:46:22.725Z",
+              "referralCode": "ANDREA-MOSTAZA-58",
+              "referralCodeIsActive": true
+            },
+            {
+              "participantKey": "pk-uhz3n2-a",
+              "customerName": "Abraham",
+              "customerPhoneMasked": "****8712",
+              "burgerTickets": 2,
+              "referralTickets": 0,
+              "manualExtraTickets": 0,
+              "totalTickets": 2,
+              "lastOrderFolio": "BX-04I1A3DTW2",
+              "lastOrderAt": "2026-06-12T16:35:37.893Z",
+              "referralCode": "ABRAHAM-CHEDDAR-74",
+              "referralCodeIsActive": true
+            },
+            {
+              "participantKey": "pk-klwixm-a",
+              "customerName": "Adrián",
+              "customerPhoneMasked": "****9429",
+              "burgerTickets": 2,
+              "referralTickets": 0,
+              "manualExtraTickets": 0,
+              "totalTickets": 2,
+              "lastOrderFolio": "BX-04I12G0F1T",
+              "lastOrderAt": "2026-06-12T13:50:24.969Z",
+              "referralCode": "ADRIAN-CRUNCH-23",
+              "referralCodeIsActive": true
+            },
+            {
+              "participantKey": "pk-8lv2kg-a",
+              "customerName": "Jessica",
+              "customerPhoneMasked": "****9830",
+              "burgerTickets": 2,
+              "referralTickets": 0,
+              "manualExtraTickets": 0,
+              "totalTickets": 2,
+              "lastOrderFolio": "BX-04I11REXUB",
+              "lastOrderAt": "2026-06-12T13:35:38.917Z",
+              "referralCode": "JESSICA-OG-90",
+              "referralCodeIsActive": true
+            },
+            {
+              "participantKey": "pk-1ulp5ia-a",
+              "customerName": "Adrián Daniel Hernandez Fajardo",
+              "customerPhoneMasked": "****3850",
+              "burgerTickets": 2,
+              "referralTickets": 0,
+              "manualExtraTickets": 0,
+              "totalTickets": 2,
+              "lastOrderFolio": "BX-04H1GFSUXX",
+              "lastOrderAt": "2026-06-11T18:52:40.130Z",
+              "referralCode": "ADRIAN-PICKLES-95",
+              "referralCodeIsActive": true
+            },
+            {
+              "participantKey": "pk-8evs51-a",
+              "customerName": "Ós",
+              "customerPhoneMasked": "****3680",
+              "burgerTickets": 2,
+              "referralTickets": 0,
+              "manualExtraTickets": 0,
+              "totalTickets": 2,
+              "lastOrderFolio": "BX-04H1GEKXV6",
+              "lastOrderAt": "2026-06-11T18:51:56.505Z",
+              "referralCode": "OS-BURGER-94",
+              "referralCodeIsActive": true
+            },
+            {
+              "participantKey": "pk-s018od-a",
+              "customerName": "Angel Fierro Vader",
+              "customerPhoneMasked": "****7951",
+              "burgerTickets": 2,
+              "referralTickets": 0,
+              "manualExtraTickets": 0,
+              "totalTickets": 2,
+              "lastOrderFolio": "BX-04H1G3JIWG",
+              "lastOrderAt": "2026-06-11T18:45:19.619Z",
+              "referralCode": "ANGEL-COMBO-88",
+              "referralCodeIsActive": true
+            }
+          ],
+          "participantResults": [],
+          "recentAdjustments": []
+        }
+      }
+    },
+    "/api/raffles-v2-admin/campaigns": {
+      "status": 200,
+      "ok": true,
+      "json": {
+        "ok": true,
+        "data": {
+          "campaigns": [
+            {
+              "id": "raffle_peimer_gran_sorte_202606",
+              "title": "PRIMER GRAN SORTE.exe",
+              "rulesText": "Válido del 03 al 30 de junio de 2026. 1 burger comprada = 1 ticket. Referido válido = +2 tickets si usa tu código, paga y ordena al menos 1 burger. Premio: $500 MXN o 4 burgers gratis. No aplican pedidos cancelados, no pagados, duplicados o de prueba. Ganador: primer sábado de julio 2026. Sujeto a verificación por Burgers.exe.",
+              "bannerImageKey": "raffles/banners/raffle-peimer-gran-sorte-202606-20260603T071818Z.png",
+              "detailImageKey": "raffles/details/raffle-peimer-gran-sorte-202606-20260603T153634Z.png",
+              "startsAt": "2026-06-03",
+              "endsAt": "2026-06-30",
+              "isActive": true,
+              "ticketPerBurger": 1,
+              "ticketPerReferral": 2,
+              "createdAt": "2026-06-03 04:42:00",
+              "updatedAt": "2026-06-03T17:25:06.845Z"
+            }
+          ]
+        }
+      }
+    },
+    "/api/raffles-v2-admin/referrals": {
+      "status": 400,
+      "ok": false,
+      "json": {
+        "ok": false,
+        "error": {
+          "code": "CAMPAIGN_REQUIRED",
+          "message": "campaignId es requerido."
+        }
+      }
+    }
+  }
+}

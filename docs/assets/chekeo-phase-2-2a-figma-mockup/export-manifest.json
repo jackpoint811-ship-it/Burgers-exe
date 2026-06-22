@@ -1,0 +1,240 @@
+{
+  "exportedAt": "2026-06-22T16:03:14.593Z",
+  "source": "index.html",
+  "figmaFile": "https://www.figma.com/design/NWwIZgKQbNflMs4XrqSrN1",
+  "note": "Fallback exports generated because Figma MCP writes were blocked by Starter plan tool call limit.",
+  "files": [
+    {
+      "file": "mockup-a-login-390.png",
+      "variant": "A",
+      "screen": "login",
+      "width": 390,
+      "height": 844,
+      "type": "mobile"
+    },
+    {
+      "file": "mockup-a-operacion-390.png",
+      "variant": "A",
+      "screen": "operacion",
+      "width": 390,
+      "height": 844,
+      "type": "mobile"
+    },
+    {
+      "file": "mockup-a-pedidos-390.png",
+      "variant": "A",
+      "screen": "pedidos",
+      "width": 390,
+      "height": 844,
+      "type": "mobile"
+    },
+    {
+      "file": "mockup-a-detalle-390.png",
+      "variant": "A",
+      "screen": "detalle",
+      "width": 390,
+      "height": 844,
+      "type": "mobile"
+    },
+    {
+      "file": "mockup-a-cocina-390.png",
+      "variant": "A",
+      "screen": "cocina",
+      "width": 390,
+      "height": 844,
+      "type": "mobile"
+    },
+    {
+      "file": "mockup-a-resumen-390.png",
+      "variant": "A",
+      "screen": "resumen",
+      "width": 390,
+      "height": 844,
+      "type": "mobile"
+    },
+    {
+      "file": "mockup-a-pagos-390.png",
+      "variant": "A",
+      "screen": "pagos",
+      "width": 390,
+      "height": 844,
+      "type": "mobile"
+    },
+    {
+      "file": "mockup-a-pago-detalle-390.png",
+      "variant": "A",
+      "screen": "pago-detalle",
+      "width": 390,
+      "height": 844,
+      "type": "mobile"
+    },
+    {
+      "file": "mockup-a-corte-390.png",
+      "variant": "A",
+      "screen": "corte",
+      "width": 390,
+      "height": 844,
+      "type": "mobile"
+    },
+    {
+      "file": "mockup-a-admin-390.png",
+      "variant": "A",
+      "screen": "admin",
+      "width": 390,
+      "height": 844,
+      "type": "mobile"
+    },
+    {
+      "file": "mockup-a-catalogo-390.png",
+      "variant": "A",
+      "screen": "catalogo",
+      "width": 390,
+      "height": 844,
+      "type": "mobile"
+    },
+    {
+      "file": "mockup-a-sorteos-390.png",
+      "variant": "A",
+      "screen": "sorteos",
+      "width": 390,
+      "height": 844,
+      "type": "mobile"
+    },
+    {
+      "file": "mockup-b-login-390.png",
+      "variant": "B",
+      "screen": "login",
+      "width": 390,
+      "height": 844,
+      "type": "mobile"
+    },
+    {
+      "file": "mockup-b-operacion-390.png",
+      "variant": "B",
+      "screen": "operacion",
+      "width": 390,
+      "height": 844,
+      "type": "mobile"
+    },
+    {
+      "file": "mockup-b-pedidos-390.png",
+      "variant": "B",
+      "screen": "pedidos",
+      "width": 390,
+      "height": 844,
+      "type": "mobile"
+    },
+    {
+      "file": "mockup-b-detalle-390.png",
+      "variant": "B",
+      "screen": "detalle",
+      "width": 390,
+      "height": 844,
+      "type": "mobile"
+    },
+    {
+      "file": "mockup-b-cocina-390.png",
+      "variant": "B",
+      "screen": "cocina",
+      "width": 390,
+      "height": 844,
+      "type": "mobile"
+    },
+    {
+      "file": "mockup-b-resumen-390.png",
+      "variant": "B",
+      "screen": "resumen",
+      "width": 390,
+      "height": 844,
+      "type": "mobile"
+    },
+    {
+      "file": "mockup-b-pagos-390.png",
+      "variant": "B",
+      "screen": "pagos",
+      "width": 390,
+      "height": 844,
+      "type": "mobile"
+    },
+    {
+      "file": "mockup-b-pago-detalle-390.png",
+      "variant": "B",
+      "screen": "pago-detalle",
+      "width": 390,
+      "height": 844,
+      "type": "mobile"
+    },
+    {
+      "file": "mockup-b-corte-390.png",
+      "variant": "B",
+      "screen": "corte",
+      "width": 390,
+      "height": 844,
+      "type": "mobile"
+    },
+    {
+      "file": "mockup-b-admin-390.png",
+      "variant": "B",
+      "screen": "admin",
+      "width": 390,
+      "height": 844,
+      "type": "mobile"
+    },
+    {
+      "file": "mockup-b-catalogo-390.png",
+      "variant": "B",
+      "screen": "catalogo",
+      "width": 390,
+      "height": 844,
+      "type": "mobile"
+    },
+    {
+      "file": "mockup-b-sorteos-390.png",
+      "variant": "B",
+      "screen": "sorteos",
+      "width": 390,
+      "height": 844,
+      "type": "mobile"
+    },
+    {
+      "file": "mockup-a-operacion-320.png",
+      "variant": "A",
+      "screen": "operacion",
+      "width": 320,
+      "height": 844,
+      "type": "mobile"
+    },
+    {
+      "file": "mockup-a-pedidos-320.png",
+      "variant": "A",
+      "screen": "pedidos",
+      "width": 320,
+      "height": 844,
+      "type": "mobile"
+    },
+    {
+      "file": "mockup-a-cocina-320.png",
+      "variant": "A",
+      "screen": "cocina",
+      "width": 320,
+      "height": 844,
+      "type": "mobile"
+    },
+    {
+      "file": "mockup-a-desktop-desktop.png",
+      "variant": "A",
+      "screen": "desktop",
+      "width": 1360,
+      "height": 920,
+      "type": "desktop"
+    },
+    {
+      "file": "mockup-b-desktop-desktop.png",
+      "variant": "B",
+      "screen": "desktop",
+      "width": 1360,
+      "height": 920,
+      "type": "desktop"
+    }
+  ]
+}
