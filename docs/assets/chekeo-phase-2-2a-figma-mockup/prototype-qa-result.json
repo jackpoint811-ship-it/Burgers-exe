@@ -1,0 +1,472 @@
+{
+  "checkedAt": "2026-06-22T16:03:56.126Z",
+  "source": "index.html",
+  "totalFrames": 29,
+  "failures": [],
+  "checks": [
+    {
+      "file": "mockup-a-login-390.png",
+      "screen": "login",
+      "variant": "A",
+      "type": "mobile",
+      "dom": {
+        "width": 390,
+        "height": 844
+      },
+      "png": {
+        "width": 390,
+        "height": 844,
+        "bytes": 21018
+      },
+      "errors": []
+    },
+    {
+      "file": "mockup-a-operacion-390.png",
+      "screen": "operacion",
+      "variant": "A",
+      "type": "mobile",
+      "dom": {
+        "width": 390,
+        "height": 844
+      },
+      "png": {
+        "width": 390,
+        "height": 844,
+        "bytes": 51855
+      },
+      "errors": []
+    },
+    {
+      "file": "mockup-a-pedidos-390.png",
+      "screen": "pedidos",
+      "variant": "A",
+      "type": "mobile",
+      "dom": {
+        "width": 390,
+        "height": 844
+      },
+      "png": {
+        "width": 390,
+        "height": 844,
+        "bytes": 76671
+      },
+      "errors": []
+    },
+    {
+      "file": "mockup-a-detalle-390.png",
+      "screen": "detalle",
+      "variant": "A",
+      "type": "mobile",
+      "dom": {
+        "width": 390,
+        "height": 844
+      },
+      "png": {
+        "width": 390,
+        "height": 844,
+        "bytes": 45314
+      },
+      "errors": []
+    },
+    {
+      "file": "mockup-a-cocina-390.png",
+      "screen": "cocina",
+      "variant": "A",
+      "type": "mobile",
+      "dom": {
+        "width": 390,
+        "height": 844
+      },
+      "png": {
+        "width": 390,
+        "height": 844,
+        "bytes": 43845
+      },
+      "errors": []
+    },
+    {
+      "file": "mockup-a-resumen-390.png",
+      "screen": "resumen",
+      "variant": "A",
+      "type": "mobile",
+      "dom": {
+        "width": 390,
+        "height": 844
+      },
+      "png": {
+        "width": 390,
+        "height": 844,
+        "bytes": 43850
+      },
+      "errors": []
+    },
+    {
+      "file": "mockup-a-pagos-390.png",
+      "screen": "pagos",
+      "variant": "A",
+      "type": "mobile",
+      "dom": {
+        "width": 390,
+        "height": 844
+      },
+      "png": {
+        "width": 390,
+        "height": 844,
+        "bytes": 60271
+      },
+      "errors": []
+    },
+    {
+      "file": "mockup-a-pago-detalle-390.png",
+      "screen": "pago-detalle",
+      "variant": "A",
+      "type": "mobile",
+      "dom": {
+        "width": 390,
+        "height": 844
+      },
+      "png": {
+        "width": 390,
+        "height": 844,
+        "bytes": 34349
+      },
+      "errors": []
+    },
+    {
+      "file": "mockup-a-corte-390.png",
+      "screen": "corte",
+      "variant": "A",
+      "type": "mobile",
+      "dom": {
+        "width": 390,
+        "height": 844
+      },
+      "png": {
+        "width": 390,
+        "height": 844,
+        "bytes": 38485
+      },
+      "errors": []
+    },
+    {
+      "file": "mockup-a-admin-390.png",
+      "screen": "admin",
+      "variant": "A",
+      "type": "mobile",
+      "dom": {
+        "width": 390,
+        "height": 844
+      },
+      "png": {
+        "width": 390,
+        "height": 844,
+        "bytes": 37517
+      },
+      "errors": []
+    },
+    {
+      "file": "mockup-a-catalogo-390.png",
+      "screen": "catalogo",
+      "variant": "A",
+      "type": "mobile",
+      "dom": {
+        "width": 390,
+        "height": 844
+      },
+      "png": {
+        "width": 390,
+        "height": 844,
+        "bytes": 41881
+      },
+      "errors": []
+    },
+    {
+      "file": "mockup-a-sorteos-390.png",
+      "screen": "sorteos",
+      "variant": "A",
+      "type": "mobile",
+      "dom": {
+        "width": 390,
+        "height": 844
+      },
+      "png": {
+        "width": 390,
+        "height": 844,
+        "bytes": 36139
+      },
+      "errors": []
+    },
+    {
+      "file": "mockup-b-login-390.png",
+      "screen": "login",
+      "variant": "B",
+      "type": "mobile",
+      "dom": {
+        "width": 390,
+        "height": 844
+      },
+      "png": {
+        "width": 390,
+        "height": 844,
+        "bytes": 21018
+      },
+      "errors": []
+    },
+    {
+      "file": "mockup-b-operacion-390.png",
+      "screen": "operacion",
+      "variant": "B",
+      "type": "mobile",
+      "dom": {
+        "width": 390,
+        "height": 844
+      },
+      "png": {
+        "width": 390,
+        "height": 844,
+        "bytes": 52232
+      },
+      "errors": []
+    },
+    {
+      "file": "mockup-b-pedidos-390.png",
+      "screen": "pedidos",
+      "variant": "B",
+      "type": "mobile",
+      "dom": {
+        "width": 390,
+        "height": 844
+      },
+      "png": {
+        "width": 390,
+        "height": 844,
+        "bytes": 74856
+      },
+      "errors": []
+    },
+    {
+      "file": "mockup-b-detalle-390.png",
+      "screen": "detalle",
+      "variant": "B",
+      "type": "mobile",
+      "dom": {
+        "width": 390,
+        "height": 844
+      },
+      "png": {
+        "width": 390,
+        "height": 844,
+        "bytes": 52237
+      },
+      "errors": []
+    },
+    {
+      "file": "mockup-b-cocina-390.png",
+      "screen": "cocina",
+      "variant": "B",
+      "type": "mobile",
+      "dom": {
+        "width": 390,
+        "height": 844
+      },
+      "png": {
+        "width": 390,
+        "height": 844,
+        "bytes": 53755
+      },
+      "errors": []
+    },
+    {
+      "file": "mockup-b-resumen-390.png",
+      "screen": "resumen",
+      "variant": "B",
+      "type": "mobile",
+      "dom": {
+        "width": 390,
+        "height": 844
+      },
+      "png": {
+        "width": 390,
+        "height": 844,
+        "bytes": 47511
+      },
+      "errors": []
+    },
+    {
+      "file": "mockup-b-pagos-390.png",
+      "screen": "pagos",
+      "variant": "B",
+      "type": "mobile",
+      "dom": {
+        "width": 390,
+        "height": 844
+      },
+      "png": {
+        "width": 390,
+        "height": 844,
+        "bytes": 65396
+      },
+      "errors": []
+    },
+    {
+      "file": "mockup-b-pago-detalle-390.png",
+      "screen": "pago-detalle",
+      "variant": "B",
+      "type": "mobile",
+      "dom": {
+        "width": 390,
+        "height": 844
+      },
+      "png": {
+        "width": 390,
+        "height": 844,
+        "bytes": 41037
+      },
+      "errors": []
+    },
+    {
+      "file": "mockup-b-corte-390.png",
+      "screen": "corte",
+      "variant": "B",
+      "type": "mobile",
+      "dom": {
+        "width": 390,
+        "height": 844
+      },
+      "png": {
+        "width": 390,
+        "height": 844,
+        "bytes": 44881
+      },
+      "errors": []
+    },
+    {
+      "file": "mockup-b-admin-390.png",
+      "screen": "admin",
+      "variant": "B",
+      "type": "mobile",
+      "dom": {
+        "width": 390,
+        "height": 844
+      },
+      "png": {
+        "width": 390,
+        "height": 844,
+        "bytes": 43511
+      },
+      "errors": []
+    },
+    {
+      "file": "mockup-b-catalogo-390.png",
+      "screen": "catalogo",
+      "variant": "B",
+      "type": "mobile",
+      "dom": {
+        "width": 390,
+        "height": 844
+      },
+      "png": {
+        "width": 390,
+        "height": 844,
+        "bytes": 48008
+      },
+      "errors": []
+    },
+    {
+      "file": "mockup-b-sorteos-390.png",
+      "screen": "sorteos",
+      "variant": "B",
+      "type": "mobile",
+      "dom": {
+        "width": 390,
+        "height": 844
+      },
+      "png": {
+        "width": 390,
+        "height": 844,
+        "bytes": 43629
+      },
+      "errors": []
+    },
+    {
+      "file": "mockup-a-operacion-320.png",
+      "screen": "operacion",
+      "variant": "A",
+      "type": "mobile",
+      "dom": {
+        "width": 320,
+        "height": 844
+      },
+      "png": {
+        "width": 320,
+        "height": 844,
+        "bytes": 50287
+      },
+      "errors": []
+    },
+    {
+      "file": "mockup-a-pedidos-320.png",
+      "screen": "pedidos",
+      "variant": "A",
+      "type": "mobile",
+      "dom": {
+        "width": 320,
+        "height": 844
+      },
+      "png": {
+        "width": 320,
+        "height": 844,
+        "bytes": 66324
+      },
+      "errors": []
+    },
+    {
+      "file": "mockup-a-cocina-320.png",
+      "screen": "cocina",
+      "variant": "A",
+      "type": "mobile",
+      "dom": {
+        "width": 320,
+        "height": 844
+      },
+      "png": {
+        "width": 320,
+        "height": 844,
+        "bytes": 41616
+      },
+      "errors": []
+    },
+    {
+      "file": "mockup-a-desktop-desktop.png",
+      "screen": "desktop",
+      "variant": "A",
+      "type": "desktop",
+      "dom": {
+        "width": 1360,
+        "height": 920
+      },
+      "png": {
+        "width": 1360,
+        "height": 920,
+        "bytes": 127223
+      },
+      "errors": []
+    },
+    {
+      "file": "mockup-b-desktop-desktop.png",
+      "screen": "desktop",
+      "variant": "B",
+      "type": "desktop",
+      "dom": {
+        "width": 1360,
+        "height": 920
+      },
+      "png": {
+        "width": 1360,
+        "height": 920,
+        "bytes": 127223
+      },
+      "errors": []
+    }
+  ]
+}
