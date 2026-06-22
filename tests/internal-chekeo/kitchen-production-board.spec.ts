@@ -757,6 +757,11 @@ const productionCardByFolio = (page: Page, folio: string) =>
 const productionCardByItem = (page: Page, itemName: string) =>
   page.locator(".kitchen-production-card").filter({ hasText: itemName });
 
+const kitchenItemTitle = (page: Page, itemName: string) =>
+  page
+    .locator(".kitchen-production-card__item h3")
+    .filter({ hasText: itemName });
+
 const readyCardByFolio = (page: Page, folio: string) =>
   page.locator(".kitchen-ready-card").filter({ hasText: folio });
 
@@ -1087,8 +1092,11 @@ test.describe("internal chekeo kitchen production board", () => {
     await expect(kitchenViewTab(page, "Listos")).toHaveCount(0);
     await expect(kitchenViewTab(page, "Side Quest")).toBeVisible();
     await expect(kitchenViewTab(page, "Resumen K")).toBeVisible();
+    await expect(page.locator(".kitchen-view-tab strong")).toHaveCount(0);
+    await expect(page.locator(".kitchen-view-tab p")).toHaveCount(0);
     await expect(page.getByText("Siguiente en cocina")).toHaveCount(0);
     await expect(page.getByRole("button", { name: /Entregar/i })).toHaveCount(0);
+    await expect(page.locator(".shell-header__quicknav-button")).toHaveCount(5);
 
     const firstProductionFolios = await page
       .locator(".kitchen-production-card .kitchen-production-card__folio")
@@ -1096,42 +1104,33 @@ test.describe("internal chekeo kitchen production board", () => {
     expect(firstProductionFolios[0]).toBe("CRIT-001");
 
     const criticalCard = productionCardByFolio(page, "CRIT-001");
-    await expect(criticalCard).toHaveCount(3);
+    await expect(criticalCard).toHaveCount(2);
     await expect(criticalCard.first().getByText("Burger crítica")).toBeVisible();
-    await expect(criticalCard.nth(1).getByRole("button", { name: /Mostrar item/i })).toBeVisible();
-    await criticalCard.nth(1).getByRole("button", { name: /Mostrar item/i }).click();
+    await criticalCard.nth(1).locator(".kitchen-production-card__item").click();
     await expect(criticalCard.nth(1).getByText("Burgers del combo", { exact: true })).toBeVisible();
     await expect(criticalCard.nth(1).getByText("OG · sin Pickles")).toBeVisible();
-
-    const readyPendingCard = productionCardByFolio(page, "RDY-401");
-    await expect(readyPendingCard).toHaveCount(1);
-    await expect(readyPendingCard.getByText("Papas pendientes")).toBeVisible();
-    await readyPendingCard.getByRole("button", { name: /^Hecha$/i }).click();
-    await expect(readyPendingCard).toHaveCount(0);
+    await expect(productionCardByItem(page, "Papas directas")).toHaveCount(0);
+    await expect(productionCardByItem(page, "Papas pendientes")).toHaveCount(0);
 
     const newCard = productionCardByFolio(page, "NEW-201");
     await expect(newCard).toHaveCount(1);
     await newCard.getByRole("button", { name: /^Hecha$/i }).click();
-    await expect(newCard).toHaveCount(0);
-
-    await page.getByRole("button", { name: /Abrir hechos/i }).click();
-    await expect(doneCardByItem(page, "Papas pendientes")).toHaveCount(1);
-    await expect(doneCardByFolio(page, "NEW-201")).toHaveCount(1);
-    await expect(doneCardByFolio(page, "NEW-201").getByRole("button", { name: /Reabrir/i })).toHaveCount(1);
-    await doneCardByFolio(page, "NEW-201").getByRole("button", { name: /Reabrir/i }).click();
-    await expect(productionCardByFolio(page, "NEW-201")).toHaveCount(1);
-    await expect(doneCardByFolio(page, "NEW-201")).toHaveCount(0);
-    await doneCardByItem(page, "Papas pendientes").getByRole("button", { name: /Reabrir/i }).click();
-    await expect(productionCardByItem(page, "Papas pendientes")).toHaveCount(1);
-    await expect(doneCardByItem(page, "Papas pendientes")).toHaveCount(0);
+    await expect(newCard.getByText("Hecha", { exact: true })).toBeVisible();
+    await expect(newCard.getByRole("button", { name: /^Hecha$/i })).toHaveCount(0);
 
     const prepCard = productionCardByFolio(page, "PREP-301");
     await expect(prepCard).toHaveCount(1);
     await prepCard.getByRole("button", { name: /^Hecha$/i }).first().click();
-    await expect(doneCardByItem(page, "Burger prep")).toHaveCount(1);
+    await expect(prepCard.getByText("Hecha", { exact: true })).toBeVisible();
 
     await openKitchenView(page, "Side Quest");
-    await expect(productionCardByItem(page, "Papas pendientes")).toHaveCount(1);
+    await expect(productionCardByFolio(page, "CRIT-001")).toHaveCount(4);
+    await expect(kitchenItemTitle(page, "Papas")).toHaveCount(4);
+    await expect(kitchenItemTitle(page, "Aros")).toHaveCount(1);
+    await expect(kitchenItemTitle(page, "Refresco")).toHaveCount(1);
+    await expect(kitchenItemTitle(page, "Papas directas")).toHaveCount(1);
+    await expect(kitchenItemTitle(page, "Papas pendientes")).toHaveCount(1);
+    await expect(productionCardByItem(page, "Burger crítica")).toHaveCount(0);
     await expect(page.locator(".kitchen-production-card").getByRole("button", { name: /^Hecha$/i }).first()).toBeVisible();
 
     await openKitchenView(page, "Resumen K");
@@ -1140,6 +1139,7 @@ test.describe("internal chekeo kitchen production board", () => {
     ).toBeVisible();
     await expect(page.getByText("Combos desglosados")).toBeVisible();
     await expect(page.getByText("Side Quest").nth(1)).toBeVisible();
+    await expect(page.getByText("Ganancia estimada")).toBeVisible();
     await openKitchenView(page, "Preparación");
     await expect(kitchenConnectedCopy(page)).toBeVisible();
 
@@ -1174,9 +1174,15 @@ test.describe("internal chekeo kitchen production board", () => {
     await expect(page.getByText("Rareza")).toHaveCount(0);
     await expect(page.getByText("Power")).toHaveCount(0);
     await expect(page.getByRole("dialog").getByText("Ubicación: Mostrador", { exact: true })).toBeVisible();
+    await expect(page.getByRole("dialog").getByText(/Estado pago|Método de pago|Pago confirmado|Pago pendiente/i)).toHaveCount(0);
     await expect(page.getByText(/CLABE|BBVA|Banorte|Santander/i)).toHaveCount(0);
     await page.getByRole("dialog").getByText("Ticket y WhatsApp").click();
     await expect(page.getByRole("dialog").getByRole("button", { name: /Copiar WhatsApp/i })).toHaveCount(1);
+    await page.getByRole("dialog").getByRole("button", { name: /Copiar WhatsApp/i }).click();
+    await expect.poll(() => page.evaluate(() => (window as any).__copiedPaymentText))
+      .toContain("Tu pedido en Burgers.exe quedó registrado");
+    await expect.poll(() => page.evaluate(() => (window as any).__copiedPaymentText))
+      .not.toContain("Datos bancarios:");
     await expect(page.getByRole("dialog").getByRole("button", { name: /Compartir imagen/i })).toHaveCount(0);
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -1205,19 +1211,18 @@ test.describe("internal chekeo kitchen production board", () => {
     await expect(paymentCardByFolio(page, "RDY-401")).toHaveCount(1);
     await expect(paymentCardByFolio(page, "RDY-401").getByText("Pago confirmado", { exact: true }).first()).toBeVisible();
     await paymentCardByFolio(page, "RDY-401")
-      .locator("summary.payments-more__trigger")
+      .getByRole("button", { name: /^Más$/i })
       .click();
-    await paymentCardByFolio(page, "RDY-401")
+    await page.locator(".modal--wide")
       .getByRole("button", { name: /Regresar a pendiente/i })
       .click();
+    await page.keyboard.press("Escape");
+    await expect(page.locator("#payment-detail-title")).toHaveCount(0);
     await paymentFilterButton(page, "Pendiente").click();
     await expect(paymentCardByFolio(page, "RDY-401")).toHaveCount(1);
 
     await paymentCardByFolio(page, "TRF-701")
-      .locator("summary.payments-more__trigger")
-      .click();
-    await paymentCardByFolio(page, "TRF-701")
-      .getByRole("button", { name: /Ver detalle/i })
+      .getByRole("button", { name: /^Más$/i })
       .click();
     const paymentModal = page.locator(".modal--wide");
     await expect(page.locator("#payment-detail-title")).toHaveText("TRF-701");
@@ -1237,10 +1242,7 @@ test.describe("internal chekeo kitchen production board", () => {
     await expect(page.locator("#payment-detail-title")).toHaveCount(0);
 
     await paymentCardByFolio(page, "RDY-401")
-      .locator("summary.payments-more__trigger")
-      .click();
-    await paymentCardByFolio(page, "RDY-401")
-      .getByRole("button", { name: /Ver detalle/i })
+      .getByRole("button", { name: /^Más$/i })
       .click();
     await expect(page.locator("#payment-detail-title")).toHaveText("RDY-401");
     await expect(page.getByText("Datos bancarios", { exact: true })).toHaveCount(0);

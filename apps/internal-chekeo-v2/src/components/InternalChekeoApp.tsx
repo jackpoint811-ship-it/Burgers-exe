@@ -65,12 +65,11 @@ import {
   updateOrderV2Status,
 } from "../lib/orders-v2-admin";
 import {
-  buildWhatsappOrderMessage,
+  buildWhatsappOrderConfirmationMessage,
   buildWhatsappPaymentMessage,
   buildWhatsappUrl,
   normalizeWhatsappPhone,
   type WhatsappBankDetails,
-  type WhatsappOrderMessageType,
 } from "../lib/whatsapp";
 import {
   downloadOrderTicketImage,
@@ -126,6 +125,9 @@ type InternalOrderItem = MockOrder["items"][number] & {
   extrasTotalCents?: number;
   sideQuestExtrasTotalCents?: number;
   includedGarnishUpchargeCents?: number;
+  parentLineKey?: string;
+  parentItemName?: string;
+  sideQuestSource?: string;
   kitchenDone?: boolean;
 };
 type InternalTimelineEvent = MockOrder["timeline"][number] & {
@@ -831,15 +833,6 @@ const mapKitchenStation = (
   status: OrderV2Status,
 ): InternalOrder["kitchenStation"] =>
   status === "new" ? "grill" : status === "preparing" ? "assembly" : "dispatch";
-const getWhatsappTemplateForStatus = (
-  status: OrderStatus,
-): Exclude<WhatsappOrderMessageType, "custom"> => {
-  if (status === "preparing") return "preparing";
-  if (status === "ready") return "ready";
-  if (status === "delivered" || status === "cancelled") return "delivered";
-  return "received";
-};
-
 const isOrderV2ItemKind = (value: unknown): value is OrderV2ItemKind =>
   value === "burger" ||
   value === "combo" ||
@@ -923,6 +916,86 @@ const parseSnapshotComboBurgers = (value: unknown): InternalOrderItem["comboBurg
   });
 };
 
+const SIDE_QUEST_LINE_KEY_PREFIX = "::sidequest-";
+
+const appendKitchenSideQuestItems = (
+  items: OrderV2["items"],
+): OrderV2["items"] => {
+  const existingParentLineKeys = new Set(
+    items
+      .map((item) => {
+        const snapshot =
+          item.snapshot &&
+          typeof item.snapshot === "object" &&
+          !Array.isArray(item.snapshot)
+            ? item.snapshot
+            : {};
+        return getOptionalString(snapshot.parentLineKey);
+      })
+      .filter((value): value is string => Boolean(value)),
+  );
+
+  return items.flatMap((item) => {
+    const snapshot =
+      item.snapshot &&
+      typeof item.snapshot === "object" &&
+      !Array.isArray(item.snapshot)
+        ? item.snapshot
+        : {};
+    const parentLineKey = getOptionalString(snapshot.lineKey) ?? item.id;
+    if (existingParentLineKeys.has(parentLineKey)) return [item];
+
+    const syntheticItems: OrderV2["items"] = [];
+    const createSynthetic = (
+      entry: { sku?: string; name: string; price?: number; upcharge?: number },
+      suffix: string,
+    ) => {
+      const lineKey = `${parentLineKey}${SIDE_QUEST_LINE_KEY_PREFIX}${suffix}`;
+      const sku = entry.sku ?? `${item.sku}-${suffix}`;
+      syntheticItems.push({
+        ...item,
+        id: `${item.id}-${suffix}`,
+        sku,
+        name: entry.name,
+        unitPrice: 0,
+        lineTotal: 0,
+        snapshot: {
+          sku,
+          name: entry.name,
+          lineKey,
+          itemDisplayIndex: getOptionalNumber(snapshot.itemDisplayIndex),
+          itemKind: "garnish",
+          removedIngredients: [],
+          extras: [],
+          burgerNote: undefined,
+          garnish: null,
+          includedDrink: null,
+          sideQuestExtras: [],
+          comboBurgers: [],
+          parentLineKey,
+          parentItemKind: getOptionalString(snapshot.itemKind),
+          parentItemName: item.name,
+          sideQuestSource: suffix,
+          upcharge: entry.upcharge,
+          price: entry.price,
+        },
+      });
+    };
+
+    const garnish = parseSnapshotGarnish(snapshot.garnish);
+    if (garnish) createSynthetic(garnish, "included-garnish");
+    const includedDrink = parseSnapshotIncludedDrink(snapshot.includedDrink);
+    if (includedDrink) createSynthetic(includedDrink, "included-drink");
+    parseSnapshotSideQuestExtras(snapshot.sideQuestExtras).forEach((extra, index) => {
+      if ((extra.itemKind ?? "garnish") === "garnish") {
+        createSynthetic(extra, `extra-${index}`);
+      }
+    });
+
+    return [item, ...syntheticItems];
+  });
+};
+
 const getKitchenDoneByLineKey = (events: OrderV2Event[]) => {
   const doneByLineKey = new Map<string, boolean>();
   events.forEach((event) => {
@@ -978,6 +1051,9 @@ const mapOrderV2ItemToInternalItem = (
     extrasTotalCents: getOptionalNumber(snapshot.extrasTotalCents),
     sideQuestExtrasTotalCents: getOptionalNumber(snapshot.sideQuestExtrasTotalCents),
     includedGarnishUpchargeCents: getOptionalNumber(snapshot.includedGarnishUpchargeCents),
+    parentLineKey: getOptionalString(snapshot.parentLineKey),
+    parentItemName: getOptionalString(snapshot.parentItemName),
+    sideQuestSource: getOptionalString(snapshot.sideQuestSource),
     kitchenDone: lineKey ? (doneByLineKey.get(lineKey) ?? false) : false,
   };
 };
@@ -1043,7 +1119,7 @@ const mapOrderV2ToInternalOrder = (order: OrderV2): InternalOrder => {
     paymentMethod: order.paymentMethod,
     paymentState: order.paymentStatus,
     note: order.notes,
-    items: order.items.map((item) =>
+    items: appendKitchenSideQuestItems(order.items).map((item) =>
       mapOrderV2ItemToInternalItem(item, doneByLineKey),
     ),
     total: order.total,
@@ -1519,12 +1595,16 @@ const EnvironmentBadge = ({
 const OperatorHeader = ({
   runtimeEnvironment,
   runtime,
+  activeTab,
+  onOpenTab,
   onRefresh,
   onLogout,
   truth,
 }: {
   runtimeEnvironment: ChekeoRuntimeEnvironment;
   runtime: OrdersRuntime;
+  activeTab: TabKey;
+  onOpenTab: (tab: TabKey) => void;
   onRefresh: () => void;
   onLogout: () => void;
   truth: OperationalTruth;
@@ -1555,6 +1635,20 @@ const OperatorHeader = ({
           </div>
         </div>
         <div className="shell-header__actions">
+          <nav className="shell-header__quicknav" aria-label="Navegación rápida">
+            {primaryTabs.map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                type="button"
+                className={`shell-header__quicknav-button ${activeTab === key ? "shell-header__quicknav-button--active" : ""}`}
+                aria-label={label}
+                aria-current={activeTab === key ? "page" : undefined}
+                onClick={() => onOpenTab(key)}
+              >
+                <Icon size={17} aria-hidden="true" />
+              </button>
+            ))}
+          </nav>
           <span className="shell-header__sync">
             {runtime.lastUpdated ? `Sync ${runtime.lastUpdated}` : "Sin sync"}
           </span>
@@ -2314,16 +2408,10 @@ const WhatsappOrderActions = ({
   const [ticketBlob, setTicketBlob] = useState<Blob | null>(null);
   const [generatingTicket, setGeneratingTicket] = useState(false);
   const phone = normalizeWhatsappPhone(order.customerPhone ?? "");
-  const message = buildWhatsappOrderMessage(
+  const message = buildWhatsappOrderConfirmationMessage(
     {
       ...order,
-      bankDetails: isTransferPaymentMethod(order.paymentMethod)
-        ? bankPaymentConfig
-        : null,
-      deliveryDetail: getPaymentDeliveryDetail(order),
-      note: stripLocationFromNotes(order.note),
     },
-    getWhatsappTemplateForStatus(order.status),
   );
   const whatsappUrl = phone ? buildWhatsappUrl(phone, message) : "";
 
@@ -2678,17 +2766,13 @@ const CompactRow = ({
           </div>
           <div className="orders-card__badges">
             <OrdersStatusBadge status={order.status} />
-            <PaymentStatusBadge status={order.paymentState} />
           </div>
         </div>
 
         <div className="orders-card__facts">
           <OrderFact label="Total" value={formatCurrency(order.total)} emphasis />
           <OrderFact label="Entrega" value={location} />
-          <OrderFact
-            label="Pago"
-            value={`${getPaymentMethodLabel(order.paymentMethod)} · ${getPaymentStatusLabel(order.paymentState)}`}
-          />
+          <OrderFact label="Items" value={itemCount} />
         </div>
 
         <div className="orders-card__actions">
@@ -2761,10 +2845,7 @@ const OrderCommandPanel = ({
       </div>
       <div className="orders-command-detail__facts">
         <OrderFact label="Estado" value={statusLabel[order.status]} />
-        <OrderFact
-          label="Pago"
-          value={`${getPaymentMethodLabel(order.paymentMethod)} · ${getPaymentStatusLabel(order.paymentState)}`}
-        />
+        <OrderFact label="Entrega" value={location} />
         <OrderFact label="Items" value={itemCount} />
       </div>
       <div className="orders-command-detail__panel">
@@ -2874,7 +2955,7 @@ const OrdersBoard = ({
   }, [orders, rangeFilter, search, statusFilter]);
   const commandOrder =
     filteredOrders.find((order) => order.status === "ready") ??
-    filteredOrders.find((order) => order.paymentState === "pending") ??
+    filteredOrders.find((order) => order.status === "new") ??
     filteredOrders[0];
 
   return (
@@ -2887,7 +2968,7 @@ const OrdersBoard = ({
               Pedidos
             </h2>
             <p className="mt-1 max-w-3xl text-sm text-zinc-400">
-              Prioriza folio, cliente, estado, pago, total y siguiente acción.
+              Movimientos, detalle, ticket y confirmación corta del pedido.
             </p>
           </div>
           <div className="orders-board-shell__summary">
@@ -2896,9 +2977,6 @@ const OrdersBoard = ({
             </span>
             <span className="orders-summary-chip">
               {orders.filter((order) => order.status === "ready").length} listos
-            </span>
-            <span className="orders-summary-chip">
-              {orders.filter((order) => order.paymentState === "pending").length} pago pendiente
             </span>
           </div>
         </div>
@@ -4053,40 +4131,12 @@ const PaymentNotesPanel = ({
                 >
                   {busy ? "Actualizando…" : "Marcar pagado"}
                 </Button>
-                <details className="payments-more">
-                  <summary className="payments-more__trigger">Más</summary>
-                  <div className="payments-more__menu">
-                    <Button
-                      className="payments-secondary-action"
-                      onClick={() => void copyPaymentMessage(order)}
-                    >
-                      Copiar WhatsApp
-                    </Button>
-                    <Button
-                      className="payments-secondary-action"
-                      onClick={() => openPaymentWhatsapp(order)}
-                    >
-                      Abrir WhatsApp
-                    </Button>
-                    <Button
-                      className="payments-secondary-action"
-                      onClick={() => setSelectedOrderId(order.id)}
-                    >
-                      Ver detalle
-                    </Button>
-                    {order.paymentState === "paid" ? (
-                      <Button
-                        className="payments-secondary-action disabled:opacity-40"
-                        onClick={() =>
-                          void runPaymentAction(order, "pending")
-                        }
-                        disabled={busy || !runtime.sessionActive}
-                      >
-                        Regresar a pendiente
-                      </Button>
-                    ) : null}
-                  </div>
-                </details>
+                <Button
+                  className="payments-secondary-action"
+                  onClick={() => setSelectedOrderId(order.id)}
+                >
+                  Más
+                </Button>
               </div>
               {notice ? (
                 <p
@@ -4277,7 +4327,6 @@ const OrderTicketPreview = ({ order }: { order: InternalOrder }) => {
         </div>
         <div className="orders-ticket-preview__badges">
           <OrdersStatusBadge status={order.status} />
-          <PaymentStatusBadge status={order.paymentState} />
           <span className="orders-location-chip">Ubicación: {location}</span>
         </div>
       </div>
@@ -4294,8 +4343,6 @@ const OrderTicketPreview = ({ order }: { order: InternalOrder }) => {
       </div>
 
       <div className="orders-ticket-preview__meta">
-        <span className="info-pill">Pago: {getPaymentMethodLabel(order.paymentMethod)}</span>
-        <span className="info-pill">Estado pago: {getPaymentStatusLabel(order.paymentState)}</span>
         {order.customerPhone ? (
           <span className="info-pill">Tel: {order.customerPhone}</span>
         ) : null}
@@ -4411,7 +4458,6 @@ const OrderDetailModal = ({
           </div>
           <div className="order-detail__badges">
             <OrdersStatusBadge status={selected.status} />
-            <PaymentStatusBadge status={selected.paymentState} />
             <Button
               className="modal-close-button"
               onClick={onClose}
@@ -5210,6 +5256,8 @@ export function InternalChekeoApp() {
       <OperatorHeader
         runtimeEnvironment={runtimeEnvironment}
         runtime={runtime}
+        activeTab={tab}
+        onOpenTab={openPrimaryTab}
         truth={shellTruth}
         onRefresh={() => {
           if (runtime.sessionState !== "active") return;

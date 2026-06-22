@@ -13,7 +13,7 @@ export type OrderTicketImageData = WhatsappOrderMessageInput & {
 };
 
 const IMAGE_WIDTH = 800;
-const IMAGE_HEIGHT = 1200;
+const IMAGE_HEIGHT = 1600;
 const SAFE_PADDING = 48;
 const PANEL_X = SAFE_PADDING + 24;
 const PANEL_WIDTH = IMAGE_WIDTH - PANEL_X * 2;
@@ -44,10 +44,32 @@ const wrapText = (
   const words = text.replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
   if (!words.length) return [];
   const lines: string[] = [];
-  let line = words[0] ?? "";
+  let line = "";
 
-  for (const word of words.slice(1)) {
-    const next = `${line} ${word}`;
+  const pushLongWord = (word: string) => {
+    let chunk = "";
+    for (const char of word) {
+      const next = `${chunk}${char}`;
+      if (ctx.measureText(next).width <= maxWidth) {
+        chunk = next;
+      } else {
+        if (chunk) lines.push(chunk);
+        chunk = char;
+      }
+    }
+    return chunk;
+  };
+
+  for (const word of words) {
+    if (ctx.measureText(word).width > maxWidth) {
+      if (line) {
+        lines.push(line);
+        line = "";
+      }
+      line = pushLongWord(word);
+      continue;
+    }
+    const next = line ? `${line} ${word}` : word;
     if (ctx.measureText(next).width <= maxWidth) {
       line = next;
     } else {
@@ -56,7 +78,7 @@ const wrapText = (
     }
   }
 
-  lines.push(line);
+  if (line) lines.push(line);
   return lines;
 };
 
@@ -207,8 +229,6 @@ export const buildOrderTicketSummaryText = (order: OrderTicketImageData) => [
   `Cliente: ${safeText(order.customer ?? order.customerName)}`,
   `Entrega: ${extractLocation(order.note)}`,
   `Total: ${formatCurrency(order.total)}`,
-  `Pago: ${safeText(order.paymentMethod, "no especificado")}`,
-  `Estado de pago: ${safeText(order.paymentState ?? order.paymentStatus, "pendiente")}`,
   "",
   "Resumen del pedido:",
   ...buildWhatsappOrderSummaryLines(order),
@@ -274,30 +294,26 @@ export const generateOrderTicketImage = async (
   ctx.fillStyle = "#facc15";
   ctx.font = "900 18px 'Fira Sans', Arial, sans-serif";
   ctx.fillText(safeText(order.orderStatus, "Recibido"), PANEL_X + PANEL_WIDTH, 108);
-  ctx.fillStyle = "#cbd5e1";
-  ctx.font = "700 16px 'Fira Sans', Arial, sans-serif";
-  ctx.fillText(`Pago ${safeText(order.paymentState ?? order.paymentStatus, "pendiente")}`, PANEL_X + PANEL_WIDTH, 136);
 
-  drawMetricCard(ctx, "TOTAL", formatCurrency(order.total), PANEL_X, 272, 150);
-  drawMetricCard(ctx, "ITEMS", String(itemCount), PANEL_X + 166, 272, 110);
-  drawMetricCard(ctx, "PAGO", truncate(safeText(order.paymentMethod, "No definido"), 12), PANEL_X + 292, 272, 158);
-  drawMetricCard(ctx, "ESTADO", truncate(safeText(order.paymentState ?? order.paymentStatus, "Pendiente"), 12), PANEL_X + 466, 272, 158);
+  drawMetricCard(ctx, "TOTAL", formatCurrency(order.total), PANEL_X, 272, 190);
+  drawMetricCard(ctx, "ITEMS", String(itemCount), PANEL_X + 208, 272, 120);
+  drawMetricCard(ctx, "ENTREGA", truncate(location, 24), PANEL_X + 346, 272, 278);
 
   const sections = buildTicketSections(order);
   let cursorY = 390;
   ctx.textAlign = "left";
   sections.forEach((section) => {
-    if (cursorY > 1000) return;
+    if (cursorY > 1360) return;
     drawSectionHeader(ctx, section.title, cursorY);
     cursorY += 24;
     ctx.fillStyle = "#e5e7eb";
     ctx.font = "600 16px 'Fira Sans', Arial, sans-serif";
     section.lines.forEach((line) => {
-      if (cursorY > 1000) return;
+      if (cursorY > 1360) return;
       const wrapped = wrapText(ctx, line, PANEL_WIDTH);
-      wrapped.slice(0, 2).forEach((piece) => {
-        if (cursorY > 1000) return;
-        ctx.fillText(truncate(piece, 72), PANEL_X, cursorY);
+      wrapped.slice(0, 4).forEach((piece) => {
+        if (cursorY > 1360) return;
+        ctx.fillText(piece, PANEL_X, cursorY);
         cursorY += 22;
       });
     });
@@ -305,30 +321,30 @@ export const generateOrderTicketImage = async (
   });
 
   if (order.note) {
-    drawSectionHeader(ctx, "Nota", Math.min(cursorY, 1016));
+    drawSectionHeader(ctx, "Nota", Math.min(cursorY, 1390));
     ctx.font = "600 16px 'Fira Sans', Arial, sans-serif";
     drawParagraph(
       ctx,
       safeText(order.note),
       PANEL_X,
-      Math.min(cursorY + 24, 1040),
+      Math.min(cursorY + 24, 1414),
       PANEL_WIDTH,
       22,
       "#fcd34d",
-      3,
+      5,
     );
   }
 
   ctx.textAlign = "center";
   ctx.fillStyle = "#67e8f9";
   ctx.font = "900 18px 'Fira Sans', Arial, sans-serif";
-  ctx.fillText("Burgers.exe", IMAGE_WIDTH / 2, 1128);
+  ctx.fillText("Burgers.exe", IMAGE_WIDTH / 2, 1528);
   ctx.font = "600 14px 'Fira Sans', Arial, sans-serif";
   drawParagraph(
     ctx,
     "Gracias por tu pedido.",
     PANEL_X,
-    1150,
+    1550,
     PANEL_WIDTH,
     18,
     "#94a3b8",

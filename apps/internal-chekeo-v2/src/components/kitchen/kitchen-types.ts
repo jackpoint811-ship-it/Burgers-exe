@@ -8,6 +8,7 @@ export type KitchenItemKind = Extract<
   OrderV2ItemKind,
   "burger" | "combo" | "garnish"
 >;
+export type KitchenProductionLane = "prep" | "sideQuest";
 
 export type KitchenView = "preparacion" | "sideQuest" | "summaryK";
 export type KitchenPrepState = "por-hacer" | "hecho";
@@ -36,6 +37,9 @@ export type KitchenOrderItem = {
     extras: Array<{ sku?: string; name: string; price?: number }>;
     burgerNote?: string;
   }>;
+  parentLineKey?: string;
+  parentItemName?: string;
+  sideQuestSource?: string;
   kitchenDone?: boolean;
 };
 
@@ -47,6 +51,7 @@ export type KitchenOrder = {
   status: OrderStatus;
   priority?: string;
   paymentState: string;
+  total?: number;
   createdAtMs?: number;
   items: KitchenOrderItem[];
 };
@@ -56,7 +61,10 @@ export type KitchenProductionItem = {
   order: KitchenOrder;
   item: KitchenOrderItem;
   index: number;
+  itemLabel: string;
+  detailLabel?: string;
   kind: KitchenItemKind;
+  lane: KitchenProductionLane;
   lineKey: string;
   done: boolean;
   collapsedByDefault: boolean;
@@ -81,6 +89,7 @@ export type KitchenLocalSummary = {
   garnishes: number;
   extras: number;
   sideQuests: number;
+  estimatedSales: number;
 };
 
 export type KitchenOrdersRuntime = {
