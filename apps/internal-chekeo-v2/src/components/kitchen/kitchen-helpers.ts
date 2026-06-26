@@ -64,10 +64,20 @@ export const getKitchenItemNotes = (item: KitchenOrderItem) => {
     notes.push(`Burgers del combo: ${item.comboBurgers.map((burger) => burger.name).join(", ")}`);
   }
   if (item.removedIngredients.length) {
-    notes.push(`Sin: ${item.removedIngredients.join(", ")}`);
+    item.removedIngredients.forEach((ing) => {
+      notes.push(`Sin ${ing}`);
+    });
   }
   if (item.extras.length) {
-    notes.push(`Extras: ${item.extras.map((extra) => extra.name).join(", ")}`);
+    item.extras.forEach((extra) => {
+      const cleanName = extra.name
+        .replace(/\bextras?\b/gi, "")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (cleanName) {
+        notes.push(cleanName);
+      }
+    });
   }
   if (item.garnish) notes.push(`Guarnición: ${item.garnish.name}`);
   if (item.sideQuestExtras.length) {
@@ -84,10 +94,20 @@ export const getComboBurgerNotes = (item: KitchenOrderItem) =>
   item.comboBurgers.flatMap((burger) => {
     const notes: string[] = [burger.name];
     if (burger.removedIngredients.length) {
-      notes.push(`sin ${burger.removedIngredients.join(", ")}`);
+      burger.removedIngredients.forEach((ing) => {
+        notes.push(`sin ${ing}`);
+      });
     }
     if (burger.extras.length) {
-      notes.push(`extras ${burger.extras.map((extra) => extra.name).join(", ")}`);
+      burger.extras.forEach((extra) => {
+        const cleanName = extra.name
+          .replace(/\bextras?\b/gi, "")
+          .replace(/\s+/g, " ")
+          .trim();
+        if (cleanName) {
+          notes.push(cleanName);
+        }
+      });
     }
     if (burger.burgerNote) notes.push(burger.burgerNote);
     return notes.join(" · ");

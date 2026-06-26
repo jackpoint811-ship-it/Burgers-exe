@@ -1370,6 +1370,56 @@ test.describe("internal chekeo kitchen production board", () => {
     await expect(page.getByRole("button", { name: "Revertir" })).toHaveCount(0);
   });
 
+  test("supports Phase 2.3 kitchen production line refinements", async ({ page }) => {
+    await installKitchenApiMocks(page);
+    await loginToChekeo(page);
+    await openKitchenFromHome(page);
+
+    // 1. Check MOD and UPGRADE formatting
+    const criticalCard = productionCardByFolio(page, "CRIT-001");
+    await expect(criticalCard).toHaveCount(1);
+
+    await expect(criticalCard.getByText("Sin Cebolla")).toBeVisible();
+    await expect(criticalCard.getByText("Queso", { exact: true })).toBeVisible();
+    await expect(criticalCard.getByText("Queso extra")).toHaveCount(0);
+
+    // 2. Check accordion behavior in active order container
+    await criticalCard.getByRole("button", { name: /^Hecha$/i }).first().click();
+
+    // Expand the combo double details inside the active card
+    await criticalCard.locator(".kitchen-production-card__item").filter({ hasText: "Combo doble" }).click();
+    await expect(criticalCard.getByText("OG · sin Pickles · Tocino · Bien dorada")).toBeVisible();
+
+    // 3. Mark the combo double as hecha
+    await criticalCard.getByRole("button", { name: /^Hecha$/i }).first().click();
+
+    // 4. Check list of done items and revert functionality
+    const doneListToggle = page.getByRole("button", { name: /^Listas/ });
+    await expect(doneListToggle).toBeVisible();
+    if (await doneListToggle.getAttribute("aria-expanded") !== "true") {
+      await doneListToggle.click();
+    }
+
+    const critDoneCard = page.locator(".kitchen-done-list__item").filter({ hasText: "CRIT-001" });
+    await expect(critDoneCard).toBeVisible();
+    await critDoneCard.click();
+
+    const critBurgerItem = critDoneCard.locator(".kitchen-accordion-item").filter({ hasText: "Burger crítica" });
+    await expect(critBurgerItem).toBeVisible();
+    await critBurgerItem.click();
+
+    await expect(critBurgerItem.getByText("Sin Cebolla")).toBeVisible();
+    await expect(critBurgerItem.getByText("Queso", { exact: true })).toBeVisible();
+
+    const revertBtn = critBurgerItem.getByRole("button", { name: /Revertir hecha/i });
+    await expect(revertBtn).toBeVisible();
+    await revertBtn.click();
+
+    // The order CRIT-001 should go back to active order container!
+    await expect(productionCardByFolio(page, "CRIT-001")).toBeVisible();
+    await expect(productionCardByFolio(page, "CRIT-001").getByText("Por hacer").first()).toBeVisible();
+  });
+
   for (const viewport of viewports) {
     test(`avoids horizontal overflow on ${viewport.name}`, async ({ page }) => {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });

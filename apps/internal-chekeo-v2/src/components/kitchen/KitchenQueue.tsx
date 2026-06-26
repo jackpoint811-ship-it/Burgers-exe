@@ -182,7 +182,7 @@ const AccordionItemRow = ({
   onToggle: (entry: KitchenProductionItem, done: boolean) => void;
 }) => (
   <div
-    className={`kitchen-accordion-item ${entry.done ? "kitchen-accordion-item--done" : ""} ${expanded && !entry.done ? "kitchen-accordion-item--open" : ""} ${glowing ? "kitchen-accordion-item--glow" : ""}`}
+    className={`kitchen-accordion-item ${entry.done ? "kitchen-accordion-item--done" : ""} ${expanded ? "kitchen-accordion-item--open" : ""} ${glowing ? "kitchen-accordion-item--glow" : ""}`}
   >
     <button
       type="button"
@@ -207,7 +207,7 @@ const AccordionItemRow = ({
       </span>
     </button>
 
-    {expanded && !entry.done ? (
+    {expanded ? (
       <>
         <ItemDetailList item={entry} />
 
@@ -218,15 +218,25 @@ const AccordionItemRow = ({
         ) : null}
 
         <div className="kitchen-accordion-item__actions">
-          <Button
-            className="kitchen-item-action"
-            disabled={busy || !entry.item.lineKey}
-            onClick={() => onToggle(entry, true)}
-          >
-            <>
-              <CheckCircle2 size={16} aria-hidden="true" /> Hecha
-            </>
-          </Button>
+          {entry.done ? (
+            <Button
+              className="kitchen-item-action kitchen-item-action--done"
+              disabled={busy || !entry.item.lineKey}
+              onClick={() => onToggle(entry, false)}
+            >
+              Revertir hecha
+            </Button>
+          ) : (
+            <Button
+              className="kitchen-item-action"
+              disabled={busy || !entry.item.lineKey}
+              onClick={() => onToggle(entry, true)}
+            >
+              <>
+                <CheckCircle2 size={16} aria-hidden="true" /> Hecha
+              </>
+            </Button>
+          )}
         </div>
       </>
     ) : null}
@@ -437,10 +447,16 @@ const FollowingOrdersSection = ({
 const DoneOrdersList = ({
   groups,
   label,
+  busyLineKey,
+  onToggle,
 }: {
   groups: OrderGroup[];
   label: string;
+  busyLineKey: string | null;
+  onToggle: (entry: KitchenProductionItem, done: boolean) => void;
 }) => {
+  const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
+  const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
 
   if (!groups.length) return null;
@@ -466,16 +482,52 @@ const DoneOrdersList = ({
       </button>
       {expanded ? (
         <div className="kitchen-done-list__items">
-          {groups.map((group) => (
-            <div key={group.orderId} className="kitchen-done-list__item">
-              <div className="flex items-center justify-between gap-2">
-                <p className="font-black text-zinc-100">{group.order.customer}</p>
-                <span className="kitchen-dot kitchen-dot--done">Hecha</span>
+          {groups.map((group) => {
+            const isGroupExpanded = expandedGroupId === group.orderId;
+            return (
+              <div key={group.orderId} className="kitchen-done-list__item border-b border-zinc-800/30 pb-3 last:border-0 last:pb-0">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between gap-2 text-left py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-lime-300"
+                  onClick={() => {
+                    setExpandedGroupId(isGroupExpanded ? null : group.orderId);
+                    setExpandedItemId(null);
+                  }}
+                  aria-expanded={isGroupExpanded}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-black text-zinc-100">{group.order.customer}</p>
+                      <span className="kitchen-dot kitchen-dot--done">Hecha</span>
+                    </div>
+                    <p className="mt-0.5 text-sm text-zinc-500">{group.order.folio}</p>
+                    <p className="mt-0.5 text-sm text-zinc-400">{group.summaryLabel}</p>
+                  </div>
+                  {isGroupExpanded ? (
+                    <ChevronUp size={16} className="text-zinc-500 flex-shrink-0" />
+                  ) : (
+                    <ChevronDown size={16} className="text-zinc-500 flex-shrink-0" />
+                  )}
+                </button>
+
+                {isGroupExpanded ? (
+                  <div className="mt-3 space-y-2.5 pl-2 border-l border-zinc-800/80">
+                    {group.items.map((entry) => (
+                      <AccordionItemRow
+                        key={entry.id}
+                        entry={entry}
+                        busy={busyLineKey === entry.lineKey}
+                        expanded={expandedItemId === entry.id}
+                        glowing={false}
+                        onExpand={() => setExpandedItemId(expandedItemId === entry.id ? null : entry.id)}
+                        onToggle={onToggle}
+                      />
+                    ))}
+                  </div>
+                ) : null}
               </div>
-              <p className="mt-0.5 text-sm text-zinc-500">{group.order.folio}</p>
-              <p className="mt-0.5 text-sm text-zinc-400">{group.summaryLabel}</p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : null}
     </section>
@@ -576,7 +628,12 @@ const ProductionLanePanel = ({
       ) : null}
 
       {/* 4. Done list */}
-      <DoneOrdersList groups={doneGroups} label="Listas" />
+      <DoneOrdersList
+        groups={doneGroups}
+        label="Listas"
+        busyLineKey={busyLineKey}
+        onToggle={onToggle}
+      />
     </section>
   );
 };
@@ -833,6 +890,12 @@ export const KitchenQueue = ({
           (entry.order.status === "new" || entry.order.status === "preparing")
         ) {
           await onMove(entry.order.id, "ready", "Cocina: preparación completa");
+        }
+        if (
+          !done &&
+          entry.order.status === "ready"
+        ) {
+          await onMove(entry.order.id, "preparing", "Cocina: revertir item a pendiente");
         }
       } finally {
         setBusyLineKey(null);
