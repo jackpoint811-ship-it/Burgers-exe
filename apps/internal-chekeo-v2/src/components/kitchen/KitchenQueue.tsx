@@ -722,19 +722,19 @@ const KitchenSummaryKPanel = ({
   }, [environment]);
 
   const costText =
-    summary?.totals.estimatedCostCents == null
+    summary?.totals?.estimatedCostCents == null
       ? "—"
       : formatCurrency(summary.totals.estimatedCostCents / 100);
   const estimatedProfitText =
-    summary?.totals.estimatedCostCents == null
+    summary?.totals?.estimatedCostCents == null
       ? "—"
       : formatCurrency(localSummary.estimatedSales - summary.totals.estimatedCostCents / 100);
 
   return (
     <section className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryMetric label="Total burgers" value={summary?.totals.burgers ?? localSummary.burgers} />
-        <SummaryMetric label="Total guarniciones" value={summary?.totals.garnishes ?? localSummary.garnishes} />
+        <SummaryMetric label="Total burgers" value={summary?.totals?.burgers ?? localSummary.burgers} />
+        <SummaryMetric label="Total guarniciones" value={summary?.totals?.garnishes ?? localSummary.garnishes} />
         <SummaryMetric label="Combos desglosados" value={localSummary.comboBurgers} />
         <SummaryMetric label="Side Quest" value={localSummary.sideQuests} />
       </div>
@@ -747,7 +747,7 @@ const KitchenSummaryKPanel = ({
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <SummaryMetric label="Costo producción" value={costText} />
         <SummaryMetric label="Ganancia estimada" value={estimatedProfitText} />
-        <SummaryMetric label="Insumos" value={summary?.totals.ingredients ?? 0} />
+        <SummaryMetric label="Insumos" value={summary?.totals?.ingredients ?? 0} />
       </div>
 
       {loading ? (
@@ -781,7 +781,7 @@ const KitchenSummaryKPanel = ({
                 {orderEnvironmentLabel[environment]} · burgers
               </h3>
               <div className="mt-3 space-y-2">
-                {summary.burgers.length ? (
+                {summary.burgers?.length ? (
                   summary.burgers.map((item) => (
                     <div key={item.sku} className="kitchen-summary-row">
                       <span>{item.name}</span>
@@ -798,7 +798,7 @@ const KitchenSummaryKPanel = ({
                 {orderEnvironmentLabel[environment]} · guarniciones
               </h3>
               <div className="mt-3 space-y-2">
-                {summary.garnishes.length ? (
+                {summary.garnishes?.length ? (
                   summary.garnishes.map((item) => (
                     <div key={item.sku} className="kitchen-summary-row">
                       <span>{item.name}</span>
@@ -816,7 +816,7 @@ const KitchenSummaryKPanel = ({
               Ingredientes estimados
             </h3>
             <div className="mt-3 space-y-2">
-              {summary.ingredients.length ? (
+              {summary.ingredients?.length ? (
                 summary.ingredients.map((ingredient) => (
                   <div key={ingredient.ingredientId} className="kitchen-ingredient-row">
                     <div>
@@ -905,6 +905,9 @@ export const KitchenQueue = ({
         if (done && entry.order.status === "new") {
           await onMove(entry.order.id, "preparing", "Cocina: preparación actual");
         }
+        if (!done && entry.order.status === "ready") {
+          await onMove(entry.order.id, "preparing", "Cocina: revertir item a pendiente");
+        }
         await onToggleKitchenItem(
           entry.order.id,
           entry.lineKey,
@@ -923,12 +926,6 @@ export const KitchenQueue = ({
           (entry.order.status === "new" || entry.order.status === "preparing")
         ) {
           await onMove(entry.order.id, "ready", "Cocina: preparación completa");
-        }
-        if (
-          !done &&
-          entry.order.status === "ready"
-        ) {
-          await onMove(entry.order.id, "preparing", "Cocina: revertir item a pendiente");
         }
       } finally {
         setBusyLineKey(null);
