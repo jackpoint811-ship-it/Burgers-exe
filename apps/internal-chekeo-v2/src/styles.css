@@ -119,46 +119,53 @@ a,button,[role="button"],input,select,textarea,.tab{touch-action:manipulation}
 .kitchen-view-tab--active span{@apply text-lime-100}
 .kitchen-lane{@apply space-y-4}
 .kitchen-section__header{@apply flex flex-col gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4 md:flex-row md:items-start md:justify-between}
-.kitchen-location-chip{@apply inline-flex w-fit shrink-0 items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-xs font-black text-zinc-200}
-.kitchen-location-chip--combo{@apply border-amber-500/30 bg-amber-500/10 text-amber-200}
-.kitchen-item-details{@apply mt-3 grid gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/45 p-3}
+.kitchen-location-chip{@apply inline-flex w-fit shrink-0 items-center gap-1.5 rounded-lg border border-cyan-500/20 bg-cyan-950/40 px-2.5 py-1.5 text-xs font-black text-cyan-200 shadow-[0_0_12px_rgba(34,211,238,0.1)]}
+.kitchen-location-chip--combo{@apply border-fuchsia-500/30 bg-fuchsia-950/30 text-fuchsia-200 shadow-[0_0_12px_rgba(217,70,239,0.1)]}
+.kitchen-item-details{@apply mt-2 grid gap-3 rounded-2xl border border-zinc-800/80 bg-[#0a0a0c] p-3 shadow-inner}
+.kitchen-detail-block{@apply rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-3}
+.kitchen-detail-block--mod-upgrade{@apply border-transparent bg-transparent p-0}
 .kitchen-detail-label{@apply text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500}
 .kitchen-summary-row,.kitchen-ingredient-row{@apply grid gap-2 rounded-xl border border-zinc-800 bg-zinc-900/55 p-3 sm:grid-cols-[1fr_auto] sm:items-center}
 .kitchen-ingredient-row{@apply sm:grid-cols-[1fr_auto_auto]}
 .kitchen-item-kind{@apply rounded-md border border-zinc-700 bg-zinc-950 px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-zinc-400}
-.kitchen-dot{@apply rounded-full bg-amber-300 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-amber-950}
-.kitchen-dot--done{@apply bg-emerald-300 text-emerald-950}
-.kitchen-note-chip{@apply rounded-md border border-zinc-700 bg-zinc-950 px-2 py-1 text-[11px] font-bold text-zinc-300}
-.kitchen-item-action{@apply inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-400 px-3 py-2 text-sm font-black text-emerald-950 disabled:opacity-50 sm:w-auto}
-.kitchen-item-action--done{@apply border border-zinc-700 bg-zinc-950 text-zinc-100}
+.kitchen-dot{@apply rounded-full bg-amber-400/90 px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-amber-950 shadow-[0_0_12px_rgba(251,191,36,0.2)]}
+.kitchen-dot--done{@apply bg-emerald-400/90 text-emerald-950 shadow-[0_0_12px_rgba(52,211,153,0.2)]}
+.kitchen-note-chip{@apply rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-[11px] font-bold text-zinc-200}
+.kitchen-note-chip--combo{@apply border-fuchsia-500/20 bg-fuchsia-950/20 text-fuchsia-200}
+.kitchen-note-chip--mod{@apply border-rose-500/30 bg-rose-950/20 text-rose-200}
+.kitchen-note-chip--upgrade{@apply border-lime-500/30 bg-lime-950/20 text-lime-200}
+.kitchen-item-action{@apply inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-400 px-3 py-2 text-sm font-black text-emerald-950 disabled:opacity-50 sm:w-auto shadow-[0_0_20px_rgba(52,211,153,0.15)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300 transition-all hover:bg-emerald-300 hover:shadow-[0_0_24px_rgba(52,211,153,0.25)]}
+.kitchen-item-action--done{@apply border border-zinc-700 bg-zinc-900 text-zinc-100 shadow-none hover:bg-zinc-800 hover:shadow-none}
 .kitchen-secondary-action{@apply inline-flex items-center justify-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm font-black text-zinc-100 disabled:opacity-50}
 .kitchen-secondary-action--active{@apply border-lime-300/50 bg-lime-300/10 text-lime-100}
-.kitchen-active-order{@apply rounded-3xl border border-lime-400/30 bg-[radial-gradient(circle_at_top_left,rgba(163,230,53,0.12),transparent_35%),linear-gradient(135deg,rgba(9,9,11,0.98),rgba(20,20,22,0.95))] p-4 shadow-[0_0_30px_rgba(132,204,22,0.06)] transition-all}
-.kitchen-active-order__header{@apply flex flex-wrap items-start justify-between gap-3 border-b border-zinc-800/60 pb-3}
-.kitchen-active-order__customer{@apply break-words text-2xl font-black tracking-tight text-zinc-50}
-.kitchen-active-order__folio{@apply text-xs font-bold uppercase tracking-widest text-zinc-500}
-.kitchen-active-order__items{@apply mt-4 space-y-2.5}
-.kitchen-active-order__progress{@apply mt-3 text-right text-xs font-black uppercase tracking-wider text-zinc-500}
-.kitchen-accordion-item{@apply rounded-2xl border border-zinc-800 bg-zinc-900/45 transition-all overflow-hidden}
-.kitchen-accordion-item__header{@apply flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-zinc-800/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-lime-300}
-.kitchen-accordion-item--open{@apply border-zinc-700 bg-zinc-900/60}
-.kitchen-accordion-item--done{@apply border-emerald-500/20 bg-emerald-950/10 opacity-70}
-.kitchen-accordion-item__actions{@apply flex justify-end gap-2 border-t border-zinc-800/50 bg-zinc-900/20 px-4 py-3}
+.kitchen-active-order{@apply relative overflow-hidden rounded-3xl border border-lime-500/30 bg-[radial-gradient(ellipse_at_top,rgba(132,204,22,0.15),transparent_50%),linear-gradient(145deg,#05070a,#0a0f18)] p-4 shadow-[0_8px_32px_rgba(132,204,22,0.12)] transition-all md:p-5}
+.kitchen-active-order::before{@apply absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-lime-400/40 to-transparent content-['']}
+.kitchen-active-order__header{@apply flex flex-wrap items-start justify-between gap-3 border-b border-zinc-800/60 pb-4}
+.kitchen-active-order__customer{@apply break-words text-2xl font-black tracking-tight text-zinc-50 drop-shadow-md md:text-3xl}
+.kitchen-active-order__folio{@apply text-xs font-black uppercase tracking-[0.2em] text-zinc-500}
+.kitchen-active-order__items{@apply mt-4 space-y-3}
+.kitchen-active-order__progress{@apply mt-4 text-right text-xs font-black uppercase tracking-[0.15em] text-zinc-500}
+.kitchen-accordion-item{@apply rounded-2xl border border-zinc-800/80 bg-zinc-900/50 transition-all overflow-hidden shadow-lg}
+.kitchen-accordion-item__header{@apply flex w-full items-center gap-3 px-4 py-4 text-left transition-colors hover:bg-zinc-800/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-lime-400}
+.kitchen-accordion-item--open{@apply border-zinc-700 bg-zinc-900/90 shadow-xl}
+.kitchen-accordion-item--done{@apply border-emerald-500/20 bg-emerald-950/10 opacity-70 shadow-none}
+.kitchen-accordion-item__actions{@apply flex justify-end gap-2 border-t border-zinc-800/50 bg-[#050608]/40 px-4 py-3}
 .kitchen-accordion-item--glow{@apply animate-[kitchen-pulse-glow_0.8s_ease-in-out]}
-.kitchen-next-order{@apply w-full rounded-2xl border border-zinc-800 bg-zinc-950/40 p-4 text-left opacity-60 hover:opacity-85 hover:border-zinc-700 transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-lime-300}
-.kitchen-next-order__label{@apply text-[10px] font-black uppercase tracking-[0.16em] text-lime-200}
-.kitchen-next-order__customer{@apply mt-1 text-lg font-black text-zinc-100}
+.kitchen-next-order{@apply relative overflow-hidden w-full rounded-2xl border border-cyan-500/20 bg-[linear-gradient(145deg,#05070a,#090b10)] p-4 text-left opacity-75 shadow-lg hover:opacity-100 hover:border-cyan-500/40 hover:shadow-[0_8px_24px_rgba(34,211,238,0.08)] transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400}
+.kitchen-next-order::before{@apply absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent content-['']}
+.kitchen-next-order__label{@apply text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300}
+.kitchen-next-order__customer{@apply mt-1 text-lg font-black text-zinc-100 drop-shadow-sm}
 .kitchen-next-order__summary{@apply mt-0.5 truncate text-xs text-zinc-400}
-.kitchen-following-orders{@apply rounded-2xl border border-zinc-800 bg-zinc-950/20 overflow-hidden}
-.kitchen-following-orders__toggle{@apply flex w-full items-center justify-between px-4 py-3 text-left font-black text-zinc-300 hover:bg-zinc-800/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-lime-300}
-.kitchen-following-orders__list{@apply border-t border-zinc-800/40 divide-y divide-zinc-800/30 px-4 py-2}
+.kitchen-following-orders{@apply rounded-2xl border border-zinc-800/60 bg-zinc-950/40 overflow-hidden shadow-inner}
+.kitchen-following-orders__toggle{@apply flex w-full items-center justify-between px-4 py-3 text-left font-black text-zinc-400 hover:bg-zinc-800/30 hover:text-zinc-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-lime-300 transition-colors}
+.kitchen-following-orders__list{@apply border-t border-zinc-800/40 divide-y divide-zinc-800/30 px-3 py-2}
 .kitchen-following-orders__item{@apply py-2}
-.kitchen-following-orders__more{@apply w-full py-2 text-center text-xs font-black uppercase tracking-wider text-lime-400 hover:underline}
-.kitchen-done-list{@apply rounded-2xl border border-zinc-800 bg-zinc-950/20 overflow-hidden}
-.kitchen-done-list__toggle{@apply flex w-full items-center justify-between px-4 py-3 text-left font-black text-zinc-400 hover:bg-zinc-800/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-lime-300}
-.kitchen-done-list__items{@apply border-t border-zinc-800/40 divide-y divide-zinc-800/30 px-4 py-2}
+.kitchen-following-orders__more{@apply w-full py-2.5 mt-1 rounded-xl text-center text-xs font-black uppercase tracking-[0.15em] text-zinc-400 hover:bg-zinc-800/30 hover:text-zinc-200 transition-colors}
+.kitchen-done-list{@apply rounded-2xl border border-zinc-800/60 bg-zinc-950/40 overflow-hidden shadow-inner}
+.kitchen-done-list__toggle{@apply flex w-full items-center justify-between px-4 py-3 text-left font-black text-zinc-500 hover:bg-zinc-800/30 hover:text-zinc-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400 transition-colors}
+.kitchen-done-list__items{@apply border-t border-zinc-800/40 divide-y divide-zinc-800/30 px-3 py-2}
 .kitchen-done-list__item{@apply py-2.5}
-.kitchen-critical-note{@apply mt-3 text-xs font-semibold leading-5 text-rose-300 bg-rose-950/20 border border-rose-500/20 rounded-xl p-3}
+.kitchen-critical-note{@apply mt-2 text-xs font-semibold leading-5 text-rose-200 bg-rose-950/30 border border-rose-500/20 rounded-xl p-3 shadow-inner}
 
 @keyframes kitchen-pulse-glow {
   0% {
@@ -1750,8 +1757,8 @@ body{
   box-shadow:0 0 0 1px rgba(190,242,100,.16),0 18px 48px rgba(0,0,0,.24);
 }
 .kitchen-location-chip--combo{
-  border-color:rgba(34,211,238,.32);
-  color:#a5f3fc;
+  border-color:rgba(217,70,239,.32);
+  color:#f5d0fe;
 }
 .kitchen-view-tab{
   min-height:44px;
