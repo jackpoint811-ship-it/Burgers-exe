@@ -344,3 +344,20 @@ export const getKitchenItemActionKind = (
   const kind = getKitchenItemKind(item);
   return isKitchenActionKind(kind) ? kind : "burger";
 };
+
+/**
+ * Builds a compact queue summary for a group of production items.
+ * e.g. "x1 Papas · x2 Aros · x1 Refresco"
+ */
+export const buildSideQuestQueueSummary = (
+  items: KitchenProductionItem[],
+): string => {
+  const counts = new Map<string, number>();
+  for (const item of items) {
+    const label = item.item.name || item.detailLabel || "Item";
+    counts.set(label, (counts.get(label) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([name, qty]) => `x${qty} ${name}`)
+    .join(" · ");
+};

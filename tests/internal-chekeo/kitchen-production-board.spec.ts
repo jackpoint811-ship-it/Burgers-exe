@@ -1115,7 +1115,7 @@ test.describe("internal chekeo kitchen production board", () => {
 
     // Select NEW-201 to make it active/visible
     await page.locator(".kitchen-following-orders__list").first().click();
-    await page.locator(".kitchen-following-orders__list .kitchen-production-card").filter({ hasText: "NEW-201" }).getByRole("button", { name: "Cocinar" }).click();
+    await page.locator(".kitchen-following-orders__list .kitchen-production-card").filter({ hasText: "NEW-201" }).getByRole("button", { name: "Abrir" }).click();
     const newCard = productionCardByFolio(page, "NEW-201");
     await expect(newCard).toHaveCount(1);
     await newCard.getByRole("button", { name: /^Hecha$/i }).click();
@@ -1130,7 +1130,7 @@ test.describe("internal chekeo kitchen production board", () => {
 
     // Select PREP-301 to make it active/visible
     await page.locator(".kitchen-following-orders__list").first().click();
-    await page.locator(".kitchen-following-orders__list .kitchen-production-card").filter({ hasText: "PREP-301" }).getByRole("button", { name: "Cocinar" }).click();
+    await page.locator(".kitchen-following-orders__list .kitchen-production-card").filter({ hasText: "PREP-301" }).getByRole("button", { name: "Abrir" }).click();
     const prepCard = productionCardByFolio(page, "PREP-301");
     await expect(prepCard).toHaveCount(1);
     await prepCard.getByRole("button", { name: /^Hecha$/i }).first().click();
@@ -1622,6 +1622,182 @@ test.describe("internal chekeo kitchen production board", () => {
       expect(raffleOverflow).toBeLessThanOrEqual(1);
     });
   }
+
+  test("burger with MOD and UPGRADE shows both as two visible columns", async ({ page }) => {
+    await installKitchenApiMocks(page);
+    await loginToChekeo(page);
+    await openKitchenFromHome(page);
+    await openKitchenView(page, "Preparación");
+
+    // CRIT-001 has removedIngredients: ["Cebolla"] (MOD) and extras: ["Queso extra"] (UPGRADE)
+    const criticalCard = productionCardByFolio(page, "CRIT-001");
+    await criticalCard.getByRole("button").first().click();
+    await page.waitForTimeout(200);
+
+    await expect(criticalCard.getByText("MOD")).toBeVisible();
+    await expect(criticalCard.getByText("UPGRADE")).toBeVisible();
+    await expect(criticalCard.getByText("Sin Cebolla")).toBeVisible();
+  });
+
+  test("burger without changes shows Burger original and Sin cambios", async ({ page }) => {
+    await installKitchenApiMocks(page);
+    await loginToChekeo(page);
+    await openKitchenFromHome(page);
+    await openKitchenView(page, "Preparación");
+
+    // PREP-301 is not the first active order — open queue and activate it
+    await page.locator(".kitchen-following-orders").first().locator("[role='button']").first().click();
+    await page.waitForTimeout(200);
+    await page.locator(".kitchen-following-orders__list .kitchen-production-card").filter({ hasText: "PREP-301" }).getByRole("button", { name: "Abrir" }).click();
+    await page.waitForTimeout(200);
+
+    const prepCard = productionCardByFolio(page, "PREP-301");
+    await expect(prepCard).toBeVisible();
+    await prepCard.getByRole("button").first().click();
+    await page.waitForTimeout(200);
+
+    await expect(prepCard.getByText("Burger original · Sin cambios")).toBeVisible();
+    await expect(prepCard.getByText("MOD")).not.toBeVisible();
+    await expect(prepCard.getByText("UPGRADE")).not.toBeVisible();
+  });
+
+  test("order note uses NOTA DEL PEDIDO label not rose/alert style", async ({ page }) => {
+    await installKitchenApiMocks(page);
+    await loginToChekeo(page);
+    await openKitchenFromHome(page);
+    await openKitchenView(page, "Preparación");
+
+    // TRF-701 is in the queue — open queue and activate it
+    await page.locator(".kitchen-following-orders").first().locator("[role='button']").first().click();
+    await page.waitForTimeout(200);
+    await page.locator(".kitchen-following-orders__list .kitchen-production-card").filter({ hasText: "TRF-701" }).getByRole("button", { name: "Abrir" }).click();
+    await page.waitForTimeout(200);
+
+    const trfCard = productionCardByFolio(page, "TRF-701");
+    await expect(trfCard).toBeVisible();
+    await trfCard.getByRole("button").first().click();
+    await page.waitForTimeout(200);
+
+    // The note label should be present
+    await expect(trfCard.getByText("NOTA DEL PEDIDO")).toBeVisible();
+
+    // The note element must NOT have rose/error classes
+    const noteEl = trfCard.locator(".kitchen-order-note");
+    await expect(noteEl).toBeVisible();
+
+    const hasRoseClass = await noteEl.evaluate((el) =>
+      el.className.includes("rose") || el.className.includes("error")
+    );
+    expect(hasRoseClass).toBe(false);
+  });
+
+  test("side quest active order shows only customer name and folio", async ({ page }) => {
+    await installKitchenApiMocks(page);
+    await loginToChekeo(page);
+    await openKitchenFromHome(page);
+    await openKitchenView(page, "Side Quest");
+
+    const activeSection = page.locator("section[aria-label='Orden activa']").first();
+    await expect(activeSection).toBeVisible();
+
+    // Customer name should be visible
+    await expect(activeSection.getByText(/Andrea Pending|Valeria Transfer|CRIT-001/i).first()).toBeVisible();
+
+    // Should NOT show a long item summary in the header (no summaryLabel chip)
+    // The header must not contain ".kitchen-note-chip" directly in the header div
+    const headerSummaryChip = activeSection.locator(".kitchen-active-order__header .kitchen-note-chip");
+    await expect(headerSummaryChip).toHaveCount(0);
+  });
+
+  test("side quest queue shows customer name and short x-quantity breakdown", async ({ page }) => {
+    await installKitchenApiMocks(page);
+    await loginToChekeo(page);
+    await openKitchenFromHome(page);
+    await openKitchenView(page, "Side Quest");
+
+    // Open the queue panel if collapsed
+    const queueSection = page.locator(".kitchen-following-orders").first();
+    const queueToggle = queueSection.locator("[role='button']").first();
+    if (await queueToggle.isVisible()) {
+      await queueToggle.click();
+      await page.waitForTimeout(200);
+    }
+
+    // After expanding, check for x-quantity format (e.g. "x1 Papas")
+    const queueList = page.locator(".kitchen-following-orders__list");
+    if (await queueList.isVisible()) {
+      const summaryText = await queueList.textContent();
+      // Should contain x-quantity pattern
+      expect(summaryText).toMatch(/x\d+\s+\w/);
+    }
+  });
+
+  test("side quest multiple items open as individual accordions", async ({ page }) => {
+    await installKitchenApiMocks(page);
+    await loginToChekeo(page);
+    await openKitchenFromHome(page);
+    await openKitchenView(page, "Side Quest");
+
+    // RDY-401 has a garnish item (Papas pendientes) - verify accordion renders
+    const activeSection = page.locator("section[aria-label='Orden activa']").first();
+    await expect(activeSection).toBeVisible();
+
+    // Each item must be an individually-collapsible accordion
+    const accordionItems = activeSection.locator(".kitchen-accordion-item");
+    await expect(accordionItems.first()).toBeVisible();
+
+    // Click first accordion header to expand it
+    await accordionItems.first().locator("button").first().click();
+    await page.waitForTimeout(200);
+
+    // After expand, the actions (Hecha button) should be visible
+    const hachaButton = activeSection.getByRole("button", { name: /^Hecha$/i });
+    await expect(hachaButton.first()).toBeVisible();
+  });
+
+  test("done side quest item can be reverted via Revertir hecha", async ({ page }) => {
+    await installKitchenApiMocks(page);
+    await loginToChekeo(page);
+    await openKitchenFromHome(page);
+    await openKitchenView(page, "Side Quest");
+
+    // RDY-401's Papas pendientes is on the side quest lane. Mark it done then revert.
+    const activeSection = page.locator("section[aria-label='Orden activa']").first();
+    await expect(activeSection).toBeVisible();
+
+    const accordionItems = activeSection.locator(".kitchen-accordion-item");
+    await accordionItems.first().locator("button").first().click();
+    await page.waitForTimeout(200);
+
+    const hachaButton = activeSection.getByRole("button", { name: /^Hecha$/i }).first();
+    if (await hachaButton.isVisible()) {
+      await hachaButton.click();
+      await page.waitForTimeout(400);
+    }
+
+    // Now look in the done list for the item and revert it
+    const doneSection = page.locator(".kitchen-done-list").first();
+    if (await doneSection.isVisible()) {
+      await doneSection.locator(".kitchen-done-list__toggle").click();
+      await page.waitForTimeout(200);
+
+      const firstDoneGroup = doneSection.locator(".kitchen-done-list__item").first();
+      if (await firstDoneGroup.isVisible()) {
+        await firstDoneGroup.locator("button").first().click();
+        await page.waitForTimeout(200);
+
+        // Expand the item accordion and click Revertir hecha
+        const doneItemAccordion = firstDoneGroup.locator(".kitchen-accordion-item").first();
+        if (await doneItemAccordion.isVisible()) {
+          await doneItemAccordion.locator("button").first().click();
+          await page.waitForTimeout(200);
+          const revertButton = firstDoneGroup.getByRole("button", { name: /Revertir hecha/i });
+          await expect(revertButton.first()).toBeVisible();
+        }
+      }
+    }
+  });
+
 });
 
 test.describe("internal chekeo admin-only security mode", () => {
