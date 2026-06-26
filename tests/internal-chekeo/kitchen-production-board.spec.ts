@@ -1422,6 +1422,53 @@ test.describe("internal chekeo kitchen production board", () => {
     await expect(productionCardByFolio(page, "CRIT-001").getByText("Por hacer").first()).toBeVisible();
   });
 
+  test("reverts one done burger inside multi-burger order without re-closing it", async ({ page }) => {
+    await installKitchenApiMocks(page);
+    await loginToChekeo(page);
+    await openKitchenFromHome(page);
+
+    const criticalCard = productionCardByFolio(page, "CRIT-001");
+    await expect(criticalCard).toBeVisible();
+
+    // Mark the first burger as done
+    const firstBurgerBtn = criticalCard.getByRole("button", { name: /^Hecha$/i }).first();
+    await firstBurgerBtn.click();
+
+    // Open the done burger (which is the first one in the group)
+    const doneBurgerItemContainer = criticalCard.locator(".kitchen-accordion-item").nth(0);
+    await doneBurgerItemContainer.click();
+
+    // Click Revertir
+    const revertBtn = doneBurgerItemContainer.getByRole("button", { name: /Revertir hecha/i });
+    await expect(revertBtn).toBeVisible();
+    await revertBtn.click();
+
+    // It should stay expanded, and become pending
+    await expect(doneBurgerItemContainer).toHaveClass(/kitchen-accordion-item--open/);
+    await expect(doneBurgerItemContainer.getByRole("button", { name: /^Hecha$/i })).toBeVisible();
+  });
+
+  test("keeps summary K working after kitchen production interactions", async ({ page }) => {
+    await installKitchenApiMocks(page);
+    await loginToChekeo(page);
+    await openKitchenFromHome(page);
+
+    // Go to Summary K
+    await openKitchenView(page, "Resumen K");
+    await expect(page.getByText("Total burgers")).toBeVisible();
+    await expect(page.getByText("Costo producción")).toBeVisible();
+
+    // Back to prep
+    await openKitchenView(page, "Preparación");
+
+    const criticalCard = productionCardByFolio(page, "CRIT-001");
+    await criticalCard.getByRole("button", { name: /^Hecha$/i }).first().click();
+
+    // Back to Summary K
+    await openKitchenView(page, "Resumen K");
+    await expect(page.getByText("Total burgers")).toBeVisible();
+  });
+
   for (const viewport of viewports) {
     test(`avoids horizontal overflow on ${viewport.name}`, async ({ page }) => {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
