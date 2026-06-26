@@ -1113,7 +1113,8 @@ test.describe("internal chekeo kitchen production board", () => {
     await expect(productionCardByItem(page, "Papas pendientes")).toHaveCount(0);
 
     // Select NEW-201 to make it active/visible
-    await page.locator(".kitchen-next-order, .kitchen-following-orders__item").filter({ hasText: "NEW-201" }).first().click();
+    await page.locator(".kitchen-following-orders__list").first().click();
+    await page.locator(".kitchen-following-orders__list .kitchen-production-card").filter({ hasText: "NEW-201" }).getByRole("button", { name: "Cocinar" }).click();
     const newCard = productionCardByFolio(page, "NEW-201");
     await expect(newCard).toHaveCount(1);
     await newCard.getByRole("button", { name: /^Hecha$/i }).click();
@@ -1127,7 +1128,8 @@ test.describe("internal chekeo kitchen production board", () => {
     await expect(newDoneCard.getByText("Hecha", { exact: true })).toBeVisible();
 
     // Select PREP-301 to make it active/visible
-    await page.locator(".kitchen-next-order, .kitchen-following-orders__item").filter({ hasText: "PREP-301" }).first().click();
+    await page.locator(".kitchen-following-orders__list").first().click();
+    await page.locator(".kitchen-following-orders__list .kitchen-production-card").filter({ hasText: "PREP-301" }).getByRole("button", { name: "Cocinar" }).click();
     const prepCard = productionCardByFolio(page, "PREP-301");
     await expect(prepCard).toHaveCount(1);
     await prepCard.getByRole("button", { name: /^Hecha$/i }).first().click();

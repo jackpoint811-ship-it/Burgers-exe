@@ -295,22 +295,26 @@ const ActiveOrderContainer = ({
   busyLineKey: string | null;
   onToggle: (entry: KitchenProductionItem, done: boolean) => void;
 }) => {
-  const firstPendingId =
-    group.items.find((entry) => !entry.done)?.id ?? group.items[0]?.id ?? "";
-  const [expandedId, setExpandedId] = useState(firstPendingId);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [glowingId, setGlowingId] = useState<string | null>(null);
-  const prevPendingRef = useRef(firstPendingId);
 
   useEffect(() => {
-    if (firstPendingId !== prevPendingRef.current) {
-      setExpandedId(firstPendingId);
-      setGlowingId(firstPendingId);
-      const timer = setTimeout(() => setGlowingId(null), 800);
-      prevPendingRef.current = firstPendingId;
-      return () => clearTimeout(timer);
+    setExpandedId(
+      group.items.find((entry) => !entry.done)?.id ?? group.items[0]?.id ?? ""
+    );
+  }, [group.orderId]);
+
+  const handleToggle = (entry: KitchenProductionItem, done: boolean) => {
+    onToggle(entry, done);
+    if (done) {
+      const nextPending = group.items.find(i => i.id !== entry.id && !i.done);
+      if (nextPending) setExpandedId(nextPending.id);
+    } else {
+      setExpandedId(entry.id);
+      setGlowingId(entry.id);
+      setTimeout(() => setGlowingId(null), 800);
     }
-    prevPendingRef.current = firstPendingId;
-  }, [firstPendingId]);
+  };
 
   const location = extractKitchenLocation(group.order.note);
   const hasCombo = group.items.some(
@@ -319,14 +323,15 @@ const ActiveOrderContainer = ({
 
   return (
     <section className="kitchen-active-order kitchen-production-card" aria-label="Orden activa">
-      <div className="kitchen-active-order__header">
-        <div className="min-w-0">
+      <div className="kitchen-active-order__header flex-col md:flex-row">
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-lime-400 mb-1">Pedido Activo</p>
           <h3 className="kitchen-active-order__customer">
             {group.order.customer}
           </h3>
           <p className="kitchen-active-order__folio kitchen-production-card__folio">{group.order.folio}</p>
         </div>
-        <div className="flex flex-wrap justify-end gap-1.5">
+        <div className="flex flex-wrap md:justify-end gap-1.5 self-start w-full md:w-auto mt-2 md:mt-0">
           <span className="kitchen-location-chip">
             <MapPin size={14} aria-hidden="true" />
             {location}
@@ -341,17 +346,15 @@ const ActiveOrderContainer = ({
 
       <div className="kitchen-active-order__items">
         {group.items.length === 1 ? (
-          /* Single item: always expanded */
           <AccordionItemRow
             entry={group.items[0]!}
             busy={busyLineKey === group.items[0]!.lineKey}
             expanded={!group.items[0]!.done}
             glowing={glowingId === group.items[0]!.id}
             onExpand={() => setExpandedId(group.items[0]!.id)}
-            onToggle={onToggle}
+            onToggle={handleToggle}
           />
         ) : (
-          /* Multiple items: accordion */
           group.items.map((entry) => (
             <AccordionItemRow
               key={entry.id}
@@ -360,7 +363,7 @@ const ActiveOrderContainer = ({
               expanded={expandedId === entry.id && !entry.done}
               glowing={glowingId === entry.id}
               onExpand={() => setExpandedId(entry.id)}
-              onToggle={onToggle}
+              onToggle={handleToggle}
             />
           ))
         )}
@@ -373,41 +376,7 @@ const ActiveOrderContainer = ({
   );
 };
 
-/* ------------------------------------------------------------------ */
-/*  Next order (semi-transparent preview)                             */
-/* ------------------------------------------------------------------ */
-
-const NextOrderPreview = ({
-  group,
-  onTap,
-}: {
-  group: OrderGroup;
-  onTap: () => void;
-}) => (
-  <button
-    type="button"
-    className="kitchen-next-order kitchen-production-card"
-    onClick={onTap}
-    aria-label={`Próxima orden: ${group.order.customer}`}
-  >
-    <div className="flex w-full items-start justify-between">
-      <div className="text-left">
-        <p className="kitchen-next-order__label">Próxima orden</p>
-        <p className="kitchen-next-order__customer">{group.order.customer}</p>
-      </div>
-      <span className="kitchen-production-card__folio text-xs font-black text-zinc-500">
-        {group.order.folio}
-      </span>
-    </div>
-    <p className="kitchen-next-order__summary mt-1 text-left">{group.summaryLabel}</p>
-  </button>
-);
-
-/* ------------------------------------------------------------------ */
-/*  Following orders section (collapsible)                            */
-/* ------------------------------------------------------------------ */
-
-const FollowingOrdersSection = ({
+const PendingOrdersQueue = ({
   groups,
   onSelect,
 }: {
@@ -415,66 +384,93 @@ const FollowingOrdersSection = ({
   onSelect: (orderId: string) => void;
 }) => {
   const [expanded, setExpanded] = useState(false);
-  const visible = expanded ? groups : groups.slice(0, 3);
+  const visible = expanded ? groups : groups.slice(0, 4);
 
   if (!groups.length) return null;
 
   return (
-    <section className="kitchen-following-orders">
-      <button
-        type="button"
-        className="kitchen-following-orders__toggle"
-        onClick={() => setExpanded((prev) => !prev)}
-        aria-expanded={expanded}
-      >
-        <span>
-          Siguientes órdenes ({groups.length})
-        </span>
-        {expanded ? (
-          <ChevronUp size={16} aria-hidden="true" />
-        ) : (
-          <ChevronDown size={16} aria-hidden="true" />
-        )}
-      </button>
+    <section className="kitchen-following-orders mt-4">
+      {expanded ? (
+        <button
+          type="button"
+          className="kitchen-following-orders__toggle w-full flex items-center justify-between px-4 py-3 text-left font-black text-cyan-400 hover:bg-zinc-800/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-lime-300 transition-colors"
+          onClick={() => setExpanded(false)}
+          aria-expanded={true}
+        >
+          <span className="text-[11px] tracking-[0.2em] uppercase">
+            Cola de pedidos ({groups.length})
+          </span>
+          <ChevronUp size={16} />
+        </button>
+      ) : null}
 
-      {expanded || groups.length <= 3 ? (
-        <div className="kitchen-following-orders__list" role="list">
-          {visible.map((group) => (
-            <div
-              key={group.orderId}
-              role="listitem"
-              tabIndex={0}
-              className="kitchen-following-orders__item kitchen-production-card cursor-pointer hover:bg-zinc-800/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-lime-300 rounded-lg p-2"
-              onClick={() => onSelect(group.orderId)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  onSelect(group.orderId);
-                }
-              }}
-            >
-              <div className="flex justify-between items-start">
-                <div className="text-left">
-                  <p className="font-black text-zinc-100">{group.order.customer}</p>
-                  <p className="mt-0.5 text-sm text-zinc-400">{group.summaryLabel}</p>
+      {expanded ? (
+        <div className="kitchen-following-orders__list border-t border-zinc-800/40 p-3 space-y-3">
+          {groups.map((group) => (
+            <div key={group.orderId} className="kitchen-production-card bg-zinc-950/60 border border-zinc-800/80 p-3 rounded-xl text-left">
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <p className="font-black text-zinc-100 text-lg">{group.order.customer}</p>
+                  <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">{group.order.folio}</p>
                 </div>
-                <span className="kitchen-production-card__folio text-[11px] font-black text-zinc-600">
-                  {group.order.folio}
-                </span>
+                <Button                  className="bg-zinc-800 hover:bg-zinc-700 text-zinc-100 text-xs px-3 py-1.5 h-auto min-h-0"                  onClick={() => onSelect(group.orderId)}
+                >
+                  Cocinar
+                </Button>
+              </div>
+              <div className="space-y-1.5 border-t border-zinc-800/50 pt-2 mt-2">
+                {group.items.map((item) => (
+                  <div key={item.id} className="text-sm flex justify-between">
+                    <span className="text-zinc-300 font-bold">{item.detailLabel || item.item.name}</span>
+                    <span className="text-zinc-600 text-[10px] uppercase tracking-widest font-black">{getKitchenItemLabel(item.item)}</span>
+                  </div>
+                ))}
               </div>
             </div>
           ))}
-          {!expanded && groups.length > 3 ? (
-            <button
-              type="button"
-              className="kitchen-following-orders__more"
-              onClick={() => setExpanded(true)}
-            >
-              +{groups.length - 3} más
-            </button>
+        </div>
+      ) : (
+        <div          className="kitchen-following-orders__list p-3 grid gap-2 cursor-pointer hover:bg-zinc-900/20"          onClick={() => setExpanded(true)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setExpanded(true);
+            }
+          }}
+        >
+          <div className="flex items-center justify-between mb-1 px-1">
+            <span className="text-[11px] font-black tracking-[0.2em] uppercase text-cyan-400">
+              Cola de pedidos ({groups.length})
+            </span>
+            <ChevronDown size={16} className="text-cyan-400" />
+          </div>
+          {visible.map((group, idx) => {
+            const isFirst = idx === 0;
+            return (
+              <div
+                key={group.orderId}
+                className={`kitchen-production-card flex justify-between items-center px-3 py-2.5 rounded-lg border transition-all ${
+                  isFirst ? "border-cyan-500/30 bg-cyan-950/20 opacity-100" : "border-zinc-800/40 bg-zinc-950/20 opacity-60"
+                }`}
+              >
+                <div className="text-left">
+                  {isFirst ? (
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300 mb-0.5">Siguiente</p>
+                  ) : null}
+                  <p className={`font-black ${isFirst ? "text-zinc-100 text-base" : "text-zinc-300 text-sm"}`}>{group.order.customer}</p>
+                  <p className="truncate text-xs text-zinc-500">{group.summaryLabel}</p>
+                </div>
+                <span className="text-[10px] font-black text-zinc-600 uppercase">{group.order.folio}</span>
+              </div>
+            );
+          })}
+          {groups.length > 4 ? (
+             <p className="text-center text-[10px] font-black tracking-[0.2em] uppercase text-zinc-600 mt-2">+{groups.length - 4} pedidos más</p>
           ) : null}
         </div>
-      ) : null}
+      )}
     </section>
   );
 };
@@ -617,8 +613,7 @@ const ProductionLanePanel = ({
     return pendingGroups.filter((g) => g.orderId !== activeGroup.orderId);
   }, [pendingGroups, activeGroup]);
 
-  const nextGroup = otherPendingGroups[0] ?? null;
-  const followingGroups = otherPendingGroups.slice(1);
+
 
   if (!orderGroups.length) {
     return <KitchenEmptyState title={`Sin items en ${laneName}.`} />;
@@ -650,18 +645,10 @@ const ProductionLanePanel = ({
         />
       ) : null}
 
-      {/* 2. Next order */}
-      {nextGroup ? (
-        <NextOrderPreview
-          group={nextGroup}
-          onTap={() => setSelectedOrderId(nextGroup.orderId)}
-        />
-      ) : null}
-
-      {/* 3. Following orders */}
-      {followingGroups.length ? (
-        <FollowingOrdersSection
-          groups={followingGroups}
+      {/* 2. Unified Queue (Pending Orders) */}
+      {otherPendingGroups.length ? (
+        <PendingOrdersQueue
+          groups={otherPendingGroups}
           onSelect={setSelectedOrderId}
         />
       ) : null}
