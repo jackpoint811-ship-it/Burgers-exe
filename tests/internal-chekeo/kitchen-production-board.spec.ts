@@ -1104,32 +1104,49 @@ test.describe("internal chekeo kitchen production board", () => {
     expect(firstProductionFolios[0]).toBe("CRIT-001");
 
     const criticalCard = productionCardByFolio(page, "CRIT-001");
-    await expect(criticalCard).toHaveCount(2);
+    await expect(criticalCard).toHaveCount(1);
     await expect(criticalCard.first().getByText("Burger crítica")).toBeVisible();
-    await criticalCard.nth(1).locator(".kitchen-production-card__item").click();
-    await expect(criticalCard.nth(1).getByText("Burgers del combo", { exact: true })).toBeVisible();
-    await expect(criticalCard.nth(1).getByText("OG · sin Pickles")).toBeVisible();
+    await criticalCard.locator(".kitchen-production-card__item").nth(1).click();
+    await expect(criticalCard.getByText("Burgers del combo", { exact: true })).toBeVisible();
+    await expect(criticalCard.getByText("OG · sin Pickles")).toBeVisible();
     await expect(productionCardByItem(page, "Papas directas")).toHaveCount(0);
     await expect(productionCardByItem(page, "Papas pendientes")).toHaveCount(0);
 
+    // Select NEW-201 to make it active/visible
+    await page.locator(".kitchen-next-order, .kitchen-following-orders__item").filter({ hasText: "NEW-201" }).first().click();
     const newCard = productionCardByFolio(page, "NEW-201");
     await expect(newCard).toHaveCount(1);
     await newCard.getByRole("button", { name: /^Hecha$/i }).click();
-    await expect(newCard.getByText("Hecha", { exact: true })).toBeVisible();
-    await expect(newCard.getByRole("button", { name: /^Hecha$/i })).toHaveCount(0);
 
+    // Expand the done list and check NEW-201 is in the done list marked "Hecha"
+    const doneListToggle = page.getByRole("button", { name: /^Listas/ });
+    if (await doneListToggle.getAttribute("aria-expanded") !== "true") {
+      await doneListToggle.click();
+    }
+    const newDoneCard = page.locator(".kitchen-done-list__item").filter({ hasText: "NEW-201" });
+    await expect(newDoneCard.getByText("Hecha", { exact: true })).toBeVisible();
+
+    // Select PREP-301 to make it active/visible
+    await page.locator(".kitchen-next-order, .kitchen-following-orders__item").filter({ hasText: "PREP-301" }).first().click();
     const prepCard = productionCardByFolio(page, "PREP-301");
     await expect(prepCard).toHaveCount(1);
     await prepCard.getByRole("button", { name: /^Hecha$/i }).first().click();
-    await expect(prepCard.getByText("Hecha", { exact: true })).toBeVisible();
+
+    // Check PREP-301 is in the done list marked "Hecha"
+    if (await doneListToggle.getAttribute("aria-expanded") !== "true") {
+      await doneListToggle.click();
+    }
+    const prepDoneCard = page.locator(".kitchen-done-list__item").filter({ hasText: "PREP-301" });
+    await expect(prepDoneCard.getByText("Hecha", { exact: true })).toBeVisible();
 
     await openKitchenView(page, "Side Quest");
-    await expect(productionCardByFolio(page, "CRIT-001")).toHaveCount(4);
-    await expect(kitchenItemTitle(page, "Papas")).toHaveCount(4);
+    await expect(productionCardByFolio(page, "CRIT-001")).toHaveCount(1);
+    // Expand the combo item in Side Quest to show its sub-items
+    await page.locator(".kitchen-production-card__item").nth(0).click();
+    await expect(kitchenItemTitle(page, "Papas")).toHaveCount(2);
     await expect(kitchenItemTitle(page, "Aros")).toHaveCount(1);
     await expect(kitchenItemTitle(page, "Refresco")).toHaveCount(1);
     await expect(kitchenItemTitle(page, "Papas directas")).toHaveCount(1);
-    await expect(kitchenItemTitle(page, "Papas pendientes")).toHaveCount(1);
     await expect(productionCardByItem(page, "Burger crítica")).toHaveCount(0);
     await expect(page.locator(".kitchen-production-card").getByRole("button", { name: /^Hecha$/i }).first()).toBeVisible();
 

@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Card } from "@ui/index";
 import {
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   MapPin,
   RefreshCw,
 } from "lucide-react";
@@ -51,11 +53,58 @@ const kitchenViews: Array<{
 
 const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
 
+/* ------------------------------------------------------------------ */
+/*  Grouped order type for production line                            */
+/* ------------------------------------------------------------------ */
+
+type OrderGroup = {
+  orderId: string;
+  order: KitchenOrder;
+  items: KitchenProductionItem[];
+  allDone: boolean;
+  pendingCount: number;
+  doneCount: number;
+  summaryLabel: string;
+};
+
+const buildOrderGroups = (items: KitchenProductionItem[]): OrderGroup[] => {
+  const map = new Map<string, KitchenProductionItem[]>();
+  for (const item of items) {
+    const existing = map.get(item.order.id);
+    if (existing) existing.push(item);
+    else map.set(item.order.id, [item]);
+  }
+  return [...map.entries()].map(([orderId, orderItems]) => {
+    const pendingCount = orderItems.filter((i) => !i.done).length;
+    const doneCount = orderItems.filter((i) => i.done).length;
+    const summaryLabel = orderItems
+      .map((i) => i.detailLabel || i.item.name)
+      .join(" · ");
+    return {
+      orderId,
+      order: orderItems[0]!.order,
+      items: orderItems,
+      allDone: pendingCount === 0,
+      pendingCount,
+      doneCount,
+      summaryLabel,
+    };
+  });
+};
+
+/* ------------------------------------------------------------------ */
+/*  Empty state                                                       */
+/* ------------------------------------------------------------------ */
+
 const KitchenEmptyState = ({ title }: { title: string }) => (
   <Card className="border-dashed border-zinc-700/90 p-5 text-center">
     <p className="text-base font-black text-zinc-100">{title}</p>
   </Card>
 );
+
+/* ------------------------------------------------------------------ */
+/*  Item detail list (unchanged from previous, filters by lane)       */
+/* ------------------------------------------------------------------ */
 
 const ItemDetailList = ({ item }: { item: KitchenProductionItem }) => {
   const rawNotes = getKitchenItemNotes(item.item);
@@ -113,73 +162,62 @@ const ItemDetailList = ({ item }: { item: KitchenProductionItem }) => {
   );
 };
 
-const KitchenProductionCard = ({
+/* ------------------------------------------------------------------ */
+/*  Accordion item row within an order                                */
+/* ------------------------------------------------------------------ */
+
+const AccordionItemRow = ({
   entry,
   busy,
   expanded,
+  glowing,
   onExpand,
   onToggle,
 }: {
   entry: KitchenProductionItem;
   busy: boolean;
   expanded: boolean;
+  glowing: boolean;
   onExpand: () => void;
   onToggle: (entry: KitchenProductionItem, done: boolean) => void;
-}) => {
-  const location = extractKitchenLocation(entry.order.note);
-
-  return (
-    <article
-      className={`kitchen-production-card ${entry.done ? "kitchen-production-card--done" : ""} ${expanded && !entry.done ? "kitchen-production-card--active" : ""}`}
+}) => (
+  <div
+    className={`kitchen-accordion-item ${entry.done ? "kitchen-accordion-item--done" : ""} ${expanded && !entry.done ? "kitchen-accordion-item--open" : ""} ${glowing ? "kitchen-accordion-item--glow" : ""}`}
+  >
+    <button
+      type="button"
+      className="kitchen-accordion-item__header kitchen-production-card__item"
+      aria-expanded={expanded}
+      onClick={onExpand}
     >
-      <div className="kitchen-production-card__head">
-        <div className="min-w-0">
-          <p className="kitchen-production-card__customer">
-            {entry.order.customer}
-          </p>
-          <p className="kitchen-production-card__folio">{entry.order.folio}</p>
-        </div>
-        <div className="flex flex-wrap justify-end gap-1.5">
-          <span className="kitchen-location-chip">
-            <MapPin size={14} aria-hidden="true" />
-            {location}
-          </span>
-          {entry.kind === "combo" || entry.item.parentItemName ? (
-            <span className="kitchen-location-chip kitchen-location-chip--combo">
-              Combo
-            </span>
-          ) : null}
-        </div>
+      <span className="kitchen-item-kind">
+        {entry.itemLabel || getKitchenItemLabel(entry.item)}
+      </span>
+      <div className="min-w-0 flex-1">
+        <h3 className="break-words text-base font-black text-zinc-50">
+          {entry.detailLabel || entry.item.name}
+        </h3>
       </div>
-
-      <button
-        type="button"
-        className="kitchen-production-card__item"
-        aria-expanded={expanded}
-        onClick={onExpand}
+      <span
+        className={
+          entry.done ? "kitchen-dot kitchen-dot--done" : "kitchen-dot"
+        }
       >
-        <span className="kitchen-item-kind">{entry.itemLabel || getKitchenItemLabel(entry.item)}</span>
-        <div className="min-w-0">
-          <h3>{entry.detailLabel || entry.item.name}</h3>
-          <p>
-            Item {entry.index + 1} de {entry.orderKitchenItemCount}
+        {entry.done ? "Hecha" : "Por hacer"}
+      </span>
+    </button>
+
+    {expanded && !entry.done ? (
+      <>
+        <ItemDetailList item={entry} />
+
+        {!entry.item.lineKey ? (
+          <p className="mt-2 rounded-lg border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-sm font-bold text-amber-100">
+            No se puede marcar este item todavía. Revisa el detalle del pedido.
           </p>
-        </div>
-        <span className={entry.done ? "kitchen-dot kitchen-dot--done" : "kitchen-dot"}>
-          {entry.done ? "Hecha" : "Por hacer"}
-        </span>
-      </button>
+        ) : null}
 
-      {expanded ? <ItemDetailList item={entry} /> : null}
-
-      {!entry.item.lineKey ? (
-        <p className="mt-3 rounded-lg border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-sm font-bold text-amber-100">
-          No se puede marcar este item todavía. Revisa el detalle del pedido.
-        </p>
-      ) : null}
-
-      {!entry.done ? (
-        <div className="kitchen-production-card__actions">
+        <div className="kitchen-accordion-item__actions">
           <Button
             className="kitchen-item-action"
             disabled={busy || !entry.item.lineKey}
@@ -190,45 +228,362 @@ const KitchenProductionCard = ({
             </>
           </Button>
         </div>
-      ) : null}
-    </article>
-  );
-};
+      </>
+    ) : null}
+  </div>
+);
 
-const KitchenOrderAccordion = ({
-  orderItems,
+/* ------------------------------------------------------------------ */
+/*  Active order container                                            */
+/* ------------------------------------------------------------------ */
+
+const ActiveOrderContainer = ({
+  group,
   busyLineKey,
   onToggle,
 }: {
-  orderItems: KitchenProductionItem[];
+  group: OrderGroup;
   busyLineKey: string | null;
   onToggle: (entry: KitchenProductionItem, done: boolean) => void;
 }) => {
   const firstPendingId =
-    orderItems.find((entry) => !entry.done)?.id ?? orderItems[0]?.id ?? "";
+    group.items.find((entry) => !entry.done)?.id ?? group.items[0]?.id ?? "";
   const [expandedId, setExpandedId] = useState(firstPendingId);
+  const [glowingId, setGlowingId] = useState<string | null>(null);
+  const prevPendingRef = useRef(firstPendingId);
 
   useEffect(() => {
-    setExpandedId(firstPendingId);
+    if (firstPendingId !== prevPendingRef.current) {
+      setExpandedId(firstPendingId);
+      setGlowingId(firstPendingId);
+      const timer = setTimeout(() => setGlowingId(null), 800);
+      prevPendingRef.current = firstPendingId;
+      return () => clearTimeout(timer);
+    }
+    prevPendingRef.current = firstPendingId;
   }, [firstPendingId]);
 
-  if (!orderItems.length) return null;
+  const location = extractKitchenLocation(group.order.note);
+  const hasCombo = group.items.some(
+    (entry) => entry.kind === "combo" || entry.item.parentItemName,
+  );
 
   return (
-    <section className="kitchen-order-accordion">
-      {orderItems.map((entry) => (
-        <KitchenProductionCard
-          key={entry.id}
-          entry={entry}
-          busy={busyLineKey === entry.lineKey}
-          expanded={expandedId === entry.id && !entry.done}
-          onExpand={() => setExpandedId(entry.id)}
-          onToggle={onToggle}
-        />
-      ))}
+    <section className="kitchen-active-order kitchen-production-card" aria-label="Orden activa">
+      <div className="kitchen-active-order__header">
+        <div className="min-w-0">
+          <h3 className="kitchen-active-order__customer">
+            {group.order.customer}
+          </h3>
+          <p className="kitchen-active-order__folio kitchen-production-card__folio">{group.order.folio}</p>
+        </div>
+        <div className="flex flex-wrap justify-end gap-1.5">
+          <span className="kitchen-location-chip">
+            <MapPin size={14} aria-hidden="true" />
+            {location}
+          </span>
+          {hasCombo ? (
+            <span className="kitchen-location-chip kitchen-location-chip--combo">
+              Combo
+            </span>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="kitchen-active-order__items">
+        {group.items.length === 1 ? (
+          /* Single item: always expanded */
+          <AccordionItemRow
+            entry={group.items[0]!}
+            busy={busyLineKey === group.items[0]!.lineKey}
+            expanded={!group.items[0]!.done}
+            glowing={glowingId === group.items[0]!.id}
+            onExpand={() => setExpandedId(group.items[0]!.id)}
+            onToggle={onToggle}
+          />
+        ) : (
+          /* Multiple items: accordion */
+          group.items.map((entry) => (
+            <AccordionItemRow
+              key={entry.id}
+              entry={entry}
+              busy={busyLineKey === entry.lineKey}
+              expanded={expandedId === entry.id && !entry.done}
+              glowing={glowingId === entry.id}
+              onExpand={() => setExpandedId(entry.id)}
+              onToggle={onToggle}
+            />
+          ))
+        )}
+      </div>
+
+      <p className="kitchen-active-order__progress">
+        {group.doneCount} de {group.items.length} hechas
+      </p>
     </section>
   );
 };
+
+/* ------------------------------------------------------------------ */
+/*  Next order (semi-transparent preview)                             */
+/* ------------------------------------------------------------------ */
+
+const NextOrderPreview = ({
+  group,
+  onTap,
+}: {
+  group: OrderGroup;
+  onTap: () => void;
+}) => (
+  <button
+    type="button"
+    className="kitchen-next-order kitchen-production-card"
+    onClick={onTap}
+    aria-label={`Próxima orden: ${group.order.customer}`}
+  >
+    <div className="flex w-full items-start justify-between">
+      <div className="text-left">
+        <p className="kitchen-next-order__label">Próxima orden</p>
+        <p className="kitchen-next-order__customer">{group.order.customer}</p>
+      </div>
+      <span className="kitchen-production-card__folio text-xs font-black text-zinc-500">
+        {group.order.folio}
+      </span>
+    </div>
+    <p className="kitchen-next-order__summary mt-1 text-left">{group.summaryLabel}</p>
+  </button>
+);
+
+/* ------------------------------------------------------------------ */
+/*  Following orders section (collapsible)                            */
+/* ------------------------------------------------------------------ */
+
+const FollowingOrdersSection = ({
+  groups,
+  onSelect,
+}: {
+  groups: OrderGroup[];
+  onSelect: (orderId: string) => void;
+}) => {
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? groups : groups.slice(0, 3);
+
+  if (!groups.length) return null;
+
+  return (
+    <section className="kitchen-following-orders">
+      <button
+        type="button"
+        className="kitchen-following-orders__toggle"
+        onClick={() => setExpanded((prev) => !prev)}
+        aria-expanded={expanded}
+      >
+        <span>
+          Siguientes órdenes ({groups.length})
+        </span>
+        {expanded ? (
+          <ChevronUp size={16} aria-hidden="true" />
+        ) : (
+          <ChevronDown size={16} aria-hidden="true" />
+        )}
+      </button>
+
+      {expanded || groups.length <= 3 ? (
+        <div className="kitchen-following-orders__list" role="list">
+          {visible.map((group) => (
+            <div
+              key={group.orderId}
+              role="listitem"
+              tabIndex={0}
+              className="kitchen-following-orders__item kitchen-production-card cursor-pointer hover:bg-zinc-800/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-lime-300 rounded-lg p-2"
+              onClick={() => onSelect(group.orderId)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onSelect(group.orderId);
+                }
+              }}
+            >
+              <div className="flex justify-between items-start">
+                <div className="text-left">
+                  <p className="font-black text-zinc-100">{group.order.customer}</p>
+                  <p className="mt-0.5 text-sm text-zinc-400">{group.summaryLabel}</p>
+                </div>
+                <span className="kitchen-production-card__folio text-[11px] font-black text-zinc-600">
+                  {group.order.folio}
+                </span>
+              </div>
+            </div>
+          ))}
+          {!expanded && groups.length > 3 ? (
+            <button
+              type="button"
+              className="kitchen-following-orders__more"
+              onClick={() => setExpanded(true)}
+            >
+              +{groups.length - 3} más
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </section>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/*  Done list (compact, collapsed at bottom)                          */
+/* ------------------------------------------------------------------ */
+
+const DoneOrdersList = ({
+  groups,
+  label,
+}: {
+  groups: OrderGroup[];
+  label: string;
+}) => {
+  const [expanded, setExpanded] = useState(false);
+
+  if (!groups.length) return null;
+
+  const foliosLabel = groups.map((g) => g.order.folio).join(", ");
+
+  return (
+    <section className="kitchen-done-list">
+      <button
+        type="button"
+        className="kitchen-done-list__toggle"
+        onClick={() => setExpanded((prev) => !prev)}
+        aria-expanded={expanded}
+      >
+        <span>
+          {label} ({groups.length}): {foliosLabel}
+        </span>
+        {expanded ? (
+          <ChevronUp size={16} aria-hidden="true" />
+        ) : (
+          <ChevronDown size={16} aria-hidden="true" />
+        )}
+      </button>
+      {expanded ? (
+        <div className="kitchen-done-list__items">
+          {groups.map((group) => (
+            <div key={group.orderId} className="kitchen-done-list__item">
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-black text-zinc-100">{group.order.customer}</p>
+                <span className="kitchen-dot kitchen-dot--done">Hecha</span>
+              </div>
+              <p className="mt-0.5 text-sm text-zinc-500">{group.order.folio}</p>
+              <p className="mt-0.5 text-sm text-zinc-400">{group.summaryLabel}</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/*  Production lane panel (shared by Preparación & Side Quest)        */
+/* ------------------------------------------------------------------ */
+
+const ProductionLanePanel = ({
+  laneItems,
+  laneName,
+  laneDescription,
+  laneAccent,
+  busyLineKey,
+  onToggle,
+}: {
+  laneItems: KitchenProductionItem[];
+  laneName: string;
+  laneDescription: string;
+  laneAccent: string;
+  busyLineKey: string | null;
+  onToggle: (entry: KitchenProductionItem, done: boolean) => void;
+}) => {
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+
+  const orderGroups = useMemo(() => buildOrderGroups(laneItems), [laneItems]);
+  const pendingGroups = useMemo(
+    () => orderGroups.filter((g) => !g.allDone),
+    [orderGroups],
+  );
+  const doneGroups = useMemo(
+    () => orderGroups.filter((g) => g.allDone),
+    [orderGroups],
+  );
+
+  const activeGroup = useMemo(() => {
+    if (selectedOrderId) {
+      const found = pendingGroups.find((g) => g.orderId === selectedOrderId);
+      if (found) return found;
+    }
+    return pendingGroups[0] ?? null;
+  }, [pendingGroups, selectedOrderId]);
+
+  const otherPendingGroups = useMemo(() => {
+    if (!activeGroup) return pendingGroups;
+    return pendingGroups.filter((g) => g.orderId !== activeGroup.orderId);
+  }, [pendingGroups, activeGroup]);
+
+  const nextGroup = otherPendingGroups[0] ?? null;
+  const followingGroups = otherPendingGroups.slice(1);
+
+  if (!orderGroups.length) {
+    return <KitchenEmptyState title={`Sin items en ${laneName}.`} />;
+  }
+
+  return (
+    <section className="kitchen-lane space-y-4">
+      {/* Section header */}
+      <div className="kitchen-section__header">
+        <div>
+          <p
+            className={`text-xs font-black uppercase tracking-[0.18em] ${laneAccent}`}
+          >
+            {laneName}
+          </p>
+          <p className="mt-1 text-sm text-zinc-400">{laneDescription}</p>
+        </div>
+        <span className="kitchen-note-chip">
+          {pendingGroups.reduce((acc, g) => acc + g.pendingCount, 0)} pendientes
+        </span>
+      </div>
+
+      {/* 1. Active order */}
+      {activeGroup ? (
+        <ActiveOrderContainer
+          group={activeGroup}
+          busyLineKey={busyLineKey}
+          onToggle={onToggle}
+        />
+      ) : null}
+
+      {/* 2. Next order */}
+      {nextGroup ? (
+        <NextOrderPreview
+          group={nextGroup}
+          onTap={() => setSelectedOrderId(nextGroup.orderId)}
+        />
+      ) : null}
+
+      {/* 3. Following orders */}
+      {followingGroups.length ? (
+        <FollowingOrdersSection
+          groups={followingGroups}
+          onSelect={setSelectedOrderId}
+        />
+      ) : null}
+
+      {/* 4. Done list */}
+      <DoneOrdersList groups={doneGroups} label="Listas" />
+    </section>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/*  Summary metrics (unchanged)                                       */
+/* ------------------------------------------------------------------ */
 
 const SummaryMetric = ({
   label,
@@ -244,6 +599,10 @@ const SummaryMetric = ({
     <p className="mt-2 text-3xl font-black text-cyan-100">{value}</p>
   </Card>
 );
+
+/* ------------------------------------------------------------------ */
+/*  Resumen K panel (unchanged)                                       */
+/* ------------------------------------------------------------------ */
 
 const KitchenSummaryKPanel = ({
   environment,
@@ -400,6 +759,10 @@ const KitchenSummaryKPanel = ({
   );
 };
 
+/* ------------------------------------------------------------------ */
+/*  Main KitchenQueue component                                       */
+/* ------------------------------------------------------------------ */
+
 export const KitchenQueue = ({
   orders,
   runtime,
@@ -426,17 +789,9 @@ export const KitchenQueue = ({
     () => productionItems.filter((entry) => entry.lane === "prep"),
     [productionItems],
   );
-  const prepPendingItems = useMemo(
-    () => prepItems.filter((entry) => !entry.done),
-    [prepItems],
-  );
   const sideQuestProductionItems = useMemo(
     () => productionItems.filter((entry) => entry.lane === "sideQuest"),
     [productionItems],
-  );
-  const sideQuestPendingItems = useMemo(
-    () => sideQuestProductionItems.filter((entry) => !entry.done),
-    [sideQuestProductionItems],
   );
   const localSummary = useMemo(
     () => buildKitchenLocalSummary(productionItems),
@@ -452,49 +807,38 @@ export const KitchenQueue = ({
     ? "Solo referencia visual. Reintenta antes de confirmar cambios como definitivos."
     : "Producción actual por item, ordenada por llegada.";
 
-  const toggleKitchenItem = async (entry: KitchenProductionItem, done: boolean) => {
-    if (!entry.item.lineKey) return;
-    setBusyLineKey(entry.lineKey);
-    try {
-      if (done && entry.order.status === "new") {
-        await onMove(entry.order.id, "preparing", "Cocina: preparación actual");
+  const toggleKitchenItem = useCallback(
+    async (entry: KitchenProductionItem, done: boolean) => {
+      if (!entry.item.lineKey) return;
+      setBusyLineKey(entry.lineKey);
+      try {
+        if (done && entry.order.status === "new") {
+          await onMove(entry.order.id, "preparing", "Cocina: preparación actual");
+        }
+        await onToggleKitchenItem(
+          entry.order.id,
+          entry.lineKey,
+          getKitchenItemActionKind(entry.item),
+          done,
+        );
+        const orderItems = productionItems.filter(
+          (item) => item.order.id === entry.order.id,
+        );
+        const allDoneAfter = orderItems.every((item) =>
+          item.id === entry.id ? done : item.done,
+        );
+        if (
+          done &&
+          allDoneAfter &&
+          (entry.order.status === "new" || entry.order.status === "preparing")
+        ) {
+          await onMove(entry.order.id, "ready", "Cocina: preparación completa");
+        }
+      } finally {
+        setBusyLineKey(null);
       }
-      await onToggleKitchenItem(
-        entry.order.id,
-        entry.lineKey,
-        getKitchenItemActionKind(entry.item),
-        done,
-      );
-      const orderItems = productionItems.filter(
-        (item) => item.order.id === entry.order.id,
-      );
-      const allDoneAfter = orderItems.every((item) =>
-        item.id === entry.id ? done : item.done,
-      );
-      if (
-        done &&
-        allDoneAfter &&
-        (entry.order.status === "new" || entry.order.status === "preparing")
-      ) {
-        await onMove(entry.order.id, "ready", "Cocina: preparación completa");
-      }
-    } finally {
-      setBusyLineKey(null);
-    }
-  };
-
-  const groupItemsByOrder = (items: KitchenProductionItem[]) => {
-    const groups = new Map<string, KitchenProductionItem[]>();
-    items.forEach((entry) => {
-      groups.set(entry.order.id, [...(groups.get(entry.order.id) ?? []), entry]);
-    });
-    return [...groups.values()];
-  };
-
-  const prepOrderGroups = useMemo(() => groupItemsByOrder(prepItems), [prepItems]);
-  const sideQuestOrderGroups = useMemo(
-    () => groupItemsByOrder(sideQuestProductionItems),
-    [sideQuestProductionItems],
+    },
+    [onMove, onToggleKitchenItem, productionItems],
   );
 
   return (
@@ -526,11 +870,13 @@ export const KitchenQueue = ({
             </Button>
           </div>
         </div>
-        <div className="kitchen-view-tabs">
+        <div className="kitchen-view-tabs" role="tablist">
           {kitchenViews.map((option) => (
             <button
               key={option.key}
               type="button"
+              role="tab"
+              aria-selected={view === option.key}
               aria-pressed={view === option.key}
               className={`kitchen-view-tab ${view === option.key ? "kitchen-view-tab--active" : ""}`}
               onClick={() => setView(option.key)}
@@ -567,75 +913,25 @@ export const KitchenQueue = ({
       ) : null}
 
       {view === "preparacion" ? (
-        <section className="space-y-4">
-          <div id="kitchen-pending" className="kitchen-section">
-            <div className="kitchen-section__header">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-lime-200">
-                  Por hacer
-                </p>
-                <h3 className="mt-1 text-lg font-black text-zinc-50">
-                  Burgers por orden
-                </h3>
-                <p className="mt-1 text-sm text-zinc-400">
-                  Hamburguesas individuales y burgers dentro de combos.
-                </p>
-              </div>
-              <span className="kitchen-note-chip">{prepPendingItems.length} pendientes</span>
-            </div>
-            <div className="kitchen-item-grid">
-              {prepOrderGroups.length ? (
-                prepOrderGroups.map((orderItems) => (
-                  <KitchenOrderAccordion
-                    key={orderItems[0]?.order.id}
-                    orderItems={orderItems}
-                    busyLineKey={busyLineKey}
-                    onToggle={toggleKitchenItem}
-                  />
-                ))
-              ) : (
-                <KitchenEmptyState title="Sin burgers por hacer." />
-              )}
-            </div>
-          </div>
-        </section>
+        <ProductionLanePanel
+          laneItems={prepItems}
+          laneName="Preparación"
+          laneDescription="Hamburguesas individuales y burgers dentro de combos."
+          laneAccent="text-lime-200"
+          busyLineKey={busyLineKey}
+          onToggle={toggleKitchenItem}
+        />
       ) : null}
 
       {view === "sideQuest" ? (
-        <section className="space-y-4">
-          <div id="kitchen-pending" className="kitchen-section">
-            <div className="kitchen-section__header">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-200">
-                  Side Quest
-                </p>
-                <h3 className="mt-1 text-lg font-black text-zinc-50">
-                  Complementos por orden
-                </h3>
-                <p className="mt-1 text-sm text-zinc-400">
-                  Papas, guarniciones, bebidas y extras no-burger.
-                </p>
-              </div>
-              <span className="kitchen-note-chip">
-                {sideQuestPendingItems.length} items
-              </span>
-            </div>
-            <div className="kitchen-item-grid">
-              {sideQuestOrderGroups.length ? (
-                sideQuestOrderGroups.map((orderItems) => (
-                  <KitchenOrderAccordion
-                    key={orderItems[0]?.order.id}
-                    orderItems={orderItems}
-                    busyLineKey={busyLineKey}
-                    onToggle={toggleKitchenItem}
-                  />
-                ))
-              ) : (
-                <KitchenEmptyState title="Sin Side Quest por hacer." />
-              )}
-            </div>
-          </div>
-        </section>
+        <ProductionLanePanel
+          laneItems={sideQuestProductionItems}
+          laneName="Side Quest"
+          laneDescription="Papas, guarniciones, bebidas y extras no-burger."
+          laneAccent="text-amber-200"
+          busyLineKey={busyLineKey}
+          onToggle={toggleKitchenItem}
+        />
       ) : null}
 
       {view === "summaryK" ? (
