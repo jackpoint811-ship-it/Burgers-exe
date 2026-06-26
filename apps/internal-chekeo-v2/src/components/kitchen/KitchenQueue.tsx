@@ -788,6 +788,13 @@ const KitchenSummaryKPanel = ({
                       <strong>{item.quantity}</strong>
                     </div>
                   ))
+                ) : localSummary.burgersList.length ? (
+                  localSummary.burgersList.map((item) => (
+                    <div key={item.sku || item.name} className="kitchen-summary-row">
+                      <span>{item.name}</span>
+                      <strong>{item.quantity}</strong>
+                    </div>
+                  ))
                 ) : (
                   <KitchenEmptyState title="Sin burgers del día." />
                 )}
@@ -801,6 +808,13 @@ const KitchenSummaryKPanel = ({
                 {summary.garnishes?.length ? (
                   summary.garnishes.map((item) => (
                     <div key={item.sku} className="kitchen-summary-row">
+                      <span>{item.name}</span>
+                      <strong>{item.quantity}</strong>
+                    </div>
+                  ))
+                ) : localSummary.garnishesList.length ? (
+                  localSummary.garnishesList.map((item) => (
+                    <div key={item.sku || item.name} className="kitchen-summary-row">
                       <span>{item.name}</span>
                       <strong>{item.quantity}</strong>
                     </div>
@@ -884,8 +898,8 @@ export const KitchenQueue = ({
     [productionItems],
   );
   const localSummary = useMemo(
-    () => buildKitchenLocalSummary(productionItems),
-    [productionItems],
+    () => buildKitchenLocalSummary(activeOrders),
+    [activeOrders],
   );
   const fallback = runtime.source !== "d1";
   const kitchenTitle = fallback
