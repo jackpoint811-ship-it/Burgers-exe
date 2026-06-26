@@ -1,6 +1,7 @@
 import type { OrderV2ItemKind } from "@config/index";
 import type {
   KitchenItemKind,
+  KitchenLocalBreakdownItem,
   KitchenLocalSummary,
   KitchenOrder,
   KitchenOrderItem,
@@ -61,7 +62,9 @@ export const getKitchenItemLabel = (item: KitchenOrderItem) => {
 export const getKitchenItemNotes = (item: KitchenOrderItem) => {
   const notes: string[] = [];
   if (item.comboBurgers.length) {
-    notes.push(`Burgers del combo: ${item.comboBurgers.map((burger) => burger.name).join(", ")}`);
+    notes.push(
+      `Burgers del combo: ${item.comboBurgers.map((burger) => burger.name).join(", ")}`,
+    );
   }
   if (item.removedIngredients.length) {
     item.removedIngredients.forEach((ing) => {
@@ -161,7 +164,10 @@ export const buildKitchenProductionItems = (
           lineKey,
           done: Boolean(item.kitchenDone),
         };
-        const nextEntries: Omit<KitchenProductionItem, "collapsedByDefault" | "orderKitchenItemCount">[] = [];
+        const nextEntries: Omit<
+          KitchenProductionItem,
+          "collapsedByDefault" | "orderKitchenItemCount"
+        >[] = [];
         if (hasComboBurgerWork(item)) {
           nextEntries.push({
             ...base,
@@ -233,43 +239,103 @@ export const buildKitchenSideQuestItems = (
   });
 
 export const buildKitchenLocalSummary = (
-  productionItems: KitchenProductionItem[],
+  orders: KitchenOrder[],
 ): KitchenLocalSummary => {
-  const countedOrders = new Set<string>();
-  return productionItems.reduce<KitchenLocalSummary>(
-    (summary, entry) => {
-      const comboBurgerCount = entry.item.comboBurgers.length;
-      if (!countedOrders.has(entry.order.id)) {
-        countedOrders.add(entry.order.id);
-        summary.estimatedSales += entry.order.total ?? 0;
-      }
+  const summary: KitchenLocalSummary = {
+    totalItems: 0,
+    pendingItems: 0,
+    doneItems: 0,
+    burgers: 0,
+    comboItems: 0,
+    comboBurgers: 0,
+    garnishes: 0,
+    extras: 0,
+    sideQuests: 0,
+    estimatedSales: 0,
+    burgersList: [],
+    garnishesList: [],
+  };
+
+  const burgerMap = new Map<string, KitchenLocalBreakdownItem>();
+  const garnishMap = new Map<string, KitchenLocalBreakdownItem>();
+
+  const addBurger = (sku: string, name: string, qty: number) => {
+    const key = sku || name;
+    if (!key) return;
+    const existing = burgerMap.get(key) || { sku, name, quantity: 0 };
+    existing.quantity += qty;
+    burgerMap.set(key, existing);
+  };
+
+  const addGarnish = (sku: string, name: string, qty: number) => {
+    const key = sku || name;
+    if (!key) return;
+    const existing = garnishMap.get(key) || { sku, name, quantity: 0 };
+    existing.quantity += qty;
+    garnishMap.set(key, existing);
+  };
+
+  orders.forEach((order) => {
+    summary.estimatedSales += order.total ?? 0;
+
+    order.items.forEach((item) => {
+      if (!isProductionItem(item)) return;
+
+      const kind = getKitchenItemKind(item);
       summary.totalItems += 1;
-      if (entry.done) summary.doneItems += 1;
+
+      if (item.kitchenDone) summary.doneItems += 1;
       else summary.pendingItems += 1;
-      if (entry.kind === "burger") summary.burgers += entry.item.qty;
-      if (entry.kind === "combo") {
-        summary.comboItems += entry.item.qty;
-        summary.comboBurgers += Math.max(1, comboBurgerCount) * entry.item.qty;
-        summary.burgers += Math.max(1, comboBurgerCount) * entry.item.qty;
+
+      summary.extras += item.extras.length * item.qty;
+
+      if (kind === "burger") {
+        summary.burgers += item.qty;
+        addBurger(item.comboBurgers?.[0]?.sku || "", item.name, item.qty);
+      } else if (kind === "combo") {
+        summary.comboItems += item.qty;
+        const comboBurgerCount = item.comboBurgers.length;
+        const totalComboBurgers = Math.max(1, comboBurgerCount) * item.qty;
+        summary.comboBurgers += totalComboBurgers;
+        summary.burgers += totalComboBurgers;
+
+        if (comboBurgerCount > 0) {
+          item.comboBurgers.forEach((cb) =>
+            addBurger(cb.sku || "", cb.name, item.qty),
+          );
+        } else {
+          addBurger("", item.name, item.qty);
+        }
+
+        if (item.garnish) {
+          summary.garnishes += item.qty;
+          summary.sideQuests += item.qty;
+          addGarnish(item.garnish.sku || "", item.garnish.name, item.qty);
+        }
+      } else if (kind === "garnish") {
+        summary.garnishes += item.qty;
+        summary.sideQuests += item.qty;
+        addGarnish("", item.name, item.qty);
       }
-      if (entry.lane === "sideQuest") summary.garnishes += entry.item.qty;
-      summary.extras += entry.item.extras.length * entry.item.qty;
-      if (entry.lane === "sideQuest") summary.sideQuests += entry.item.qty;
-      return summary;
-    },
-    {
-      totalItems: 0,
-      pendingItems: 0,
-      doneItems: 0,
-      burgers: 0,
-      comboItems: 0,
-      comboBurgers: 0,
-      garnishes: 0,
-      extras: 0,
-      sideQuests: 0,
-      estimatedSales: 0,
-    },
+
+      item.sideQuestExtras.forEach((sqExtra) => {
+        if (sqExtra.itemKind === "garnish") {
+           summary.garnishes += item.qty;
+           summary.sideQuests += item.qty;
+           addGarnish(sqExtra.sku || "", sqExtra.name, item.qty);
+        }
+      });
+    });
+  });
+
+  summary.burgersList = Array.from(burgerMap.values()).sort(
+    (a, b) => b.quantity - a.quantity,
   );
+  summary.garnishesList = Array.from(garnishMap.values()).sort(
+    (a, b) => b.quantity - a.quantity,
+  );
+
+  return summary;
 };
 
 export const getKitchenItemActionKind = (

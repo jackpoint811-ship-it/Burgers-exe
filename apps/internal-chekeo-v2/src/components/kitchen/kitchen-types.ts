@@ -79,6 +79,12 @@ export type KitchenSideQuestItem = {
   done: boolean;
 };
 
+export type KitchenLocalBreakdownItem = {
+  sku: string;
+  name: string;
+  quantity: number;
+};
+
 export type KitchenLocalSummary = {
   totalItems: number;
   pendingItems: number;
@@ -90,6 +96,8 @@ export type KitchenLocalSummary = {
   extras: number;
   sideQuests: number;
   estimatedSales: number;
+  burgersList: KitchenLocalBreakdownItem[];
+  garnishesList: KitchenLocalBreakdownItem[];
 };
 
 export type KitchenOrdersRuntime = {
