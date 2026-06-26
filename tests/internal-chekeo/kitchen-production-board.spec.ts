@@ -1084,7 +1084,7 @@ test.describe("internal chekeo kitchen production board", () => {
 
     await openKitchenFromHome(page);
 
-    for (const folio of ["CRIT-001", "RDY-401", "NEW-201", "PREP-301"]) {
+    for (const folio of ["CRIT-001", "NEW-201", "PREP-301"]) {
       await expect(page.getByText(folio).first()).toBeVisible();
     }
 

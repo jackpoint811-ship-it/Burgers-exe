@@ -325,7 +325,12 @@ const ActiveOrderContainer = ({
     <section className="kitchen-active-order kitchen-production-card" aria-label="Orden activa">
       <div className="kitchen-active-order__header flex-col md:flex-row">
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-lime-400 mb-1">Pedido Activo</p>
+          <div className="flex items-center gap-2 mb-1">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-lime-400 m-0">Pedido Activo</p>
+            <span className="text-[10px] font-black bg-lime-400/20 text-lime-300 px-1.5 py-0.5 rounded uppercase tracking-[0.1em]">
+              {group.doneCount}/{group.items.length}
+            </span>
+          </div>
           <h3 className="kitchen-active-order__customer">
             {group.order.customer}
           </h3>
@@ -349,7 +354,7 @@ const ActiveOrderContainer = ({
           <AccordionItemRow
             entry={group.items[0]!}
             busy={busyLineKey === group.items[0]!.lineKey}
-            expanded={!group.items[0]!.done}
+            expanded={expandedId === group.items[0]!.id}
             glowing={glowingId === group.items[0]!.id}
             onExpand={() => setExpandedId(group.items[0]!.id)}
             onToggle={handleToggle}
@@ -360,7 +365,7 @@ const ActiveOrderContainer = ({
               key={entry.id}
               entry={entry}
               busy={busyLineKey === entry.lineKey}
-              expanded={expandedId === entry.id && !entry.done}
+              expanded={expandedId === entry.id}
               glowing={glowingId === entry.id}
               onExpand={() => setExpandedId(entry.id)}
               onToggle={handleToggle}
@@ -368,10 +373,6 @@ const ActiveOrderContainer = ({
           ))
         )}
       </div>
-
-      <p className="kitchen-active-order__progress">
-        {group.doneCount} de {group.items.length} hechas
-      </p>
     </section>
   );
 };
@@ -412,10 +413,13 @@ const PendingOrdersQueue = ({
                 <div>
                   <p className="font-black text-zinc-100 text-lg">{group.order.customer}</p>
                   <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">{group.order.folio}</p>
+                  <p className="text-xs text-zinc-400 mt-0.5">{group.summaryLabel}</p>
                 </div>
-                <Button                  className="bg-zinc-800 hover:bg-zinc-700 text-zinc-100 text-xs px-3 py-1.5 h-auto min-h-0"                  onClick={() => onSelect(group.orderId)}
+                <Button
+                  className="bg-zinc-800 hover:bg-zinc-700 text-zinc-100 text-xs px-3 py-1.5 h-auto min-h-0 whitespace-nowrap"
+                  onClick={() => onSelect(group.orderId)}
                 >
-                  Cocinar
+                  Cocinar pedido
                 </Button>
               </div>
               <div className="space-y-1.5 border-t border-zinc-800/50 pt-2 mt-2">
@@ -448,17 +452,19 @@ const PendingOrdersQueue = ({
           </div>
           {visible.map((group, idx) => {
             const isFirst = idx === 0;
+            const opacityValue = isFirst ? 1 : idx === 1 ? 0.75 : idx === 2 ? 0.55 : 0.4;
             return (
               <div
                 key={group.orderId}
                 className={`kitchen-production-card flex justify-between items-center px-3 py-2.5 rounded-lg border transition-all ${
-                  isFirst ? "border-cyan-500/30 bg-cyan-950/20 opacity-100" : "border-zinc-800/40 bg-zinc-950/20 opacity-60"
+                  isFirst ? "border-cyan-500/30 bg-cyan-950/20" : "border-zinc-800/40 bg-zinc-950/20"
                 }`}
+                style={{ opacity: opacityValue }}
               >
                 <div className="text-left">
-                  {isFirst ? (
-                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300 mb-0.5">Siguiente</p>
-                  ) : null}
+                  <p className={`text-[10px] font-black uppercase tracking-[0.16em] mb-0.5 ${isFirst ? "text-cyan-300" : "text-zinc-500"}`}>
+                    {isFirst ? "Siguiente" : "Después"}
+                  </p>
                   <p className={`font-black ${isFirst ? "text-zinc-100 text-base" : "text-zinc-300 text-sm"}`}>{group.order.customer}</p>
                   <p className="truncate text-xs text-zinc-500">{group.summaryLabel}</p>
                 </div>
@@ -502,18 +508,19 @@ const DoneOrdersList = ({
     <section className="kitchen-done-list">
       <button
         type="button"
-        className="kitchen-done-list__toggle"
+        className="kitchen-done-list__toggle flex flex-col items-start gap-1 p-3 w-full border-t border-zinc-800/40 hover:bg-zinc-800/20 transition-colors mt-4"
         onClick={() => setExpanded((prev) => !prev)}
         aria-expanded={expanded}
       >
-        <span>
-          {label} ({groups.length}): {foliosLabel}
-        </span>
-        {expanded ? (
-          <ChevronUp size={16} aria-hidden="true" />
-        ) : (
-          <ChevronDown size={16} aria-hidden="true" />
-        )}
+        <div className="flex w-full items-center justify-between">
+          <span className="text-[11px] font-black tracking-[0.2em] uppercase text-zinc-300">
+            {label} · {groups.length} {groups.length === 1 ? "pedido" : "pedidos"}
+          </span>
+          {expanded ? <ChevronUp size={16} className="text-zinc-400" /> : <ChevronDown size={16} className="text-zinc-400" />}
+        </div>
+        {!expanded ? (
+          <span className="text-xs text-zinc-500">Toca para revisar o revertir</span>
+        ) : null}
       </button>
       {expanded ? (
         <div className="kitchen-done-list__items">
