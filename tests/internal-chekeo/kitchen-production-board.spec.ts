@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import * as fs from "fs";
 
 type OrderStatus = "new" | "preparing" | "ready" | "delivered" | "cancelled";
 type PaymentStatus = "pending" | "paid" | "cancelled";
@@ -1467,6 +1468,83 @@ test.describe("internal chekeo kitchen production board", () => {
     // Back to Summary K
     await openKitchenView(page, "Resumen K");
     await expect(page.getByText("Total burgers")).toBeVisible();
+  });
+
+  test("summary K shows local burger breakdown when backend arrays are missing", async ({ page }) => {
+    await installKitchenApiMocks(page);
+
+    await page.route("**/api/kitchen-v2-admin/summary-k*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        json: {
+          ok: true,
+          data: {
+            hasRecipes: false,
+            totals: { burgers: 0, garnishes: 0, ingredients: 0 },
+            burgers: [],
+            garnishes: [],
+            ingredients: [],
+          },
+        },
+      });
+    });
+
+    await loginToChekeo(page);
+    await openKitchenFromHome(page);
+
+    await openKitchenView(page, "Resumen K");
+
+    await expect(page.getByText("Sin burgers del día.")).not.toBeVisible();
+    await expect(page.getByText("OG").first()).toBeVisible();
+    await expect(page.getByText("Burger crítica")).toBeVisible();
+    await expect(page.getByText("Burger lista")).toBeVisible();
+
+    const ogRow = page.locator(".kitchen-summary-row").filter({ hasText: "OG" });
+    await expect(ogRow.locator("strong")).not.toHaveText("0");
+  });
+
+  test("summary K shows local garnish breakdown when backend arrays are missing", async ({ page }) => {
+    await installKitchenApiMocks(page);
+
+    await page.route("**/api/kitchen-v2-admin/summary-k*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        json: {
+          ok: true,
+          data: {
+            hasRecipes: false,
+            totals: { burgers: 0, garnishes: 0, ingredients: 0 },
+            burgers: [],
+            garnishes: [],
+            ingredients: [],
+          },
+        },
+      });
+    });
+
+    await loginToChekeo(page);
+    await openKitchenFromHome(page);
+
+    await openKitchenView(page, "Resumen K");
+
+    await expect(page.getByText("Sin guarniciones del día.")).not.toBeVisible();
+    await expect(page.getByText("Papas").first()).toBeVisible();
+    await expect(page.getByText("Aros").first()).toBeVisible();
+  });
+
+  test("preview realistic fixtures use short PVW folios", async () => {
+    const sqlContent = fs.readFileSync("migrations/0008_preview_realistic_orders_seed.sql", "utf-8");
+
+    expect(sqlContent).toContain("PVW-");
+    expect(sqlContent).not.toContain("QA-COCINA");
+    expect(sqlContent).not.toContain("CRIT-001");
+    expect(sqlContent).toContain("public-v2-preview");
+    expect(sqlContent).toContain("[FIXTURE:PREVIEW_REALISTIC_ORDERS]");
+    expect(sqlContent).toContain("Ubicación: Torre Valcob");
+    expect(sqlContent).toContain("Ubicación: Torre GGA");
+
+    const hasRealisticNames = sqlContent.includes("Andrea") || sqlContent.includes("Carlos") || sqlContent.includes("López") || sqlContent.includes("Mariana");
+    expect(hasRealisticNames).toBe(true);
   });
 
   for (const viewport of viewports) {

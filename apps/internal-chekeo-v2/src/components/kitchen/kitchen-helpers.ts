@@ -320,7 +320,9 @@ export const buildKitchenLocalSummary = (
 
       item.sideQuestExtras.forEach((sqExtra) => {
         if (sqExtra.itemKind === "garnish") {
-          addGarnish(sqExtra.sku || "", sqExtra.name, item.qty);
+           summary.garnishes += item.qty;
+           summary.sideQuests += item.qty;
+           addGarnish(sqExtra.sku || "", sqExtra.name, item.qty);
         }
       });
     });
