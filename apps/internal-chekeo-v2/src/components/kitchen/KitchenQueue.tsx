@@ -107,42 +107,76 @@ const KitchenEmptyState = ({ title }: { title: string }) => (
 /* ------------------------------------------------------------------ */
 
 const ItemDetailList = ({ item }: { item: KitchenProductionItem }) => {
-  const rawNotes = getKitchenItemNotes(item.item);
-  const notes =
-    item.lane === "prep"
-      ? rawNotes.filter(
-          (note) =>
-            !note.startsWith("Guarnición:") &&
-            !note.startsWith("Side Quest:") &&
-            !note.startsWith("Bebida:") &&
-            !note.startsWith("Burgers del combo:"),
-        )
-      : [
-          ...(item.item.parentItemName ? [`Parte de: ${item.item.parentItemName}`] : []),
-          ...(item.detailLabel ? [`Item: ${item.detailLabel}`] : []),
-        ];
-  const comboNotes = item.lane === "prep" ? getComboBurgerNotes(item.item) : [];
+  const isPrep = item.lane === "prep";
+
+  // BURGER block (Combo burgers)
+  const comboNotes = isPrep ? getComboBurgerNotes(item.item) : [];
+
+  // MOD block
+  const mods = isPrep ? item.item.removedIngredients.map(ing => `Sin ${ing}`) : [];
+
+  // UPGRADE block
+  const upgrades = isPrep ? item.item.extras.map(e => e.name.replace(/\bextras?\b/gi, "").replace(/\s+/g, " ").trim()).filter(Boolean) : [];
+
+  // NOTES block
   const generalNote = stripLocationFromNotes(item.order.note);
+  const itemNote = isPrep ? item.item.burgerNote : null;
+
+  // SideQuest / Non-prep specific notes
+  const otherNotes = !isPrep ? [
+    ...(item.item.parentItemName ? [`Parte de: ${item.item.parentItemName}`] : []),
+    ...(item.detailLabel ? [`Item: ${item.detailLabel}`] : []),
+  ] : [];
 
   return (
     <div className="kitchen-item-details">
       {comboNotes.length ? (
-        <div>
+        <div className="kitchen-detail-block kitchen-detail-block--burger">
           <p className="kitchen-detail-label">Burgers del combo</p>
-          <div className="mt-2 grid gap-1.5">
+          <div className="mt-2 grid gap-2">
             {comboNotes.map((note) => (
-              <span key={note} className="kitchen-note-chip">
+              <span key={note} className="kitchen-note-chip kitchen-note-chip--combo">
                 {note}
               </span>
             ))}
           </div>
         </div>
       ) : null}
-      {notes.length ? (
-        <div>
-          <p className="kitchen-detail-label">Ingredientes y modificadores</p>
+
+      {mods.length || upgrades.length ? (
+        <div className="kitchen-detail-block kitchen-detail-block--mod-upgrade grid gap-3 min-[420px]:grid-cols-2">
+          {mods.length ? (
+            <div className="kitchen-detail-block h-full">
+              <p className="kitchen-detail-label text-rose-300">Mod (Quitar)</p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {mods.map((note) => (
+                  <span key={note} className="kitchen-note-chip kitchen-note-chip--mod">
+                    {note}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {upgrades.length ? (
+            <div className="kitchen-detail-block h-full">
+              <p className="kitchen-detail-label text-lime-300">Upgrade (Agregar)</p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {upgrades.map((note) => (
+                  <span key={note} className="kitchen-note-chip kitchen-note-chip--upgrade">
+                    {note}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {otherNotes.length ? (
+        <div className="kitchen-detail-block">
+          <p className="kitchen-detail-label">Detalles</p>
           <div className="mt-2 flex flex-wrap gap-1.5">
-            {notes.map((note) => (
+            {otherNotes.map((note) => (
               <span key={note} className="kitchen-note-chip">
                 {note}
               </span>
@@ -150,11 +184,16 @@ const ItemDetailList = ({ item }: { item: KitchenProductionItem }) => {
           </div>
         </div>
       ) : null}
-      {generalNote ? (
-        <p className="kitchen-critical-note">Nota: {generalNote}</p>
+
+      {itemNote || generalNote ? (
+        <div className="kitchen-detail-block kitchen-detail-block--notes">
+          {itemNote ? <p className="kitchen-critical-note">Nota de item: {itemNote}</p> : null}
+          {generalNote ? <p className="kitchen-critical-note">Nota general: {generalNote}</p> : null}
+        </div>
       ) : null}
-      {!notes.length && !comboNotes.length && !generalNote ? (
-        <p className="text-sm font-semibold text-zinc-400">
+
+      {!comboNotes.length && !mods.length && !upgrades.length && !otherNotes.length && !itemNote && !generalNote ? (
+        <p className="text-sm font-semibold text-zinc-500 italic p-2">
           Sin modificaciones registradas.
         </p>
       ) : null}
