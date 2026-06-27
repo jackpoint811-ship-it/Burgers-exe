@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import * as fs from "fs";
+import { validateStatusTransition } from "../../functions/api/_orders-v2-utils";
 
 type OrderStatus = "new" | "preparing" | "ready" | "delivered" | "cancelled";
 type PaymentStatus = "pending" | "paid" | "cancelled";
@@ -2066,6 +2067,183 @@ test.describe("internal chekeo kitchen production board", () => {
     // Validate the button "Abrir" is visible
     const abrirBtn = queueList.getByRole("button", { name: "Abrir" });
     await expect(abrirBtn).toBeVisible();
+  });
+
+  test("allows ready order to move back to preparing for kitchen revert", async () => {
+    expect(validateStatusTransition("ready", "preparing")).toBe(true);
+  });
+
+  test("keeps delivered and cancelled terminal statuses locked", async () => {
+    expect(validateStatusTransition("delivered", "preparing")).toBe(false);
+    expect(validateStatusTransition("cancelled", "preparing")).toBe(false);
+    expect(validateStatusTransition("delivered", "ready")).toBe(false);
+    expect(validateStatusTransition("cancelled", "ready")).toBe(false);
+  });
+
+  test("reverts done item from ready order without invalid transition", async ({ page }) => {
+    await installKitchenApiMocks(page);
+    await loginToChekeo(page);
+    await openKitchenFromHome(page);
+    await openKitchenView(page, "Side Quest");
+
+    const queueSection = page.locator(".kitchen-following-orders").first();
+    const queueToggle = queueSection.locator("[role='button']").first();
+    if (await queueToggle.isVisible()) {
+      await queueToggle.click();
+      await page.waitForTimeout(200);
+    }
+
+    await page.locator(".kitchen-following-orders__list .kitchen-production-card").filter({ hasText: "Andrea Pending" }).getByRole("button", { name: "Abrir" }).click();
+    await page.waitForTimeout(200);
+
+    const activeSection = page.locator("section[aria-label='Orden activa']").first();
+    await expect(activeSection).toBeVisible();
+
+    const accordionItems = activeSection.locator(".kitchen-accordion-item");
+    await accordionItems.first().locator("button").first().click();
+    await page.waitForTimeout(200);
+
+    const hachaButton = activeSection.getByRole("button", { name: /^Hecha$/i }).first();
+    if (await hachaButton.isVisible()) {
+      await hachaButton.click();
+      await page.waitForTimeout(400);
+    }
+
+    const doneSection = page.locator(".kitchen-done-list").first();
+    await doneSection.locator(".kitchen-done-list__toggle").click();
+    await page.waitForTimeout(200);
+
+    const firstDoneGroup = doneSection.locator(".kitchen-done-list__item").first();
+    await firstDoneGroup.locator("button").first().click();
+    await page.waitForTimeout(200);
+
+    const doneItemAccordion = firstDoneGroup.locator(".kitchen-accordion-item").first();
+    await doneItemAccordion.locator("button").first().click();
+    await page.waitForTimeout(200);
+
+    const revertButton = firstDoneGroup.getByRole("button", { name: /Revertir hecha/i });
+    await expect(revertButton.first()).toBeVisible();
+    await revertButton.first().click();
+    await page.waitForTimeout(400);
+
+    await expect(page.getByText(/No se pudo completar la solicitud/i)).not.toBeVisible();
+  });
+
+  test("summary K uses local totals when backend hasRecipes is false", async ({ page }) => {
+    await installKitchenApiMocks(page);
+
+    await page.route("**/api/kitchen-v2-admin/summary-k*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        json: {
+          ok: true,
+          data: {
+            hasRecipes: false,
+            totals: { burgers: 0, garnishes: 0, ingredients: 0 },
+            burgers: [],
+            garnishes: [],
+            ingredients: [],
+          },
+        },
+      });
+    });
+
+    await loginToChekeo(page);
+    await openKitchenFromHome(page);
+    await openKitchenView(page, "Resumen K");
+
+    const totalBurgersCard = page.locator(".bg-zinc-950").filter({ hasText: "Total burgers" }).first();
+    await expect(totalBurgersCard).toContainText("8");
+  });
+
+  test("summary K aggregates duplicate burger rows", async ({ page }) => {
+    await installKitchenApiMocks(page);
+
+    await page.route("**/api/kitchen-v2-admin/summary-k*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        json: {
+          ok: true,
+          data: {
+            hasRecipes: true,
+            totals: { burgers: 20, garnishes: 0, ingredients: 0 },
+            burgers: [
+              { sku: "burger-og", name: "Burger OG", quantity: 11 },
+              { sku: "burger-og-dup", name: "Burger OG", quantity: 9 },
+            ],
+            garnishes: [],
+            ingredients: [],
+          },
+        },
+      });
+    });
+
+    await loginToChekeo(page);
+    await openKitchenFromHome(page);
+    await openKitchenView(page, "Resumen K");
+
+    const ogRows = page.locator(".kitchen-summary-row").filter({ hasText: "Burger OG" });
+    await expect(ogRows).toHaveCount(1);
+    await expect(ogRows.locator("strong")).toHaveText("20");
+  });
+
+  test("summary K aggregates duplicate garnish rows", async ({ page }) => {
+    await installKitchenApiMocks(page);
+
+    await page.route("**/api/kitchen-v2-admin/summary-k*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        json: {
+          ok: true,
+          data: {
+            hasRecipes: true,
+            totals: { burgers: 0, garnishes: 18, ingredients: 0 },
+            burgers: [],
+            garnishes: [
+              { sku: "fries", name: "Papas", quantity: 10 },
+              { sku: "fries-dup", name: "Papas", quantity: 8 },
+            ],
+            ingredients: [],
+          },
+        },
+      });
+    });
+
+    await loginToChekeo(page);
+    await openKitchenFromHome(page);
+    await openKitchenView(page, "Resumen K");
+
+    const papasRows = page.locator(".kitchen-summary-row").filter({ hasText: "Papas" });
+    await expect(papasRows).toHaveCount(1);
+    await expect(papasRows.locator("strong")).toHaveText("18");
+  });
+
+  test("summary K shows clear no-recipes ingredient message", async ({ page }) => {
+    await installKitchenApiMocks(page);
+
+    await page.route("**/api/kitchen-v2-admin/summary-k*", async (route) => {
+      await route.fulfill({
+        status: 200,
+        json: {
+          ok: true,
+          data: {
+            hasRecipes: false,
+            totals: { burgers: 0, garnishes: 0, ingredients: 0 },
+            burgers: [],
+            garnishes: [],
+            ingredients: [],
+          },
+        },
+      });
+    });
+
+    await loginToChekeo(page);
+    await openKitchenFromHome(page);
+    await openKitchenView(page, "Resumen K");
+
+    await expect(
+      page.getByText("Ingredientes estimados no disponibles porque faltan recetas configuradas.")
+    ).toBeVisible();
   });
 
 });

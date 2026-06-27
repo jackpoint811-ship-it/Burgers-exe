@@ -36,6 +36,19 @@ import type {
 
 type KitchenSummaryK = NonNullable<KitchenSummaryKResponse["data"]>;
 
+const aggregateSummaryRows = <T extends { name: string; quantity: number }>(items: T[]): T[] => {
+  const map = new Map<string, T>();
+  for (const item of items) {
+    const existing = map.get(item.name);
+    if (existing) {
+      existing.quantity += item.quantity;
+    } else {
+      map.set(item.name, { ...item });
+    }
+  }
+  return Array.from(map.values()).sort((a, b) => b.quantity - a.quantity);
+};
+
 const terminalStatuses = new Set<OrderStatus>(["delivered", "cancelled"]);
 
 const orderEnvironmentLabel: Record<OrderV2Environment, string> = {
@@ -745,6 +758,26 @@ const KitchenSummaryKPanel = ({
     void load();
   }, [environment]);
 
+  const burgerRows =
+    summary?.hasRecipes && summary.burgers?.length
+      ? aggregateSummaryRows(summary.burgers)
+      : localSummary.burgersList;
+
+  const garnishRows =
+    summary?.hasRecipes && summary.garnishes?.length
+      ? aggregateSummaryRows(summary.garnishes)
+      : localSummary.garnishesList;
+
+  const totalBurgers =
+    summary?.hasRecipes && summary.totals?.burgers
+      ? summary.totals.burgers
+      : localSummary.burgers;
+
+  const totalGarnishes =
+    summary?.hasRecipes && summary.totals?.garnishes
+      ? summary.totals.garnishes
+      : localSummary.garnishes;
+
   const costText =
     summary?.totals?.estimatedCostCents == null
       ? "—"
@@ -757,8 +790,8 @@ const KitchenSummaryKPanel = ({
   return (
     <section className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryMetric label="Total burgers" value={summary?.totals?.burgers ?? localSummary.burgers} />
-        <SummaryMetric label="Total guarniciones" value={summary?.totals?.garnishes ?? localSummary.garnishes} />
+        <SummaryMetric label="Total burgers" value={totalBurgers} />
+        <SummaryMetric label="Total guarniciones" value={totalGarnishes} />
         <SummaryMetric label="Combos desglosados" value={localSummary.comboBurgers} />
         <SummaryMetric label="Side Quest" value={localSummary.sideQuests} />
       </div>
@@ -805,15 +838,8 @@ const KitchenSummaryKPanel = ({
                 {orderEnvironmentLabel[environment]} · burgers
               </h3>
               <div className="mt-3 space-y-2">
-                {summary.burgers?.length ? (
-                  summary.burgers.map((item) => (
-                    <div key={item.sku} className="kitchen-summary-row">
-                      <span>{item.name}</span>
-                      <strong>{item.quantity}</strong>
-                    </div>
-                  ))
-                ) : localSummary.burgersList.length ? (
-                  localSummary.burgersList.map((item) => (
+                {burgerRows.length ? (
+                  burgerRows.map((item) => (
                     <div key={item.sku || item.name} className="kitchen-summary-row">
                       <span>{item.name}</span>
                       <strong>{item.quantity}</strong>
@@ -829,15 +855,8 @@ const KitchenSummaryKPanel = ({
                 {orderEnvironmentLabel[environment]} · guarniciones
               </h3>
               <div className="mt-3 space-y-2">
-                {summary.garnishes?.length ? (
-                  summary.garnishes.map((item) => (
-                    <div key={item.sku} className="kitchen-summary-row">
-                      <span>{item.name}</span>
-                      <strong>{item.quantity}</strong>
-                    </div>
-                  ))
-                ) : localSummary.garnishesList.length ? (
-                  localSummary.garnishesList.map((item) => (
+                {garnishRows.length ? (
+                  garnishRows.map((item) => (
                     <div key={item.sku || item.name} className="kitchen-summary-row">
                       <span>{item.name}</span>
                       <strong>{item.quantity}</strong>
@@ -876,6 +895,8 @@ const KitchenSummaryKPanel = ({
                     </p>
                   </div>
                 ))
+              ) : !summary.hasRecipes ? (
+                <KitchenEmptyState title="Ingredientes estimados no disponibles porque faltan recetas configuradas." />
               ) : (
                 <KitchenEmptyState title="Sin ingredientes estimados." />
               )}
