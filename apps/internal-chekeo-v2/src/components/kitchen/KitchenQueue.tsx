@@ -16,6 +16,7 @@ import { fetchKitchenSummaryK } from "../../lib/ingredients-v2-admin";
 import {
   buildKitchenLocalSummary,
   buildKitchenProductionItems,
+  buildKitchenOrderQueueSummary,
   extractKitchenLocation,
   getComboBurgerNotes,
   getKitchenItemActionKind,
@@ -113,20 +114,33 @@ const ItemDetailList = ({ item }: { item: KitchenProductionItem }) => {
   const comboNotes = isPrep ? getComboBurgerNotes(item.item) : [];
 
   // MOD block
-  const mods = isPrep ? item.item.removedIngredients.map(ing => `Sin ${ing}`) : [];
+  const mods = isPrep ? item.item.removedIngredients.map((ing) => `Sin ${ing}`) : [];
 
   // UPGRADE block
-  const upgrades = isPrep ? item.item.extras.map(e => e.name.replace(/\bextras?\b/gi, "").replace(/\s+/g, " ").trim()).filter(Boolean) : [];
+  const upgrades = isPrep
+    ? item.item.extras
+        .map((e) =>
+          e.name
+            .replace(/\bextras?\b/gi, "")
+            .replace(/\s+/g, " ")
+            .trim(),
+        )
+        .filter(Boolean)
+    : [];
 
-  // NOTES block
+  const hasModOrUpgrade = mods.length > 0 || upgrades.length > 0;
+
+  // Note block — unified, shown as NOTA DEL PEDIDO
   const generalNote = stripLocationFromNotes(item.order.note);
   const itemNote = isPrep ? item.item.burgerNote : null;
+  const noteText = [itemNote, generalNote].filter(Boolean).join(" · ");
 
-  // SideQuest / Non-prep specific notes
-  const otherNotes = !isPrep ? [
-    ...(item.item.parentItemName ? [`Parte de: ${item.item.parentItemName}`] : []),
-    ...(item.detailLabel ? [`Item: ${item.detailLabel}`] : []),
-  ] : [];
+  // Side Quest source indicator (De combo / Individual)
+  const sideQuestSource: string | null = !isPrep
+    ? item.item.parentItemName
+      ? "De combo"
+      : "Individual"
+    : null;
 
   return (
     <div className="kitchen-item-details">
@@ -143,11 +157,12 @@ const ItemDetailList = ({ item }: { item: KitchenProductionItem }) => {
         </div>
       ) : null}
 
-      {mods.length || upgrades.length ? (
-        <div className="kitchen-detail-block kitchen-detail-block--mod-upgrade grid gap-3 min-[420px]:grid-cols-2">
-          {mods.length ? (
-            <div className="kitchen-detail-block h-full">
-              <p className="kitchen-detail-label text-rose-300">Mod (Quitar)</p>
+      {isPrep && hasModOrUpgrade ? (
+        <div className="kitchen-detail-block kitchen-detail-block--mod-upgrade grid gap-3 grid-cols-2">
+          {/* MOD column — always shown when hasModOrUpgrade */}
+          <div className="kitchen-detail-block h-full">
+            <p className="kitchen-detail-label text-rose-300">MOD</p>
+            {mods.length ? (
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {mods.map((note) => (
                   <span key={note} className="kitchen-note-chip kitchen-note-chip--mod">
@@ -155,11 +170,14 @@ const ItemDetailList = ({ item }: { item: KitchenProductionItem }) => {
                   </span>
                 ))}
               </div>
-            </div>
-          ) : null}
-          {upgrades.length ? (
-            <div className="kitchen-detail-block h-full">
-              <p className="kitchen-detail-label text-lime-300">Upgrade (Agregar)</p>
+            ) : (
+              <p className="mt-2 text-xs text-zinc-600 italic">—</p>
+            )}
+          </div>
+          {/* UPGRADE column — always shown when hasModOrUpgrade */}
+          <div className="kitchen-detail-block h-full">
+            <p className="kitchen-detail-label text-lime-300">UPGRADE</p>
+            {upgrades.length ? (
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {upgrades.map((note) => (
                   <span key={note} className="kitchen-note-chip kitchen-note-chip--upgrade">
@@ -167,35 +185,28 @@ const ItemDetailList = ({ item }: { item: KitchenProductionItem }) => {
                   </span>
                 ))}
               </div>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
-      {otherNotes.length ? (
-        <div className="kitchen-detail-block">
-          <p className="kitchen-detail-label">Detalles</p>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {otherNotes.map((note) => (
-              <span key={note} className="kitchen-note-chip">
-                {note}
-              </span>
-            ))}
+            ) : (
+              <p className="mt-2 text-xs text-zinc-600 italic">—</p>
+            )}
           </div>
         </div>
       ) : null}
 
-      {itemNote || generalNote ? (
-        <div className="kitchen-detail-block kitchen-detail-block--notes">
-          {itemNote ? <p className="kitchen-critical-note">Nota de item: {itemNote}</p> : null}
-          {generalNote ? <p className="kitchen-critical-note">Nota general: {generalNote}</p> : null}
+      {isPrep && !hasModOrUpgrade && !comboNotes.length ? (
+        <p className="kitchen-no-changes">Burger original · Sin cambios</p>
+      ) : null}
+
+      {sideQuestSource ? (
+        <div className="mt-2">
+          <span className="kitchen-note-chip text-xs">{sideQuestSource}</span>
         </div>
       ) : null}
 
-      {!comboNotes.length && !mods.length && !upgrades.length && !otherNotes.length && !itemNote && !generalNote ? (
-        <p className="text-sm font-semibold text-zinc-500 italic p-2">
-          Sin modificaciones registradas.
-        </p>
+      {noteText ? (
+        <div className="kitchen-order-note">
+          <p className="kitchen-order-note__label">NOTA DEL PEDIDO</p>
+          <p className="kitchen-order-note__text">{noteText}</p>
+        </div>
       ) : null}
     </div>
   );
@@ -380,14 +391,18 @@ const ActiveOrderContainer = ({
 const PendingOrdersQueue = ({
   groups,
   onSelect,
+  laneMode,
 }: {
   groups: OrderGroup[];
   onSelect: (orderId: string) => void;
+  laneMode: "prep" | "sideQuest";
 }) => {
   const [expanded, setExpanded] = useState(false);
   const visible = expanded ? groups : groups.slice(0, 4);
 
   if (!groups.length) return null;
+
+  const isSideQuest = laneMode === "sideQuest";
 
   return (
     <section className="kitchen-following-orders mt-4">
@@ -407,34 +422,34 @@ const PendingOrdersQueue = ({
 
       {expanded ? (
         <div className="kitchen-following-orders__list border-t border-zinc-800/40 p-3 space-y-3">
-          {groups.map((group) => (
-            <div key={group.orderId} className="kitchen-production-card bg-zinc-950/60 border border-zinc-800/80 p-3 rounded-xl text-left">
-              <div className="flex justify-between items-start mb-2">
-                <div>
-                  <p className="font-black text-zinc-100 text-lg">{group.order.customer}</p>
-                  <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">{group.order.folio}</p>
-                  <p className="text-xs text-zinc-400 mt-0.5">{group.summaryLabel}</p>
-                </div>
-                <Button
-                  className="bg-zinc-800 hover:bg-zinc-700 text-zinc-100 text-xs px-3 py-1.5 h-auto min-h-0 whitespace-nowrap"
-                  onClick={() => onSelect(group.orderId)}
-                >
-                  Cocinar pedido
-                </Button>
-              </div>
-              <div className="space-y-1.5 border-t border-zinc-800/50 pt-2 mt-2">
-                {group.items.map((item) => (
-                  <div key={item.id} className="text-sm flex justify-between">
-                    <span className="text-zinc-300 font-bold">{item.detailLabel || item.item.name}</span>
-                    <span className="text-zinc-600 text-[10px] uppercase tracking-widest font-black">{getKitchenItemLabel(item.item)}</span>
+          {groups.map((group) => {
+            const shortSummary = isSideQuest
+              ? buildKitchenOrderQueueSummary(group.order)
+              : null;
+            return (
+              <div key={group.orderId} className="kitchen-production-card bg-zinc-950/60 border border-zinc-800/80 p-3 rounded-xl text-left">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="font-black text-zinc-100 text-lg">{group.order.customer}</p>
+                    {shortSummary ? (
+                      <p className="text-xs text-zinc-400 mt-0.5">{shortSummary}</p>
+                    ) : null}
                   </div>
-                ))}
+                  <Button
+                    className="bg-zinc-800 hover:bg-zinc-700 text-zinc-100 text-xs px-3 py-1.5 h-auto min-h-0 whitespace-nowrap"
+                    onClick={() => onSelect(group.orderId)}
+                  >
+                    Abrir
+                  </Button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
-        <div          className="kitchen-following-orders__list p-3 grid gap-2 cursor-pointer hover:bg-zinc-900/20"          onClick={() => setExpanded(true)}
+        <div
+          className="kitchen-following-orders__list p-3 grid gap-2 cursor-pointer hover:bg-zinc-900/20"
+          onClick={() => setExpanded(true)}
           role="button"
           tabIndex={0}
           onKeyDown={(e) => {
@@ -453,6 +468,9 @@ const PendingOrdersQueue = ({
           {visible.map((group, idx) => {
             const isFirst = idx === 0;
             const opacityValue = isFirst ? 1 : idx === 1 ? 0.75 : idx === 2 ? 0.55 : 0.4;
+            const shortSummary = isSideQuest
+              ? buildKitchenOrderQueueSummary(group.order)
+              : null;
             return (
               <div
                 key={group.orderId}
@@ -461,19 +479,24 @@ const PendingOrdersQueue = ({
                 }`}
                 style={{ opacity: opacityValue }}
               >
-                <div className="text-left">
+                <div className="text-left min-w-0 flex-1">
                   <p className={`text-[10px] font-black uppercase tracking-[0.16em] mb-0.5 ${isFirst ? "text-cyan-300" : "text-zinc-500"}`}>
                     {isFirst ? "Siguiente" : "Después"}
                   </p>
-                  <p className={`font-black ${isFirst ? "text-zinc-100 text-base" : "text-zinc-300 text-sm"}`}>{group.order.customer}</p>
-                  <p className="truncate text-xs text-zinc-500">{group.summaryLabel}</p>
+                  <p className={`font-black ${isFirst ? "text-zinc-100 text-base" : "text-zinc-300 text-sm"}`}>
+                    {group.order.customer}
+                  </p>
+                  {shortSummary ? (
+                    <p className="truncate text-xs text-zinc-500 mt-0.5">{shortSummary}</p>
+                  ) : null}
                 </div>
-                <span className="text-[10px] font-black text-zinc-600 uppercase">{group.order.folio}</span>
               </div>
             );
           })}
           {groups.length > 4 ? (
-             <p className="text-center text-[10px] font-black tracking-[0.2em] uppercase text-zinc-600 mt-2">+{groups.length - 4} pedidos más</p>
+            <p className="text-center text-[10px] font-black tracking-[0.2em] uppercase text-zinc-600 mt-2">
+              +{groups.length - 4} pedidos más
+            </p>
           ) : null}
         </div>
       )}
@@ -586,6 +609,7 @@ const ProductionLanePanel = ({
   laneDescription,
   laneAccent,
   busyLineKey,
+  laneMode,
   onToggle,
 }: {
   laneItems: KitchenProductionItem[];
@@ -593,6 +617,7 @@ const ProductionLanePanel = ({
   laneDescription: string;
   laneAccent: string;
   busyLineKey: string | null;
+  laneMode: "prep" | "sideQuest";
   onToggle: (entry: KitchenProductionItem, done: boolean) => void;
 }) => {
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
@@ -619,8 +644,6 @@ const ProductionLanePanel = ({
     if (!activeGroup) return pendingGroups;
     return pendingGroups.filter((g) => g.orderId !== activeGroup.orderId);
   }, [pendingGroups, activeGroup]);
-
-
 
   if (!orderGroups.length) {
     return <KitchenEmptyState title={`Sin items en ${laneName}.`} />;
@@ -657,10 +680,11 @@ const ProductionLanePanel = ({
         <PendingOrdersQueue
           groups={otherPendingGroups}
           onSelect={setSelectedOrderId}
+          laneMode={laneMode}
         />
       ) : null}
 
-      {/* 4. Done list */}
+      {/* 3. Done list */}
       <DoneOrdersList
         groups={doneGroups}
         label="Listas"
@@ -1026,6 +1050,7 @@ export const KitchenQueue = ({
           laneDescription="Hamburguesas individuales y burgers dentro de combos."
           laneAccent="text-lime-200"
           busyLineKey={busyLineKey}
+          laneMode="prep"
           onToggle={toggleKitchenItem}
         />
       ) : null}
@@ -1037,6 +1062,7 @@ export const KitchenQueue = ({
           laneDescription="Papas, guarniciones, bebidas y extras no-burger."
           laneAccent="text-amber-200"
           busyLineKey={busyLineKey}
+          laneMode="sideQuest"
           onToggle={toggleKitchenItem}
         />
       ) : null}

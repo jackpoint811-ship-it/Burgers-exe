@@ -344,3 +344,56 @@ export const getKitchenItemActionKind = (
   const kind = getKitchenItemKind(item);
   return isKitchenActionKind(kind) ? kind : "burger";
 };
+
+const getShortName = (name: string): string => {
+  const clean = name.trim();
+  if (clean === "Aros de cebolla") return "Aros";
+  if (clean.toLowerCase().startsWith("burger ")) {
+    return clean.substring(7).trim();
+  }
+  return clean;
+};
+
+/**
+ * Builds a compact queue summary for the entire kitchen order.
+ * e.g. "x1 BBQ · x3 OG · x1 Combo BBQ · x2 Papas"
+ */
+export const buildKitchenOrderQueueSummary = (
+  order: KitchenOrder,
+): string => {
+  const counts = new Map<string, number>();
+
+  const addCount = (name: string, qty: number) => {
+    const short = getShortName(name);
+    counts.set(short, (counts.get(short) ?? 0) + qty);
+  };
+
+  for (const item of order.items) {
+    const kind = getKitchenItemKind(item);
+
+    if (kind === "burger" || kind === "combo" || kind === "garnish") {
+      addCount(item.name, item.qty);
+
+      if (kind === "combo") {
+        if (item.comboBurgers && item.comboBurgers.length > 0) {
+          for (const cb of item.comboBurgers) {
+            addCount(cb.name, item.qty);
+          }
+        }
+        if (item.garnish) {
+          addCount(item.garnish.name, item.qty);
+        }
+      }
+
+      if (item.sideQuestExtras && item.sideQuestExtras.length > 0) {
+        for (const extra of item.sideQuestExtras) {
+          addCount(extra.name, item.qty);
+        }
+      }
+    }
+  }
+
+  return [...counts.entries()]
+    .map(([name, qty]) => `x${qty} ${name}`)
+    .join(" · ");
+};

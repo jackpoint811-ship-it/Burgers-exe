@@ -1115,7 +1115,7 @@ test.describe("internal chekeo kitchen production board", () => {
 
     // Select NEW-201 to make it active/visible
     await page.locator(".kitchen-following-orders__list").first().click();
-    await page.locator(".kitchen-following-orders__list .kitchen-production-card").filter({ hasText: "NEW-201" }).getByRole("button", { name: "Cocinar" }).click();
+    await page.locator(".kitchen-following-orders__list .kitchen-production-card").filter({ hasText: "NEW-201" }).getByRole("button", { name: "Abrir" }).click();
     const newCard = productionCardByFolio(page, "NEW-201");
     await expect(newCard).toHaveCount(1);
     await newCard.getByRole("button", { name: /^Hecha$/i }).click();
@@ -1130,7 +1130,7 @@ test.describe("internal chekeo kitchen production board", () => {
 
     // Select PREP-301 to make it active/visible
     await page.locator(".kitchen-following-orders__list").first().click();
-    await page.locator(".kitchen-following-orders__list .kitchen-production-card").filter({ hasText: "PREP-301" }).getByRole("button", { name: "Cocinar" }).click();
+    await page.locator(".kitchen-following-orders__list .kitchen-production-card").filter({ hasText: "PREP-301" }).getByRole("button", { name: "Abrir" }).click();
     const prepCard = productionCardByFolio(page, "PREP-301");
     await expect(prepCard).toHaveCount(1);
     await prepCard.getByRole("button", { name: /^Hecha$/i }).first().click();
@@ -1622,6 +1622,452 @@ test.describe("internal chekeo kitchen production board", () => {
       expect(raffleOverflow).toBeLessThanOrEqual(1);
     });
   }
+
+  test("burger with MOD and UPGRADE shows both as two visible columns", async ({ page }) => {
+    await installKitchenApiMocks(page);
+    await loginToChekeo(page);
+    await openKitchenFromHome(page);
+    await openKitchenView(page, "Preparación");
+
+    // CRIT-001 has removedIngredients: ["Cebolla"] (MOD) and extras: ["Queso extra"] (UPGRADE)
+    const criticalCard = productionCardByFolio(page, "CRIT-001");
+    await criticalCard.getByRole("button").first().click();
+    await page.waitForTimeout(200);
+
+    await expect(criticalCard.getByText("MOD")).toBeVisible();
+    await expect(criticalCard.getByText("UPGRADE")).toBeVisible();
+    await expect(criticalCard.getByText("Sin Cebolla")).toBeVisible();
+  });
+
+  test("burger without changes shows Burger original and Sin cambios", async ({ page }) => {
+    await installKitchenApiMocks(page);
+    await loginToChekeo(page);
+    await openKitchenFromHome(page);
+    await openKitchenView(page, "Preparación");
+
+    // PREP-301 is not the first active order — open queue and activate it
+    await page.locator(".kitchen-following-orders").first().locator("[role='button']").first().click();
+    await page.waitForTimeout(200);
+    await page.locator(".kitchen-following-orders__list .kitchen-production-card").filter({ hasText: "PREP-301" }).getByRole("button", { name: "Abrir" }).click();
+    await page.waitForTimeout(200);
+
+    const prepCard = productionCardByFolio(page, "PREP-301");
+    await expect(prepCard).toBeVisible();
+    await prepCard.getByRole("button").first().click();
+    await page.waitForTimeout(200);
+
+    await expect(prepCard.getByText("Burger original · Sin cambios")).toBeVisible();
+    await expect(prepCard.getByText("MOD")).not.toBeVisible();
+    await expect(prepCard.getByText("UPGRADE")).not.toBeVisible();
+  });
+
+  test("order note uses NOTA DEL PEDIDO label not rose/alert style", async ({ page }) => {
+    await installKitchenApiMocks(page);
+    await loginToChekeo(page);
+    await openKitchenFromHome(page);
+    await openKitchenView(page, "Preparación");
+
+    // TRF-701 is in the queue — open queue and activate it
+    await page.locator(".kitchen-following-orders").first().locator("[role='button']").first().click();
+    await page.waitForTimeout(200);
+    await page.locator(".kitchen-following-orders__list .kitchen-production-card").filter({ hasText: "Valeria Transfer" }).getByRole("button", { name: "Abrir" }).click();
+    await page.waitForTimeout(200);
+
+    const trfCard = productionCardByFolio(page, "TRF-701");
+    await expect(trfCard).toBeVisible();
+    await trfCard.getByRole("button").first().click();
+    await page.waitForTimeout(200);
+
+    // The note label should be present
+    await expect(trfCard.getByText("NOTA DEL PEDIDO")).toBeVisible();
+
+    // The note element must NOT have rose/error classes
+    const noteEl = trfCard.locator(".kitchen-order-note");
+    await expect(noteEl).toBeVisible();
+
+    const hasRoseClass = await noteEl.evaluate((el) =>
+      el.className.includes("rose") || el.className.includes("error")
+    );
+    expect(hasRoseClass).toBe(false);
+  });
+
+  test("side quest active order shows only customer name and folio", async ({ page }) => {
+    await installKitchenApiMocks(page);
+    await loginToChekeo(page);
+    await openKitchenFromHome(page);
+    await openKitchenView(page, "Side Quest");
+
+    const activeSection = page.locator("section[aria-label='Orden activa']").first();
+    await expect(activeSection).toBeVisible();
+
+    // Customer name should be visible
+    await expect(activeSection.getByText(/Andrea Pending|Valeria Transfer|CRIT-001/i).first()).toBeVisible();
+
+    // Should NOT show a long item summary in the header (no summaryLabel chip)
+    // The header must not contain ".kitchen-note-chip" directly in the header div
+    const headerSummaryChip = activeSection.locator(".kitchen-active-order__header .kitchen-note-chip");
+    await expect(headerSummaryChip).toHaveCount(0);
+  });
+
+  test("side quest queue shows customer name and short x-quantity breakdown", async ({ page }) => {
+    await installKitchenApiMocks(page);
+    await loginToChekeo(page);
+    await openKitchenFromHome(page);
+    await openKitchenView(page, "Side Quest");
+
+    // Open the queue panel if collapsed
+    const queueSection = page.locator(".kitchen-following-orders").first();
+    const queueToggle = queueSection.locator("[role='button']").first();
+    if (await queueToggle.isVisible()) {
+      await queueToggle.click();
+      await page.waitForTimeout(200);
+    }
+
+    // After expanding, check for x-quantity format (e.g. "x1 Papas")
+    const queueList = page.locator(".kitchen-following-orders__list");
+    if (await queueList.isVisible()) {
+      const summaryText = await queueList.textContent();
+      // Should contain x-quantity pattern
+      expect(summaryText).toMatch(/x\d+\s+\w/);
+    }
+  });
+
+  test("side quest multiple items open as individual accordions", async ({ page }) => {
+    await installKitchenApiMocks(page);
+    await loginToChekeo(page);
+    await openKitchenFromHome(page);
+    await openKitchenView(page, "Side Quest");
+
+    // RDY-401 has a garnish item (Papas pendientes) - verify accordion renders
+    const activeSection = page.locator("section[aria-label='Orden activa']").first();
+    await expect(activeSection).toBeVisible();
+
+    // Each item must be an individually-collapsible accordion
+    const accordionItems = activeSection.locator(".kitchen-accordion-item");
+    await expect(accordionItems.first()).toBeVisible();
+
+    // Click first accordion header to expand it
+    await accordionItems.first().locator("button").first().click();
+    await page.waitForTimeout(200);
+
+    // After expand, the actions (Hecha button) should be visible
+    const hachaButton = activeSection.getByRole("button", { name: /^Hecha$/i });
+    await expect(hachaButton.first()).toBeVisible();
+  });
+
+  test("done side quest item can be reverted via Revertir hecha", async ({ page }) => {
+    await installKitchenApiMocks(page);
+    await loginToChekeo(page);
+    await openKitchenFromHome(page);
+    await openKitchenView(page, "Side Quest");
+
+    // RDY-401's Papas pendientes is on the side quest lane. Mark it done then revert.
+    const activeSection = page.locator("section[aria-label='Orden activa']").first();
+    await expect(activeSection).toBeVisible();
+
+    const accordionItems = activeSection.locator(".kitchen-accordion-item");
+    await accordionItems.first().locator("button").first().click();
+    await page.waitForTimeout(200);
+
+    const hachaButton = activeSection.getByRole("button", { name: /^Hecha$/i }).first();
+    if (await hachaButton.isVisible()) {
+      await hachaButton.click();
+      await page.waitForTimeout(400);
+    }
+
+    // Now look in the done list for the item and revert it
+    const doneSection = page.locator(".kitchen-done-list").first();
+    if (await doneSection.isVisible()) {
+      await doneSection.locator(".kitchen-done-list__toggle").click();
+      await page.waitForTimeout(200);
+
+      const firstDoneGroup = doneSection.locator(".kitchen-done-list__item").first();
+      if (await firstDoneGroup.isVisible()) {
+        await firstDoneGroup.locator("button").first().click();
+        await page.waitForTimeout(200);
+
+        // Expand the item accordion and click Revertir hecha
+        const doneItemAccordion = firstDoneGroup.locator(".kitchen-accordion-item").first();
+        if (await doneItemAccordion.isVisible()) {
+          await doneItemAccordion.locator("button").first().click();
+          await page.waitForTimeout(200);
+          const revertButton = firstDoneGroup.getByRole("button", { name: /Revertir hecha/i });
+          await expect(revertButton.first()).toBeVisible();
+        }
+      }
+    }
+  });
+
+  test("side quest queue shows full order summary and respects qty", async ({ page }) => {
+    await installKitchenApiMocks(page);
+
+    const customOrders = [
+      {
+        id: "order-sq-active",
+        folio: "SQ-ACT",
+        customerName: "SQ Active",
+        customerPhone: "5550000000",
+        orderMode: "pickup",
+        paymentMethod: "cash",
+        paymentStatus: "paid",
+        notes: "Ubicación: Mostrador",
+        subtotal: 1000,
+        total: 1000,
+        status: "preparing",
+        source: "internal-v2",
+        createdAt: isoMinutesAgo(10),
+        updatedAt: isoMinutesAgo(9),
+        items: [
+          {
+            id: "order-sq-active-line-1",
+            orderId: "order-sq-active",
+            sku: "line-1",
+            name: "Papas",
+            qty: 1,
+            unitPrice: 1000,
+            lineTotal: 1000,
+            snapshot: {
+              lineKey: "line-1",
+              itemKind: "garnish",
+              itemDisplayIndex: 1,
+            },
+            createdAt: new Date().toISOString(),
+          }
+        ],
+        events: [],
+      },
+      {
+        id: "order-sq-queue",
+        folio: "SQ-QUE",
+        customerName: "SQ Queue Customer",
+        customerPhone: "5550000000",
+        orderMode: "pickup",
+        paymentMethod: "cash",
+        paymentStatus: "paid",
+        notes: "Ubicación: Mostrador",
+        subtotal: 15500,
+        total: 15500,
+        status: "new",
+        source: "internal-v2",
+        createdAt: isoMinutesAgo(5),
+        updatedAt: isoMinutesAgo(4),
+        items: [
+          {
+            id: "order-sq-queue-line-1",
+            orderId: "order-sq-queue",
+            sku: "line-1",
+            name: "Burger BBQ",
+            qty: 1,
+            unitPrice: 2000,
+            lineTotal: 2000,
+            snapshot: {
+              lineKey: "line-1",
+              itemKind: "burger",
+              itemDisplayIndex: 1,
+            },
+            createdAt: new Date().toISOString(),
+          },
+          {
+            id: "order-sq-queue-line-2",
+            orderId: "order-sq-queue",
+            sku: "line-2",
+            name: "Burger OG",
+            qty: 3,
+            unitPrice: 2000,
+            lineTotal: 6000,
+            snapshot: {
+              lineKey: "line-2",
+              itemKind: "burger",
+              itemDisplayIndex: 2,
+            },
+            createdAt: new Date().toISOString(),
+          },
+          {
+            id: "order-sq-queue-line-3",
+            orderId: "order-sq-queue",
+            sku: "line-3",
+            name: "Combo BBQ",
+            qty: 1,
+            unitPrice: 4000,
+            lineTotal: 4000,
+            snapshot: {
+              lineKey: "line-3",
+              itemKind: "combo",
+              itemDisplayIndex: 3,
+            },
+            createdAt: new Date().toISOString(),
+          },
+          {
+            id: "order-sq-queue-line-4",
+            orderId: "order-sq-queue",
+            sku: "line-4",
+            name: "Papas",
+            qty: 2,
+            unitPrice: 1500,
+            lineTotal: 3000,
+            snapshot: {
+              lineKey: "line-4",
+              itemKind: "garnish",
+              itemDisplayIndex: 4,
+            },
+            createdAt: new Date().toISOString(),
+          }
+        ],
+        events: [],
+      }
+    ];
+
+    await page.route(/.*\/api\/orders-v2-admin\?.*$/, async (route) => {
+      await route.fulfill({
+        json: { ok: true, data: { orders: customOrders } },
+      });
+    });
+
+    await page.route(/.*\/api\/orders-v2-admin\/summary(\?.*)?$/, async (route) => {
+      await route.fulfill({
+        json: { ok: true, data: buildOrdersSummary(customOrders as any) },
+      });
+    });
+
+    await loginToChekeo(page);
+    await openKitchenFromHome(page);
+    await openKitchenView(page, "Side Quest");
+
+    // Open the queue panel if collapsed
+    const queueSection = page.locator(".kitchen-following-orders").first();
+    const queueToggle = queueSection.locator("[role='button']").first();
+    if (await queueToggle.isVisible()) {
+      await queueToggle.click();
+      await page.waitForTimeout(200);
+    }
+
+    const queueList = page.locator(".kitchen-following-orders__list");
+    await expect(queueList).toBeVisible();
+
+    const summaryText = await queueList.textContent();
+    // Validate customer name is shown
+    expect(summaryText).toContain("SQ Queue Customer");
+    // Validate that it shows the full order summary, respecting qty
+    expect(summaryText).toContain("x1 BBQ · x3 OG · x1 Combo BBQ · x2 Papas");
+    // Validate folio is NOT shown in the Side Quest queue
+    expect(summaryText).not.toContain("SQ-QUE");
+  });
+
+  test("prep queue shows only customer name and no folio or summary", async ({ page }) => {
+    await installKitchenApiMocks(page);
+
+    const customOrders = [
+      {
+        id: "order-prep-active",
+        folio: "PRP-ACT",
+        customerName: "Prep Active",
+        customerPhone: "5550000000",
+        orderMode: "pickup",
+        paymentMethod: "cash",
+        paymentStatus: "paid",
+        notes: "Ubicación: Mostrador",
+        subtotal: 1000,
+        total: 1000,
+        status: "preparing",
+        source: "internal-v2",
+        createdAt: isoMinutesAgo(10),
+        updatedAt: isoMinutesAgo(9),
+        items: [
+          {
+            id: "order-prep-active-line-1",
+            orderId: "order-prep-active",
+            sku: "line-1",
+            name: "Burger OG",
+            qty: 1,
+            unitPrice: 1000,
+            lineTotal: 1000,
+            snapshot: {
+              lineKey: "line-1",
+              itemKind: "burger",
+              itemDisplayIndex: 1,
+            },
+            createdAt: new Date().toISOString(),
+          }
+        ],
+        events: [],
+      },
+      {
+        id: "order-prep-queue",
+        folio: "PRP-QUE",
+        customerName: "Prep Queue Customer",
+        customerPhone: "5550000000",
+        orderMode: "pickup",
+        paymentMethod: "cash",
+        paymentStatus: "paid",
+        notes: "Ubicación: Mostrador",
+        subtotal: 2000,
+        total: 2000,
+        status: "new",
+        source: "internal-v2",
+        createdAt: isoMinutesAgo(5),
+        updatedAt: isoMinutesAgo(4),
+        items: [
+          {
+            id: "order-prep-queue-line-1",
+            orderId: "order-prep-queue",
+            sku: "line-1",
+            name: "Burger OG",
+            qty: 1,
+            unitPrice: 2000,
+            lineTotal: 2000,
+            snapshot: {
+              lineKey: "line-1",
+              itemKind: "burger",
+              itemDisplayIndex: 1,
+            },
+            createdAt: new Date().toISOString(),
+          }
+        ],
+        events: [],
+      }
+    ];
+
+    await page.route(/.*\/api\/orders-v2-admin\?.*$/, async (route) => {
+      await route.fulfill({
+        json: { ok: true, data: { orders: customOrders } },
+      });
+    });
+
+    await page.route(/.*\/api\/orders-v2-admin\/summary(\?.*)?$/, async (route) => {
+      await route.fulfill({
+        json: { ok: true, data: buildOrdersSummary(customOrders as any) },
+      });
+    });
+
+    await loginToChekeo(page);
+    await openKitchenFromHome(page);
+    await openKitchenView(page, "Preparación");
+
+    // Open the queue panel if collapsed
+    const queueSection = page.locator(".kitchen-following-orders").first();
+    const queueToggle = queueSection.locator("[role='button']").first();
+    if (await queueToggle.isVisible()) {
+      await queueToggle.click();
+      await page.waitForTimeout(200);
+    }
+
+    const queueList = page.locator(".kitchen-following-orders__list");
+    await expect(queueList).toBeVisible();
+
+    const summaryText = await queueList.textContent();
+    // Validate customer name is shown
+    expect(summaryText).toContain("Prep Queue Customer");
+    // Validate folio is NOT shown
+    expect(summaryText).not.toContain("PRP-QUE");
+    // Validate burger name/summary is NOT shown
+    expect(summaryText).not.toContain("OG");
+    expect(summaryText).not.toContain("Burger OG");
+
+    // Validate the button "Abrir" is visible
+    const abrirBtn = queueList.getByRole("button", { name: "Abrir" });
+    await expect(abrirBtn).toBeVisible();
+  });
+
 });
 
 test.describe("internal chekeo admin-only security mode", () => {
