@@ -14,7 +14,7 @@ const TERMINAL_STATUSES = new Set<OrderV2Status>(['delivered', 'cancelled']);
 const STATUS_TRANSITIONS: Record<OrderV2Status, OrderV2Status[]> = {
   new: ['preparing', 'cancelled'],
   preparing: ['ready', 'cancelled'],
-  ready: ['delivered', 'cancelled'],
+  ready: ['preparing', 'delivered', 'cancelled'],
   delivered: [],
   cancelled: []
 };
