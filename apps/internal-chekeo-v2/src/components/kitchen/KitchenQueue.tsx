@@ -16,7 +16,7 @@ import { fetchKitchenSummaryK } from "../../lib/ingredients-v2-admin";
 import {
   buildKitchenLocalSummary,
   buildKitchenProductionItems,
-  buildSideQuestQueueSummary,
+  buildKitchenOrderQueueSummary,
   extractKitchenLocation,
   getComboBurgerNotes,
   getKitchenItemActionKind,
@@ -424,16 +424,13 @@ const PendingOrdersQueue = ({
         <div className="kitchen-following-orders__list border-t border-zinc-800/40 p-3 space-y-3">
           {groups.map((group) => {
             const shortSummary = isSideQuest
-              ? buildSideQuestQueueSummary(group.items)
+              ? buildKitchenOrderQueueSummary(group.order)
               : null;
             return (
               <div key={group.orderId} className="kitchen-production-card bg-zinc-950/60 border border-zinc-800/80 p-3 rounded-xl text-left">
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="font-black text-zinc-100 text-lg">{group.order.customer}</p>
-                    {!isSideQuest ? (
-                      <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">{group.order.folio}</p>
-                    ) : null}
                     {shortSummary ? (
                       <p className="text-xs text-zinc-400 mt-0.5">{shortSummary}</p>
                     ) : null}
@@ -472,7 +469,7 @@ const PendingOrdersQueue = ({
             const isFirst = idx === 0;
             const opacityValue = isFirst ? 1 : idx === 1 ? 0.75 : idx === 2 ? 0.55 : 0.4;
             const shortSummary = isSideQuest
-              ? buildSideQuestQueueSummary(group.items)
+              ? buildKitchenOrderQueueSummary(group.order)
               : null;
             return (
               <div
@@ -493,9 +490,6 @@ const PendingOrdersQueue = ({
                     <p className="truncate text-xs text-zinc-500 mt-0.5">{shortSummary}</p>
                   ) : null}
                 </div>
-                {!isSideQuest ? (
-                  <span className="text-[10px] font-black text-zinc-600 uppercase ml-2 flex-shrink-0">{group.order.folio}</span>
-                ) : null}
               </div>
             );
           })}

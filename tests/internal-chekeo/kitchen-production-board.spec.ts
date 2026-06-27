@@ -1670,7 +1670,7 @@ test.describe("internal chekeo kitchen production board", () => {
     // TRF-701 is in the queue — open queue and activate it
     await page.locator(".kitchen-following-orders").first().locator("[role='button']").first().click();
     await page.waitForTimeout(200);
-    await page.locator(".kitchen-following-orders__list .kitchen-production-card").filter({ hasText: "TRF-701" }).getByRole("button", { name: "Abrir" }).click();
+    await page.locator(".kitchen-following-orders__list .kitchen-production-card").filter({ hasText: "Valeria Transfer" }).getByRole("button", { name: "Abrir" }).click();
     await page.waitForTimeout(200);
 
     const trfCard = productionCardByFolio(page, "TRF-701");
@@ -1796,6 +1796,276 @@ test.describe("internal chekeo kitchen production board", () => {
         }
       }
     }
+  });
+
+  test("side quest queue shows full order summary and respects qty", async ({ page }) => {
+    await installKitchenApiMocks(page);
+
+    const customOrders = [
+      {
+        id: "order-sq-active",
+        folio: "SQ-ACT",
+        customerName: "SQ Active",
+        customerPhone: "5550000000",
+        orderMode: "pickup",
+        paymentMethod: "cash",
+        paymentStatus: "paid",
+        notes: "Ubicación: Mostrador",
+        subtotal: 1000,
+        total: 1000,
+        status: "preparing",
+        source: "internal-v2",
+        createdAt: isoMinutesAgo(10),
+        updatedAt: isoMinutesAgo(9),
+        items: [
+          {
+            id: "order-sq-active-line-1",
+            orderId: "order-sq-active",
+            sku: "line-1",
+            name: "Papas",
+            qty: 1,
+            unitPrice: 1000,
+            lineTotal: 1000,
+            snapshot: {
+              lineKey: "line-1",
+              itemKind: "garnish",
+              itemDisplayIndex: 1,
+            },
+            createdAt: new Date().toISOString(),
+          }
+        ],
+        events: [],
+      },
+      {
+        id: "order-sq-queue",
+        folio: "SQ-QUE",
+        customerName: "SQ Queue Customer",
+        customerPhone: "5550000000",
+        orderMode: "pickup",
+        paymentMethod: "cash",
+        paymentStatus: "paid",
+        notes: "Ubicación: Mostrador",
+        subtotal: 15500,
+        total: 15500,
+        status: "new",
+        source: "internal-v2",
+        createdAt: isoMinutesAgo(5),
+        updatedAt: isoMinutesAgo(4),
+        items: [
+          {
+            id: "order-sq-queue-line-1",
+            orderId: "order-sq-queue",
+            sku: "line-1",
+            name: "Burger BBQ",
+            qty: 1,
+            unitPrice: 2000,
+            lineTotal: 2000,
+            snapshot: {
+              lineKey: "line-1",
+              itemKind: "burger",
+              itemDisplayIndex: 1,
+            },
+            createdAt: new Date().toISOString(),
+          },
+          {
+            id: "order-sq-queue-line-2",
+            orderId: "order-sq-queue",
+            sku: "line-2",
+            name: "Burger OG",
+            qty: 3,
+            unitPrice: 2000,
+            lineTotal: 6000,
+            snapshot: {
+              lineKey: "line-2",
+              itemKind: "burger",
+              itemDisplayIndex: 2,
+            },
+            createdAt: new Date().toISOString(),
+          },
+          {
+            id: "order-sq-queue-line-3",
+            orderId: "order-sq-queue",
+            sku: "line-3",
+            name: "Combo BBQ",
+            qty: 1,
+            unitPrice: 4000,
+            lineTotal: 4000,
+            snapshot: {
+              lineKey: "line-3",
+              itemKind: "combo",
+              itemDisplayIndex: 3,
+            },
+            createdAt: new Date().toISOString(),
+          },
+          {
+            id: "order-sq-queue-line-4",
+            orderId: "order-sq-queue",
+            sku: "line-4",
+            name: "Papas",
+            qty: 2,
+            unitPrice: 1500,
+            lineTotal: 3000,
+            snapshot: {
+              lineKey: "line-4",
+              itemKind: "garnish",
+              itemDisplayIndex: 4,
+            },
+            createdAt: new Date().toISOString(),
+          }
+        ],
+        events: [],
+      }
+    ];
+
+    await page.route(/.*\/api\/orders-v2-admin\?.*$/, async (route) => {
+      await route.fulfill({
+        json: { ok: true, data: { orders: customOrders } },
+      });
+    });
+
+    await page.route(/.*\/api\/orders-v2-admin\/summary(\?.*)?$/, async (route) => {
+      await route.fulfill({
+        json: { ok: true, data: buildOrdersSummary(customOrders as any) },
+      });
+    });
+
+    await loginToChekeo(page);
+    await openKitchenFromHome(page);
+    await openKitchenView(page, "Side Quest");
+
+    // Open the queue panel if collapsed
+    const queueSection = page.locator(".kitchen-following-orders").first();
+    const queueToggle = queueSection.locator("[role='button']").first();
+    if (await queueToggle.isVisible()) {
+      await queueToggle.click();
+      await page.waitForTimeout(200);
+    }
+
+    const queueList = page.locator(".kitchen-following-orders__list");
+    await expect(queueList).toBeVisible();
+
+    const summaryText = await queueList.textContent();
+    // Validate customer name is shown
+    expect(summaryText).toContain("SQ Queue Customer");
+    // Validate that it shows the full order summary, respecting qty
+    expect(summaryText).toContain("x1 BBQ · x3 OG · x1 Combo BBQ · x2 Papas");
+    // Validate folio is NOT shown in the Side Quest queue
+    expect(summaryText).not.toContain("SQ-QUE");
+  });
+
+  test("prep queue shows only customer name and no folio or summary", async ({ page }) => {
+    await installKitchenApiMocks(page);
+
+    const customOrders = [
+      {
+        id: "order-prep-active",
+        folio: "PRP-ACT",
+        customerName: "Prep Active",
+        customerPhone: "5550000000",
+        orderMode: "pickup",
+        paymentMethod: "cash",
+        paymentStatus: "paid",
+        notes: "Ubicación: Mostrador",
+        subtotal: 1000,
+        total: 1000,
+        status: "preparing",
+        source: "internal-v2",
+        createdAt: isoMinutesAgo(10),
+        updatedAt: isoMinutesAgo(9),
+        items: [
+          {
+            id: "order-prep-active-line-1",
+            orderId: "order-prep-active",
+            sku: "line-1",
+            name: "Burger OG",
+            qty: 1,
+            unitPrice: 1000,
+            lineTotal: 1000,
+            snapshot: {
+              lineKey: "line-1",
+              itemKind: "burger",
+              itemDisplayIndex: 1,
+            },
+            createdAt: new Date().toISOString(),
+          }
+        ],
+        events: [],
+      },
+      {
+        id: "order-prep-queue",
+        folio: "PRP-QUE",
+        customerName: "Prep Queue Customer",
+        customerPhone: "5550000000",
+        orderMode: "pickup",
+        paymentMethod: "cash",
+        paymentStatus: "paid",
+        notes: "Ubicación: Mostrador",
+        subtotal: 2000,
+        total: 2000,
+        status: "new",
+        source: "internal-v2",
+        createdAt: isoMinutesAgo(5),
+        updatedAt: isoMinutesAgo(4),
+        items: [
+          {
+            id: "order-prep-queue-line-1",
+            orderId: "order-prep-queue",
+            sku: "line-1",
+            name: "Burger OG",
+            qty: 1,
+            unitPrice: 2000,
+            lineTotal: 2000,
+            snapshot: {
+              lineKey: "line-1",
+              itemKind: "burger",
+              itemDisplayIndex: 1,
+            },
+            createdAt: new Date().toISOString(),
+          }
+        ],
+        events: [],
+      }
+    ];
+
+    await page.route(/.*\/api\/orders-v2-admin\?.*$/, async (route) => {
+      await route.fulfill({
+        json: { ok: true, data: { orders: customOrders } },
+      });
+    });
+
+    await page.route(/.*\/api\/orders-v2-admin\/summary(\?.*)?$/, async (route) => {
+      await route.fulfill({
+        json: { ok: true, data: buildOrdersSummary(customOrders as any) },
+      });
+    });
+
+    await loginToChekeo(page);
+    await openKitchenFromHome(page);
+    await openKitchenView(page, "Preparación");
+
+    // Open the queue panel if collapsed
+    const queueSection = page.locator(".kitchen-following-orders").first();
+    const queueToggle = queueSection.locator("[role='button']").first();
+    if (await queueToggle.isVisible()) {
+      await queueToggle.click();
+      await page.waitForTimeout(200);
+    }
+
+    const queueList = page.locator(".kitchen-following-orders__list");
+    await expect(queueList).toBeVisible();
+
+    const summaryText = await queueList.textContent();
+    // Validate customer name is shown
+    expect(summaryText).toContain("Prep Queue Customer");
+    // Validate folio is NOT shown
+    expect(summaryText).not.toContain("PRP-QUE");
+    // Validate burger name/summary is NOT shown
+    expect(summaryText).not.toContain("OG");
+    expect(summaryText).not.toContain("Burger OG");
+
+    // Validate the button "Abrir" is visible
+    const abrirBtn = queueList.getByRole("button", { name: "Abrir" });
+    await expect(abrirBtn).toBeVisible();
   });
 
 });
