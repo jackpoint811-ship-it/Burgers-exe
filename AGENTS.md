@@ -42,3 +42,11 @@ Estas reglas aplican a todo el repositorio salvo que un `AGENTS.md` más especí
 - No agregar dependencias, assets remotos, tracking, analytics, iframes ni llamadas externas no autorizadas.
 - No ocultar errores de validación ni reemplazar labels persistentes por placeholders.
 - No dejar cambios sin test/check reportado ni riesgos sin mencionar.
+
+## Memoria del proyecto
+
+Antes de cambios grandes, lee:
+
+- docs/codex-memory/00-indice.md
+
+Estas notas son la memoria viva del proyecto para Codex/Obsidian. Si contradicen el código actual, verifica el código y reporta la diferencia.
