@@ -231,9 +231,10 @@ a,button,[role="button"],input,select,textarea,.tab{touch-action:manipulation}
 .orders-ticket-stat span{@apply text-[11px] font-black uppercase tracking-[0.14em] text-zinc-500}
 .orders-ticket-stat strong{@apply mt-1 block text-xl font-black text-zinc-50}
 .orders-ticket-preview__meta{@apply mt-3 flex flex-wrap gap-2}
-.orders-ticket-preview__body{@apply mt-4 space-y-3}
+.orders-ticket-preview__body{@apply mt-3 space-y-2}
 .orders-ticket-items{@apply mt-3 space-y-2}
-.orders-ticket-item{@apply grid gap-2 rounded-2xl border border-zinc-800 bg-zinc-950/65 p-3 sm:grid-cols-[1fr_auto] sm:items-start}
+.orders-ticket-item{@apply rounded-xl border border-zinc-800 bg-zinc-950/65 p-3}
+.orders-ticket-preview__raffle-note{@apply rounded-xl border border-zinc-800 bg-zinc-950/50 px-3 py-2 text-[11px] font-semibold text-zinc-400}
 .modal--order-detail{@apply max-h-[calc(100vh-1rem)] max-w-4xl overflow-y-auto p-3 md:p-4}
 .order-detail__header{@apply mb-3 grid gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-start}
 .order-detail__identity{@apply min-w-0}
@@ -281,7 +282,7 @@ a,button,[role="button"],input,select,textarea,.tab{touch-action:manipulation}
 .payments-card__status{@apply flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between}
 .payments-card__meta{@apply grid gap-2 text-xs text-zinc-300 min-[420px]:grid-cols-2}
 .payments-card__summary{@apply rounded-2xl border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-sm text-zinc-300}
-.payments-card__actions{@apply grid gap-2 sm:grid-cols-2 xl:grid-cols-4}
+.payments-card__actions{@apply grid gap-2}
 .payments-primary-action{@apply w-full bg-cyan-300 px-3 py-2 text-sm font-black text-black}
 .payments-success-action{@apply border border-emerald-700 bg-emerald-950/60 px-3 py-2 text-sm font-black text-emerald-100}
 .payments-secondary-action{@apply border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm font-black text-zinc-100}
@@ -292,7 +293,7 @@ a,button,[role="button"],input,select,textarea,.tab{touch-action:manipulation}
 .payments-detail__stat{@apply rounded-2xl border border-zinc-800 bg-zinc-900/55 p-3}
 .payments-detail__stat span{@apply text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500}
 .payments-detail__stat strong{@apply mt-2 block text-sm font-black text-zinc-50}
-.payments-detail__actions{@apply mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4}
+.payments-detail__actions{@apply mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3}
 .payments-bank-panel{@apply rounded-2xl border border-emerald-400/25 bg-emerald-500/10 p-3}
 .payments-bank-panel__label{@apply text-[11px] font-black uppercase tracking-[0.16em] text-emerald-100}
 .payments-bank-panel__grid{@apply mt-3 grid gap-2 min-[520px]:grid-cols-3}
@@ -1826,7 +1827,7 @@ body{
 }
 .payments-card__actions{
   display:grid;
-  grid-template-columns:minmax(0,1fr) auto;
+  grid-template-columns:minmax(0,1fr);
   gap:8px;
   align-items:start;
 }
@@ -1867,3 +1868,7 @@ body{
     grid-template-columns:repeat(3,minmax(0,1fr));
   }
 }
+
+.payments-card__meta--compact{grid-template-columns:1fr}
+.payments-card__meta--compact span{overflow-wrap:anywhere}
+.orders-ticket-preview__folio{overflow-wrap:anywhere}
