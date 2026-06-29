@@ -1,4 +1,7 @@
-﻿# Flujo public-order
+> Estado: vivo
+> Uso: memoria operativa para Codex/Burgers.exe
+
+# Flujo public-order
 
 ## Objetivo
 

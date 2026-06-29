@@ -1,4 +1,7 @@
-﻿# Backlog
+> Estado: vivo
+> Uso: memoria operativa para Codex/Burgers.exe
+
+# Backlog
 
 ## Pendientes importantes
 
