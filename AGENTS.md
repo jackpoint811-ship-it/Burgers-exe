@@ -10,6 +10,14 @@ Estas reglas aplican a todo el repositorio salvo que un `AGENTS.md` más especí
 - No tocar carpetas legacy, especialmente `legacy/`, salvo que el prompt lo autorice.
 - Reportar siempre archivos modificados, riesgos, testing ejecutado y checklist manual de QA sugerido.
 
+## Workflow automático para agentes
+- Antes de cambios reales, leer `docs/codex-memory/00-indice.md`.
+- Seguir `docs/codex-memory/08-agent-workflow.md` para rama, cambios, checks, memoria, commit, push y PR.
+- Usar `docs/codex-memory/09-checklists.md` para validar el área tocada y preparar la descripción del PR.
+- Usar Graphify antes de cambios grandes, arquitectura, varios archivos o flujos conectados.
+- Actualizar `docs/codex-memory/05-backlog.md`, `06-prompts-buenos.md` o `07-decisiones.md` cuando el cambio altere backlog, prompts reutilizables o decisiones.
+- No dejar cambios locales sin PR salvo instrucción explícita.
+
 ## Contratos de producto y datos
 - No cambiar backend, payloads, contratos de datos, nombres de campos, precios, tickets, promociones ni reglas comerciales salvo autorización explícita.
 - No modificar migraciones, esquemas, seeds ni servicios backend si el PR es de UI o documentación.
@@ -47,6 +55,8 @@ Estas reglas aplican a todo el repositorio salvo que un `AGENTS.md` más especí
 
 Antes de cambios grandes, lee:
 
-- docs/codex-memory/00-indice.md
+- `docs/codex-memory/00-indice.md`
+- `docs/codex-memory/08-agent-workflow.md`
+- `docs/codex-memory/09-checklists.md`
 
 Estas notas son la memoria viva del proyecto para Codex/Obsidian. Si contradicen el código actual, verifica el código y reporta la diferencia.
