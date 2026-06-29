@@ -15,16 +15,13 @@ export type OrderTicketImageData = WhatsappOrderMessageInput & {
 export const ORDER_TICKET_RAFFLE_NOTE =
   "Sorteo activo: conserva tu folio. Los tickets del sorteo se validan segun reglas vigentes.";
 
-const IMAGE_WIDTH = 800;
-const IMAGE_HEIGHT = 1200;
-const SAFE_PADDING = 48;
-const PANEL_X = SAFE_PADDING + 24;
+const IMAGE_WIDTH = 1080;
+const MAX_IMAGE_HEIGHT = 1350;
+const MIN_IMAGE_HEIGHT = 1040;
+const SAFE_PADDING = 64;
+const PANEL_X = SAFE_PADDING + 48;
 const PANEL_WIDTH = IMAGE_WIDTH - PANEL_X * 2;
 const PANEL_RIGHT = PANEL_X + PANEL_WIDTH;
-const ITEM_LIST_BOTTOM_Y = 1008;
-const OVERFLOW_BADGE_Y = 1018;
-const RAFFLE_NOTE_Y = 1060;
-const FOOTER_Y = 1134;
 const MAX_LINES_PER_ITEM = 4;
 
 type TicketSection = {
@@ -35,6 +32,14 @@ type TicketSection = {
 type TicketRenderLine = {
   text: string;
   kind: "section" | "item" | "modifier";
+};
+
+type TicketLayout = {
+  imageHeight: number;
+  itemListBottomY: number;
+  overflowBadgeY: number;
+  raffleNoteY: number;
+  footerY: number;
 };
 
 const formatCurrency = (value?: number) =>
@@ -182,6 +187,106 @@ const drawRoundedRect = (
   ctx.closePath();
 };
 
+const withSoftShadow = (
+  ctx: CanvasRenderingContext2D,
+  color: string,
+  blur: number,
+  draw: () => void,
+) => {
+  ctx.save();
+  ctx.shadowColor = color;
+  ctx.shadowBlur = blur;
+  draw();
+  ctx.restore();
+};
+
+const drawDivider = (
+  ctx: CanvasRenderingContext2D,
+  y: number,
+  color = "rgba(132, 204, 22, 0.24)",
+) => {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([10, 12]);
+  ctx.beginPath();
+  ctx.moveTo(PANEL_X, y);
+  ctx.lineTo(PANEL_RIGHT, y);
+  ctx.stroke();
+  ctx.restore();
+};
+
+const drawTicketShell = (ctx: CanvasRenderingContext2D, layout: TicketLayout) => {
+  const shellX = SAFE_PADDING;
+  const shellY = SAFE_PADDING;
+  const shellWidth = IMAGE_WIDTH - SAFE_PADDING * 2;
+  const shellHeight = layout.imageHeight - SAFE_PADDING * 2;
+
+  withSoftShadow(ctx, "rgba(132, 204, 22, 0.28)", 24, () => {
+    drawRoundedRect(ctx, shellX, shellY, shellWidth, shellHeight, 42);
+    ctx.fillStyle = "rgba(5, 10, 14, 0.965)";
+    ctx.fill();
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = "rgba(132, 204, 22, 0.46)";
+    ctx.stroke();
+  });
+
+  ctx.save();
+  ctx.fillStyle = "rgba(132, 204, 22, 0.11)";
+  for (let x = shellX + 38; x < shellX + shellWidth - 38; x += 30) {
+    ctx.beginPath();
+    ctx.arc(x, shellY + 24, 3, 0, Math.PI * 2);
+    ctx.arc(x, shellY + shellHeight - 24, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  drawDivider(ctx, 330, "rgba(148, 163, 184, 0.22)");
+  drawDivider(ctx, layout.raffleNoteY - 22, "rgba(148, 163, 184, 0.22)");
+};
+
+const drawPill = (
+  ctx: CanvasRenderingContext2D,
+  label: string,
+  x: number,
+  y: number,
+  width: number,
+  color: string,
+) => {
+  drawRoundedRect(ctx, x, y, width, 34, 16);
+  ctx.fillStyle = `${color}22`;
+  ctx.fill();
+  ctx.strokeStyle = `${color}70`;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.fillStyle = color;
+  ctx.font = "900 15px 'Fira Sans', Arial, sans-serif";
+  ctx.fillText(fitTextToWidth(ctx, label.toUpperCase(), width - 24), x + 12, y + 23);
+};
+
+const getPaymentStatusColor = (status?: string) => {
+  const normalized = status?.trim().toLowerCase() || "pending";
+  if (normalized === "paid") return "#a3e635";
+  if (normalized === "cancelled") return "#fb7185";
+  return "#facc15";
+};
+
+const drawMetaLine = (
+  ctx: CanvasRenderingContext2D,
+  label: string,
+  value: string,
+  x: number,
+  y: number,
+  width: number,
+) => {
+  ctx.fillStyle = "#67e8f9";
+  ctx.font = "900 15px 'Fira Sans', Arial, sans-serif";
+  ctx.fillText(label.toUpperCase(), x, y);
+  ctx.fillStyle = "#dbeafe";
+  ctx.font = "800 20px 'Fira Sans', Arial, sans-serif";
+  ctx.fillText(fitTextToWidth(ctx, value, width), x, y + 28);
+};
+
 const canvasToBlob = (canvas: HTMLCanvasElement) =>
   new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
@@ -251,41 +356,74 @@ const buildTicketSections = (order: OrderTicketImageData) => {
     })) satisfies TicketSection[];
 };
 
-const drawMetricCardLines = (
+const getTicketCanvasHeight = (sections: TicketSection[]) => {
+  const estimatedLines = sections.reduce(
+    (total, section) =>
+      total +
+      1 +
+      section.items.reduce(
+        (itemTotal, lines) => itemTotal + Math.min(lines.length, MAX_LINES_PER_ITEM),
+        0,
+      ),
+    0,
+  );
+  return Math.min(
+    MAX_IMAGE_HEIGHT,
+    Math.max(MIN_IMAGE_HEIGHT, 900 + estimatedLines * 34),
+  );
+};
+
+const getTicketLayout = (imageHeight: number): TicketLayout => ({
+  imageHeight,
+  itemListBottomY: imageHeight - 274,
+  overflowBadgeY: imageHeight - 264,
+  raffleNoteY: imageHeight - 184,
+  footerY: imageHeight - 128,
+});
+
+const drawPaymentPanel = (
   ctx: CanvasRenderingContext2D,
-  label: string,
-  lines: string[],
+  total: string,
+  method: string,
+  status: string,
+  rawStatus: string | undefined,
   x: number,
   y: number,
   width: number,
-  height: number,
 ) => {
-  drawRoundedRect(ctx, x, y, width, height, 18);
-  ctx.fillStyle = "rgba(10, 18, 24, 0.92)";
+  const height = 124;
+  drawRoundedRect(ctx, x, y, width, height, 24);
+  ctx.fillStyle = "rgba(10, 18, 24, 0.9)";
   ctx.fill();
-  ctx.strokeStyle = "rgba(132, 204, 22, 0.26)";
+  ctx.strokeStyle = "rgba(132, 204, 22, 0.28)";
   ctx.lineWidth = 2;
   ctx.stroke();
 
-  ctx.fillStyle = "#8bd7d2";
-  ctx.font = "900 14px 'Fira Sans', Arial, sans-serif";
-  ctx.fillText(label, x + 18, y + 24);
+  ctx.fillStyle = "rgba(132, 204, 22, 0.78)";
+  ctx.fillRect(x, y + 18, 5, height - 36);
 
+  ctx.fillStyle = "#8bd7d2";
+  ctx.font = "900 15px 'Fira Sans', Arial, sans-serif";
+  ctx.fillText("TOTAL", x + 28, y + 34);
   ctx.fillStyle = "#f8fafc";
-  ctx.font = "900 25px 'Fira Sans', Arial, sans-serif";
-  const maxTextWidth = width - 36;
-  const wrappedLines = lines.flatMap((line) =>
-    wrapText(ctx, line, maxTextWidth),
+  ctx.font = "900 54px 'Fira Sans', Arial, sans-serif";
+  ctx.fillText(fitTextToWidth(ctx, total, width * 0.48), x + 28, y + 88);
+
+  const metaX = x + Math.floor(width * 0.56);
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "800 16px 'Fira Sans', Arial, sans-serif";
+  ctx.fillText("METODO", metaX, y + 38);
+  ctx.fillStyle = "#e5e7eb";
+  ctx.font = "850 23px 'Fira Sans', Arial, sans-serif";
+  ctx.fillText(fitTextToWidth(ctx, method, width - (metaX - x) - 24), metaX, y + 68);
+  drawPill(
+    ctx,
+    status,
+    metaX,
+    y + 80,
+    Math.min(260, width - (metaX - x) - 24),
+    getPaymentStatusColor(rawStatus),
   );
-  const visibleLines = wrappedLines.slice(0, Math.max(1, Math.floor((height - 38) / 26)));
-  visibleLines.forEach((line, index) => {
-    const isLastHiddenLine =
-      index === visibleLines.length - 1 && wrappedLines.length > visibleLines.length;
-    const text = isLastHiddenLine
-      ? fitTextToWidth(ctx, `${line}...`, maxTextWidth)
-      : fitTextToWidth(ctx, line, maxTextWidth);
-    ctx.fillText(text, x + 18, y + 55 + index * 26);
-  });
 };
 
 const drawSectionHeader = (
@@ -340,10 +478,11 @@ const buildTicketRenderLines = (sections: TicketSection[]) => {
 const drawOverflowBadge = (
   ctx: CanvasRenderingContext2D,
   hiddenLineCount: number,
+  layout: TicketLayout,
 ) => {
   if (hiddenLineCount <= 0) return;
   const label = `+ ${hiddenLineCount} líneas más en Chekeo`;
-  drawRoundedRect(ctx, PANEL_X, OVERFLOW_BADGE_Y, PANEL_WIDTH, 30, 12);
+  drawRoundedRect(ctx, PANEL_X, layout.overflowBadgeY, PANEL_WIDTH, 30, 12);
   ctx.fillStyle = "rgba(250, 204, 21, 0.11)";
   ctx.fill();
   ctx.strokeStyle = "rgba(250, 204, 21, 0.32)";
@@ -352,7 +491,7 @@ const drawOverflowBadge = (
 
   ctx.fillStyle = "#facc15";
   ctx.font = "900 14px 'Fira Sans', Arial, sans-serif";
-  ctx.fillText(label, PANEL_X + 14, OVERFLOW_BADGE_Y + 20);
+  ctx.fillText(label, PANEL_X + 14, layout.overflowBadgeY + 20);
 };
 
 export const buildOrderTicketSummaryText = (order: OrderTicketImageData) => [
@@ -372,154 +511,147 @@ export const buildOrderTicketSummaryText = (order: OrderTicketImageData) => [
 export const generateOrderTicketImage = async (
   order: OrderTicketImageData,
 ): Promise<Blob> => {
+  const sections = buildTicketSections(order);
+  const itemCount = getTicketItems(order).reduce((total, item) => total + item.qty, 0);
+  const layout = getTicketLayout(getTicketCanvasHeight(sections));
   const canvas = document.createElement("canvas");
   canvas.width = IMAGE_WIDTH;
-  canvas.height = IMAGE_HEIGHT;
+  canvas.height = layout.imageHeight;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas no esta disponible en este navegador.");
 
-  const gradient = ctx.createLinearGradient(0, 0, IMAGE_WIDTH, IMAGE_HEIGHT);
-  gradient.addColorStop(0, "#050816");
-  gradient.addColorStop(0.58, "#08121a");
+  const gradient = ctx.createLinearGradient(0, 0, IMAGE_WIDTH, layout.imageHeight);
+  gradient.addColorStop(0, "#020617");
+  gradient.addColorStop(0.46, "#071814");
   gradient.addColorStop(1, "#05070d");
   ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, IMAGE_WIDTH, IMAGE_HEIGHT);
+  ctx.fillRect(0, 0, IMAGE_WIDTH, layout.imageHeight);
 
-  ctx.fillStyle = "rgba(34, 211, 238, 0.045)";
-  for (let y = 0; y < IMAGE_HEIGHT; y += 7) {
+  ctx.fillStyle = "rgba(34, 211, 238, 0.04)";
+  for (let y = 0; y < layout.imageHeight; y += 8) {
     ctx.fillRect(0, y, IMAGE_WIDTH, 1);
   }
 
+  ctx.save();
+  ctx.rotate(-0.34);
+  ctx.fillStyle = "rgba(132, 204, 22, 0.045)";
+  for (let x = -layout.imageHeight; x < IMAGE_WIDTH * 1.4; x += 78) {
+    ctx.fillRect(x, 0, 2, layout.imageHeight * 1.65);
+  }
+  ctx.restore();
+
   if (isPreviewOrder(order)) {
     ctx.save();
-    ctx.translate(IMAGE_WIDTH / 2, 594);
-    ctx.rotate(-0.32);
+    ctx.translate(IMAGE_WIDTH / 2, layout.imageHeight * 0.48);
+    ctx.rotate(-0.34);
     ctx.textAlign = "center";
-    ctx.fillStyle = "rgba(250, 204, 21, 0.09)";
-    ctx.font = "900 86px 'Fira Sans', Arial, sans-serif";
+    ctx.fillStyle = "rgba(250, 204, 21, 0.075)";
+    ctx.font = "900 128px 'Fira Sans', Arial, sans-serif";
     ctx.fillText("PEDIDO DE PRUEBA", 0, 0);
     ctx.restore();
   }
 
-  drawRoundedRect(
-    ctx,
-    SAFE_PADDING,
-    SAFE_PADDING,
-    IMAGE_WIDTH - SAFE_PADDING * 2,
-    IMAGE_HEIGHT - SAFE_PADDING * 2,
-    34,
-  );
-  ctx.fillStyle = "rgba(5, 10, 14, 0.96)";
-  ctx.fill();
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = "rgba(132, 204, 22, 0.62)";
-  ctx.shadowColor = "rgba(132, 204, 22, 0.34)";
-  ctx.shadowBlur = 14;
-  ctx.stroke();
-  ctx.shadowBlur = 0;
+  drawTicketShell(ctx, layout);
 
   const deliveryDetail = safeText(order.deliveryDetail, extractLocation(order.note));
   const paymentMethod = getPaymentMethodImageLabel(order.paymentMethod);
   const paymentStatus = getPaymentStatusImageLabel(
     order.paymentState ?? order.paymentStatus,
   );
-  const sections = buildTicketSections(order);
-  const itemCount = getTicketItems(order).reduce((total, item) => total + item.qty, 0);
 
-  ctx.textAlign = "center";
+  ctx.textAlign = "left";
   ctx.fillStyle = "#a3e635";
-  ctx.font = "900 20px 'Fira Sans', Arial, sans-serif";
-  ctx.fillText("BURGERS.EXE", IMAGE_WIDTH / 2, 105);
+  ctx.font = "900 24px 'Fira Sans', Arial, sans-serif";
+  ctx.fillText("BURGERS.EXE", PANEL_X, 124);
 
   if (isPreviewOrder(order)) {
-    drawRoundedRect(ctx, IMAGE_WIDTH / 2 - 112, 120, 224, 28, 12);
-    ctx.fillStyle = "rgba(250, 204, 21, 0.12)";
-    ctx.fill();
-    ctx.strokeStyle = "rgba(250, 204, 21, 0.38)";
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-    ctx.fillStyle = "#facc15";
-    ctx.font = "900 13px 'Fira Sans', Arial, sans-serif";
-    ctx.fillText("PEDIDO DE PRUEBA", IMAGE_WIDTH / 2, 139);
+    drawPill(ctx, "PEDIDO DE PRUEBA", PANEL_RIGHT - 232, 98, 232, "#facc15");
   }
 
+  ctx.fillStyle = "#67e8f9";
+  ctx.font = "900 15px 'Fira Sans', Arial, sans-serif";
+  ctx.fillText("FOLIO", PANEL_X, 162);
   ctx.fillStyle = "#f8fafc";
-  ctx.font = "900 40px 'Fira Sans', Arial, sans-serif";
+  ctx.font = "900 60px 'Fira Sans', Arial, sans-serif";
   ctx.fillText(
-    fitTextToWidth(ctx, safeText(order.folio), PANEL_WIDTH, "middle"),
-    IMAGE_WIDTH / 2,
-    isPreviewOrder(order) ? 178 : 154,
+    fitTextToWidth(ctx, safeText(order.folio), 536, "middle"),
+    PANEL_X,
+    224,
   );
 
-  ctx.fillStyle = "#e5e7eb";
-  ctx.font = "800 24px 'Fira Sans', Arial, sans-serif";
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "750 17px 'Fira Sans', Arial, sans-serif";
+  ctx.fillText(fitTextToWidth(ctx, safeText(order.createdAt, "Sin hora"), 536), PANEL_X, 258);
+
+  const metaX = PANEL_X + 590;
+  const metaWidth = PANEL_RIGHT - metaX;
   const customerLines = wrapText(
     ctx,
     safeText(order.customer ?? order.customerName),
-    PANEL_WIDTH,
+    metaWidth,
   ).slice(0, 2);
+  ctx.fillStyle = "#67e8f9";
+  ctx.font = "900 15px 'Fira Sans', Arial, sans-serif";
+  ctx.fillText("CLIENTE", metaX, 162);
+  ctx.fillStyle = "#e5e7eb";
+  ctx.font = "850 22px 'Fira Sans', Arial, sans-serif";
   customerLines.forEach((line, index) => {
-    const y = (isPreviewOrder(order) ? 214 : 194) + index * 28;
-    ctx.fillText(fitTextToWidth(ctx, line, PANEL_WIDTH), IMAGE_WIDTH / 2, y);
+    ctx.fillText(fitTextToWidth(ctx, line, metaWidth), metaX, 194 + index * 28);
   });
 
-  ctx.fillStyle = "#94a3b8";
-  ctx.font = "700 16px 'Fira Sans', Arial, sans-serif";
-  ctx.fillText(
-    fitTextToWidth(
-      ctx,
-      `${safeText(order.createdAt, "Sin hora")} - ${deliveryDetail}`,
-      PANEL_WIDTH,
-    ),
-    IMAGE_WIDTH / 2,
-    isPreviewOrder(order) ? 272 : customerLines.length > 1 ? 236 : 224,
+  drawMetaLine(
+    ctx,
+    "Entrega",
+    deliveryDetail,
+    metaX,
+    customerLines.length > 1 ? 254 : 238,
+    metaWidth,
   );
 
   ctx.textAlign = "left";
-  drawMetricCardLines(ctx, "TOTAL", [formatCurrency(order.total)], PANEL_X, 286, PANEL_WIDTH, 74);
-  drawMetricCardLines(
+  drawPaymentPanel(
     ctx,
-    "PAGO",
-    [`Metodo: ${paymentMethod}`, `Estado: ${paymentStatus}`],
+    formatCurrency(order.total),
+    paymentMethod,
+    paymentStatus,
+    order.paymentState ?? order.paymentStatus,
     PANEL_X,
-    372,
+    360,
     PANEL_WIDTH,
-    96,
   );
 
-  let cursorY = 502;
+  let cursorY = 532;
   drawSectionHeader(ctx, `Pedido (${itemCount})`, cursorY);
-  cursorY += 28;
-  ctx.strokeStyle = "rgba(132, 204, 22, 0.22)";
-  ctx.lineWidth = 1;
-  ctx.setLineDash([6, 8]);
-  ctx.beginPath();
-  ctx.moveTo(PANEL_X, cursorY - 13);
-  ctx.lineTo(PANEL_RIGHT, cursorY - 13);
-  ctx.stroke();
-  ctx.setLineDash([]);
+  cursorY += 30;
+  drawDivider(ctx, cursorY - 14);
 
   const renderData = buildTicketRenderLines(sections);
   let hiddenLineCount = renderData.hiddenLineCount;
   let stoppedAt = -1;
 
+  if (!renderData.lines.length) {
+    ctx.fillStyle = "#a8c7c2";
+    ctx.font = "750 21px 'Fira Sans', Arial, sans-serif";
+    ctx.fillText("Sin productos registrados en este ticket.", PANEL_X, cursorY + 24);
+  }
+
   for (let index = 0; index < renderData.lines.length; index += 1) {
     const line = renderData.lines[index];
-    const indent = line.kind === "modifier" ? 18 : 0;
+    const indent = line.kind === "modifier" ? 24 : 0;
     const lineHeight =
-      line.kind === "section" ? 20 : line.kind === "item" ? 23 : 20;
+      line.kind === "section" ? 22 : line.kind === "item" ? 28 : 24;
     const maxLines = line.kind === "item" ? 2 : 1;
 
     if (line.kind === "section") {
-      cursorY += 5;
+      cursorY += 8;
       ctx.fillStyle = "#a3e635";
-      ctx.font = "900 14px 'Fira Sans', Arial, sans-serif";
+      ctx.font = "900 16px 'Fira Sans', Arial, sans-serif";
     } else if (line.kind === "item") {
       ctx.fillStyle = "#f8fafc";
-      ctx.font = "750 17px 'Fira Sans', Arial, sans-serif";
+      ctx.font = "850 22px 'Fira Sans', Arial, sans-serif";
     } else {
       ctx.fillStyle = "#a8c7c2";
-      ctx.font = "650 15px 'Fira Sans', Arial, sans-serif";
+      ctx.font = "700 18px 'Fira Sans', Arial, sans-serif";
     }
 
     const wrapped = wrapText(ctx, line.text, PANEL_WIDTH - indent).slice(0, maxLines);
@@ -527,7 +659,7 @@ export const generateOrderTicketImage = async (
     hiddenLineCount += Math.max(0, fullWrapped.length - wrapped.length);
 
     for (let pieceIndex = 0; pieceIndex < wrapped.length; pieceIndex += 1) {
-      if (cursorY + lineHeight > ITEM_LIST_BOTTOM_Y) {
+      if (cursorY + lineHeight > layout.itemListBottomY) {
         stoppedAt = index;
         break;
       }
@@ -536,23 +668,23 @@ export const generateOrderTicketImage = async (
     }
 
     if (stoppedAt >= 0) break;
-    cursorY += line.kind === "section" ? 4 : line.kind === "item" ? 2 : 0;
+    cursorY += line.kind === "section" ? 6 : line.kind === "item" ? 3 : 0;
   }
 
   if (stoppedAt >= 0) {
     hiddenLineCount += Math.max(1, renderData.lines.length - stoppedAt);
   }
 
-  drawOverflowBadge(ctx, hiddenLineCount);
+  drawOverflowBadge(ctx, hiddenLineCount, layout);
 
-  ctx.font = "700 15px 'Fira Sans', Arial, sans-serif";
+  ctx.font = "750 19px 'Fira Sans', Arial, sans-serif";
   drawParagraph(
     ctx,
     ORDER_TICKET_RAFFLE_NOTE,
     PANEL_X,
-    RAFFLE_NOTE_Y,
+    layout.raffleNoteY,
     PANEL_WIDTH,
-    19,
+    24,
     "#a8c7c2",
     2,
   );
@@ -560,7 +692,7 @@ export const generateOrderTicketImage = async (
   ctx.textAlign = "center";
   ctx.fillStyle = "#a3e635";
   ctx.font = "900 18px 'Fira Sans', Arial, sans-serif";
-  ctx.fillText("Burgers.exe", IMAGE_WIDTH / 2, FOOTER_Y);
+  ctx.fillText("Burgers.exe / Ticket manual / Pagos", IMAGE_WIDTH / 2, layout.footerY);
 
   return canvasToBlob(canvas);
 };
