@@ -74,6 +74,7 @@ import {
 import {
   downloadOrderTicketImage,
   generateOrderTicketImage,
+  ORDER_TICKET_RAFFLE_NOTE,
 } from "../lib/order-ticket-image";
 import { CatalogAdminPanel } from "./CatalogAdminPanel";
 import { RafflesAdminPanel } from "./RafflesAdminPanel";
@@ -639,23 +640,31 @@ const isTransferPaymentMethod = (method: string) =>
   ["transfer", "transferencia", "spei"].includes(
     method.trim().toLowerCase(),
   );
-const getPaymentDeliveryDetail = (order: InternalOrder) => {
-  const location = extractKitchenLocation(order.note);
-  const noteWithoutLocation = stripLocationFromNotes(order.note);
-  const detailParts = [`${channelLabel[order.channel]} · ${location}`];
-  if (noteWithoutLocation) detailParts.push(noteWithoutLocation);
-  return detailParts.join(" | ");
+const FIXTURE_TAG_PATTERN = /\[FIXTURE:[^\]]+\]/gi;
+const cleanPaymentText = (value?: string, fallback = "") => {
+  const cleaned = value?.replace(FIXTURE_TAG_PATTERN, "").replace(/\s+/g, " ").trim();
+  return cleaned || fallback;
 };
+const isMissingPaymentLocation = (location: string) =>
+  location.toLowerCase().startsWith("sin ubic");
+const getPaymentLocation = (order: InternalOrder) => {
+  const location = cleanPaymentText(extractKitchenLocation(order.note));
+  return isMissingPaymentLocation(location) ? "Sin ubicación" : location;
+};
+const getPaymentNote = (order: InternalOrder) =>
+  cleanPaymentText(stripLocationFromNotes(order.note));
+const getPaymentDeliveryDetail = (order: InternalOrder) =>
+  getPaymentLocation(order);
 const buildPaymentNoteWithLocation = (
   order: InternalOrder,
   note: string,
 ) => {
-  const location = extractKitchenLocation(order.note);
-  const trimmedNote = note.trim();
+  const location = getPaymentLocation(order);
+  const trimmedNote = cleanPaymentText(note);
   if (!trimmedNote) {
-    return location === "Sin ubicación" ? "" : `Ubicación: ${location}`;
+    return isMissingPaymentLocation(location) ? "" : `Ubicación: ${location}`;
   }
-  return location === "Sin ubicación"
+  return isMissingPaymentLocation(location)
     ? trimmedNote
     : `Ubicación: ${location} | ${trimmedNote}`;
 };
@@ -677,7 +686,7 @@ const buildPaymentWhatsappCopy = (order: InternalOrder) =>
     paymentState: order.paymentState,
     total: order.total,
     items: order.items,
-    note: stripLocationFromNotes(order.note),
+    note: getPaymentNote(order),
     source: order.source,
     orderStatus: statusLabel[order.status],
     deliveryDetail: getPaymentDeliveryDetail(order),
@@ -729,8 +738,7 @@ const ordersRangeFilterOptions: Array<{
 ];
 const getOrdersStatusLabel = (status: OrderStatus) =>
   ordersStatusLabel[getOrdersStatusFilterValue(status)];
-const getOrderLocationLabel = (order: Pick<InternalOrder, "note">) =>
-  extractKitchenLocation(order.note);
+const getOrderLocationLabel = (order: InternalOrder) => getPaymentLocation(order);
 const getOperationalSummary = (orders: InternalOrder[]) => {
   const visibleOrders = orders.filter((order) => !terminalStatuses.has(order.status));
   const participants = new Set(
@@ -2863,13 +2871,13 @@ const OrderCommandPanel = ({
             </div>
           ))}
         </div>
-        {order.note ? (
-          <details className="orders-card__more orders-card__more--panel">
-            <summary>Nota operativa</summary>
-            <p className="orders-note">{order.note}</p>
-          </details>
-        ) : null}
       </div>
+      {order.note ? (
+        <details className="orders-card__more orders-card__more--panel">
+          <summary>Nota operativa</summary>
+          <p className="orders-note">{order.note}</p>
+        </details>
+      ) : null}
       <div className="orders-command-detail__actions">
         {canDeliver ? (
           <Button
@@ -3522,6 +3530,12 @@ const PaymentDetailModal = ({
 }) => {
   const dialogRef = useRef<HTMLElement | null>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
+  const [ticketVisible, setTicketVisible] = useState(false);
+  const [ticketBlob, setTicketBlob] = useState<Blob | null>(null);
+  const [generatingTicket, setGeneratingTicket] = useState(false);
+  const [ticketNotice, setTicketNotice] = useState<PaymentPanelNotice | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!order) return undefined;
@@ -3545,13 +3559,85 @@ const PaymentDetailModal = ({
     };
   }, [order?.id]);
 
+  useEffect(() => {
+    if (!order) return;
+    setTicketVisible(false);
+    setTicketBlob(null);
+    setTicketNotice(null);
+  }, [
+    order?.id,
+    order?.folio,
+    order?.paymentMethod,
+    order?.paymentState,
+    order?.total,
+    order?.items,
+  ]);
+
+  useEffect(() => {
+    if (!ticketNotice) return undefined;
+    const timeout = window.setTimeout(() => setTicketNotice(null), 3000);
+    return () => window.clearTimeout(timeout);
+  }, [ticketNotice]);
+
   if (!order) return null;
 
   const busy = runtime.actionOrderId === order.id;
   const paymentCopy = buildPaymentWhatsappCopy(order);
   const phone = normalizeWhatsappPhone(order.customerPhone ?? "");
   const isTransferPayment = isTransferPaymentMethod(order.paymentMethod);
-  const noteWithoutLocation = stripLocationFromNotes(order.note);
+  const noteWithoutLocation = getPaymentNote(order);
+  const paymentDeliveryDetail = getPaymentDeliveryDetail(order);
+
+  const getTicketBlob = async () => {
+    if (ticketBlob) return ticketBlob;
+    setGeneratingTicket(true);
+    try {
+      const nextBlob = await generateOrderTicketImage({
+        ...order,
+        note: getPaymentNote(order),
+        deliveryDetail: paymentDeliveryDetail,
+        orderStatus: statusLabel[order.status],
+      });
+      setTicketBlob(nextBlob);
+      return nextBlob;
+    } finally {
+      setGeneratingTicket(false);
+    }
+  };
+
+  const showTicket = async () => {
+    setTicketNotice(null);
+    setTicketVisible(true);
+    try {
+      await getTicketBlob();
+      setTicketNotice({
+        tone: "success",
+        message: `${order.folio}: ticket listo para descargar.`,
+      });
+    } catch {
+      setTicketNotice({
+        tone: "error",
+        message: "No se pudo generar el PNG; el preview visual sigue disponible.",
+      });
+    }
+  };
+
+  const downloadTicket = async () => {
+    setTicketNotice(null);
+    try {
+      const blob = await getTicketBlob();
+      downloadOrderTicketImage(blob, order.folio);
+      setTicketNotice({
+        tone: "success",
+        message: `${order.folio}: ticket PNG descargado.`,
+      });
+    } catch {
+      setTicketNotice({
+        tone: "error",
+        message: "No se pudo generar el ticket PNG en este navegador.",
+      });
+    }
+  };
 
   return (
     <div
@@ -3611,7 +3697,7 @@ const PaymentDetailModal = ({
             <strong>{getPaymentStatusLabel(order.paymentState)}</strong>
           </div>
           <div className="payments-detail__stat">
-            <span>Detalle de entrega</span>
+            <span>Lugar de entrega</span>
             <strong>{getPaymentDeliveryDetail(order)}</strong>
           </div>
         </div>
@@ -3642,6 +3728,28 @@ const PaymentDetailModal = ({
                   <strong>{getBankPaymentPrimaryValue(bankPaymentConfig)}</strong>
                 </div>
               </div>
+            </div>
+          ) : null}
+
+          {ticketVisible ? (
+            <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-3">
+              <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-cyan-100">
+                    Ticket visual
+                  </p>
+                  <p className="text-xs text-zinc-400">
+                    Preview compacto para validar folio, lugar, pago y total.
+                  </p>
+                </div>
+                <Button
+                  className="payments-secondary-action"
+                  onClick={() => setTicketVisible(false)}
+                >
+                  Ocultar ticket
+                </Button>
+              </div>
+              <OrderTicketPreview order={order} />
             </div>
           ) : null}
 
@@ -3700,6 +3808,20 @@ const PaymentDetailModal = ({
           )}
           <Button
             className="payments-secondary-action"
+            onClick={() => void showTicket()}
+            disabled={generatingTicket}
+          >
+            {generatingTicket ? "Generando..." : ticketVisible ? "Regenerar ticket" : "Ver ticket"}
+          </Button>
+          <Button
+            className="payments-secondary-action disabled:opacity-40"
+            onClick={() => void downloadTicket()}
+            disabled={generatingTicket}
+          >
+            {generatingTicket ? "Generando..." : "Descargar PNG"}
+          </Button>
+          <Button
+            className="payments-secondary-action"
             onClick={() => void onCopyMessage()}
           >
             Copiar WhatsApp
@@ -3725,6 +3847,13 @@ const PaymentDetailModal = ({
             className={`mt-3 rounded-xl px-3 py-2 text-xs ${notice.tone === "error" ? "bg-rose-500/10 text-rose-200" : "bg-emerald-500/10 text-emerald-200"}`}
           >
             {notice.message}
+          </p>
+        ) : null}
+        {ticketNotice ? (
+          <p
+            className={`mt-3 rounded-xl px-3 py-2 text-xs ${ticketNotice.tone === "error" ? "bg-rose-500/10 text-rose-200" : "bg-emerald-500/10 text-emerald-200"}`}
+          >
+            {ticketNotice.message}
           </p>
         ) : null}
       </section>
@@ -3762,7 +3891,7 @@ const PaymentNotesPanel = ({
       const next: Record<string, string> = {};
       orders.forEach((order) => {
         next[order.id] =
-          current[order.id] ?? stripLocationFromNotes(order.note);
+          current[order.id] ?? getPaymentNote(order);
       });
       return next;
     });
@@ -4067,8 +4196,6 @@ const PaymentNotesPanel = ({
       ) : null}
       <div className="grid gap-2">
         {paymentOrders.map((order) => {
-          const busy = runtime.actionOrderId === order.id;
-          const noteWithoutLocation = stripLocationFromNotes(order.note);
           const notice = inlineNotice[order.id];
           const location = getOrderLocationLabel(order);
           return (
@@ -4082,13 +4209,9 @@ const PaymentNotesPanel = ({
                   <p className="break-words text-sm font-semibold text-zinc-100">
                     {order.customer}
                   </p>
-                  <p className="text-[11px] text-zinc-400">
-                    {order.createdAt} · {channelLabel[order.channel]} ·{" "}
-                    {sourceLabel(order.source)}
-                  </p>
                 </div>
                 <div className="payments-card__amount">
-                  <span>Total final</span>
+                  <span>Total</span>
                   <strong>{formatCurrency(order.total)}</strong>
                 </div>
               </div>
@@ -4096,46 +4219,21 @@ const PaymentNotesPanel = ({
               <div className="payments-card__status">
                 <div className="flex flex-wrap gap-1">
                   <PaymentStatusBadge status={order.paymentState} />
-                  <StatusBadge status={order.status} />
-                  <span className="orders-location-chip">Ubicacion: {location}</span>
+                  <span className="orders-location-chip">Entrega: {location}</span>
                 </div>
-                {order.customerPhone ? (
-                  <p className="text-[11px] text-zinc-500">{order.customerPhone}</p>
-                ) : null}
               </div>
 
-              <div className="payments-card__meta">
-                <span>Método de pago: {getPaymentMethodLabel(order.paymentMethod)}</span>
-                <span>Estado de pago: {getPaymentStatusLabel(order.paymentState)}</span>
-                <span>Estado del pedido: {statusLabel[order.status]}</span>
-                <span>Detalle: {getPaymentDeliveryDetail(order)}</span>
+              <div className="payments-card__meta payments-card__meta--compact">
+                <span>Metodo: {getPaymentMethodLabel(order.paymentMethod)}</span>
+                <span>Pago: {getPaymentStatusLabel(order.paymentState)}</span>
+                <span>Lugar: {location}</span>
               </div>
-              <p className="payments-card__summary">
-                Resumen: {getPaymentItemsDigest(order)}
-              </p>
-              {noteWithoutLocation ? (
-                <p className="orders-note">Seguimiento: {noteWithoutLocation}</p>
-              ) : null}
               <div className="payments-card__actions">
-                <Button
-                  className="payments-success-action disabled:opacity-40"
-                  onClick={() =>
-                    void runPaymentAction(
-                      order,
-                      "paid",
-                    )
-                  }
-                  disabled={
-                    busy || !runtime.sessionActive || order.paymentState === "paid"
-                  }
-                >
-                  {busy ? "Actualizando…" : "Marcar pagado"}
-                </Button>
                 <Button
                   className="payments-secondary-action"
                   onClick={() => setSelectedOrderId(order.id)}
                 >
-                  Más
+                  Abrir pago
                 </Button>
               </div>
               {notice ? (
@@ -4155,7 +4253,7 @@ const PaymentNotesPanel = ({
         draftNote={
           selectedOrder
             ? draftNotes[selectedOrder.id] ??
-              stripLocationFromNotes(selectedOrder.note)
+              getPaymentNote(selectedOrder)
             : ""
         }
         notice={selectedOrder ? inlineNotice[selectedOrder.id] : undefined}
@@ -4266,7 +4364,6 @@ const getNextStatus = (status: OrderStatus): OrderStatus =>
 const TicketPreviewItems = ({ order }: { order: InternalOrder }) => (
   <div className="orders-ticket-items">
     {order.items.map((item, index) => {
-      const lineTotal = item.lineTotal ?? item.qty * item.price;
       const notes = [
         item.comboBurgers.length
           ? `Combo: ${item.comboBurgers.map((burger) => burger.name).join(", ")}`
@@ -4282,7 +4379,7 @@ const TicketPreviewItems = ({ order }: { order: InternalOrder }) => (
           ? `Side Quest: ${item.sideQuestExtras.map((extra) => extra.name).join(", ")}`
           : "",
         item.burgerNote ? `Nota: ${item.burgerNote}` : "",
-      ].filter(Boolean);
+      ].map((note) => cleanPaymentText(note)).filter(Boolean);
 
       return (
         <div key={`${order.id}-${index}`} className="orders-ticket-item">
@@ -4296,9 +4393,6 @@ const TicketPreviewItems = ({ order }: { order: InternalOrder }) => (
               </p>
             ) : null}
           </div>
-          <strong className="text-sm text-cyan-100">
-            {formatCurrency(lineTotal)}
-          </strong>
         </div>
       );
     })}
@@ -4308,6 +4402,7 @@ const TicketPreviewItems = ({ order }: { order: InternalOrder }) => (
 const OrderTicketPreview = ({ order }: { order: InternalOrder }) => {
   const itemCount = getOrderItemCount(order);
   const location = getOrderLocationLabel(order);
+  const deliveryDetail = getPaymentDeliveryDetail(order);
   return (
     <section className="orders-ticket-preview">
       <div className="orders-ticket-preview__hero">
@@ -4322,11 +4417,12 @@ const OrderTicketPreview = ({ order }: { order: InternalOrder }) => {
             {order.customer}
           </p>
           <p className="orders-ticket-preview__timestamp">
-            {order.createdAt} · {channelLabel[order.channel]}
+            Fecha de entrega: {order.createdAt} · {channelLabel[order.channel]}
           </p>
         </div>
         <div className="orders-ticket-preview__badges">
           <OrdersStatusBadge status={order.status} />
+          <PaymentStatusBadge status={order.paymentState} />
           <span className="orders-location-chip">Ubicación: {location}</span>
         </div>
       </div>
@@ -4340,12 +4436,17 @@ const OrderTicketPreview = ({ order }: { order: InternalOrder }) => {
           <span>Items</span>
           <strong>{itemCount}</strong>
         </div>
+        <div className="orders-ticket-stat">
+          <span>Pago</span>
+          <strong>{getPaymentMethodLabel(order.paymentMethod)}</strong>
+        </div>
+        <div className="orders-ticket-stat">
+          <span>Estado pago</span>
+          <strong>{getPaymentStatusLabel(order.paymentState)}</strong>
+        </div>
       </div>
-
       <div className="orders-ticket-preview__meta">
-        {order.customerPhone ? (
-          <span className="info-pill">Tel: {order.customerPhone}</span>
-        ) : null}
+        <span className="info-pill">Entrega: {deliveryDetail}</span>
       </div>
 
       <div className="orders-ticket-preview__body">
@@ -4355,9 +4456,9 @@ const OrderTicketPreview = ({ order }: { order: InternalOrder }) => {
           </p>
           <TicketPreviewItems order={order} />
         </div>
-        {order.note ? (
-          <p className="orders-note">Nota para revisar: {order.note}</p>
-        ) : null}
+        <p className="orders-ticket-preview__raffle-note">
+          {ORDER_TICKET_RAFFLE_NOTE}
+        </p>
       </div>
     </section>
   );

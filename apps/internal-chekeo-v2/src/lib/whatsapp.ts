@@ -38,8 +38,13 @@ export type WhatsappBankDetails = {
 
 const formatWhatsappCurrency = (value?: number) => `$${(Number.isFinite(value) ? value ?? 0 : 0).toFixed(2)}`;
 
+const FIXTURE_TAG_PATTERN = /\[FIXTURE:[^\]]+\]/gi;
+
+const sanitizeText = (value: string | undefined) =>
+  value?.replace(FIXTURE_TAG_PATTERN, '').replace(/\s+/g, ' ').trim() ?? '';
+
 const safeText = (value: string | undefined, fallback = '-') => {
-  const trimmed = value?.replace(/\s+/g, ' ').trim();
+  const trimmed = sanitizeText(value);
   return trimmed || fallback;
 };
 
@@ -118,6 +123,23 @@ const buildItemModifierText = (item: WhatsappOrderItemInput): string[] => {
   return modifiers;
 };
 
+const buildPaymentOrderDigest = (order: WhatsappOrderMessageInput) => {
+  if (!order.items?.length) return 'Resumen no disponible';
+  return order.items
+    .map((item, index) => `${item.qty} ${safeText(item.name, `Producto ${index + 1}`)}`)
+    .join(' + ');
+};
+
+const getPaymentMessageTitle = (order: WhatsappOrderMessageInput) => {
+  const status = getPaymentStatus(order).trim().toLowerCase();
+  if (isTransferPaymentMethod(order.paymentMethod)) {
+    return status === 'paid' ? 'Pago confirmado' : 'Pago pendiente';
+  }
+  const method = order.paymentMethod?.trim().toLowerCase();
+  if (method === 'cash' || method === 'efectivo') return 'Pago en efectivo';
+  return status === 'paid' ? 'Pago confirmado' : 'Pago pendiente';
+};
+
 export const buildWhatsappOrderSummaryLines = (order: WhatsappOrderMessageInput): string[] => {
   if (!order.items?.length) return ['• Resumen no disponible en Chekeo.'];
   return order.items.flatMap((item, index) => {
@@ -177,34 +199,49 @@ export const buildWhatsappPaymentMessage = (
   const name = getCustomerName(order);
   const folio = getFolio(order);
   const total = formatWhatsappCurrency(order.total);
-  const paymentMethod = getPaymentMethodMessageLabel(order.paymentMethod);
-  const paymentStatus = getPaymentStatusMessageLabel(getPaymentStatus(order));
-  const deliveryDetail = safeText(order.deliveryDetail, 'Sin detalle de entrega');
-  const note = safeText(order.note, '');
-  const summaryLines = buildWhatsappOrderSummaryLines(order);
+  const paymentStatus = getPaymentMessageTitle(order);
+  const deliveryDetail = safeText(order.deliveryDetail, 'Entrega por confirmar');
+  const orderDigest = buildPaymentOrderDigest(order);
+  const isTransfer = isTransferPaymentMethod(order.paymentMethod);
+  const isPaid = getPaymentStatus(order).trim().toLowerCase() === 'paid';
+  const bankLine = hasBankDetails(order.bankDetails)
+    ? [
+        order.bankDetails?.bankName,
+        order.bankDetails?.accountHolder,
+        order.bankDetails?.clabe
+          ? `CLABE: ${order.bankDetails.clabe}`
+          : order.bankDetails?.accountNumber
+            ? `Cuenta: ${order.bankDetails.accountNumber}`
+            : '',
+      ]
+        .map((part) => safeText(part, ''))
+        .filter(Boolean)
+        .join(' / ')
+    : '';
 
   return [
-    `Burgers.exe | ${paymentStatus}`,
+    `Burgers.exe // ${paymentStatus}`,
     '',
-    `Hola ${name},`,
+    `Hola ${name}`,
     '',
-    `Folio: ${folio}`,
+    isTransfer && !isPaid
+      ? `Tu pedido ${folio} esta pendiente de transferencia.`
+      : isTransfer && isPaid
+        ? `Pago confirmado para el pedido ${folio}.`
+        : `Tu pedido ${folio} queda en efectivo.`,
     `Total: ${total}`,
-    `Metodo de pago: ${paymentMethod}`,
-    `Estado de pago: ${paymentStatus}`,
-    `Detalle de entrega: ${deliveryDetail}`,
-    '',
-    'Resumen del pedido:',
-    ...summaryLines,
-    ...(isTransferPaymentMethod(order.paymentMethod)
-      ? ['', ...buildBankDetailLines(order.bankDetails)]
+    `Entrega: ${deliveryDetail}`,
+    `Pedido: ${orderDigest}`,
+    ...(isTransfer && !isPaid && bankLine
+      ? [`Datos para transferir: ${bankLine}`]
       : []),
-    ...(note ? ['', `Notas: ${note}`] : []),
-    '',
-    'Si ya realizaste el pago, comparte tu comprobante por este medio.',
+    isTransfer && !isPaid
+      ? 'Cuando pagues, mandame tu comprobante por aqui.'
+      : isPaid
+        ? 'Gracias. Te aviso cualquier actualizacion por aqui.'
+        : 'Pagas al recibir. Gracias.',
   ].join('\n');
 };
-
 export const normalizeWhatsappPhone = (phone: string): string => {
   const digits = phone.replace(/\D/g, '');
   if (digits.length === 10) return `52${digits}`;

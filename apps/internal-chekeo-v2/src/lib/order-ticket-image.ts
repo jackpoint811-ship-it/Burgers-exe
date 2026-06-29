@@ -1,4 +1,4 @@
-import { buildWhatsappOrderSummaryLines, type WhatsappOrderMessageInput } from "./whatsapp";
+import type { WhatsappOrderMessageInput } from "./whatsapp";
 
 type TicketItem = NonNullable<WhatsappOrderMessageInput["items"]>[number] & {
   itemKind?: string;
@@ -12,8 +12,11 @@ export type OrderTicketImageData = WhatsappOrderMessageInput & {
   orderStatus?: string;
 };
 
+export const ORDER_TICKET_RAFFLE_NOTE =
+  "Sorteo activo: conserva tu folio. Los tickets del sorteo se validan segun reglas vigentes.";
+
 const IMAGE_WIDTH = 800;
-const IMAGE_HEIGHT = 1600;
+const IMAGE_HEIGHT = 1200;
 const SAFE_PADDING = 48;
 const PANEL_X = SAFE_PADDING + 24;
 const PANEL_WIDTH = IMAGE_WIDTH - PANEL_X * 2;
@@ -21,19 +24,49 @@ const PANEL_WIDTH = IMAGE_WIDTH - PANEL_X * 2;
 const formatCurrency = (value?: number) =>
   `$${(Number.isFinite(value) ? value ?? 0 : 0).toFixed(2)}`;
 
+const FIXTURE_TAG_PATTERN = /\[FIXTURE:[^\]]+\]/gi;
+
+const sanitizeText = (value: string | undefined) =>
+  value?.replace(FIXTURE_TAG_PATTERN, "").replace(/\s+/g, " ").trim() ?? "";
+
 const safeText = (value: string | undefined, fallback = "-") => {
-  const trimmed = value?.replace(/\s+/g, " ").trim();
+  const trimmed = sanitizeText(value);
   return trimmed || fallback;
 };
 
 const truncate = (value: string, maxLength: number) =>
   value.length > maxLength
-    ? `${value.slice(0, Math.max(0, maxLength - 1))}…`
+    ? `${value.slice(0, Math.max(0, maxLength - 3))}...`
     : value;
 
 const extractLocation = (note?: string) => {
   const match = note?.match(/Ubicación:\s*([^\n|]+)/i);
   return match?.[1]?.trim() || "Sin ubicación";
+};
+
+const paymentMethodImageLabel: Record<string, string> = {
+  cash: "Efectivo",
+  card: "Tarjeta",
+  transfer: "Transferencia",
+  transferencia: "Transferencia",
+  spei: "Transferencia",
+  unknown: "Por confirmar",
+};
+
+const paymentStatusImageLabel: Record<string, string> = {
+  pending: "Pago pendiente",
+  paid: "Pago confirmado",
+  cancelled: "Pago cancelado",
+};
+
+const getPaymentMethodImageLabel = (method?: string) => {
+  const normalized = method?.trim().toLowerCase() || "unknown";
+  return paymentMethodImageLabel[normalized] || safeText(method, "Por confirmar");
+};
+
+const getPaymentStatusImageLabel = (status?: string) => {
+  const normalized = status?.trim().toLowerCase() || "pending";
+  return paymentStatusImageLabel[normalized] || safeText(status, "Pago pendiente");
 };
 
 const wrapText = (
@@ -119,11 +152,8 @@ const getTicketItems = (order: OrderTicketImageData) =>
   ((order.items ?? []) as TicketItem[]).filter(Boolean);
 
 const buildTicketItemLines = (item: TicketItem, index: number) => {
-  const total =
-    item.lineTotal ??
-    (Number.isFinite(item.price) ? (item.price ?? 0) * item.qty : undefined);
   const lines = [
-    `${item.qty}x ${safeText(item.name, `Producto ${index + 1}`)}${total !== undefined ? ` - ${formatCurrency(total)}` : ""}`,
+    `${item.qty}x ${safeText(item.name, `Producto ${index + 1}`)}`,
   ];
 
   if (item.comboBurgers?.length) {
@@ -135,14 +165,13 @@ const buildTicketItemLines = (item: TicketItem, index: number) => {
   if (item.removedIngredients?.length) {
     lines.push(`Sin: ${item.removedIngredients.map((ingredient) => safeText(ingredient)).join(", ")}`);
   }
-  if (item.garnish?.name) lines.push(`Guarnición: ${safeText(item.garnish.name)}`);
+  if (item.garnish?.name) lines.push(`Guarnicion: ${safeText(item.garnish.name)}`);
   if (item.sideQuestExtras?.length) {
     lines.push(`Side Quest: ${item.sideQuestExtras.map((extra) => safeText(extra.name)).join(", ")}`);
   }
   if (item.includedDrink?.name) lines.push(`Bebida: ${safeText(item.includedDrink.name)}`);
-  if (item.burgerNote?.trim()) lines.push(`Nota: ${safeText(item.burgerNote)}`);
 
-  return lines;
+  return lines.map((line) => safeText(line)).filter(Boolean);
 };
 
 const buildTicketSections = (order: OrderTicketImageData) => {
@@ -227,11 +256,14 @@ export const buildOrderTicketSummaryText = (order: OrderTicketImageData) => [
   "Burgers.exe - Ticket",
   `Folio: ${safeText(order.folio)}`,
   `Cliente: ${safeText(order.customer ?? order.customerName)}`,
-  `Entrega: ${extractLocation(order.note)}`,
+  `Entrega: ${safeText(order.deliveryDetail, extractLocation(order.note))}`,
   `Total: ${formatCurrency(order.total)}`,
+  `Pago: ${getPaymentMethodImageLabel(order.paymentMethod)} (${getPaymentStatusImageLabel(order.paymentState ?? order.paymentStatus)})`,
   "",
-  "Resumen del pedido:",
-  ...buildWhatsappOrderSummaryLines(order),
+  "Pedido:",
+  ...getTicketItems(order).map((item, index) => `${item.qty}x ${safeText(item.name, `Producto ${index + 1}`)}`),
+  "",
+  ORDER_TICKET_RAFFLE_NOTE,
 ].join("\n");
 
 export const generateOrderTicketImage = async (
@@ -241,17 +273,17 @@ export const generateOrderTicketImage = async (
   canvas.width = IMAGE_WIDTH;
   canvas.height = IMAGE_HEIGHT;
   const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Canvas no está disponible en este navegador.");
+  if (!ctx) throw new Error("Canvas no esta disponible en este navegador.");
 
   const gradient = ctx.createLinearGradient(0, 0, IMAGE_WIDTH, IMAGE_HEIGHT);
   gradient.addColorStop(0, "#050816");
-  gradient.addColorStop(0.5, "#0c1326");
-  gradient.addColorStop(1, "#101827");
+  gradient.addColorStop(0.55, "#0a101f");
+  gradient.addColorStop(1, "#111827");
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, IMAGE_WIDTH, IMAGE_HEIGHT);
 
-  ctx.fillStyle = "rgba(34, 211, 238, 0.08)";
-  for (let y = 0; y < IMAGE_HEIGHT; y += 6) {
+  ctx.fillStyle = "rgba(34, 211, 238, 0.07)";
+  for (let y = 0; y < IMAGE_HEIGHT; y += 7) {
     ctx.fillRect(0, y, IMAGE_WIDTH, 1);
   }
 
@@ -261,99 +293,101 @@ export const generateOrderTicketImage = async (
     SAFE_PADDING,
     IMAGE_WIDTH - SAFE_PADDING * 2,
     IMAGE_HEIGHT - SAFE_PADDING * 2,
-    36,
+    34,
   );
-  ctx.fillStyle = "rgba(6, 11, 18, 0.95)";
+  ctx.fillStyle = "rgba(6, 11, 18, 0.96)";
   ctx.fill();
   ctx.lineWidth = 3;
-  ctx.strokeStyle = "rgba(34, 211, 238, 0.65)";
-  ctx.shadowColor = "rgba(34, 211, 238, 0.5)";
-  ctx.shadowBlur = 18;
+  ctx.strokeStyle = "rgba(34, 211, 238, 0.68)";
+  ctx.shadowColor = "rgba(34, 211, 238, 0.45)";
+  ctx.shadowBlur = 16;
   ctx.stroke();
   ctx.shadowBlur = 0;
 
-  const location = extractLocation(order.note);
-  const items = getTicketItems(order);
-  const itemCount = items.reduce((total, item) => total + item.qty, 0);
-
-  ctx.textAlign = "left";
-  ctx.fillStyle = "#67e8f9";
-  ctx.font = "900 18px 'Fira Sans', Arial, sans-serif";
-  ctx.fillText("BURGERS.EXE", PANEL_X, 108);
-  ctx.fillStyle = "#f8fafc";
-  ctx.font = "900 48px 'Fira Sans', Arial, sans-serif";
-  ctx.fillText(safeText(order.folio), PANEL_X, 160);
-  ctx.fillStyle = "#e5e7eb";
-  ctx.font = "700 24px 'Fira Sans', Arial, sans-serif";
-  ctx.fillText(truncate(safeText(order.customer ?? order.customerName), 32), PANEL_X, 198);
-  ctx.fillStyle = "#94a3b8";
-  ctx.font = "600 16px 'Fira Sans', Arial, sans-serif";
-  ctx.fillText(`${safeText(order.createdAt, "Sin hora")} · ${location}`, PANEL_X, 228);
-
-  ctx.textAlign = "right";
-  ctx.fillStyle = "#facc15";
-  ctx.font = "900 18px 'Fira Sans', Arial, sans-serif";
-  ctx.fillText(safeText(order.orderStatus, "Recibido"), PANEL_X + PANEL_WIDTH, 108);
-
-  drawMetricCard(ctx, "TOTAL", formatCurrency(order.total), PANEL_X, 272, 190);
-  drawMetricCard(ctx, "ITEMS", String(itemCount), PANEL_X + 208, 272, 120);
-  drawMetricCard(ctx, "ENTREGA", truncate(location, 24), PANEL_X + 346, 272, 278);
-
+  const deliveryDetail = safeText(order.deliveryDetail, extractLocation(order.note));
+  const paymentMethod = getPaymentMethodImageLabel(order.paymentMethod);
+  const paymentStatus = getPaymentStatusImageLabel(
+    order.paymentState ?? order.paymentStatus,
+  );
   const sections = buildTicketSections(order);
-  let cursorY = 390;
-  ctx.textAlign = "left";
-  sections.forEach((section) => {
-    if (cursorY > 1360) return;
-    drawSectionHeader(ctx, section.title, cursorY);
-    cursorY += 24;
-    ctx.fillStyle = "#e5e7eb";
-    ctx.font = "600 16px 'Fira Sans', Arial, sans-serif";
-    section.lines.forEach((line) => {
-      if (cursorY > 1360) return;
-      const wrapped = wrapText(ctx, line, PANEL_WIDTH);
-      wrapped.slice(0, 4).forEach((piece) => {
-        if (cursorY > 1360) return;
-        ctx.fillText(piece, PANEL_X, cursorY);
-        cursorY += 22;
-      });
-    });
-    cursorY += 12;
-  });
-
-  if (order.note) {
-    drawSectionHeader(ctx, "Nota", Math.min(cursorY, 1390));
-    ctx.font = "600 16px 'Fira Sans', Arial, sans-serif";
-    drawParagraph(
-      ctx,
-      safeText(order.note),
-      PANEL_X,
-      Math.min(cursorY + 24, 1414),
-      PANEL_WIDTH,
-      22,
-      "#fcd34d",
-      5,
-    );
-  }
+  const itemCount = getTicketItems(order).reduce((total, item) => total + item.qty, 0);
 
   ctx.textAlign = "center";
   ctx.fillStyle = "#67e8f9";
-  ctx.font = "900 18px 'Fira Sans', Arial, sans-serif";
-  ctx.fillText("Burgers.exe", IMAGE_WIDTH / 2, 1528);
-  ctx.font = "600 14px 'Fira Sans', Arial, sans-serif";
+  ctx.font = "900 20px 'Fira Sans', Arial, sans-serif";
+  ctx.fillText("BURGERS.EXE", IMAGE_WIDTH / 2, 105);
+
+  ctx.fillStyle = "#f8fafc";
+  ctx.font = "900 40px 'Fira Sans', Arial, sans-serif";
+  ctx.fillText(truncate(safeText(order.folio), 24), IMAGE_WIDTH / 2, 154);
+
+  ctx.fillStyle = "#e5e7eb";
+  ctx.font = "800 24px 'Fira Sans', Arial, sans-serif";
+  ctx.fillText(truncate(safeText(order.customer ?? order.customerName), 34), IMAGE_WIDTH / 2, 194);
+
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "700 16px 'Fira Sans', Arial, sans-serif";
+  ctx.fillText(
+    `${safeText(order.createdAt, "Sin hora")} - ${truncate(deliveryDetail, 34)}`,
+    IMAGE_WIDTH / 2,
+    224,
+  );
+
+  ctx.textAlign = "left";
+  drawMetricCard(ctx, "TOTAL", formatCurrency(order.total), PANEL_X, 266, PANEL_WIDTH);
+  drawMetricCard(
+    ctx,
+    "PAGO",
+    `${paymentMethod} - ${paymentStatus}`,
+    PANEL_X,
+    360,
+    PANEL_WIDTH,
+  );
+
+  let cursorY = 480;
+  drawSectionHeader(ctx, `Pedido (${itemCount})`, cursorY);
+  cursorY += 28;
+  ctx.fillStyle = "#e5e7eb";
+  ctx.font = "700 18px 'Fira Sans', Arial, sans-serif";
+
+  sections.forEach((section) => {
+    if (cursorY > 1000) return;
+    ctx.fillStyle = "#a7f3d0";
+    ctx.font = "900 14px 'Fira Sans', Arial, sans-serif";
+    ctx.fillText(section.title.toUpperCase(), PANEL_X, cursorY);
+    cursorY += 24;
+    ctx.fillStyle = "#e5e7eb";
+    ctx.font = "650 17px 'Fira Sans', Arial, sans-serif";
+    section.lines.forEach((line) => {
+      if (cursorY > 1000) return;
+      wrapText(ctx, line, PANEL_WIDTH).slice(0, 2).forEach((piece) => {
+        if (cursorY > 1000) return;
+        ctx.fillText(piece, PANEL_X, cursorY);
+        cursorY += 23;
+      });
+    });
+    cursorY += 14;
+  });
+
+  ctx.font = "700 15px 'Fira Sans', Arial, sans-serif";
   drawParagraph(
     ctx,
-    "Gracias por tu pedido.",
+    ORDER_TICKET_RAFFLE_NOTE,
     PANEL_X,
-    1550,
+    1062,
     PANEL_WIDTH,
-    18,
+    19,
     "#94a3b8",
     2,
   );
 
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#67e8f9";
+  ctx.font = "900 18px 'Fira Sans', Arial, sans-serif";
+  ctx.fillText("Burgers.exe", IMAGE_WIDTH / 2, 1132);
+
   return canvasToBlob(canvas);
 };
-
 export const downloadOrderTicketImage = (blob: Blob, folio?: string) => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
