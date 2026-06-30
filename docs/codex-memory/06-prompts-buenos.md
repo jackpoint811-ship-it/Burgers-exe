@@ -9,6 +9,12 @@ Lee `AGENTS.md` y `docs/codex-memory/00-indice.md` antes de tocar código.
 
 Usa Graphify primero si el cambio toca varios archivos.
 
+## Reglas rápidas
+
+- `AGENTS.md` manda.
+- Esta memoria apoya, no reemplaza.
+- Si hay contradicción, reporta la diferencia antes de tocar nada.
+
 Objetivo:
 [describe aquí el cambio]
 
