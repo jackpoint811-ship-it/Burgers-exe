@@ -1,0 +1,716 @@
+{
+  "batchId": "QA-UIUX-PHASE2-1",
+  "generatedAt": "2026-06-21T23:16:52.068Z",
+  "safety": {
+    "publicOrigin": "https://burgers-exe-public-v2-preview.pages.dev",
+    "internalOrigin": "https://burgers-exe-internal-v2-preview.pages.dev",
+    "menuSource": "d1",
+    "authStatus": true,
+    "environment": "preview",
+    "requiredSource": "public-v2-preview",
+    "allSeedOrdersPreviewSource": true,
+    "beforeBatchCount": 0,
+    "afterBatchCount": 10
+  },
+  "createdCountThisRun": 10,
+  "orderCountInBatchAfter": 10,
+  "states": {
+    "cancelled": 2,
+    "delivered": 2,
+    "ready": 2,
+    "preparing": 2,
+    "new": 2
+  },
+  "payments": {
+    "pending": 5,
+    "paid": 4,
+    "cancelled": 1
+  },
+  "paymentMethods": {
+    "cash": 4,
+    "transfer": 6
+  },
+  "orderModes": {
+    "delivery": 5,
+    "pickup": 5
+  },
+  "updates": [
+    {
+      "seq": "02",
+      "orderId": "ord_ec77b881-6706-479a-84b1-0cfb3dc61c2f",
+      "type": "status",
+      "nextStatus": "preparing"
+    },
+    {
+      "seq": "02",
+      "orderId": "ord_ec77b881-6706-479a-84b1-0cfb3dc61c2f",
+      "type": "payment",
+      "nextPaymentStatus": "paid"
+    },
+    {
+      "seq": "02",
+      "orderId": "ord_ec77b881-6706-479a-84b1-0cfb3dc61c2f",
+      "type": "kitchen",
+      "lineKey": "qa-02-bbq",
+      "itemKind": "burger",
+      "done": true
+    },
+    {
+      "seq": "03",
+      "orderId": "ord_dfa04eec-4c45-447a-8bca-8213bbf7c4e2",
+      "type": "status",
+      "nextStatus": "preparing"
+    },
+    {
+      "seq": "03",
+      "orderId": "ord_dfa04eec-4c45-447a-8bca-8213bbf7c4e2",
+      "type": "status",
+      "nextStatus": "ready"
+    },
+    {
+      "seq": "03",
+      "orderId": "ord_dfa04eec-4c45-447a-8bca-8213bbf7c4e2",
+      "type": "kitchen",
+      "lineKey": "qa-03-combo-og",
+      "itemKind": "combo",
+      "done": true
+    },
+    {
+      "seq": "04",
+      "orderId": "ord_03022eac-13a7-4e2a-af95-fc3c52bc0056",
+      "type": "status",
+      "nextStatus": "preparing"
+    },
+    {
+      "seq": "04",
+      "orderId": "ord_03022eac-13a7-4e2a-af95-fc3c52bc0056",
+      "type": "status",
+      "nextStatus": "ready"
+    },
+    {
+      "seq": "04",
+      "orderId": "ord_03022eac-13a7-4e2a-af95-fc3c52bc0056",
+      "type": "status",
+      "nextStatus": "delivered"
+    },
+    {
+      "seq": "04",
+      "orderId": "ord_03022eac-13a7-4e2a-af95-fc3c52bc0056",
+      "type": "payment",
+      "nextPaymentStatus": "paid"
+    },
+    {
+      "seq": "04",
+      "orderId": "ord_03022eac-13a7-4e2a-af95-fc3c52bc0056",
+      "type": "kitchen",
+      "lineKey": "qa-04-og",
+      "itemKind": "burger",
+      "done": true
+    },
+    {
+      "seq": "04",
+      "orderId": "ord_03022eac-13a7-4e2a-af95-fc3c52bc0056",
+      "type": "kitchen",
+      "lineKey": "qa-04-lemon",
+      "itemKind": "garnish",
+      "done": true
+    },
+    {
+      "seq": "05",
+      "orderId": "ord_5afe62ce-3045-42ea-a7f0-ea6de76b314b",
+      "type": "status",
+      "nextStatus": "cancelled"
+    },
+    {
+      "seq": "05",
+      "orderId": "ord_5afe62ce-3045-42ea-a7f0-ea6de76b314b",
+      "type": "payment",
+      "nextPaymentStatus": "cancelled"
+    },
+    {
+      "seq": "06",
+      "orderId": "ord_8d3afcbe-e42a-46bb-8875-e75029f6a5e0",
+      "type": "payment",
+      "nextPaymentStatus": "paid"
+    },
+    {
+      "seq": "07",
+      "orderId": "ord_027a495b-c55b-412b-aa47-e74ea8a81adf",
+      "type": "status",
+      "nextStatus": "preparing"
+    },
+    {
+      "seq": "08",
+      "orderId": "ord_b6ab14d3-a9c7-4af1-bad9-7e730f7668e3",
+      "type": "status",
+      "nextStatus": "preparing"
+    },
+    {
+      "seq": "08",
+      "orderId": "ord_b6ab14d3-a9c7-4af1-bad9-7e730f7668e3",
+      "type": "status",
+      "nextStatus": "ready"
+    },
+    {
+      "seq": "08",
+      "orderId": "ord_b6ab14d3-a9c7-4af1-bad9-7e730f7668e3",
+      "type": "payment",
+      "nextPaymentStatus": "paid"
+    },
+    {
+      "seq": "08",
+      "orderId": "ord_b6ab14d3-a9c7-4af1-bad9-7e730f7668e3",
+      "type": "kitchen",
+      "lineKey": "qa-08-combo-bbq",
+      "itemKind": "combo",
+      "done": true
+    },
+    {
+      "seq": "09",
+      "orderId": "ord_902efed9-b34b-488e-bfaa-b5380ea21886",
+      "type": "status",
+      "nextStatus": "preparing"
+    },
+    {
+      "seq": "09",
+      "orderId": "ord_902efed9-b34b-488e-bfaa-b5380ea21886",
+      "type": "status",
+      "nextStatus": "ready"
+    },
+    {
+      "seq": "09",
+      "orderId": "ord_902efed9-b34b-488e-bfaa-b5380ea21886",
+      "type": "status",
+      "nextStatus": "delivered"
+    },
+    {
+      "seq": "09",
+      "orderId": "ord_902efed9-b34b-488e-bfaa-b5380ea21886",
+      "type": "kitchen",
+      "lineKey": "qa-09-og",
+      "itemKind": "burger",
+      "done": true
+    },
+    {
+      "seq": "10",
+      "orderId": "ord_bc8a1f0c-74e7-46f9-a780-c3984ace88cc",
+      "type": "status",
+      "nextStatus": "cancelled"
+    }
+  ],
+  "orders": [
+    {
+      "seq": "01",
+      "label": "nuevo cash pickup burger extras",
+      "idempotencyKey": "QA-UIUX-PHASE2-1-01",
+      "createStatus": "created",
+      "id": "ord_c9d5d83c-fdeb-426b-ae55-ac367400dbe0",
+      "folio": "PVW-04R1SN7KPM",
+      "source": "public-v2-preview",
+      "status": "new",
+      "paymentStatus": "pending",
+      "paymentMethod": "cash",
+      "orderMode": "pickup",
+      "customerName": "QA-UIUX-PHASE2-1 01 Nuevo Cash",
+      "total": 102,
+      "itemSummary": [
+        {
+          "sku": "OG",
+          "name": "OG",
+          "qty": 1,
+          "lineKey": "qa-01-og",
+          "itemKind": "burger"
+        }
+      ]
+    },
+    {
+      "seq": "02",
+      "label": "preparing transfer delivery multi item",
+      "idempotencyKey": "QA-UIUX-PHASE2-1-02",
+      "createStatus": "created",
+      "id": "ord_ec77b881-6706-479a-84b1-0cfb3dc61c2f",
+      "folio": "PVW-04R1SN8FLO",
+      "source": "public-v2-preview",
+      "status": "preparing",
+      "paymentStatus": "paid",
+      "paymentMethod": "transfer",
+      "orderMode": "delivery",
+      "customerName": "QA-UIUX-PHASE2-1 02 Prep Transfer",
+      "total": 117,
+      "itemSummary": [
+        {
+          "sku": "BBQ",
+          "name": "BBQ",
+          "qty": 1,
+          "lineKey": "qa-02-bbq",
+          "itemKind": "burger"
+        },
+        {
+          "sku": "PAPAS_ESPECIALES",
+          "name": "Papas a la francesa Especiales",
+          "qty": 1,
+          "lineKey": "qa-02-papas",
+          "itemKind": "garnish"
+        }
+      ]
+    },
+    {
+      "seq": "03",
+      "label": "ready transfer pickup combo side quest",
+      "idempotencyKey": "QA-UIUX-PHASE2-1-03",
+      "createStatus": "created",
+      "id": "ord_dfa04eec-4c45-447a-8bca-8213bbf7c4e2",
+      "folio": "PVW-04R1SNB2TA",
+      "source": "public-v2-preview",
+      "status": "ready",
+      "paymentStatus": "pending",
+      "paymentMethod": "transfer",
+      "orderMode": "pickup",
+      "customerName": "QA-UIUX-PHASE2-1 03 Ready Combo",
+      "total": 146,
+      "itemSummary": [
+        {
+          "sku": "0001",
+          "name": "OG Full Loaded",
+          "qty": 1,
+          "lineKey": "qa-03-combo-og",
+          "itemKind": "combo"
+        },
+        {
+          "sku": "AROS_CEBOLLA",
+          "name": "Aros de Cebolla",
+          "qty": 1,
+          "lineKey": "qa-03-combo-og::sidequest-included-garnish",
+          "itemKind": "garnish"
+        },
+        {
+          "sku": "PAPAS_ESPECIALES",
+          "name": "Papas a la francesa Especiales",
+          "qty": 1,
+          "lineKey": "qa-03-combo-og::sidequest-extra-0",
+          "itemKind": "garnish"
+        }
+      ]
+    },
+    {
+      "seq": "04",
+      "label": "delivered cash delivery burger side",
+      "idempotencyKey": "QA-UIUX-PHASE2-1-04",
+      "createStatus": "created",
+      "id": "ord_03022eac-13a7-4e2a-af95-fc3c52bc0056",
+      "folio": "PVW-04R1SNE43Z",
+      "source": "public-v2-preview",
+      "status": "delivered",
+      "paymentStatus": "paid",
+      "paymentMethod": "cash",
+      "orderMode": "delivery",
+      "customerName": "QA-UIUX-PHASE2-1 04 Delivered Cash",
+      "total": 120,
+      "itemSummary": [
+        {
+          "sku": "OG",
+          "name": "OG",
+          "qty": 1,
+          "lineKey": "qa-04-og",
+          "itemKind": "burger"
+        },
+        {
+          "sku": "PAPAS_LEMON_PEPPER",
+          "name": "Papas a la francesa Lemon&Pepper",
+          "qty": 1,
+          "lineKey": "qa-04-lemon",
+          "itemKind": "garnish"
+        }
+      ]
+    },
+    {
+      "seq": "05",
+      "label": "cancelled transfer pickup combo",
+      "idempotencyKey": "QA-UIUX-PHASE2-1-05",
+      "createStatus": "created",
+      "id": "ord_5afe62ce-3045-42ea-a7f0-ea6de76b314b",
+      "folio": "PVW-04R1SNKP1D",
+      "source": "public-v2-preview",
+      "status": "cancelled",
+      "paymentStatus": "cancelled",
+      "paymentMethod": "transfer",
+      "orderMode": "pickup",
+      "customerName": "QA-UIUX-PHASE2-1 05 Cancelled",
+      "total": 100,
+      "itemSummary": [
+        {
+          "sku": "COMBO-BBQ",
+          "name": "Combo BBQ",
+          "qty": 1,
+          "lineKey": "qa-05-combo-bbq",
+          "itemKind": "combo"
+        }
+      ]
+    },
+    {
+      "seq": "06",
+      "label": "nuevo paid transfer delivery multi item",
+      "idempotencyKey": "QA-UIUX-PHASE2-1-06",
+      "createStatus": "created",
+      "id": "ord_8d3afcbe-e42a-46bb-8875-e75029f6a5e0",
+      "folio": "PVW-04R1SNNMPC",
+      "source": "public-v2-preview",
+      "status": "new",
+      "paymentStatus": "paid",
+      "paymentMethod": "transfer",
+      "orderMode": "delivery",
+      "customerName": "QA-UIUX-PHASE2-1 06 New Paid",
+      "total": 132,
+      "itemSummary": [
+        {
+          "sku": "BBQ",
+          "name": "BBQ",
+          "qty": 1,
+          "lineKey": "qa-06-bbq",
+          "itemKind": "burger"
+        },
+        {
+          "sku": "AROS_CEBOLLA",
+          "name": "Aros de Cebolla",
+          "qty": 1,
+          "lineKey": "qa-06-aros",
+          "itemKind": "garnish"
+        }
+      ]
+    },
+    {
+      "seq": "07",
+      "label": "preparing cash pickup long note",
+      "idempotencyKey": "QA-UIUX-PHASE2-1-07",
+      "createStatus": "created",
+      "id": "ord_027a495b-c55b-412b-aa47-e74ea8a81adf",
+      "folio": "PVW-04R1SNPQKI",
+      "source": "public-v2-preview",
+      "status": "preparing",
+      "paymentStatus": "pending",
+      "paymentMethod": "cash",
+      "orderMode": "pickup",
+      "customerName": "QA-UIUX-PHASE2-1 07 Long Note",
+      "total": 92,
+      "itemSummary": [
+        {
+          "sku": "OG",
+          "name": "OG",
+          "qty": 1,
+          "lineKey": "qa-07-og-long",
+          "itemKind": "burger"
+        }
+      ]
+    },
+    {
+      "seq": "08",
+      "label": "ready paid transfer delivery combo bbq",
+      "idempotencyKey": "QA-UIUX-PHASE2-1-08",
+      "createStatus": "created",
+      "id": "ord_b6ab14d3-a9c7-4af1-bad9-7e730f7668e3",
+      "folio": "PVW-04R1SNRCWM",
+      "source": "public-v2-preview",
+      "status": "ready",
+      "paymentStatus": "paid",
+      "paymentMethod": "transfer",
+      "orderMode": "delivery",
+      "customerName": "QA-UIUX-PHASE2-1 08 Ready Paid",
+      "total": 146,
+      "itemSummary": [
+        {
+          "sku": "COMBO-BBQ",
+          "name": "Combo BBQ",
+          "qty": 1,
+          "lineKey": "qa-08-combo-bbq",
+          "itemKind": "combo"
+        },
+        {
+          "sku": "PAPAS_LEMON_PEPPER",
+          "name": "Papas a la francesa Lemon&Pepper",
+          "qty": 1,
+          "lineKey": "qa-08-combo-bbq::sidequest-included-garnish",
+          "itemKind": "garnish"
+        },
+        {
+          "sku": "AROS_CEBOLLA",
+          "name": "Aros de Cebolla",
+          "qty": 1,
+          "lineKey": "qa-08-combo-bbq::sidequest-extra-0",
+          "itemKind": "garnish"
+        }
+      ]
+    },
+    {
+      "seq": "09",
+      "label": "delivered transfer pickup pending payment",
+      "idempotencyKey": "QA-UIUX-PHASE2-1-09",
+      "createStatus": "created",
+      "id": "ord_902efed9-b34b-488e-bfaa-b5380ea21886",
+      "folio": "PVW-04R1SNW2QN",
+      "source": "public-v2-preview",
+      "status": "delivered",
+      "paymentStatus": "pending",
+      "paymentMethod": "transfer",
+      "orderMode": "pickup",
+      "customerName": "QA-UIUX-PHASE2-1 09 Delivered Pending",
+      "total": 99,
+      "itemSummary": [
+        {
+          "sku": "OG",
+          "name": "OG",
+          "qty": 1,
+          "lineKey": "qa-09-og",
+          "itemKind": "burger"
+        }
+      ]
+    },
+    {
+      "seq": "10",
+      "label": "cancelled cash delivery burger",
+      "idempotencyKey": "QA-UIUX-PHASE2-1-10",
+      "createStatus": "created",
+      "id": "ord_bc8a1f0c-74e7-46f9-a780-c3984ace88cc",
+      "folio": "PVW-04R1SO1VNU",
+      "source": "public-v2-preview",
+      "status": "cancelled",
+      "paymentStatus": "pending",
+      "paymentMethod": "cash",
+      "orderMode": "delivery",
+      "customerName": "QA-UIUX-PHASE2-1 10 Cancel Cash",
+      "total": 115,
+      "itemSummary": [
+        {
+          "sku": "BBQ",
+          "name": "BBQ",
+          "qty": 1,
+          "lineKey": "qa-10-bbq",
+          "itemKind": "burger"
+        },
+        {
+          "sku": "PAPAS_OG",
+          "name": "Papas a la francesa OG",
+          "qty": 1,
+          "lineKey": "qa-10-papas",
+          "itemKind": "garnish"
+        }
+      ]
+    }
+  ],
+  "previewSummary": {
+    "source": "d1",
+    "range": {
+      "from": "",
+      "to": "",
+      "fromUtc": "",
+      "toUtc": ""
+    },
+    "totals": {
+      "orders": 10,
+      "activeOrders": 6,
+      "deliveredOrders": 2,
+      "cancelledOrders": 2,
+      "grossSales": 954,
+      "deliveredSales": 219,
+      "averageTicket": 119.25
+    },
+    "byStatus": {
+      "new": 2,
+      "preparing": 2,
+      "ready": 2,
+      "delivered": 2,
+      "cancelled": 2
+    },
+    "byPaymentMethod": [
+      {
+        "paymentMethod": "transfer",
+        "orders": 6,
+        "total": 640
+      },
+      {
+        "paymentMethod": "cash",
+        "orders": 4,
+        "total": 314
+      }
+    ],
+    "byOrderMode": [
+      {
+        "orderMode": "delivery",
+        "orders": 5,
+        "total": 515
+      },
+      {
+        "orderMode": "pickup",
+        "orders": 5,
+        "total": 439
+      }
+    ],
+    "topItems": [
+      {
+        "sku": "OG",
+        "name": "OG",
+        "qty": 4,
+        "total": 388,
+        "orders": 4
+      },
+      {
+        "sku": "BBQ",
+        "name": "BBQ",
+        "qty": 2,
+        "total": 194,
+        "orders": 2
+      },
+      {
+        "sku": "COMBO-BBQ",
+        "name": "Combo BBQ",
+        "qty": 1,
+        "total": 146,
+        "orders": 1
+      },
+      {
+        "sku": "0001",
+        "name": "OG Full Loaded",
+        "qty": 1,
+        "total": 146,
+        "orders": 1
+      },
+      {
+        "sku": "AROS_CEBOLLA",
+        "name": "Aros de Cebolla",
+        "qty": 1,
+        "total": 30,
+        "orders": 1
+      },
+      {
+        "sku": "PAPAS_ESPECIALES",
+        "name": "Papas a la francesa Especiales",
+        "qty": 1,
+        "total": 25,
+        "orders": 1
+      },
+      {
+        "sku": "PAPAS_LEMON_PEPPER",
+        "name": "Papas a la francesa Lemon&Pepper",
+        "qty": 1,
+        "total": 25,
+        "orders": 1
+      }
+    ],
+    "recentOrders": [
+      {
+        "id": "ord_bc8a1f0c-74e7-46f9-a780-c3984ace88cc",
+        "folio": "PVW-04R1SO1VNU",
+        "createdAt": "2026-06-21T23:16:49.468Z",
+        "status": "cancelled",
+        "customerName": "QA-UIUX-PHASE2-1 10 Cancel Cash",
+        "orderMode": "delivery",
+        "paymentMethod": "cash",
+        "paymentStatus": "pending",
+        "total": 115
+      },
+      {
+        "id": "ord_902efed9-b34b-488e-bfaa-b5380ea21886",
+        "folio": "PVW-04R1SNW2QN",
+        "createdAt": "2026-06-21T23:16:44.327Z",
+        "status": "delivered",
+        "customerName": "QA-UIUX-PHASE2-1 09 Delivered Pending",
+        "orderMode": "pickup",
+        "paymentMethod": "transfer",
+        "paymentStatus": "pending",
+        "total": 99
+      },
+      {
+        "id": "ord_b6ab14d3-a9c7-4af1-bad9-7e730f7668e3",
+        "folio": "PVW-04R1SNRCWM",
+        "createdAt": "2026-06-21T23:16:39.125Z",
+        "status": "ready",
+        "customerName": "QA-UIUX-PHASE2-1 08 Ready Paid",
+        "orderMode": "delivery",
+        "paymentMethod": "transfer",
+        "paymentStatus": "paid",
+        "total": 146
+      },
+      {
+        "id": "ord_027a495b-c55b-412b-aa47-e74ea8a81adf",
+        "folio": "PVW-04R1SNPQKI",
+        "createdAt": "2026-06-21T23:16:37.237Z",
+        "status": "preparing",
+        "customerName": "QA-UIUX-PHASE2-1 07 Long Note",
+        "orderMode": "pickup",
+        "paymentMethod": "cash",
+        "paymentStatus": "pending",
+        "total": 92
+      },
+      {
+        "id": "ord_8d3afcbe-e42a-46bb-8875-e75029f6a5e0",
+        "folio": "PVW-04R1SNNMPC",
+        "createdAt": "2026-06-21T23:16:35.442Z",
+        "status": "new",
+        "customerName": "QA-UIUX-PHASE2-1 06 New Paid",
+        "orderMode": "delivery",
+        "paymentMethod": "transfer",
+        "paymentStatus": "paid",
+        "total": 132
+      },
+      {
+        "id": "ord_5afe62ce-3045-42ea-a7f0-ea6de76b314b",
+        "folio": "PVW-04R1SNKP1D",
+        "createdAt": "2026-06-21T23:16:32.850Z",
+        "status": "cancelled",
+        "customerName": "QA-UIUX-PHASE2-1 05 Cancelled",
+        "orderMode": "pickup",
+        "paymentMethod": "transfer",
+        "paymentStatus": "cancelled",
+        "total": 100
+      },
+      {
+        "id": "ord_03022eac-13a7-4e2a-af95-fc3c52bc0056",
+        "folio": "PVW-04R1SNE43Z",
+        "createdAt": "2026-06-21T23:16:26.561Z",
+        "status": "delivered",
+        "customerName": "QA-UIUX-PHASE2-1 04 Delivered Cash",
+        "orderMode": "delivery",
+        "paymentMethod": "cash",
+        "paymentStatus": "paid",
+        "total": 120
+      },
+      {
+        "id": "ord_dfa04eec-4c45-447a-8bca-8213bbf7c4e2",
+        "folio": "PVW-04R1SNB2TA",
+        "createdAt": "2026-06-21T23:16:23.703Z",
+        "status": "ready",
+        "customerName": "QA-UIUX-PHASE2-1 03 Ready Combo",
+        "orderMode": "pickup",
+        "paymentMethod": "transfer",
+        "paymentStatus": "pending",
+        "total": 146
+      },
+      {
+        "id": "ord_ec77b881-6706-479a-84b1-0cfb3dc61c2f",
+        "folio": "PVW-04R1SN8FLO",
+        "createdAt": "2026-06-21T23:16:20.944Z",
+        "status": "preparing",
+        "customerName": "QA-UIUX-PHASE2-1 02 Prep Transfer",
+        "orderMode": "delivery",
+        "paymentMethod": "transfer",
+        "paymentStatus": "paid",
+        "total": 117
+      },
+      {
+        "id": "ord_c9d5d83c-fdeb-426b-ae55-ac367400dbe0",
+        "folio": "PVW-04R1SN7KPM",
+        "createdAt": "2026-06-21T23:16:19.944Z",
+        "status": "new",
+        "customerName": "QA-UIUX-PHASE2-1 01 Nuevo Cash",
+        "orderMode": "pickup",
+        "paymentMethod": "cash",
+        "paymentStatus": "pending",
+        "total": 102
+      }
+    ],
+    "durations": {
+      "newToReadyAvgSeconds": 2,
+      "newToDeliveredAvgSeconds": 2.5
+    },
+    "generatedAt": "2026-06-21T23:16:51.563Z"
+  }
+}

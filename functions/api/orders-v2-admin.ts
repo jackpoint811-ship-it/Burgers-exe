@@ -18,7 +18,7 @@ const TERMINAL_STATUSES = new Set<OrderV2Status>(['delivered', 'cancelled']);
 const SIDE_QUEST_LINE_KEY_PREFIX = '::sidequest-';
 
 type SnapshotRecord = Record<string, unknown>;
-type SideQuestSource = 'included-garnish' | 'sidequest-extra';
+type SideQuestSource = 'included-garnish' | 'included-drink' | 'sidequest-extra';
 
 const parseBoolean = (value: string | null) => value === 'true' || value === '1';
 
@@ -48,7 +48,13 @@ const buildSideQuestLineKey = (
   parentLineKey: string,
   source: SideQuestSource,
   index = 0,
-) => `${parentLineKey}${SIDE_QUEST_LINE_KEY_PREFIX}${source === 'included-garnish' ? 'included-garnish' : `extra-${index}`}`;
+) => `${parentLineKey}${SIDE_QUEST_LINE_KEY_PREFIX}${
+  source === 'included-garnish'
+    ? 'included-garnish'
+    : source === 'included-drink'
+      ? 'included-drink'
+      : `extra-${index}`
+}`;
 
 const createKitchenSideQuestItem = (
   parent: OrderV2Item,
@@ -105,6 +111,11 @@ const appendKitchenSideQuestItems = (items: OrderV2Item[]) =>
     const garnish = asRecord(snapshot.garnish);
     if (garnish) {
       const sideQuestItem = createKitchenSideQuestItem(item, garnish, 'included-garnish');
+      if (sideQuestItem) syntheticItems.push(sideQuestItem);
+    }
+    const includedDrink = asRecord(snapshot.includedDrink);
+    if (includedDrink) {
+      const sideQuestItem = createKitchenSideQuestItem(item, includedDrink, 'included-drink');
       if (sideQuestItem) syntheticItems.push(sideQuestItem);
     }
 

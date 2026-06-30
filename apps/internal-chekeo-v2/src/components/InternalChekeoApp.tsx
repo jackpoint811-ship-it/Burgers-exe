@@ -10,8 +10,21 @@ import {
 import * as Tabs from "@radix-ui/react-tabs";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
+  ChefHat,
+  CreditCard,
+  ExternalLink,
+  FileText,
+  Gift,
+  History,
+  House,
+  PackageSearch,
+  RefreshCw,
+  Shield,
+  ShoppingBag,
+  WalletCards,
+} from "lucide-react";
+import {
   mockOrders,
-  operatorStats,
   type KitchenSummaryKResponse,
   type MockOrder,
   type OrdersV2SummaryResponse,
@@ -23,6 +36,9 @@ import {
   type OrderV2PaymentStatus,
   type OrderV2Status,
   type ChekeoRuntimeEnvironment,
+  bankPaymentConfig,
+  getBankPaymentPrimaryLabel,
+  getBankPaymentPrimaryValue,
   getChekeoRuntimeEnvironment,
   getOrderEnvironmentForChekeoRuntime,
   getPublicOrderLabelForEnvironment,
@@ -31,9 +47,14 @@ import {
 import { Button, Card, StatusPill } from "@ui/index";
 import {
   fetchInternalAuthStatus,
+  getInternalAuthMode,
+  shouldGateAdminInternally,
+  shouldUseGlobalInternalAuthGate,
   loginInternal,
   logoutInternal,
+  type InternalAuthMode,
 } from "../lib/internal-auth";
+import { fetchKitchenSummaryK } from "../lib/ingredients-v2-admin";
 import {
   archiveCancelledOrderV2,
   exportOrdersV2Csv,
@@ -44,32 +65,43 @@ import {
   updateOrderV2Status,
 } from "../lib/orders-v2-admin";
 import {
-  buildWhatsappOrderMessage,
+  buildWhatsappOrderConfirmationMessage,
+  buildWhatsappPaymentMessage,
   buildWhatsappUrl,
   normalizeWhatsappPhone,
-  type WhatsappOrderMessageType,
+  type WhatsappBankDetails,
 } from "../lib/whatsapp";
 import {
-  buildOrderTicketSummaryText,
-  canShareOrderTicketImage,
   downloadOrderTicketImage,
   generateOrderTicketImage,
-  shareOrderTicketImage,
+  ORDER_TICKET_RAFFLE_NOTE,
 } from "../lib/order-ticket-image";
 import { CatalogAdminPanel } from "./CatalogAdminPanel";
-import { fetchKitchenSummaryK } from "../lib/ingredients-v2-admin";
 import { RafflesAdminPanel } from "./RafflesAdminPanel";
+import { KitchenQueue } from "./kitchen/KitchenQueue";
+import {
+  extractKitchenLocation,
+  getKitchenLineKey,
+  parseOrderTimestamp,
+  stripLocationFromNotes,
+} from "./kitchen/kitchen-helpers";
 
 type TabKey =
-  | "inicio"
+  | "home"
   | "pedidos"
   | "cocina"
   | "pagos"
+  | "admin";
+type AdminViewKey =
+  | "launcher"
+  | "banco"
   | "historial"
   | "cierre"
   | "catalogo"
-  | "sorteos";
+  | "sorteos"
+  | "reportes";
 type OrdersSource = "d1" | "mock" | "fallback";
+type BackHandler = () => boolean;
 type OrdersV2Summary = NonNullable<OrdersV2SummaryResponse["data"]>;
 type KitchenSummaryK = NonNullable<KitchenSummaryKResponse["data"]>;
 type KitchenItemKind = Extract<OrderV2ItemKind, "burger" | "combo" | "garnish">;
@@ -94,6 +126,9 @@ type InternalOrderItem = MockOrder["items"][number] & {
   extrasTotalCents?: number;
   sideQuestExtrasTotalCents?: number;
   includedGarnishUpchargeCents?: number;
+  parentLineKey?: string;
+  parentItemName?: string;
+  sideQuestSource?: string;
   kitchenDone?: boolean;
 };
 type InternalTimelineEvent = MockOrder["timeline"][number] & {
@@ -112,12 +147,16 @@ type InternalOrder = Omit<
   customerPhone?: string;
   source?: string;
   updatedAt?: string;
+  createdAtMs?: number;
+  updatedAtMs?: number;
   items: InternalOrderItem[];
   timeline: InternalTimelineEvent[];
   archivedAt?: string;
 };
 
 type StatusAction = { status: OrderStatus; label: string; tone?: "danger" };
+type OrdersStatusFilter = "all" | "received" | "ready" | "delivered" | "cancelled";
+type OrdersRangeFilter = "today" | "week" | "all";
 type NewOrderNotice = {
   message: string;
   orderFolios: string[];
@@ -131,9 +170,54 @@ type OrdersRuntime = {
   notice: string | null;
   highlightedOrderIds: Set<string>;
   sessionActive: boolean;
+  sessionState: SessionState;
   onSessionExpired: () => void;
   reload: (includeTerminal?: boolean) => void;
   lastUpdated: string | null;
+  limitWarning: string | null;
+};
+type SessionState = "checking" | "active" | "inactive" | "expired";
+type TruthTone = "system" | "success" | "warning" | "danger" | "neutral";
+type TruthItem = { label: string; value: string; tone: TruthTone };
+type TruthBanner = { title: string; message: string; tone: TruthTone };
+type TruthAction = { label: string; helper: string; tone: TruthTone };
+type OperationalTruth = {
+  headline: string;
+  summary: string;
+  environment: TruthItem;
+  session: TruthItem;
+  data: TruthItem;
+  capability: TruthItem;
+  activity: TruthItem;
+  freshness: TruthItem;
+  action: TruthAction;
+  banner: TruthBanner | null;
+  sourceBadge: string;
+  sourceMessage: string;
+  sourceHint: string;
+  kitchenTitle: string;
+  kitchenHint: string;
+  summaryHint: string;
+};
+type NavIcon = typeof House;
+type AdminModuleCategory = "operacion" | "configuracion" | "datos" | "promos";
+type AdminModuleStatus = "base-lista" | "solo-lectura" | "basico" | "pendiente";
+type AdminViewDefinition = {
+  key: AdminViewKey;
+  label: string;
+  hint: string;
+  icon: NavIcon;
+  category?: AdminModuleCategory;
+  status?: AdminModuleStatus;
+  description?: string;
+  cta?: string;
+};
+type AdminModuleDefinition = AdminViewDefinition & {
+  key: Exclude<AdminViewKey, "launcher">;
+  category: AdminModuleCategory;
+  status: AdminModuleStatus;
+  description: string;
+  cta: string;
 };
 
 const orderEnvironmentLabel: Record<OrderV2Environment, string> = {
@@ -152,25 +236,174 @@ const runtimeEnvironmentCopy: Record<
   { primary: string; secondary: string }
 > = {
   preview: {
-    primary: "Estás editando datos de prueba / preview.",
-    secondary: "Puedes validar cambios sin afectar producción. Los cambios aquí son para pruebas.",
+    primary: "Preview: valida sin tocar producción.",
+    secondary: "No asumas datos reales hasta ver D1 activo.",
   },
   production: {
-    primary: "Producción: los cambios pueden afectar el menú real.",
-    secondary: "Estás operando el menú real.",
+    primary: "Producción: cualquier cambio impacta pedidos reales.",
+    secondary: "Confirma sesión y datos antes de operar.",
   },
   local: {
-    primary: "Local: entorno de desarrollo.",
-    secondary: "La fuente de datos la define el binding local de este servidor.",
+    primary: "Local: UI para pruebas internas.",
+    secondary: "No cambia pedidos reales.",
   },
 };
+const primaryTabs: Array<{
+  key: TabKey;
+  label: string;
+  hint: string;
+  icon: NavIcon;
+}> = [
+  { key: "home", label: "Operación", hint: "Prioridad", icon: House },
+  { key: "pedidos", label: "Pedidos", hint: "Cola", icon: ShoppingBag },
+  { key: "cocina", label: "Cocina", hint: "Prep", icon: ChefHat },
+  { key: "pagos", label: "Pagos", hint: "Cobros", icon: WalletCards },
+  { key: "admin", label: "Admin", hint: "Más", icon: Shield },
+];
+const adminModuleGroups: Array<{
+  key: AdminModuleCategory;
+  title: string;
+  description: string;
+}> = [
+  {
+    key: "operacion",
+    title: "Operación",
+    description: "Cierre actual e historial fuera del flujo diario.",
+  },
+  {
+    key: "configuracion",
+    title: "Configuración",
+    description: "Datos y catálogo que alimentan módulos internos.",
+  },
+  {
+    key: "datos",
+    title: "Datos",
+    description: "Exportes, reportes y enlaces de estado.",
+  },
+  {
+    key: "promos",
+    title: "Promos/Sorteos",
+    description: "Campañas, referidos y ajustes manuales auditable.",
+  },
+];
+const adminModuleStatusMeta: Record<
+  AdminModuleStatus,
+  { label: string; className: string }
+> = {
+  "base-lista": {
+    label: "Base lista",
+    className: "border-emerald-400/40 bg-emerald-500/10 text-emerald-100",
+  },
+  "solo-lectura": {
+    label: "Solo lectura",
+    className: "border-zinc-600 bg-zinc-900 text-zinc-100",
+  },
+  basico: {
+    label: "Básico",
+    className: "border-cyan-400/40 bg-cyan-500/10 text-cyan-100",
+  },
+  pendiente: {
+    label: "Pendiente",
+    className: "border-amber-400/40 bg-amber-500/10 text-amber-100",
+  },
+};
+const adminViews: AdminViewDefinition[] = [
+  { key: "launcher", label: "Hub", hint: "Módulos", icon: Shield },
+  {
+    key: "banco",
+    label: "Datos bancarios",
+    hint: "Transferencia",
+    icon: WalletCards,
+    category: "configuracion",
+    status: "solo-lectura",
+    description:
+      "Fuente central de transferencia para Pagos y mensajes operativos.",
+    cta: "Ver módulo",
+  },
+  {
+    key: "historial",
+    label: "Historial",
+    hint: "Entregados/cancelados",
+    icon: History,
+    category: "operacion",
+    status: "base-lista",
+    description:
+      "Pedidos entregados y cancelados sin saturar el centro operativo.",
+    cta: "Ver módulo",
+  },
+  {
+    key: "cierre",
+    label: "Cierre",
+    hint: "Corte actual",
+    icon: CreditCard,
+    category: "operacion",
+    status: "base-lista",
+    description:
+      "Resumen de operación por rango y descarga del corte actual.",
+    cta: "Ver módulo",
+  },
+  {
+    key: "catalogo",
+    label: "Catálogo",
+    hint: "Menú y stock",
+    icon: PackageSearch,
+    category: "configuracion",
+    status: "base-lista",
+    description:
+      "Productos, promos, banners e ingredientes con el panel existente.",
+    cta: "Ver módulo",
+  },
+  {
+    key: "sorteos",
+    label: "Sorteos",
+    hint: "Campañas",
+    icon: Gift,
+    category: "promos",
+    status: "basico",
+    description:
+      "Campañas, participantes, referidos y tickets extra manuales.",
+    cta: "Ver módulo",
+  },
+  {
+    key: "reportes",
+    label: "Reportes",
+    hint: "Exportes",
+    icon: FileText,
+    category: "datos",
+    status: "basico",
+    description:
+      "Exportes y contexto técnico sin mezclarlo con operación diaria.",
+    cta: "Ver módulo",
+  },
+];
+const adminModuleViews = adminViews.filter(
+  (option): option is AdminModuleDefinition => option.key !== "launcher",
+);
+const LIVE_ACTIVE_ORDERS_LIMIT = 100;
+const LIVE_TERMINAL_ORDERS_LIMIT = 100;
+const shouldIncludeTerminalOrders = (tab: TabKey, adminView: AdminViewKey) =>
+  tab === "pedidos" ||
+  tab === "pagos" ||
+  (tab === "admin" &&
+    (adminView === "historial" ||
+      adminView === "cierre" ||
+      adminView === "reportes"));
+const shouldKeepOrdersLoaded = (tab: TabKey, adminView: AdminViewKey) =>
+  tab !== "admin" ||
+  (adminView !== "banco" &&
+    adminView !== "catalogo" &&
+    adminView !== "sorteos" &&
+    adminView !== "cierre" &&
+    adminView !== "reportes");
+const shouldRetainTerminalOrdersInView = (tab: TabKey, adminView: AdminViewKey) =>
+  tab === "pedidos" || (tab === "admin" && adminView === "historial");
 
 const isPreviewOrderSource = (source?: string) => source === "public-v2-preview";
 
 const statusLabel: Record<OrderStatus, string> = {
-  new: "Nuevo",
+  new: "Pedido listo para revisar",
   preparing: "En preparación",
-  ready: "Listo",
+  ready: "Listo para entregar",
   delivered: "Entregado",
   cancelled: "Cancelado",
 };
@@ -182,8 +415,8 @@ const statusTone: Record<OrderStatus, string> = {
   cancelled: "border-rose-500/40 text-rose-300",
 };
 const paymentStatusLabel: Record<OrderV2PaymentStatus, string> = {
-  pending: "Pendiente",
-  paid: "Pagado",
+  pending: "Pago pendiente",
+  paid: "Pago confirmado",
   cancelled: "Cancelado",
 };
 const paymentStatusTone: Record<OrderV2PaymentStatus, string> = {
@@ -194,16 +427,340 @@ const paymentStatusTone: Record<OrderV2PaymentStatus, string> = {
 const isOrderV2PaymentStatus = (value: string): value is OrderV2PaymentStatus =>
   value === "pending" || value === "paid" || value === "cancelled";
 const terminalStatuses = new Set<OrderStatus>(["delivered", "cancelled"]);
-const whatsappTemplateLabels: Array<{
-  value: Exclude<WhatsappOrderMessageType, "custom">;
+const channelLabel: Record<InternalOrder["channel"], string> = {
+  "walk-in": "Mostrador",
+  pickup: "Para recoger",
+  delivery: "Entrega",
+};
+const paymentMethodLabel: Record<string, string> = {
+  cash: "Efectivo",
+  transfer: "Transferencia",
+  card: "Tarjeta",
+  unknown: "Por confirmar",
+};
+const sourceLabel = (source?: string) =>
+  source === "d1" || source === "public-v2"
+    ? "Pedidos reales"
+    : source === "public-v2-preview"
+      ? "Pedidos de prueba"
+      : "Vista local";
+const truthToneClassName: Record<TruthTone, string> = {
+  system: "truth-pill truth-pill--system",
+  success: "truth-pill truth-pill--success",
+  warning: "truth-pill truth-pill--warning",
+  danger: "truth-pill truth-pill--danger",
+  neutral: "truth-pill truth-pill--neutral",
+};
+const sessionStateLabel: Record<SessionState, TruthItem> = {
+  checking: { label: "Sesión", value: "Verificando", tone: "system" },
+  active: { label: "Sesión", value: "Activa", tone: "success" },
+  inactive: { label: "Sesión", value: "No activa", tone: "neutral" },
+  expired: { label: "Sesión", value: "Expirada", tone: "danger" },
+};
+const getOperationalTruth = ({
+  runtime,
+  runtimeEnvironment,
+  activeCount,
+}: {
+  runtime: OrdersRuntime;
+  runtimeEnvironment: ChekeoRuntimeEnvironment;
+  activeCount: number;
+}): OperationalTruth => {
+  const environment: TruthItem = {
+    label: "Entorno",
+    value: runtimeEnvironmentLabel[runtimeEnvironment],
+    tone: "system",
+  };
+  const session = sessionStateLabel[runtime.sessionState];
+  const isLiveD1 = runtime.source === "d1" && runtime.environment === "production";
+  const isPreviewD1 = runtime.source === "d1" && runtime.environment === "preview";
+  const data: TruthItem = isLiveD1
+    ? { label: "Datos", value: "D1 real", tone: "success" }
+    : isPreviewD1
+      ? { label: "Datos", value: "Preview D1", tone: "system" }
+      : runtime.source === "fallback"
+        ? { label: "Datos", value: "Fallback", tone: "warning" }
+        : { label: "Datos", value: "Mock local", tone: "warning" };
+  const capability: TruthItem =
+    runtime.sessionState !== "active"
+      ? { label: "Capacidad", value: "Entrar para operar", tone: "danger" }
+      : runtime.error && runtime.source !== "d1"
+        ? { label: "Capacidad", value: "Sin backend", tone: "danger" }
+        : runtime.source === "d1"
+          ? {
+              label: "Capacidad",
+              value: runtime.environment === "preview" ? "Operable en preview" : "Operable",
+              tone: "success",
+            }
+          : { label: "Capacidad", value: "Solo revisión", tone: "warning" };
+  const activity: TruthItem = {
+    label: "Carga",
+    value: `${activeCount} activos`,
+    tone: activeCount > 0 ? "neutral" : "system",
+  };
+  const freshness: TruthItem = {
+    label: "Actualización",
+    value: runtime.lastUpdated ? runtime.lastUpdated : "Pendiente",
+    tone: runtime.lastUpdated ? "neutral" : runtime.source === "d1" ? "warning" : "neutral",
+  };
+
+  let headline = "Chekeo listo para revisar";
+  let summary = "Confirma entorno, sesión y datos antes de mover pedidos.";
+  let action: TruthAction = {
+    label: runtime.loading ? "Actualizando..." : "Actualizar",
+    helper: "Refresca el estado actual.",
+    tone: "system",
+  };
+  let banner: TruthBanner | null = null;
+  let sourceBadge = data.value;
+  let sourceMessage = "Revisa esta superficie antes de operar.";
+  let sourceHint = "Reintenta si dudas del backend.";
+  let kitchenTitle = "Cocina conectada";
+  let kitchenHint = "Revisa el flujo actual antes de mover pedidos.";
+  let summaryHint = "Solo referencia visual.";
+
+  if (runtime.sessionState === "expired") {
+    headline = "Sesión expirada";
+    summary = "Vuelve a entrar antes de operar.";
+    action = { label: "Entrar de nuevo", helper: "Recupera la sesión.", tone: "danger" };
+    banner = {
+      title: "Sesión vencida",
+      message: "Chekeo salió de la sesión activa. Vuelve a entrar para recuperar D1.",
+      tone: "danger",
+    };
+  } else if (runtime.sessionState !== "active") {
+    headline = "Sin sesión operativa";
+    summary = "Entra para consultar D1 y habilitar acciones.";
+    action = { label: "Entrar", helper: "Activa la sesión primero.", tone: "neutral" };
+  } else if (isLiveD1) {
+    headline = "Operando con datos reales";
+    summary = "Cada acción impacta pedidos reales.";
+    action = {
+      label: runtime.loading ? "Actualizando..." : "Actualizar",
+      helper: "Confirma que la lista siga al día.",
+      tone: "success",
+    };
+    sourceMessage = "Lee y escribe sobre D1 real.";
+    sourceHint = "Si algo falla, revisa sesión o backend antes de seguir.";
+    kitchenTitle = "Cocina conectada a D1 real";
+    summaryHint = `${activeCount} pedidos activos visibles.`;
+  } else if (isPreviewD1) {
+    headline = "Operando en preview";
+    summary = "Puedes validar flujo sin tocar producción.";
+    action = {
+      label: runtime.loading ? "Actualizando..." : "Actualizar",
+      helper: "Refresca preview antes de validar.",
+      tone: "system",
+    };
+    banner = {
+      title: "Preview D1",
+      message: "Los datos vienen del backend de prueba. No asumas producción.",
+      tone: "system",
+    };
+    sourceMessage = "Lee y escribe sobre D1 preview.";
+    sourceHint = "Úsalo para validar flujos y copy.";
+    kitchenTitle = "Cocina conectada a preview";
+    kitchenHint = "Valida el flujo sin tratarlo como producción.";
+    summaryHint = `${activeCount} pedidos activos visibles en preview.`;
+  } else if (runtime.source === "fallback") {
+    headline = "Chekeo está en fallback";
+    summary = "Puedes revisar pedidos, pero no confiar en escritura real.";
+    action = {
+      label: runtime.loading ? "Reconectando..." : "Reintentar",
+      helper: "Busca volver a D1.",
+      tone: "warning",
+    };
+    banner = {
+      title: "Solo revisión",
+      message: runtime.error
+        ? "El backend falló y Chekeo cayó a fallback. Reintenta antes de operar."
+        : "Los cambios quedan en esta vista hasta recuperar D1.",
+      tone: runtime.error ? "danger" : "warning",
+    };
+    sourceMessage = "Solo lectura mientras el backend no responde.";
+    sourceHint = "No confirmes pagos o estados como definitivos.";
+    kitchenTitle = "Cocina en fallback";
+    kitchenHint = "Referencia visual. Reintenta para volver a D1.";
+  } else {
+    headline = runtimeEnvironment === "local" ? "Chekeo corre en local" : "Chekeo está en mock";
+    summary = "Úsalo para revisar UI; no hay backend real activo.";
+    action = {
+      label: runtime.loading ? "Reintentando..." : "Reintentar",
+      helper: "Intenta recuperar D1 o sesión.",
+      tone: "warning",
+    };
+    banner = {
+      title: runtimeEnvironment === "local" ? "Mock local" : "Modo mock",
+      message: "Solo valida la interfaz. Los cambios no llegan a datos reales.",
+      tone: "warning",
+    };
+    sourceMessage = "Vista aislada del backend real.";
+    sourceHint = "Úsala para revisar layout y flujo base.";
+    kitchenTitle = "Cocina en vista local";
+    kitchenHint = "Solo referencia visual hasta volver a D1.";
+  }
+
+  if (runtime.error && runtime.source === "d1") {
+    banner = {
+      title: "Backend con error",
+      message: "La última solicitud falló. Reintenta antes de asumir que todo está al día.",
+      tone: "warning",
+    };
+    action = {
+      label: runtime.loading ? "Reintentando..." : "Reintentar",
+      helper: "Confirma que D1 siga respondiendo.",
+      tone: "warning",
+    };
+  }
+
+  return {
+    headline,
+    summary,
+    environment,
+    session,
+    data,
+    capability,
+    activity,
+    freshness,
+    action,
+    banner,
+    sourceBadge,
+    sourceMessage,
+    sourceHint,
+    kitchenTitle,
+    kitchenHint,
+    summaryHint,
+  };
+};
+const getPaymentStatusLabel = (status: string) =>
+  isOrderV2PaymentStatus(status) ? paymentStatusLabel[status] : status || "Por confirmar";
+const getPaymentMethodLabel = (method: string) =>
+  paymentMethodLabel[method] ?? (method || "Por confirmar");
+const isTransferPaymentMethod = (method: string) =>
+  ["transfer", "transferencia", "spei"].includes(
+    method.trim().toLowerCase(),
+  );
+const FIXTURE_TAG_PATTERN = /\[FIXTURE:[^\]]+\]/gi;
+const cleanPaymentText = (value?: string, fallback = "") => {
+  const cleaned = value?.replace(FIXTURE_TAG_PATTERN, "").replace(/\s+/g, " ").trim();
+  return cleaned || fallback;
+};
+const isMissingPaymentLocation = (location: string) =>
+  location.toLowerCase().startsWith("sin ubic");
+const getPaymentLocation = (order: InternalOrder) => {
+  const location = cleanPaymentText(extractKitchenLocation(order.note));
+  return isMissingPaymentLocation(location) ? "Sin ubicación" : location;
+};
+const getPaymentNote = (order: InternalOrder) =>
+  cleanPaymentText(stripLocationFromNotes(order.note));
+const getPaymentDeliveryDetail = (order: InternalOrder) =>
+  getPaymentLocation(order);
+const buildPaymentNoteWithLocation = (
+  order: InternalOrder,
+  note: string,
+) => {
+  const location = getPaymentLocation(order);
+  const trimmedNote = cleanPaymentText(note);
+  if (!trimmedNote) {
+    return isMissingPaymentLocation(location) ? "" : `Ubicación: ${location}`;
+  }
+  return isMissingPaymentLocation(location)
+    ? trimmedNote
+    : `Ubicación: ${location} | ${trimmedNote}`;
+};
+const getPaymentItemsDigest = (order: InternalOrder) => {
+  if (!order.items.length) return "Resumen no disponible.";
+  const preview = order.items
+    .slice(0, 2)
+    .map((item) => `${item.qty}x ${item.name}`)
+    .join(" · ");
+  const remaining = order.items.length - 2;
+  return remaining > 0 ? `${preview} +${remaining} mas` : preview;
+};
+const buildPaymentWhatsappCopy = (order: InternalOrder) =>
+  buildWhatsappPaymentMessage({
+    customer: order.customer,
+    customerName: order.customer,
+    folio: order.folio,
+    paymentMethod: order.paymentMethod,
+    paymentState: order.paymentState,
+    total: order.total,
+    items: order.items,
+    note: getPaymentNote(order),
+    source: order.source,
+    orderStatus: statusLabel[order.status],
+    deliveryDetail: getPaymentDeliveryDetail(order),
+    bankDetails: isTransferPaymentMethod(order.paymentMethod)
+      ? bankPaymentConfig
+      : null,
+  });
+const getOrderItemCount = (order: InternalOrder) =>
+  order.items.reduce((total, item) => total + item.qty, 0);
+const getOrdersStatusFilterValue = (
+  status: OrderStatus,
+): Exclude<OrdersStatusFilter, "all"> =>
+  status === "ready"
+    ? "ready"
+    : status === "delivered"
+      ? "delivered"
+      : status === "cancelled"
+        ? "cancelled"
+        : "received";
+const ordersStatusLabel: Record<Exclude<OrdersStatusFilter, "all">, string> = {
+  received: "Recibido",
+  ready: "Listo",
+  delivered: "Entregado",
+  cancelled: "Cancelado",
+};
+const ordersStatusTone: Record<Exclude<OrdersStatusFilter, "all">, string> = {
+  received: "border-sky-400/40 text-sky-200",
+  ready: "border-emerald-400/40 text-emerald-200",
+  delivered: "border-zinc-500/40 text-zinc-200",
+  cancelled: "border-rose-500/40 text-rose-300",
+};
+const ordersStatusFilterOptions: Array<{
+  value: OrdersStatusFilter;
   label: string;
 }> = [
+  { value: "all", label: "Todos" },
   { value: "received", label: "Recibido" },
-  { value: "preparing", label: "En preparación" },
   { value: "ready", label: "Listo" },
   { value: "delivered", label: "Entregado" },
+  { value: "cancelled", label: "Cancelado" },
 ];
-
+const ordersRangeFilterOptions: Array<{
+  value: OrdersRangeFilter;
+  label: string;
+}> = [
+  { value: "today", label: "Hoy" },
+  { value: "week", label: "Semana" },
+  { value: "all", label: "Todo" },
+];
+const getOrdersStatusLabel = (status: OrderStatus) =>
+  ordersStatusLabel[getOrdersStatusFilterValue(status)];
+const getOrderLocationLabel = (order: InternalOrder) => getPaymentLocation(order);
+const getOperationalSummary = (orders: InternalOrder[]) => {
+  const visibleOrders = orders.filter((order) => !terminalStatuses.has(order.status));
+  const participants = new Set(
+    orders.map((order) => (order.customerPhone || order.customer).trim().toLowerCase()).filter(Boolean),
+  );
+  const actionableOrders = visibleOrders.filter(
+    (order) =>
+      order.status === "new" ||
+      order.status === "ready" ||
+      order.paymentState === "pending",
+  );
+  return {
+    activeOrders: visibleOrders.length,
+    pendingOrders: visibleOrders.filter((order) => order.status === "new").length,
+    preparingOrders: visibleOrders.filter((order) => order.status === "preparing").length,
+    readyOrders: visibleOrders.filter((order) => order.status === "ready").length,
+    actionableOrders: actionableOrders.length,
+    participants: participants.size,
+    totalTickets: orders.length,
+    paymentsToReview: visibleOrders.filter((order) => order.paymentState === "pending").length,
+  };
+};
 const cancellationReasonPresets = [
   "Cliente canceló",
   "Sin stock",
@@ -248,10 +805,12 @@ const normalizeMockOrderItem = (
 const asInternalOrders = (orders: MockOrder[]): InternalOrder[] =>
   orders.map((order) => ({
     ...order,
+    createdAtMs: parseOrderTimestamp(order.createdAt),
     items: order.items.map(normalizeMockOrderItem),
   }));
 const AUTO_REFRESH_INTERVAL_MS = 25_000;
 const NEW_ORDER_HIGHLIGHT_MS = 12_000;
+const NEW_ORDER_NOTICE_MS = 5_000;
 const formatOrderRefreshTime = (reason?: "manual" | "auto" | "session") => {
   const time = new Date().toLocaleTimeString("es-MX", {
     hour: "2-digit",
@@ -282,15 +841,6 @@ const mapKitchenStation = (
   status: OrderV2Status,
 ): InternalOrder["kitchenStation"] =>
   status === "new" ? "grill" : status === "preparing" ? "assembly" : "dispatch";
-const getWhatsappTemplateForStatus = (
-  status: OrderStatus,
-): Exclude<WhatsappOrderMessageType, "custom"> => {
-  if (status === "preparing") return "preparing";
-  if (status === "ready") return "ready";
-  if (status === "delivered" || status === "cancelled") return "delivered";
-  return "received";
-};
-
 const isOrderV2ItemKind = (value: unknown): value is OrderV2ItemKind =>
   value === "burger" ||
   value === "combo" ||
@@ -374,6 +924,86 @@ const parseSnapshotComboBurgers = (value: unknown): InternalOrderItem["comboBurg
   });
 };
 
+const SIDE_QUEST_LINE_KEY_PREFIX = "::sidequest-";
+
+const appendKitchenSideQuestItems = (
+  items: OrderV2["items"],
+): OrderV2["items"] => {
+  const existingParentLineKeys = new Set(
+    items
+      .map((item) => {
+        const snapshot =
+          item.snapshot &&
+          typeof item.snapshot === "object" &&
+          !Array.isArray(item.snapshot)
+            ? item.snapshot
+            : {};
+        return getOptionalString(snapshot.parentLineKey);
+      })
+      .filter((value): value is string => Boolean(value)),
+  );
+
+  return items.flatMap((item) => {
+    const snapshot =
+      item.snapshot &&
+      typeof item.snapshot === "object" &&
+      !Array.isArray(item.snapshot)
+        ? item.snapshot
+        : {};
+    const parentLineKey = getOptionalString(snapshot.lineKey) ?? item.id;
+    if (existingParentLineKeys.has(parentLineKey)) return [item];
+
+    const syntheticItems: OrderV2["items"] = [];
+    const createSynthetic = (
+      entry: { sku?: string; name: string; price?: number; upcharge?: number },
+      suffix: string,
+    ) => {
+      const lineKey = `${parentLineKey}${SIDE_QUEST_LINE_KEY_PREFIX}${suffix}`;
+      const sku = entry.sku ?? `${item.sku}-${suffix}`;
+      syntheticItems.push({
+        ...item,
+        id: `${item.id}-${suffix}`,
+        sku,
+        name: entry.name,
+        unitPrice: 0,
+        lineTotal: 0,
+        snapshot: {
+          sku,
+          name: entry.name,
+          lineKey,
+          itemDisplayIndex: getOptionalNumber(snapshot.itemDisplayIndex),
+          itemKind: "garnish",
+          removedIngredients: [],
+          extras: [],
+          burgerNote: undefined,
+          garnish: null,
+          includedDrink: null,
+          sideQuestExtras: [],
+          comboBurgers: [],
+          parentLineKey,
+          parentItemKind: getOptionalString(snapshot.itemKind),
+          parentItemName: item.name,
+          sideQuestSource: suffix,
+          upcharge: entry.upcharge,
+          price: entry.price,
+        },
+      });
+    };
+
+    const garnish = parseSnapshotGarnish(snapshot.garnish);
+    if (garnish) createSynthetic(garnish, "included-garnish");
+    const includedDrink = parseSnapshotIncludedDrink(snapshot.includedDrink);
+    if (includedDrink) createSynthetic(includedDrink, "included-drink");
+    parseSnapshotSideQuestExtras(snapshot.sideQuestExtras).forEach((extra, index) => {
+      if ((extra.itemKind ?? "garnish") === "garnish") {
+        createSynthetic(extra, `extra-${index}`);
+      }
+    });
+
+    return [item, ...syntheticItems];
+  });
+};
+
 const getKitchenDoneByLineKey = (events: OrderV2Event[]) => {
   const doneByLineKey = new Map<string, boolean>();
   events.forEach((event) => {
@@ -429,41 +1059,12 @@ const mapOrderV2ItemToInternalItem = (
     extrasTotalCents: getOptionalNumber(snapshot.extrasTotalCents),
     sideQuestExtrasTotalCents: getOptionalNumber(snapshot.sideQuestExtrasTotalCents),
     includedGarnishUpchargeCents: getOptionalNumber(snapshot.includedGarnishUpchargeCents),
+    parentLineKey: getOptionalString(snapshot.parentLineKey),
+    parentItemName: getOptionalString(snapshot.parentItemName),
+    sideQuestSource: getOptionalString(snapshot.sideQuestSource),
     kitchenDone: lineKey ? (doneByLineKey.get(lineKey) ?? false) : false,
   };
 };
-
-const extractKitchenLocation = (notes?: string) => {
-  const match = notes?.match(/Ubicación:\s*([^\n|]+)/i);
-  return match?.[1]?.trim() || "Sin ubicación";
-};
-
-const stripLocationFromNotes = (notes?: string) => {
-  if (!notes) return "";
-  return notes
-    .replace(/Ubicación:\s*[^\n|]+\|?/i, "")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-};
-
-const getKitchenItemKind = (item: InternalOrderItem): OrderV2ItemKind => {
-  if (item.itemKind) return item.itemKind;
-  return item.name.toLowerCase().includes("fries") ? "garnish" : "burger";
-};
-
-const isBurgerOrCombo = (item: InternalOrderItem) => {
-  const kind = getKitchenItemKind(item);
-  return kind === "burger" || kind === "combo";
-};
-
-const isStandaloneGarnish = (item: InternalOrderItem) =>
-  getKitchenItemKind(item) === "garnish";
-
-const getKitchenLineKey = (
-  order: InternalOrder,
-  item: InternalOrderItem,
-  index: number,
-) => item.lineKey ?? `${order.id}-${index}-${item.name}`;
 
 const getEventReason = (event: OrderV2Event): string | undefined => {
   const reason = event.detail?.reason;
@@ -518,13 +1119,15 @@ const mapOrderV2ToInternalOrder = (order: OrderV2): InternalOrder => {
     channel: order.orderMode,
     createdAt: formatDateTime(order.createdAt),
     updatedAt: formatDateTime(order.updatedAt),
+    createdAtMs: parseOrderTimestamp(order.createdAt),
+    updatedAtMs: parseOrderTimestamp(order.updatedAt),
     archivedAt: order.archivedAt,
     status: order.status,
     priority: "normal",
     paymentMethod: order.paymentMethod,
     paymentState: order.paymentStatus,
     note: order.notes,
-    items: order.items.map((item) =>
+    items: appendKitchenSideQuestItems(order.items).map((item) =>
       mapOrderV2ItemToInternalItem(item, doneByLineKey),
     ),
     total: order.total,
@@ -552,18 +1155,30 @@ const StatusBadge = ({ status }: { status: OrderStatus }) => (
   <StatusPill className={statusTone[status]}>{statusLabel[status]}</StatusPill>
 );
 
+const OrdersStatusBadge = ({ status }: { status: OrderStatus }) => {
+  const key = getOrdersStatusFilterValue(status);
+  return (
+    <StatusPill className={ordersStatusTone[key]}>
+      {ordersStatusLabel[key]}
+    </StatusPill>
+  );
+};
+
 const EmptyOrdersState = ({
   title,
   description,
+  action,
 }: {
   title: string;
   description?: string;
+  action?: ReactNode;
 }) => (
-  <Card className="p-4 text-center">
-    <p className="font-bold text-zinc-100">{title}</p>
+  <Card className="border-dashed border-zinc-700/90 p-5 text-center">
+    <p className="text-base font-black text-zinc-100">{title}</p>
     {description ? (
-      <p className="mt-1 text-sm text-zinc-400">{description}</p>
+      <p className="mx-auto mt-1 max-w-md text-sm text-zinc-400">{description}</p>
     ) : null}
+    {action ? <div className="mt-3">{action}</div> : null}
   </Card>
 );
 
@@ -640,12 +1255,12 @@ const OrdersExportControls = ({
       anchor.click();
       anchor.remove();
       window.URL.revokeObjectURL(url);
-      setSuccess("CSV descargado");
+      setSuccess("Reporte descargado");
     } catch (downloadError) {
       setError(
         downloadError instanceof Error
           ? downloadError.message
-          : "No se pudo exportar CSV",
+          : "No se pudo descargar el reporte. Inténtalo de nuevo.",
       );
     } finally {
       setExporting(false);
@@ -656,11 +1271,9 @@ const OrdersExportControls = ({
     <div className="mt-3 rounded-lg border border-zinc-800 bg-zinc-950/70 p-2">
       <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-xs font-bold text-zinc-100">
-            Exportar reporte
-          </p>
+          <p className="text-xs font-bold text-zinc-100">Descargar reporte</p>
           <p className="text-[11px] text-zinc-400">
-            Descarga pedidos filtrados para revisión administrativa.
+            Baja los pedidos filtrados para revisión o cierre.
           </p>
         </div>
         {!sessionActive ? (
@@ -676,7 +1289,7 @@ const OrdersExportControls = ({
             checked={includeTerminal}
             onChange={(event) => setIncludeTerminal(event.target.checked)}
           />
-          Incluir entregados/cancelados
+          Incluir entregados y cancelados
         </label>
         <label className="text-[11px] text-zinc-400">
           Estado
@@ -695,7 +1308,7 @@ const OrdersExportControls = ({
           </select>
         </label>
         <label className="text-[11px] text-zinc-400">
-          Límite
+          Máximo de registros
           <input
             className="input mt-1 text-xs"
             inputMode="numeric"
@@ -746,7 +1359,7 @@ const OrdersExportControls = ({
         onClick={() => void downloadCsv()}
         disabled={disabled}
       >
-        {exporting ? "Exportando…" : "Exportar CSV"}
+          {exporting ? "Preparando…" : "Descargar reporte"}
       </Button>
     </div>
   );
@@ -782,73 +1395,127 @@ const NewOrderBanner = ({
     </section>
   ) : null;
 
-const SourcePanel = ({
-  runtime,
-  includeTerminal = false,
-}: {
-  runtime: OrdersRuntime;
-  includeTerminal?: boolean;
-}) => (
-  <Card className="mb-2.5 p-3">
-    <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-      <div>
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-200">
-          Sesión activa
+const RuntimeNoticeStack = ({ runtime }: { runtime: OrdersRuntime }) => {
+  const notices = [
+    runtime.limitWarning
+      ? { key: "limit", tone: "warning" as const, message: runtime.limitWarning }
+      : null,
+    runtime.error
+      ? { key: "error", tone: "error" as const, message: runtime.error }
+      : null,
+    runtime.notice
+      ? { key: "notice", tone: "success" as const, message: runtime.notice }
+      : null,
+  ].filter(Boolean) as Array<{
+    key: string;
+    tone: "warning" | "error" | "success";
+    message: string;
+  }>;
+
+  if (!notices.length) return null;
+
+  return (
+    <section className="runtime-notices" aria-live="polite">
+      {notices.map((notice) => (
+        <p key={notice.key} className={`state-message state-message--${notice.tone}`}>
+          {notice.message}
         </p>
-        <p className="text-[11px] text-zinc-400">Órdenes</p>
-      </div>
-      <div className="flex flex-col gap-2 md:flex-row">
-        {runtime.lastUpdated ? (
-          <span className="self-center text-[11px] text-zinc-500">
-            Última actualización: {runtime.lastUpdated}
-          </span>
-        ) : null}
-        <Button
-          className="border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs disabled:opacity-40"
-          onClick={() => runtime.reload(includeTerminal)}
-          disabled={runtime.loading || !runtime.sessionActive}
-        >
-          {runtime.loading ? "Cargando…" : "Recargar órdenes"}
-        </Button>
-      </div>
-    </div>
-    <div className="mt-3 flex flex-wrap items-center gap-2">
-      <span className="chip">Sesión activa</span>
-      <span className="chip">Órdenes</span>
-    </div>
-    <OrdersExportControls
-      sessionActive={runtime.sessionActive}
-      defaultIncludeTerminal={includeTerminal}
-      environment={runtime.environment}
-    />
-    {runtime.error ? (
-      <p className="mt-2 rounded bg-rose-500/10 px-2 py-1 text-xs text-rose-200">
-        {runtime.error}
-      </p>
-    ) : null}
-    {runtime.notice ? (
-      <p className="mt-2 rounded bg-emerald-500/10 px-2 py-1 text-xs text-emerald-200">
-        {runtime.notice}
-      </p>
-    ) : null}
-  </Card>
-);
+      ))}
+    </section>
+  );
+};
 
 const InternalLogin = ({
+  authMode,
   onLogin,
   checkingSession,
   runtimeEnvironment,
+  sessionState,
+  sessionMessage,
 }: {
+  authMode: InternalAuthMode;
   onLogin: () => void;
   checkingSession: boolean;
   runtimeEnvironment: ChekeoRuntimeEnvironment;
+  sessionState: SessionState;
+  sessionMessage?: string | null;
+}) => {
+  const copy = runtimeEnvironmentCopy[runtimeEnvironment];
+  const publicOrderUrl = getPublicOrderUrlForEnvironment(runtimeEnvironment);
+  const publicOrderLabel = getPublicOrderLabelForEnvironment(runtimeEnvironment);
+
+  return (
+    <main className="shell flex items-center justify-center py-8">
+      <section className="login card w-full max-w-md border-cyan-400/20 bg-zinc-950/95 p-4 shadow-cyan-950/30">
+        <div className="mb-4 text-center">
+          <p className="text-2xl font-black tracking-tight text-zinc-50">
+            Burgers<span className="text-cyan-300">.exe</span>
+          </p>
+          <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.18em] text-cyan-200">
+            Chekeo
+          </p>
+        </div>
+        {authMode === "admin-only" ? (
+          <p className="state-message state-message--warning mb-3">
+            {getAdminAuthModeHint(authMode)}
+          </p>
+        ) : null}
+        <SessionPinForm
+          inputId="pin"
+          label="PIN de acceso"
+          submitLabel="Entrar"
+          submitBusyLabel="Entrando..."
+          onSuccess={onLogin}
+          disabled={checkingSession}
+          notice={sessionMessage}
+        />
+        <div className="runtime-login-notice">
+          <p className="text-xs font-semibold text-zinc-50">{copy.primary}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <StatusPill className={truthToneClassName.system}>
+              {runtimeEnvironmentLabel[runtimeEnvironment]}
+            </StatusPill>
+            <StatusPill className={truthToneClassName[sessionStateLabel[sessionState].tone]}>
+              {sessionStateLabel[sessionState].value}
+            </StatusPill>
+          </div>
+          <p className="mt-2 text-xs text-zinc-300">{copy.secondary}</p>
+          <a
+            className="runtime-environment-link runtime-environment-link--muted mt-3 w-full"
+            href={publicOrderUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {publicOrderLabel}
+          </a>
+        </div>
+      </section>
+    </main>
+  );
+};
+
+const SessionPinForm = ({
+  inputId,
+  label,
+  submitLabel,
+  submitBusyLabel,
+  onSuccess,
+  disabled = false,
+  notice = null,
+  autoFocus = true,
+}: {
+  inputId: string;
+  label: string;
+  submitLabel: string;
+  submitBusyLabel: string;
+  onSuccess: () => void;
+  disabled?: boolean;
+  notice?: string | null;
+  autoFocus?: boolean;
 }) => {
   const [pin, setPin] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const copy = runtimeEnvironmentCopy[runtimeEnvironment];
-  const publicOrderUrl = getPublicOrderUrlForEnvironment(runtimeEnvironment);
-  const publicOrderLabel = getPublicOrderLabelForEnvironment(runtimeEnvironment);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -866,7 +1533,7 @@ const InternalLogin = ({
     try {
       await loginInternal(trimmed);
       setPin("");
-      onLogin();
+      onSuccess();
     } catch (loginError) {
       setError(
         loginError instanceof Error
@@ -879,68 +1546,45 @@ const InternalLogin = ({
   };
 
   return (
-    <main className="shell flex items-center justify-center py-8">
-      <section className="login card w-full max-w-md border-cyan-400/20 bg-zinc-950/95 p-5 shadow-cyan-950/30">
-        <div className="mb-6 text-center">
-          <EnvironmentBadge environment={runtimeEnvironment} className="mx-auto mb-3" />
-          <p className="text-2xl font-black tracking-tight text-zinc-50">
-            Burgers<span className="text-cyan-300">.exe</span>
-          </p>
-          <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.35em] text-cyan-200">
-            Chekeo
-          </p>
-        </div>
-        <div className="runtime-login-notice">
-          <p className="text-sm font-semibold text-zinc-50">{copy.primary}</p>
-          <p className="mt-1 text-xs text-zinc-300">{copy.secondary}</p>
-          <a
-            className="runtime-environment-link mt-3 w-full"
-            href={publicOrderUrl}
-            target="_blank"
-            rel="noreferrer"
-          >
-            {publicOrderLabel}
-          </a>
-        </div>
-        <form className="space-y-4" onSubmit={(event) => void submit(event)}>
-          <label className="block text-sm font-bold text-zinc-100" htmlFor="pin">
-            PIN de acceso
-            <input
-              id="pin"
-              type="password"
-              className="input mt-2 min-h-12 text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"
-              placeholder="••••"
-              value={pin}
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={4}
-              pattern="[0-9]{4}"
-              aria-describedby={error ? "pin-error" : undefined}
-              onChange={(event) => {
-                setPin(event.target.value.replace(/\D/g, "").slice(0, 4));
-                setError(null);
-              }}
-              autoFocus
-              disabled={loading || checkingSession}
-            />
-          </label>
-          {error ? (
-            <p
-              id="pin-error"
-              className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100"
-            >
-              {error}
-            </p>
-          ) : null}
-          <Button
-            className="w-full bg-cyan-400 py-3 text-base font-black text-black disabled:opacity-50"
-            disabled={loading || checkingSession}
-          >
-            {loading || checkingSession ? "Entrando…" : "Entrar"}
-          </Button>
-        </form>
-      </section>
-    </main>
+    <form className="space-y-4" onSubmit={(event) => void submit(event)}>
+      <label className="block text-sm font-bold text-zinc-100" htmlFor={inputId}>
+        {label}
+        <input
+          id={inputId}
+          type="password"
+          className="input mt-2 min-h-12 text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300"
+          placeholder="••••"
+          value={pin}
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          maxLength={4}
+          pattern="[0-9]{4}"
+          aria-describedby={error ? `${inputId}-error` : undefined}
+          onChange={(event) => {
+            setPin(event.target.value.replace(/\D/g, "").slice(0, 4));
+            setError(null);
+          }}
+          autoFocus={autoFocus}
+          disabled={loading || disabled}
+        />
+      </label>
+      {error ? (
+        <p id={`${inputId}-error`} className="state-message state-message--error">
+          {error}
+        </p>
+      ) : null}
+      {!error && notice ? (
+        <p className="state-message state-message--warning">
+          {notice}
+        </p>
+      ) : null}
+      <Button
+        className="w-full bg-cyan-400 py-3 text-base font-black text-black disabled:opacity-50"
+        disabled={loading || disabled}
+      >
+        {loading || disabled ? submitBusyLabel : submitLabel}
+      </Button>
+    </form>
   );
 };
 
@@ -957,135 +1601,746 @@ const EnvironmentBadge = ({
 );
 
 const OperatorHeader = ({
-  active,
-  environment,
   runtimeEnvironment,
+  runtime,
+  activeTab,
+  onOpenTab,
+  onRefresh,
   onLogout,
-  source,
+  truth,
 }: {
-  active: number;
-  environment: OrderV2Environment;
   runtimeEnvironment: ChekeoRuntimeEnvironment;
+  runtime: OrdersRuntime;
+  activeTab: TabKey;
+  onOpenTab: (tab: TabKey) => void;
+  onRefresh: () => void;
   onLogout: () => void;
-  source: OrdersSource;
+  truth: OperationalTruth;
 }) => {
   const publicOrderUrl = getPublicOrderUrlForEnvironment(runtimeEnvironment);
   const publicOrderLabel = getPublicOrderLabelForEnvironment(runtimeEnvironment);
 
   return (
-    <header className="card header-compact">
-      <div>
-        <h1 className="text-sm font-bold md:text-base">
-          Chekeo Burgers.exe
-        </h1>
-        <p className="text-[11px] text-zinc-400">
-          Activos {active} · {orderEnvironmentLabel[environment]} ·{" "}
-          {source === "d1" ? "Live" : "Vista local"} ·{" "}
-          {new Date().toLocaleTimeString()}
-        </p>
-      </div>
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <EnvironmentBadge environment={runtimeEnvironment} />
-        <a
-          className="min-h-8 rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1 text-[11px] font-black text-zinc-100 hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400"
-          href={publicOrderUrl}
-          target="_blank"
-          rel="noreferrer"
-        >
-          {publicOrderLabel}
-        </a>
-        <Button
-          className="border border-zinc-700 bg-zinc-900 px-2 py-1 text-[11px]"
-          onClick={onLogout}
-        >
-          Cerrar sesión
-        </Button>
+    <header className={`shell-header shell-header--${runtimeEnvironment}`}>
+      <div className="shell-header__layout">
+        <div className="shell-header__brand">
+          <div className="shell-header__mark" aria-hidden="true">
+            Bx
+          </div>
+          <div className="min-w-0">
+            <p className="shell-header__title">
+              Chekeo <span>Burgers.exe</span>
+            </p>
+            <div className="shell-header__signals" aria-label="Estado de consola">
+              <EnvironmentBadge environment={runtimeEnvironment} />
+              <StatusPill className={truthToneClassName[truth.data.tone]}>
+                {truth.sourceBadge}
+              </StatusPill>
+              <StatusPill className={truthToneClassName[truth.session.tone]}>
+                {truth.session.value}
+              </StatusPill>
+            </div>
+          </div>
+        </div>
+        <div className="shell-header__actions">
+          <nav className="shell-header__quicknav" aria-label="Navegación rápida">
+            {primaryTabs.map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                type="button"
+                className={`shell-header__quicknav-button ${activeTab === key ? "shell-header__quicknav-button--active" : ""}`}
+                aria-label={label}
+                aria-current={activeTab === key ? "page" : undefined}
+                onClick={() => onOpenTab(key)}
+              >
+                <Icon size={17} aria-hidden="true" />
+              </button>
+            ))}
+          </nav>
+          <span className="shell-header__sync">
+            {runtime.lastUpdated ? `Sync ${runtime.lastUpdated}` : "Sin sync"}
+          </span>
+          <Button
+            className="shell-icon-button"
+            aria-label="Actualizar datos"
+            onClick={onRefresh}
+            disabled={runtime.loading || runtime.sessionState !== "active"}
+          >
+            <RefreshCw size={16} aria-hidden="true" />
+          </Button>
+          <a
+            className="shell-icon-button"
+            href={publicOrderUrl}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={publicOrderLabel}
+          >
+            <ExternalLink size={16} aria-hidden="true" />
+          </a>
+          <Button
+            className="shell-logout-button"
+            onClick={onLogout}
+          >
+            Salir
+          </Button>
+        </div>
       </div>
     </header>
   );
 };
 
-const RuntimeEnvironmentBanner = ({
-  environment,
+const HomePanel = ({
+  orders,
+  runtime,
+  runtimeEnvironment,
+  onOpenTab,
 }: {
-  environment: ChekeoRuntimeEnvironment;
+  orders: InternalOrder[];
+  runtime: OrdersRuntime;
+  runtimeEnvironment: ChekeoRuntimeEnvironment;
+  onOpenTab: (tab: TabKey) => void;
 }) => {
-  const copy = runtimeEnvironmentCopy[environment];
-  const publicOrderUrl = getPublicOrderUrlForEnvironment(environment);
-  const publicOrderLabel = getPublicOrderLabelForEnvironment(environment);
+  const summary = useMemo(() => getOperationalSummary(orders), [orders]);
+  const [todaySummary, setTodaySummary] = useState<OrdersV2Summary | null>(null);
+  const [kitchenSummary, setKitchenSummary] = useState<KitchenSummaryK | null>(null);
+  const [todayLoading, setTodayLoading] = useState(false);
+  const [todayError, setTodayError] = useState<string | null>(null);
+  const actionableOrders = useMemo(
+    () =>
+      orders
+        .filter(
+          (order) =>
+            !terminalStatuses.has(order.status) &&
+            (order.status === "new" ||
+              order.status === "ready" ||
+              order.paymentState === "pending"),
+        )
+        .slice(0, 4),
+    [orders],
+  );
+
+  useEffect(() => {
+    if (!runtime.sessionActive) {
+      setTodaySummary(null);
+      setKitchenSummary(null);
+      setTodayError(null);
+      setTodayLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const today = todayDateInput();
+
+    const loadHomeData = async () => {
+      setTodayLoading(true);
+      setTodayError(null);
+      const [summaryResult, kitchenResult] = await Promise.allSettled([
+        fetchOrdersV2Summary({
+          from: today,
+          to: today,
+          includeTerminal: true,
+          limit: 1000,
+          topLimit: 5,
+          environment: runtime.environment,
+        }),
+        fetchKitchenSummaryK(runtime.environment),
+      ]);
+
+      if (cancelled) return;
+
+      if (summaryResult.status === "fulfilled") {
+        setTodaySummary(summaryResult.value);
+      } else {
+        setTodaySummary(null);
+      }
+
+      if (kitchenResult.status === "fulfilled") {
+        setKitchenSummary(kitchenResult.value);
+      } else {
+        setKitchenSummary(null);
+      }
+
+      if (
+        summaryResult.status === "rejected" &&
+        kitchenResult.status === "rejected"
+      ) {
+        setTodayError(
+          "No se pudo cargar el resumen de hoy ni el mini Resumen K.",
+        );
+      } else if (summaryResult.status === "rejected") {
+        setTodayError("No se pudo cargar la venta de hoy.");
+      } else if (kitchenResult.status === "rejected") {
+        setTodayError("No se pudo cargar el mini Resumen K.");
+      } else {
+        setTodayError(null);
+      }
+
+      setTodayLoading(false);
+    };
+
+    void loadHomeData();
+    return () => {
+      cancelled = true;
+    };
+  }, [runtime.environment, runtime.sessionActive]);
+
+  const metricCards = [
+    {
+      label: "Pedidos activos",
+      value: summary.activeOrders,
+      hint: "Pedidos hoy que siguen abiertos",
+      action: () => onOpenTab("pedidos"),
+    },
+    {
+      label: "Cocina pendiente",
+      value: summary.pendingOrders + summary.preparingOrders,
+      hint: "Items antes de listo",
+      action: () => onOpenTab("cocina"),
+    },
+    {
+      label: "Pagos pendientes",
+      value: summary.paymentsToReview,
+      hint: "Confirmaciones por revisar",
+      action: () => onOpenTab("pagos"),
+    },
+    {
+      label: "Pedidos de hoy",
+      value: todaySummary?.totals.orders ?? "—",
+      hint: todayLoading ? "Actualizando..." : "Lectura del corte actual",
+      action: () => onOpenTab("pedidos"),
+    },
+  ];
+  const nextAction =
+    summary.paymentsToReview > 0
+      ? {
+          title: "Confirmar pagos pendientes",
+          detail: `${summary.paymentsToReview} pedido${summary.paymentsToReview === 1 ? "" : "s"} necesitan revisión de cobro.`,
+          label: "Abrir Pagos",
+          onClick: () => onOpenTab("pagos"),
+        }
+      : summary.pendingOrders > 0 || summary.preparingOrders > 0
+        ? {
+            title: "Revisar cocina",
+            detail: `${summary.pendingOrders + summary.preparingOrders} pedido${summary.pendingOrders + summary.preparingOrders === 1 ? "" : "s"} siguen antes de listo.`,
+            label: "Abrir Cocina",
+            onClick: () => onOpenTab("cocina"),
+          }
+        : summary.readyOrders > 0
+          ? {
+              title: "Entregar pedidos listos",
+              detail: `${summary.readyOrders} pedido${summary.readyOrders === 1 ? "" : "s"} ya pueden cerrarse.`,
+              label: "Abrir Pedidos",
+              onClick: () => onOpenTab("pedidos"),
+            }
+          : {
+              title: "Operación sin pendientes",
+              detail: "No hay pedidos abiertos que requieran acción inmediata.",
+              label: "Ver Pedidos",
+              onClick: () => onOpenTab("pedidos"),
+            };
 
   return (
-    <section
-      className={`runtime-environment-banner runtime-environment-banner--${environment}`}
-      aria-label={`Ambiente actual: ${runtimeEnvironmentLabel[environment]}`}
-    >
-      <div>
-        <div className="flex flex-wrap items-center gap-2">
-          <EnvironmentBadge environment={environment} />
-          <strong className="text-sm font-black text-zinc-50">
-            Ambiente actual
-          </strong>
-        </div>
-        <p className="mt-1 text-sm font-semibold text-zinc-50">{copy.primary}</p>
-        <p className="text-xs text-zinc-200/85">{copy.secondary}</p>
+    <section className="operation-console">
+      <div className="operation-console__main">
+        <Card className="home-hero">
+          <div className="home-hero__head">
+            <div>
+              <p className="home-section-label">Operación</p>
+              <h2>Prioridad de turno</h2>
+              <p>
+                Lectura compacta para decidir el siguiente movimiento sin entrar a módulos técnicos.
+              </p>
+            </div>
+            <div className="home-hero__meta">
+              <StatusPill className={truthToneClassName[runtime.source === "d1" ? "success" : "warning"]}>
+                {runtime.source === "d1" ? "Datos live" : "Respaldo"}
+              </StatusPill>
+              <StatusPill className={truthToneClassName[runtimeEnvironment === "production" ? "danger" : "system"]}>
+                {runtimeEnvironmentLabel[runtimeEnvironment]}
+              </StatusPill>
+            </div>
+          </div>
+
+          <div className="home-metrics">
+            {metricCards.map((card) => (
+              <button
+                key={card.label}
+                type="button"
+                className="home-metric-card"
+                onClick={card.action}
+              >
+                <p className="home-metric-card__label">{card.label}</p>
+                <p className="home-metric-card__value">{card.value}</p>
+                <p className="home-metric-card__hint">{card.hint}</p>
+              </button>
+            ))}
+          </div>
+
+          {todayError ? (
+            <p className="state-message state-message--warning mt-3">
+              {todayError}
+            </p>
+          ) : null}
+        </Card>
+
+        <Card className="home-next-action">
+          <div className="home-next-action__head">
+            <div>
+              <p className="home-section-label">Siguiente acción</p>
+              <h3>{nextAction.title}</h3>
+              <p>{nextAction.detail}</p>
+            </div>
+            <Button
+              className="home-next-action__button"
+              onClick={nextAction.onClick}
+            >
+              {nextAction.label}
+            </Button>
+          </div>
+          <div className="home-next-list">
+            {actionableOrders.length ? (
+              actionableOrders.map((order) => (
+                <button
+                  key={order.id}
+                  type="button"
+                  className="home-next-row"
+                  onClick={() => onOpenTab(order.paymentState === "pending" ? "pagos" : "pedidos")}
+                >
+                  <span>
+                    <strong>{order.folio}</strong>
+                    <small>{order.customer}</small>
+                  </span>
+                  <span>
+                    <small>{getPaymentStatusLabel(order.paymentState)}</small>
+                    <strong>{formatCurrency(order.total)}</strong>
+                  </span>
+                </button>
+              ))
+            ) : (
+              <p className="home-empty-line">
+                Sin pedidos abiertos por resolver.
+              </p>
+            )}
+          </div>
+        </Card>
       </div>
-      <a
-        className="runtime-environment-link"
-        href={publicOrderUrl}
-        target="_blank"
-        rel="noreferrer"
-      >
-        {publicOrderLabel}
-      </a>
+
+      <Card className="home-production-strip">
+        <div>
+          <p className="home-section-label">Mini Resumen K</p>
+          <h3>Producción</h3>
+        </div>
+        {kitchenSummary ? (
+          <div className="home-production-grid">
+            <span>Burgers <strong>{kitchenSummary.totals.burgers}</strong></span>
+            <span>Guarniciones <strong>{kitchenSummary.totals.garnishes}</strong></span>
+            <span>Ingredientes <strong>{kitchenSummary.totals.ingredients}</strong></span>
+            <span>
+              Costo{" "}
+              <strong>
+                {kitchenSummary.totals.estimatedCostCents === null
+                  ? "-"
+                  : formatCurrency(kitchenSummary.totals.estimatedCostCents / 100)}
+              </strong>
+            </span>
+          </div>
+        ) : (
+          <p className="text-sm text-zinc-400">
+            {todayLoading ? "Cargando resumen..." : "Sin Resumen K disponible."}
+          </p>
+        )}
+        <Button
+          className="home-production-button"
+          onClick={() => onOpenTab("cocina")}
+        >
+          Abrir Cocina
+        </Button>
+      </Card>
     </section>
   );
 };
-const DashboardHome = ({
-  orders,
-  source,
+
+const getAdminAuthModeHint = (authMode: InternalAuthMode) =>
+  authMode === "admin-only"
+    ? "Modo admin-only preparado. Chekeo sigue pidiendo PIN global hasta que exista protección externa y una política backend compatible."
+    : "Modo seguro global activo. Toda la app sigue pidiendo PIN antes de abrir.";
+
+const AdminReportsPanel = ({
+  runtime,
+  authMode,
 }: {
-  orders: InternalOrder[];
-  source: OrdersSource;
+  runtime: OrdersRuntime;
+  authMode: InternalAuthMode;
+}) => (
+  <div className="grid gap-3 xl:grid-cols-[1.1fr_0.9fr]">
+    <Card className="p-4">
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-200">
+        Reportes y exportes
+      </p>
+      <h3 className="mt-2 text-xl font-black text-zinc-50">
+        Exportes operativos
+      </h3>
+      <p className="mt-2 text-sm text-zinc-400">
+        Descarga cortes y listas filtradas sin volver a mezclar estos controles con Pedidos, Cocina o Pagos.
+      </p>
+      <OrdersExportControls
+        sessionActive={runtime.sessionActive}
+        defaultIncludeTerminal
+        environment={runtime.environment}
+      />
+    </Card>
+    <Card className="p-4">
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
+        Estado técnico
+      </p>
+      <h3 className="mt-2 text-lg font-black text-zinc-50">
+        Contexto actual del backend
+      </h3>
+      <div className="mt-3 space-y-2">
+        <div className="row">
+          <span>Fuente de datos</span>
+          <strong>{runtime.source === "d1" ? "D1" : runtime.source}</strong>
+        </div>
+        <div className="row">
+          <span>Sesión</span>
+          <strong>{sessionStateLabel[runtime.sessionState].value}</strong>
+        </div>
+        <div className="row">
+          <span>Última actualización</span>
+          <strong>{runtime.lastUpdated || "Pendiente"}</strong>
+        </div>
+      </div>
+      <p className="mt-3 text-xs text-zinc-500">
+        {getAdminAuthModeHint(authMode)}
+      </p>
+    </Card>
+  </div>
+);
+
+const AdminGate = ({
+  authMode,
+  sessionActive,
+  onUnlock,
+  children,
+}: {
+  authMode: InternalAuthMode;
+  sessionActive: boolean;
+  onUnlock: () => void;
+  children: ReactNode;
 }) => {
-  const active = orders.filter((o) => !terminalStatuses.has(o.status)).length;
-  const pending = orders.filter((o) => o.status === "new").length;
+  if (!shouldGateAdminInternally(authMode) || sessionActive) return <>{children}</>;
+
   return (
-    <section className="grid gap-2.5 md:grid-cols-3">
-      <Card className="p-2.5">
-        <p className="muted">Órdenes activas</p>
-        <p className="text-xl font-black">
-          {source === "d1" ? active : operatorStats.activeOrders}
+    <Card className="p-4 sm:p-5">
+      <div className="max-w-md">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
+          Admin protegido
         </p>
-      </Card>
-      <Card className="p-2.5">
-        <p className="muted">Pendientes</p>
-        <p className="text-xl font-black">
-          {source === "d1" ? pending : operatorStats.pendingOrders}
+        <h2 className="mt-1 text-xl font-black text-zinc-50">
+          Acceso Admin
+        </h2>
+        <p className="mt-2 text-sm text-zinc-400">
+          Admin siempre requiere PIN interno. Home, Pedidos, Cocina y Pagos solo pueden abrirse sin PIN global cuando la URL ya está protegida externamente.
         </p>
-      </Card>
-      <Card className="p-2.5">
-        <p className="muted">Carga cocina</p>
-        <p className="text-xl font-black">{operatorStats.kitchenLoad}%</p>
-      </Card>
-      <Card className="md:col-span-2 p-2.5">
-        <h3 className="mb-2 font-bold">Urgentes ahora</h3>
-        {orders
-          .filter((o) => o.priority === "urgent" || o.status === "new")
-          .slice(0, 4)
-          .map((o) => (
-            <div key={o.id} className="row">
-              {o.folio} · {o.customer} · {o.createdAt}
+        <div className="mt-4 rounded-2xl border border-cyan-400/20 bg-zinc-950/70 p-4">
+          <SessionPinForm
+            inputId="admin-pin"
+            label="PIN Admin"
+            submitLabel="Desbloquear Admin"
+            submitBusyLabel="Desbloqueando..."
+            onSuccess={onUnlock}
+          />
+        </div>
+      </div>
+    </Card>
+  );
+};
+
+const AdminWorkspace = ({
+  view,
+  setView,
+  orders,
+  runtime,
+  runtimeEnvironment,
+  authMode,
+  onArchiveCancelled,
+}: {
+  view: AdminViewKey;
+  setView: (view: AdminViewKey) => void;
+  orders: InternalOrder[];
+  runtime: OrdersRuntime;
+  runtimeEnvironment: ChekeoRuntimeEnvironment;
+  authMode: InternalAuthMode;
+  onArchiveCancelled: (order: InternalOrder) => Promise<void>;
+}) => {
+  const activeView = adminViews.find((option) => option.key === view) ?? adminViews[0];
+  const publicOrderUrl = getPublicOrderUrlForEnvironment(runtimeEnvironment);
+  const publicOrderLabel = getPublicOrderLabelForEnvironment(runtimeEnvironment);
+
+  const renderModuleCard = (module: AdminModuleDefinition) => {
+    const Icon = module.icon;
+    const status = adminModuleStatusMeta[module.status];
+
+    return (
+      <button
+        key={module.key}
+        type="button"
+        className="admin-module-card"
+        onClick={() => setView(module.key)}
+      >
+        <span className="admin-module-card__top">
+          <span className="admin-module-card__icon">
+            <Icon size={18} aria-hidden="true" />
+          </span>
+          <StatusPill className={`admin-module-card__status ${status.className}`}>
+            {status.label}
+          </StatusPill>
+        </span>
+        <span className="admin-module-card__content">
+          <span className="admin-module-card__label">{module.label}</span>
+          <span className="admin-module-card__hint">{module.hint}</span>
+          <span className="admin-module-card__desc">{module.description}</span>
+        </span>
+        <span className="admin-module-card__footer">
+          <span>{module.cta}</span>
+          <span aria-hidden="true">→</span>
+        </span>
+      </button>
+    );
+  };
+
+  const content =
+    view === "banco" ? (
+      <BankConfigAdminPanel />
+    ) : view === "catalogo" ? (
+      <CatalogAdminPanel />
+    ) : view === "sorteos" ? (
+      <RafflesAdminPanel runtimeEnvironment={runtimeEnvironment} />
+    ) : view === "historial" ? (
+      <HistoryPanel
+        orders={orders}
+        runtime={runtime}
+        onArchiveCancelled={onArchiveCancelled}
+      />
+    ) : view === "cierre" ? (
+      <OperationalClosePanel
+        environment={runtime.environment}
+        sessionActive={runtime.sessionActive}
+      />
+    ) : view === "reportes" ? (
+      <AdminReportsPanel runtime={runtime} authMode={authMode} />
+    ) : (
+      <div className="admin-hub">
+        {adminModuleGroups.map((group) => {
+          const modules = adminModuleViews.filter((module) => module.category === group.key);
+          if (!modules.length) return null;
+
+          return (
+            <section
+              key={group.key}
+              className="admin-module-group"
+              aria-labelledby={`admin-module-group-${group.key}`}
+            >
+              <div className="admin-module-group__header">
+                <div>
+                  <h3 id={`admin-module-group-${group.key}`} className="admin-module-group__title">
+                    {group.title}
+                  </h3>
+                  <p className="admin-module-group__desc">{group.description}</p>
+                </div>
+                <span className="admin-module-group__count">
+                  {modules.length} módulo{modules.length === 1 ? "" : "s"}
+                </span>
+              </div>
+              <div className="admin-module-grid">
+                {modules.map(renderModuleCard)}
+              </div>
+            </section>
+          );
+        })}
+
+        <section className="admin-module-group" aria-labelledby="admin-module-group-public">
+          <div className="admin-module-group__header">
+            <div>
+              <h3 id="admin-module-group-public" className="admin-module-group__title">
+                Página pública
+              </h3>
+              <p className="admin-module-group__desc">
+                Enlace de estado a la experiencia de clientes; este PR no la modifica.
+              </p>
             </div>
-          ))}
-      </Card>
-      <Card className="p-2.5">
-        <h3 className="font-bold">Estado del turno</h3>
-        <p className="muted">
-          {source === "d1"
-            ? "Órdenes"
-            : "Vista operativa local"}
+            <StatusPill className="border-emerald-400/40 bg-emerald-500/10 text-emerald-100">
+              Base lista
+            </StatusPill>
+          </div>
+          <a
+            className="admin-module-card admin-module-card--link"
+            href={publicOrderUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <span className="admin-module-card__top">
+              <span className="admin-module-card__icon">
+                <ExternalLink size={18} aria-hidden="true" />
+              </span>
+              <StatusPill className="admin-module-card__status border-emerald-400/40 bg-emerald-500/10 text-emerald-100">
+                Base lista
+              </StatusPill>
+            </span>
+            <span className="admin-module-card__content">
+              <span className="admin-module-card__label">Página pública</span>
+              <span className="admin-module-card__hint">{publicOrderLabel}</span>
+              <span className="admin-module-card__desc">
+                Acceso rápido para revisar la ruta pública activa sin cambiar su implementación.
+              </span>
+            </span>
+            <span className="admin-module-card__footer">
+              <span>Abrir página</span>
+              <ExternalLink size={16} aria-hidden="true" />
+            </span>
+          </a>
+        </section>
+      </div>
+    );
+
+  return (
+    <section className="space-y-3">
+      <Card className="admin-workspace-header p-4">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+          <div>
+            <p className="home-section-label">Admin</p>
+            <h2 className="mt-1 text-xl font-black text-zinc-50">
+              {view === "launcher" ? "Módulos secundarios" : activeView.label}
+            </h2>
+            <p className="mt-1 max-w-3xl text-sm text-zinc-400">
+              {view === "launcher"
+                ? "Datos bancarios, historial, cierre, catálogo, sorteos y reportes viven aquí para mantener la navegación principal enfocada en operación."
+                : activeView.description}
+            </p>
+          </div>
+          <div className="admin-workspace-header__actions">
+            {view !== "launcher" ? (
+              <Button
+                type="button"
+                className="admin-back-button border border-cyan-400/40 bg-cyan-400/10 text-cyan-100"
+                onClick={() => setView("launcher")}
+              >
+                Volver al hub
+              </Button>
+            ) : null}
+            {view !== "launcher" ? (
+              <label className="admin-compact-select">
+                Cambiar módulo
+                <select
+                  value={view}
+                  onChange={(event) => setView(event.target.value as AdminViewKey)}
+                >
+                  {adminViews.map((option) => (
+                    <option key={option.key} value={option.key}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+          </div>
+        </div>
+        <p className="mt-3 text-xs text-zinc-500">
+          {getAdminAuthModeHint(authMode)}
         </p>
       </Card>
+      {content}
+    </section>
+  );
+};
+
+const BankConfigAdminPanel = () => {
+  const primaryLabel = getBankPaymentPrimaryLabel(bankPaymentConfig);
+  const primaryValue = getBankPaymentPrimaryValue(bankPaymentConfig);
+
+  return (
+    <section className="space-y-3">
+      <Card className="p-4">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">
+              Configuración de pago
+            </p>
+            <h3 className="mt-1 text-xl font-black text-zinc-50">
+              Datos bancarios
+            </h3>
+            <p className="mt-1 max-w-3xl text-sm text-zinc-400">
+              Fuente central compartida para transferencias. Pagos la consume
+              para el mensaje operativo y esta vista la expone solo dentro de
+              Admin.
+            </p>
+          </div>
+          <StatusPill className="border-zinc-700 bg-zinc-900 text-zinc-100">
+            {bankPaymentConfig.editable ? "Editable" : "Solo lectura"}
+          </StatusPill>
+        </div>
+      </Card>
+
+      <div className="grid gap-3 xl:grid-cols-[1.1fr_0.9fr]">
+        <Card className="p-4">
+          <div className="grid gap-3 min-[520px]:grid-cols-2">
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/65 p-3">
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500">
+                Banco
+              </p>
+              <p className="mt-2 break-words text-base font-black text-zinc-50">
+                {bankPaymentConfig.bankName}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/65 p-3">
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500">
+                Titular
+              </p>
+              <p className="mt-2 break-words text-base font-black text-zinc-50">
+                {bankPaymentConfig.accountHolder}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/65 p-3 min-[520px]:col-span-2">
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500">
+                {primaryLabel}
+              </p>
+              <p className="mt-2 break-all text-base font-black text-zinc-50">
+                {primaryValue || "Sin dato configurado"}
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-4">
+          <div className="space-y-3">
+            <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-3">
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-emerald-100">
+                Alcance
+              </p>
+              <p className="mt-2 text-sm text-zinc-100">
+                Solo transferencia. Pedidos, ticket, Home y Cocina no deben
+                mostrar estos datos.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/65 p-3 text-sm text-zinc-300">
+              <p className="font-black text-zinc-100">Estado de edición</p>
+              <p className="mt-2">
+                La configuración actual es de solo lectura y vive en la capa
+                compartida del proyecto. La edición persistente queda pendiente
+                hasta definir una fuente segura en backend.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/65 p-3 text-sm text-zinc-300">
+              <p className="font-black text-zinc-100">Fuente</p>
+              <p className="mt-2">
+                <code>{bankPaymentConfig.source}</code> compartida por{" "}
+                <code>Pagos</code>, <code>Admin</code> y la integración de
+                transferencia donde aplica.
+              </p>
+            </div>
+          </div>
+        </Card>
+      </div>
     </section>
   );
 };
@@ -1094,21 +2349,10 @@ const getPedidoActions = (status: OrderStatus): StatusAction[] =>
   terminalStatuses.has(status)
     ? []
     : [
-        {
-          status:
-            status === "new"
-              ? "preparing"
-              : status === "preparing"
-                ? "ready"
-                : "delivered",
-          label:
-            status === "new"
-              ? "Iniciar preparación"
-              : status === "preparing"
-                ? "Marcar listo"
-                : "Entregar",
-        },
-        { status: "cancelled", label: "Cancelar", tone: "danger" },
+        ...(status === "ready"
+          ? [{ status: "delivered", label: "Marcar entregado" } satisfies StatusAction]
+          : []),
+        { status: "cancelled", label: "Cancelar pedido", tone: "danger" },
       ];
 const getKitchenActions = (status: OrderStatus): StatusAction[] =>
   status === "new"
@@ -1134,13 +2378,14 @@ const ActionButtons = ({
 }) => {
   const busy = actionOrderId === order.id;
   return (
-    <div className="flex flex-wrap gap-1">
+    <div className="flex flex-wrap gap-2">
       {actions.map((action) => {
         const isCancellation = action.status === "cancelled";
         return (
           <button
             key={action.status}
-            className={`btn-sm ${action.tone === "danger" ? "danger" : ""}`}
+            type="button"
+            className={`btn-sm ${action.tone === "danger" ? "danger" : "border-cyan-500/50 bg-cyan-500/10 text-cyan-100"}`}
             onClick={() =>
               isCancellation
                 ? onCancel(order)
@@ -1164,23 +2409,19 @@ type WhatsappNotice = { tone: "success" | "error"; message: string } | null;
 
 const WhatsappOrderActions = ({
   order,
-  template = getWhatsappTemplateForStatus(order.status),
-  showHint = false,
 }: {
   order: InternalOrder;
-  template?: WhatsappOrderMessageType;
-  showHint?: boolean;
 }) => {
   const [notice, setNotice] = useState<WhatsappNotice>(null);
   const [ticketBlob, setTicketBlob] = useState<Blob | null>(null);
   const [generatingTicket, setGeneratingTicket] = useState(false);
   const phone = normalizeWhatsappPhone(order.customerPhone ?? "");
-  const message = buildWhatsappOrderMessage(order, template);
+  const message = buildWhatsappOrderConfirmationMessage(
+    {
+      ...order,
+    },
+  );
   const whatsappUrl = phone ? buildWhatsappUrl(phone, message) : "";
-  const canAttemptFileShare =
-    typeof navigator !== "undefined" &&
-    typeof navigator.share === "function" &&
-    typeof navigator.canShare === "function";
 
   useEffect(() => {
     if (!notice) return;
@@ -1238,69 +2479,36 @@ const WhatsappOrderActions = ({
     try {
       if (!navigator.clipboard?.writeText)
         throw new Error("Clipboard no disponible en este navegador");
-      await navigator.clipboard.writeText(buildOrderTicketSummaryText(order));
-      setNotice({ tone: "success", message: "Resumen copiado" });
+      await navigator.clipboard.writeText(message);
+      setNotice({ tone: "success", message: "WhatsApp copiado" });
     } catch {
       setNotice({
         tone: "error",
-        message:
-          "No se pudo copiar el resumen. Copia manualmente desde un navegador seguro.",
-      });
-    }
-  };
-
-  const shareTicket = async () => {
-    setNotice(null);
-    try {
-      const blob = await getTicketBlob();
-      if (!canShareOrderTicketImage(blob, order.folio)) {
-        setNotice({
-          tone: "error",
-          message: "Descarga la imagen y adjúntala manualmente en WhatsApp.",
-        });
-        return;
-      }
-      await shareOrderTicketImage(blob, order);
-      setNotice({ tone: "success", message: "Imagen lista para compartir" });
-    } catch {
-      setNotice({
-        tone: "error",
-        message: "Descarga la imagen y adjúntala manualmente en WhatsApp.",
+        message: "No se pudo copiar el mensaje. Copia manualmente desde un navegador seguro.",
       });
     }
   };
 
   return (
     <div className="mt-2 rounded-lg border border-cyan-400/20 bg-cyan-400/5 p-2">
-      {showHint ? (
-        <p className="mb-2 text-[11px] text-cyan-100">
-          Acción manual: abre WhatsApp con texto prellenado. WhatsApp vía
-          wa.me no adjunta el PNG automáticamente.
-        </p>
-      ) : null}
       {!phone ? (
         <p className="mb-2 rounded bg-amber-500/10 px-2 py-1 text-[11px] text-amber-200">
           Teléfono inválido para WhatsApp
         </p>
       ) : null}
-      {!canAttemptFileShare ? (
-        <p className="mb-2 rounded bg-zinc-800/70 px-2 py-1 text-[11px] text-zinc-300">
-          Descarga la imagen y adjúntala manualmente en WhatsApp.
-        </p>
-      ) : null}
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         <Button
           className="border border-amber-700 bg-amber-950/50 px-2 py-1.5 text-[11px] text-amber-100 disabled:opacity-40"
           onClick={() => void downloadTicket()}
           disabled={generatingTicket}
         >
-          {generatingTicket ? "Generando…" : "Descargar ticket PNG"}
+          {generatingTicket ? "Generando…" : "Descargar ticket"}
         </Button>
         <Button
           className="border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-[11px]"
           onClick={() => void copySummary()}
         >
-          Copiar resumen
+          Copiar WhatsApp
         </Button>
         <Button
           className="border border-emerald-700 bg-emerald-950/50 px-2 py-1.5 text-[11px] text-emerald-100 disabled:opacity-40"
@@ -1308,13 +2516,6 @@ const WhatsappOrderActions = ({
           disabled={!phone}
         >
           Abrir WhatsApp
-        </Button>
-        <Button
-          className="border border-cyan-700 bg-cyan-950/50 px-2 py-1.5 text-[11px] text-cyan-100 disabled:opacity-40"
-          onClick={() => void shareTicket()}
-          disabled={generatingTicket || !canAttemptFileShare}
-        >
-          Compartir imagen
         </Button>
       </div>
       {notice ? (
@@ -1516,53 +2717,192 @@ const OrderItems = ({ order }: { order: InternalOrder }) => (
     })}
   </div>
 );
+
+const OrderFact = ({
+  label,
+  value,
+  emphasis = false,
+}: {
+  label: string;
+  value: ReactNode;
+  emphasis?: boolean;
+}) => (
+  <span className={`orders-fact ${emphasis ? "orders-fact--emphasis" : ""}`}>
+    <span>{label}</span>
+    <strong>{value}</strong>
+  </span>
+);
+
 const CompactRow = ({
   order,
   onOpen,
+  onMove,
+  onCancel,
+  busy,
 }: {
   order: InternalOrder;
   onOpen: () => void;
+  onMove: MoveOrderStatus;
+  onCancel: (order: InternalOrder) => void;
+  busy: boolean;
 }) => {
   const previewOrder = isPreviewOrderSource(order.source);
+  const itemCount = getOrderItemCount(order);
+  const location = getOrderLocationLabel(order);
+  const canDeliver = order.status === "ready";
+  const canCancel = !terminalStatuses.has(order.status);
   return (
-  <Card className="p-2.5">
-    <div className="flex items-start justify-between gap-2">
-      <div>
-        <p className="flex flex-wrap items-center gap-2 text-sm font-bold">
-          <span>{order.folio} · {order.customer}</span>
-          {previewOrder ? (
-            <span className="rounded-full bg-amber-300 px-2 py-0.5 text-[10px] font-black text-amber-950">
-              PREVIEW
-            </span>
-          ) : null}
-        </p>
-        <p className="text-[11px] text-zinc-400">
-          {order.createdAt} · {order.channel} · {order.paymentMethod}/
-          {order.paymentState}
-        </p>
-        {order.customerPhone ? (
-          <p className="text-[11px] text-zinc-500">
-            Tel: {order.customerPhone}
-          </p>
+    <div className={`orders-card orders-card--${order.status}`}>
+      <span className={`orders-status-rail orders-status-rail--${order.status}`} aria-hidden="true" />
+      <div className="orders-card__body">
+        <div className="orders-card__head">
+          <div className="orders-card__identity">
+            <p className="orders-card__folio">
+              <span className="truncate">{order.folio}</span>
+              {previewOrder ? (
+                <span className="orders-preview-chip">
+                  Prueba
+                </span>
+              ) : null}
+            </p>
+            <p className="orders-card__customer">
+              {order.customer}
+            </p>
+            <p className="orders-card__timestamp">
+              {order.createdAt} · {channelLabel[order.channel]}
+            </p>
+          </div>
+          <div className="orders-card__badges">
+            <OrdersStatusBadge status={order.status} />
+          </div>
+        </div>
+
+        <div className="orders-card__facts">
+          <OrderFact label="Total" value={formatCurrency(order.total)} emphasis />
+          <OrderFact label="Entrega" value={location} />
+          <OrderFact label="Items" value={itemCount} />
+        </div>
+
+        <div className="orders-card__actions">
+          <Button
+            className="orders-primary-action"
+            onClick={onOpen}
+          >
+            Ver ticket
+          </Button>
+          <details className="orders-card__more">
+            <summary>Mas acciones</summary>
+            <div className="orders-card__secondary-actions">
+              <span className="orders-card__items-pill">Items: {itemCount}</span>
+              {order.note ? (
+                <p className="orders-note">Nota: {order.note}</p>
+              ) : null}
+              {canDeliver ? (
+                <Button
+                  className="orders-secondary-action"
+                  onClick={() => void onMove(order.id, "delivered")}
+                  disabled={busy}
+                >
+                  {busy ? "Actualizando…" : "Entregado"}
+                </Button>
+              ) : null}
+              {canCancel ? (
+                <Button
+                  className="orders-danger-action"
+                  onClick={() => onCancel(order)}
+                  disabled={busy}
+                >
+                  {busy ? "Cancelando…" : "Cancelar pedido"}
+                </Button>
+              ) : null}
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const OrderCommandPanel = ({
+  order,
+  onOpen,
+  onMove,
+  onCancel,
+  busy,
+}: {
+  order: InternalOrder;
+  onOpen: () => void;
+  onMove: MoveOrderStatus;
+  onCancel: (order: InternalOrder) => void;
+  busy: boolean;
+}) => {
+  const itemCount = getOrderItemCount(order);
+  const location = getOrderLocationLabel(order);
+  const canDeliver = order.status === "ready";
+  const canCancel = !terminalStatuses.has(order.status);
+  const visibleItems = order.items.slice(0, 3);
+  return (
+    <aside className="orders-command-detail" aria-label={`Detalle rapido ${order.folio}`}>
+      <div className="orders-command-detail__hero">
+        <div className="min-w-0">
+          <p className="orders-command-detail__eyebrow">Ticket abierto</p>
+          <h3>{order.folio}</h3>
+          <p>{order.customer} · {location}</p>
+        </div>
+        <strong>{formatCurrency(order.total)}</strong>
+      </div>
+      <div className="orders-command-detail__facts">
+        <OrderFact label="Estado" value={statusLabel[order.status]} />
+        <OrderFact label="Entrega" value={location} />
+        <OrderFact label="Items" value={itemCount} />
+      </div>
+      <div className="orders-command-detail__panel">
+        <div className="orders-command-detail__panel-head">
+          <p>Resumen</p>
+          <Button className="orders-ghost-action" onClick={onOpen}>
+            Ver ticket
+          </Button>
+        </div>
+        <div className="orders-command-detail__items">
+          {visibleItems.map((item, index) => (
+            <div key={`${order.id}-panel-${index}`} className="orders-command-detail__item">
+              <span>{item.qty}x {item.name}</span>
+              <strong>{formatCurrency(item.lineTotal ?? item.qty * item.price)}</strong>
+            </div>
+          ))}
+        </div>
+      </div>
+      {order.note ? (
+        <details className="orders-card__more orders-card__more--panel">
+          <summary>Nota operativa</summary>
+          <p className="orders-note">{order.note}</p>
+        </details>
+      ) : null}
+      <div className="orders-command-detail__actions">
+        {canDeliver ? (
+          <Button
+            className="orders-primary-action"
+            onClick={() => void onMove(order.id, "delivered")}
+            disabled={busy}
+          >
+            {busy ? "Actualizando…" : "Entregado"}
+          </Button>
+        ) : (
+          <Button className="orders-primary-action" onClick={onOpen}>
+            Ver ticket
+          </Button>
+        )}
+        {canCancel ? (
+          <Button
+            className="orders-danger-action"
+            onClick={() => onCancel(order)}
+            disabled={busy}
+          >
+            {busy ? "Cancelando…" : "Cancelar pedido"}
+          </Button>
         ) : null}
       </div>
-      <StatusBadge status={order.status} />
-    </div>
-    {order.note ? (
-      <p className="mt-1.5 rounded bg-amber-500/10 px-2 py-1 text-[11px] text-amber-200">
-        Nota crítica: {order.note}
-      </p>
-    ) : null}
-    <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-      <Button
-        className="border border-zinc-700 bg-zinc-900 py-1 text-[11px]"
-        onClick={onOpen}
-      >
-        Abrir ticket
-      </Button>
-    </div>
-    <WhatsappOrderActions order={order} />
-  </Card>
+    </aside>
   );
 };
 
@@ -1581,585 +2921,188 @@ const OrdersBoard = ({
     order: InternalOrder,
     origin: "pedidos" | "detalle",
   ) => void;
-}) => (
-  <section>
-    <SourcePanel runtime={runtime} />
-    {runtime.source === "d1" && orders.length === 0 ? (
-      <EmptyOrdersState
-        title="No hay pedidos activos."
-        description="Cuando entre un pedido nuevo, aparecerá aquí."
-      />
-    ) : null}
-    <div className="grid gap-2">
-      {orders.map((o) => {
-        const highlighted = runtime.highlightedOrderIds.has(o.id);
-        return (
-          <Card
-            key={o.id}
-            className={`p-3 transition-colors ${highlighted ? "border-cyan-300/70 bg-cyan-400/10 shadow-lg shadow-cyan-950/30" : ""}`}
-          >
-            <CompactRow order={o} onOpen={() => setSelected(o)} />
-            <div className="mt-2 grid gap-1 text-xs text-zinc-300 md:grid-cols-2">
-              <span>Modo entrega: {o.channel}</span>
-              <span>Método de pago: {o.paymentMethod}</span>
-              <span>Estado de pago: {o.paymentState}</span>
-              <span>Total: {formatCurrency(o.total)}</span>
-              <span>Origen: {o.source === "d1" ? "Operativo" : "Local"}</span>
-              <span>Creado: {o.createdAt}</span>
-            </div>
-            <OrderItems order={o} />
-            <div className="mt-2">
-              <ActionButtons
-                order={o}
-                actions={getPedidoActions(o.status)}
-                onMove={move}
-                onCancel={(order) => requestCancellation(order, "pedidos")}
-                actionOrderId={runtime.actionOrderId}
-              />
-            </div>
-          </Card>
-        );
-      })}
-    </div>
-  </section>
-);
-
-const KitchenItemModifiers = ({ item }: { item: InternalOrderItem }) => (
-  <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
-    <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-3">
-      <p className="text-[11px] font-black uppercase tracking-[0.25em] text-amber-200">
-        MOD
-      </p>
-      {item.removedIngredients.length ? (
-        <ul className="mt-2 space-y-1 text-base font-bold text-zinc-100">
-          {item.removedIngredients.map((ingredient) => (
-            <li key={ingredient}>- {ingredient}</li>
-          ))}
-        </ul>
-      ) : (
-        <p className="mt-2 text-xs font-semibold text-zinc-500">Sin MOD</p>
-      )}
-    </div>
-    <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3">
-      <p className="text-[11px] font-black uppercase tracking-[0.25em] text-cyan-200">
-        UPGRADE
-      </p>
-      {item.extras.length ? (
-        <ul className="mt-2 space-y-1 text-base font-bold text-zinc-100">
-          {item.extras.map((extra) => (
-            <li key={`${extra.sku ?? extra.name}-${extra.name}`}>
-              - {extra.name}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="mt-2 text-xs font-semibold text-zinc-500">Sin UPGRADE</p>
-      )}
-    </div>
-  </div>
-);
-
-const KitchenBurgerCard = ({
-  order,
-  item,
-  itemIndex,
-  open,
-  busy,
-  onToggleOpen,
-  onDoneChange,
-}: {
-  order: InternalOrder;
-  item: InternalOrderItem;
-  itemIndex: number;
-  open: boolean;
-  busy: boolean;
-  onToggleOpen: () => void;
-  onDoneChange: (done: boolean) => void;
 }) => {
-  const done = Boolean(item.kitchenDone);
-  const kind = getKitchenItemKind(item) as KitchenItemKind;
-  const titleNumber = item.itemDisplayIndex ?? itemIndex + 1;
+  const [statusFilter, setStatusFilter] = useState<OrdersStatusFilter>("all");
+  const [rangeFilter, setRangeFilter] = useState<OrdersRangeFilter>("today");
+  const [search, setSearch] = useState("");
+
+  const filteredOrders = useMemo(() => {
+    const now = new Date();
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    ).getTime();
+    const startOfWeek = startOfToday - 6 * 24 * 60 * 60 * 1000;
+    const normalizedSearch = search.trim().toLowerCase();
+
+    return [...orders]
+      .sort((a, b) => (b.createdAtMs ?? 0) - (a.createdAtMs ?? 0))
+      .filter((order) => {
+        const orderStatus = getOrdersStatusFilterValue(order.status);
+        if (statusFilter !== "all" && orderStatus !== statusFilter) return false;
+
+        if (rangeFilter !== "all" && order.createdAtMs) {
+          const threshold =
+            rangeFilter === "today" ? startOfToday : startOfWeek;
+          if (order.createdAtMs < threshold) return false;
+        }
+
+        if (!normalizedSearch) return true;
+        const haystack = [
+          order.folio,
+          order.customer,
+          order.customerPhone,
+          getOrderLocationLabel(order),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return haystack.includes(normalizedSearch);
+      });
+  }, [orders, rangeFilter, search, statusFilter]);
+  const commandOrder =
+    filteredOrders.find((order) => order.status === "ready") ??
+    filteredOrders.find((order) => order.status === "new") ??
+    filteredOrders[0];
+
   return (
-    <article
-      className={`rounded-2xl border p-3 transition ${
-        done
-          ? "border-emerald-400/40 bg-emerald-500/10"
-          : "border-zinc-700 bg-zinc-950/80"
-      }`}
-    >
-      <button
-        type="button"
-        className="flex w-full items-center justify-between gap-3 text-left"
-        onClick={onToggleOpen}
-      >
-        <div>
-          <p className="text-xl font-black text-zinc-50">
-            {item.name} #{titleNumber}
-          </p>
-          <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-zinc-500">
-            {kind === "combo" ? "Combo" : "Burger"} ·{" "}
-            {done ? "Hecha" : "Pendiente"}
-          </p>
-        </div>
-        <span
-          className={`rounded-full px-3 py-1 text-xs font-black ${done ? "bg-emerald-300 text-emerald-950" : "bg-amber-300 text-amber-950"}`}
-        >
-          {done ? "LISTA" : open ? "ABIERTO" : "TOCAR"}
-        </span>
-      </button>
-      {open ? (
-        <div className="mt-3">
-          {kind === "combo" && item.garnish ? (
-            <p className="mb-3 rounded-lg bg-zinc-900 px-3 py-2 text-xs font-semibold text-zinc-300">
-              Guarnición incluida: {item.garnish.name}{item.garnish.upcharge ? ` (+$${item.garnish.upcharge})` : ""}
+    <section className="orders-command">
+      <Card className="orders-board-shell">
+        <div className="orders-board-shell__header">
+          <div>
+            <p className="home-section-label">Cola compacta</p>
+            <h2 className="mt-1 text-2xl font-black text-zinc-50">
+              Pedidos
+            </h2>
+            <p className="mt-1 max-w-3xl text-sm text-zinc-400">
+              Movimientos, detalle, ticket y confirmación corta del pedido.
             </p>
-          ) : null}
-          {kind === "combo" && item.includedDrink ? (
-            <p className="mb-3 rounded-lg bg-zinc-900 px-3 py-2 text-xs font-semibold text-cyan-200">
-              Bebida incluida: {item.includedDrink.name}
-            </p>
-          ) : null}
-          {kind === "combo" && item.comboBurgers.length ? (
-            <div className="mb-3 rounded-xl border border-lime-400/20 bg-lime-400/5 p-3 text-xs font-semibold text-zinc-200">
-              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-lime-200">Burger(s) del combo</p>
-              <ul className="mt-2 space-y-1">
-                {item.comboBurgers.map((burger, index) => (
-                  <li key={`${burger.sku ?? burger.name}-${index}`}>{burger.name}{burger.extras.length ? ` · Extras: ${burger.extras.map((extra) => extra.name).join(", ")}` : ""}{burger.removedIngredients.length ? ` · Sin: ${burger.removedIngredients.join(", ")}` : ""}{burger.burgerNote ? ` · Nota: ${burger.burgerNote}` : ""}</li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-          {item.sideQuestExtras.length ? (
-            <div className="mb-3 rounded-xl border border-fuchsia-400/20 bg-fuchsia-400/5 p-3 text-xs font-semibold text-zinc-200">
-              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-fuchsia-200">Side Quest extra</p>
-              <ul className="mt-2 space-y-1">
-                {item.sideQuestExtras.map((extra, index) => <li key={`${extra.sku ?? extra.name}-${index}`}>{extra.itemKind === "drink" ? "Bebida" : "Guarnición"}: {extra.name}</li>)}
-              </ul>
-            </div>
-          ) : null}
-          <KitchenItemModifiers item={item} />
-          {item.burgerNote ? (
-            <div className="mt-3 rounded-xl border border-rose-400/20 bg-rose-400/10 p-3">
-              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-rose-200">
-                Nota
-              </p>
-              <p className="mt-1 text-base font-bold text-rose-50">
-                - {item.burgerNote}
-              </p>
-            </div>
-          ) : null}
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-            {done ? (
-              <Button
-                className="w-full border border-zinc-700 bg-zinc-900 py-3 text-base font-black text-zinc-100 disabled:opacity-50"
-                disabled={busy}
-                onClick={() => onDoneChange(false)}
-              >
-                Reabrir
-              </Button>
-            ) : (
-              <Button
-                className="w-full bg-emerald-400 py-4 text-lg font-black text-emerald-950 disabled:opacity-50"
-                disabled={busy || !item.lineKey}
-                onClick={() => onDoneChange(true)}
-              >
-                Burger hecha
-              </Button>
-            )}
           </div>
-          {!item.lineKey ? (
-            <p className="mt-2 text-xs text-amber-200">
-              Sin lineKey en snapshot; no se puede persistir en D1.
-            </p>
-          ) : null}
+          <div className="orders-board-shell__summary">
+            <span className="orders-summary-chip">
+              {filteredOrders.length} visibles
+            </span>
+            <span className="orders-summary-chip">
+              {orders.filter((order) => order.status === "ready").length} listos
+            </span>
+          </div>
         </div>
-      ) : null}
-    </article>
-  );
-};
 
-const KitchenOrderShell = ({
-  order,
-  children,
-  highlighted = false,
-}: {
-  order: InternalOrder;
-  children: ReactNode;
-  highlighted?: boolean;
-}) => {
-  const generalNote = stripLocationFromNotes(order.note);
-  return (
-    <Card
-      className={`overflow-hidden border-zinc-700 bg-zinc-950/70 p-0 transition-colors ${highlighted ? "border-cyan-300/70 bg-cyan-400/10 shadow-lg shadow-cyan-950/30" : ""}`}
-    >
-      <div className="border-b border-zinc-800 bg-zinc-900/80 p-4">
-        <p className="text-3xl font-black text-zinc-50">{order.folio}</p>
-        <p className="mt-1 text-xl font-extrabold text-zinc-100">
-          {order.customer}
-        </p>
-        <p className="mt-2 inline-flex rounded-full bg-cyan-300 px-3 py-1 text-sm font-black text-cyan-950">
-          {extractKitchenLocation(order.note)}
-        </p>
-        {generalNote ? (
-          <p className="mt-3 rounded-xl bg-amber-400/10 px-3 py-2 text-sm font-bold text-amber-100">
-            Nota general: {generalNote}
-          </p>
-        ) : null}
-      </div>
-      <div className="space-y-3 p-3">{children}</div>
-    </Card>
-  );
-};
-
-const KitchenBurgerOrder = ({
-  order,
-  items,
-  busyLineKey,
-  highlighted = false,
-  onToggleKitchenItem,
-}: {
-  order: InternalOrder;
-  items: InternalOrderItem[];
-  busyLineKey: string | null;
-  highlighted?: boolean;
-  onToggleKitchenItem: ToggleKitchenItemDone;
-}) => {
-  const pendingIndex = items.findIndex((item) => !item.kitchenDone);
-  const defaultOpenKey =
-    pendingIndex >= 0
-      ? getKitchenLineKey(order, items[pendingIndex], pendingIndex)
-      : "";
-  const [openLineKey, setOpenLineKey] = useState(defaultOpenKey);
-
-  useEffect(() => {
-    setOpenLineKey(defaultOpenKey);
-  }, [defaultOpenKey]);
-
-  const allDone = items.every((item) => item.kitchenDone);
-  return (
-    <KitchenOrderShell order={order} highlighted={highlighted}>
-      {allDone ? (
-        <p className="rounded-xl bg-emerald-400/10 px-3 py-2 text-center text-sm font-black text-emerald-200">
-          Burgers listas
-        </p>
-      ) : null}
-      {items.map((item, index) => {
-        const lineKey = getKitchenLineKey(order, item, index);
-        const kind = getKitchenItemKind(item) as KitchenItemKind;
-        return (
-          <KitchenBurgerCard
-            key={lineKey}
-            order={order}
-            item={item}
-            itemIndex={index}
-            open={openLineKey === lineKey}
-            busy={busyLineKey === lineKey}
-            onToggleOpen={() =>
-              setOpenLineKey((current) => (current === lineKey ? "" : lineKey))
-            }
-            onDoneChange={(done) => {
-              if (!item.lineKey) return;
-              void onToggleKitchenItem(order.id, item.lineKey, kind, done);
-            }}
-          />
-        );
-      })}
-    </KitchenOrderShell>
-  );
-};
-
-const SideQuestItemCard = ({
-  order,
-  item,
-  itemIndex,
-  busy,
-  onToggleKitchenItem,
-}: {
-  order: InternalOrder;
-  item: InternalOrderItem;
-  itemIndex: number;
-  busy: boolean;
-  onToggleKitchenItem: ToggleKitchenItemDone;
-}) => {
-  const done = Boolean(item.kitchenDone);
-  return (
-    <div
-      className={`rounded-2xl border p-3 ${done ? "border-emerald-400/40 bg-emerald-500/10" : "border-zinc-700 bg-zinc-950/80"}`}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="text-xl font-black text-zinc-50">
-            {item.name} #{item.itemDisplayIndex ?? itemIndex + 1}
-          </p>
-          <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-zinc-500">
-            Side Quest · {done ? "Hecha" : "Pendiente"}
-          </p>
-        </div>
-        <span
-          className={`rounded-full px-3 py-1 text-xs font-black ${done ? "bg-emerald-300 text-emerald-950" : "bg-amber-300 text-amber-950"}`}
-        >
-          {done ? "LISTA" : "PENDIENTE"}
-        </span>
-      </div>
-      <Button
-        className={`mt-4 w-full py-3 text-base font-black disabled:opacity-50 ${done ? "border border-zinc-700 bg-zinc-900 text-zinc-100" : "bg-emerald-400 text-emerald-950"}`}
-        disabled={busy || !item.lineKey}
-        onClick={() => {
-          if (!item.lineKey) return;
-          void onToggleKitchenItem(order.id, item.lineKey, "garnish", !done);
-        }}
-      >
-        {done ? "Reabrir" : "Guarnición hecha"}
-      </Button>
-    </div>
-  );
-};
-
-
-const KitchenSummaryKPanel = ({
-  environment,
-}: {
-  environment: OrderV2Environment;
-}) => {
-  const [summary, setSummary] = useState<KitchenSummaryK | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      setSummary(await fetchKitchenSummaryK(environment));
-    } catch {
-      setError("No se pudo cargar Resumen K. Cocina sigue funcionando normalmente.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void load();
-  }, [environment]);
-
-  if (loading) return <Card className="border-cyan-500/20 bg-zinc-950 p-4"><p className="text-sm font-semibold text-cyan-100">Cargando Resumen K…</p></Card>;
-
-  if (error) return <Card className="border-rose-400/30 bg-rose-950/30 p-4"><p className="text-sm font-bold text-rose-100">{error}</p><Button className="mt-3 border border-rose-300/30 bg-zinc-950" onClick={load}>Reintentar</Button></Card>;
-
-  if (!summary) return null;
-  const costText = summary.totals.estimatedCostCents == null ? "—" : formatCurrency(summary.totals.estimatedCostCents / 100);
-
-  return <section className="space-y-4">
-    {!summary.hasRecipes ? <Card className="border-amber-400/30 bg-amber-950/20 p-4"><p className="text-sm font-bold text-amber-100">Configura recetas aproximadas en Chekeo para desbloquear el cálculo de ingredientes.</p></Card> : null}
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      {[["Burgers totales", summary.totals.burgers], ["Guarniciones totales", summary.totals.garnishes], ["Ingredientes estimados", summary.totals.ingredients], ["Costo estimado", costText]].map(([label, value]) => <Card key={label} className="border-cyan-500/20 bg-zinc-950 p-4"><p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-400">{label}</p><p className="mt-2 text-3xl font-black text-cyan-100">{value}</p></Card>)}
-    </div>
-    <div className="grid gap-4 lg:grid-cols-2">
-      <Card className="border-emerald-500/20 bg-zinc-950 p-4"><h3 className="text-sm font-black uppercase tracking-[0.2em] text-emerald-200">{orderEnvironmentLabel[environment]} · burgers</h3><div className="mt-3 space-y-2">{summary.burgers.length ? summary.burgers.map((item) => <div key={item.sku} className="flex items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900/70 p-3"><span className="font-bold text-zinc-100">{item.name}</span><span className="text-xl font-black text-emerald-200">{item.quantity}</span></div>) : <EmptyOrdersState title="Sin burgers del día." />}</div></Card>
-      <Card className="border-amber-500/20 bg-zinc-950 p-4"><h3 className="text-sm font-black uppercase tracking-[0.2em] text-amber-200">{orderEnvironmentLabel[environment]} · guarniciones</h3><div className="mt-3 space-y-2">{summary.garnishes.length ? summary.garnishes.map((item) => <div key={item.sku} className="flex items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900/70 p-3"><span className="font-bold text-zinc-100">{item.name}</span><span className="text-xl font-black text-amber-200">{item.quantity}</span></div>) : <EmptyOrdersState title="Sin guarniciones del día." />}</div></Card>
-    </div>
-    <Card className="border-cyan-500/20 bg-zinc-950 p-4"><h3 className="text-sm font-black uppercase tracking-[0.2em] text-cyan-200">Ingredientes estimados</h3><div className="mt-3 space-y-2">{summary.ingredients.length ? summary.ingredients.map((ingredient) => <div key={ingredient.ingredientId} className="grid gap-1 rounded-xl border border-zinc-800 bg-zinc-900/70 p-3 sm:grid-cols-[1fr_auto_auto] sm:items-center"><div><p className="font-bold text-zinc-100">{ingredient.name}</p><p className="text-xs text-zinc-400">Precio unitario: {ingredient.unitPriceCents == null ? "—" : formatCurrency(ingredient.unitPriceCents / 100)}</p></div><p className="font-black text-cyan-100">{ingredient.quantity.toFixed(2)} {ingredient.unit}</p><p className="font-black text-emerald-200">{ingredient.estimatedCostCents == null ? "—" : formatCurrency(ingredient.estimatedCostCents / 100)}</p></div>) : <EmptyOrdersState title="Sin ingredientes estimados." />}</div></Card>
-  </section>;
-};
-
-const KitchenQueue = ({
-  orders,
-  runtime,
-  onToggleKitchenItem,
-}: {
-  orders: InternalOrder[];
-  runtime: OrdersRuntime;
-  onToggleKitchenItem: ToggleKitchenItemDone;
-}) => {
-  const [mode, setMode] = useState<"burgers" | "sidequest" | "summaryK">("burgers");
-  const [busyLineKey, setBusyLineKey] = useState<string | null>(null);
-  const activeOrders = orders.filter((o) => !terminalStatuses.has(o.status));
-  const fallback = runtime.source !== "d1";
-
-  const withBurgerItems = activeOrders
-    .map((order) => ({ order, items: order.items.filter(isBurgerOrCombo) }))
-    .filter(({ items }) => items.length > 0);
-  const pendingBurgerOrders = withBurgerItems.filter(
-    ({ order, items }) =>
-      order.status !== "ready" && items.some((item) => !item.kitchenDone),
-  );
-  const doneBurgerOrders = withBurgerItems.filter(({ items }) =>
-    items.every((item) => item.kitchenDone),
-  );
-
-  const withGarnishItems = activeOrders
-    .map((order) => ({ order, items: order.items.filter(isStandaloneGarnish) }))
-    .filter(({ items }) => items.length > 0);
-  const pendingGarnishOrders = withGarnishItems
-    .map(({ order, items }) => ({
-      order,
-      items: items.filter((item) => !item.kitchenDone),
-    }))
-    .filter(({ order, items }) => order.status !== "ready" && items.length > 0);
-  const doneGarnishOrders = withGarnishItems
-    .map(({ order, items }) => ({
-      order,
-      items: items.filter((item) => item.kitchenDone),
-    }))
-    .filter(({ items }) => items.length > 0);
-
-  const toggleKitchenItem: ToggleKitchenItemDone = async (
-    orderId,
-    lineKey,
-    itemKind,
-    done,
-  ) => {
-    setBusyLineKey(lineKey);
-    try {
-      await onToggleKitchenItem(orderId, lineKey, itemKind, done);
-    } finally {
-      setBusyLineKey(null);
-    }
-  };
-
-  return (
-    <section className="space-y-3">
-      {fallback ? (
-        <p className="rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs font-semibold text-amber-100">
-          Fallback visual: estados de cocina no se guardan en D1.
-        </p>
-      ) : null}
-      {runtime.error ? (
-        <p className="rounded-lg border border-rose-400/20 bg-rose-400/10 px-3 py-2 text-xs font-semibold text-rose-100">
-          {runtime.error}
-        </p>
-      ) : null}
-      <div className="grid grid-cols-3 gap-2 rounded-2xl border border-zinc-800 bg-zinc-950 p-2">
-        <Button
-          className={`py-3 text-base font-black ${mode === "burgers" ? "bg-cyan-300 text-cyan-950" : "bg-zinc-900 text-zinc-300"}`}
-          onClick={() => setMode("burgers")}
-        >
-          Burgers
-        </Button>
-        <Button
-          className={`py-3 text-base font-black ${mode === "sidequest" ? "bg-cyan-300 text-cyan-950" : "bg-zinc-900 text-zinc-300"}`}
-          onClick={() => setMode("sidequest")}
-        >
-          Side Quest
-        </Button>
-        <Button
-          className={`py-3 text-base font-black ${mode === "summaryK" ? "bg-cyan-300 text-cyan-950" : "bg-zinc-900 text-zinc-300"}`}
-          onClick={() => setMode("summaryK")}
-        >
-          Resumen K
-        </Button>
-      </div>
-
-      {mode === "summaryK" ? (
-        <KitchenSummaryKPanel environment={runtime.environment} />
-      ) : mode === "burgers" ? (
-        <div className="space-y-5">
-          <section>
-            <h3 className="mb-2 text-sm font-black uppercase tracking-[0.2em] text-amber-200">
-              Pendientes · {pendingBurgerOrders.length}
-            </h3>
-            <div className="space-y-3">
-              {pendingBurgerOrders.length ? (
-                pendingBurgerOrders.map(({ order, items }) => (
-                  <KitchenBurgerOrder
-                    key={order.id}
-                    order={order}
-                    items={items}
-                    busyLineKey={busyLineKey}
-                    highlighted={runtime.highlightedOrderIds.has(order.id)}
-                    onToggleKitchenItem={toggleKitchenItem}
-                  />
-                ))
-              ) : (
-                <EmptyOrdersState title="Sin burgers pendientes." />
-              )}
-            </div>
-          </section>
-          <section>
-            <h3 className="mb-2 text-sm font-black uppercase tracking-[0.2em] text-emerald-200">
-              Hechas · {doneBurgerOrders.length}
-            </h3>
-            <div className="space-y-3">
-              {doneBurgerOrders.map(({ order, items }) => (
-                <KitchenBurgerOrder
-                  key={`done-${order.id}`}
-                  order={order}
-                  items={items}
-                  busyLineKey={busyLineKey}
-                  highlighted={runtime.highlightedOrderIds.has(order.id)}
-                  onToggleKitchenItem={toggleKitchenItem}
+        {orders.length ? (
+          <details className="orders-filter-drawer">
+            <summary>
+              Filtros y búsqueda
+              <span>
+                {statusFilter === "all" ? "Todos" : ordersStatusLabel[statusFilter]} / {rangeFilter}
+              </span>
+            </summary>
+            <div className="orders-filters">
+              <label className="orders-search">
+                <span>Buscar por folio o cliente</span>
+                <input
+                  className="input mt-1 text-sm"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Ej. BX-102 o Andrea"
                 />
-              ))}
-            </div>
-          </section>
-        </div>
-      ) : (
-        <div className="space-y-5">
-          <section>
-            <h3 className="mb-2 text-sm font-black uppercase tracking-[0.2em] text-amber-200">
-              Pendientes ·{" "}
-              {pendingGarnishOrders.reduce(
-                (acc, entry) => acc + entry.items.length,
-                0,
-              )}
-            </h3>
-            <div className="space-y-3">
-              {pendingGarnishOrders.length ? (
-                pendingGarnishOrders.map(({ order, items }) => (
-                  <KitchenOrderShell
-                    key={order.id}
-                    order={order}
-                    highlighted={runtime.highlightedOrderIds.has(order.id)}
-                  >
-                    {items.map((item, index) => (
-                      <SideQuestItemCard
-                        key={getKitchenLineKey(order, item, index)}
-                        order={order}
-                        item={item}
-                        itemIndex={index}
-                        busy={
-                          busyLineKey === getKitchenLineKey(order, item, index)
-                        }
-                        onToggleKitchenItem={toggleKitchenItem}
-                      />
-                    ))}
-                  </KitchenOrderShell>
-                ))
-              ) : (
-                <EmptyOrdersState title="Sin Side Quest pendiente." />
-              )}
-            </div>
-          </section>
-          <section>
-            <h3 className="mb-2 text-sm font-black uppercase tracking-[0.2em] text-emerald-200">
-              Hechas ·{" "}
-              {doneGarnishOrders.reduce(
-                (acc, entry) => acc + entry.items.length,
-                0,
-              )}
-            </h3>
-            <div className="space-y-3">
-              {doneGarnishOrders.map(({ order, items }) => (
-                <KitchenOrderShell
-                  key={`done-garnish-${order.id}`}
-                  order={order}
-                  highlighted={runtime.highlightedOrderIds.has(order.id)}
-                >
-                  {items.map((item, index) => (
-                    <SideQuestItemCard
-                      key={getKitchenLineKey(order, item, index)}
-                      order={order}
-                      item={item}
-                      itemIndex={index}
-                      busy={
-                        busyLineKey === getKitchenLineKey(order, item, index)
-                      }
-                      onToggleKitchenItem={toggleKitchenItem}
-                    />
+              </label>
+              <div className="orders-filter-group">
+                <span>Estado</span>
+                <div className="orders-filter-pills">
+                  {ordersStatusFilterOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={`orders-filter-pill ${statusFilter === option.value ? "orders-filter-pill--active" : ""}`}
+                      onClick={() => setStatusFilter(option.value)}
+                    >
+                      {option.label}
+                    </button>
                   ))}
-                </KitchenOrderShell>
-              ))}
+                </div>
+              </div>
+              <div className="orders-filter-group">
+                <span>Rango</span>
+                <div className="orders-filter-pills">
+                  {ordersRangeFilterOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={`orders-filter-pill ${rangeFilter === option.value ? "orders-filter-pill--active" : ""}`}
+                      onClick={() => setRangeFilter(option.value)}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
-          </section>
+          </details>
+        ) : null}
+      </Card>
+
+      {orders.length === 0 ? (
+        <EmptyOrdersState
+          title="Sin pedidos activos."
+          description="La cola está vacía en este entorno. Cuando entre un pedido nuevo, aparecerá aquí."
+          action={
+            <Button
+              className="orders-secondary-action"
+              onClick={() => runtime.reload(true)}
+              disabled={runtime.loading || !runtime.sessionActive}
+            >
+              {runtime.loading ? "Actualizando..." : "Actualizar"}
+            </Button>
+          }
+        />
+      ) : !filteredOrders.length ? (
+        <EmptyOrdersState
+          title="No hay pedidos para ese filtro."
+          description="Ajusta estado, rango o búsqueda para volver a mostrar pedidos."
+          action={
+            <Button
+              className="orders-secondary-action"
+              onClick={() => {
+                setStatusFilter("all");
+                setRangeFilter("today");
+                setSearch("");
+              }}
+            >
+              Limpiar filtros
+            </Button>
+          }
+        />
+      ) : (
+        <div className="orders-command__workspace">
+          <div className="orders-command__queue">
+            {filteredOrders.map((order) => {
+              const highlighted = runtime.highlightedOrderIds.has(order.id);
+              return (
+                <Card
+                  key={order.id}
+                  className={`orders-card-shell ${highlighted ? "orders-card-shell--highlighted" : ""}`}
+                >
+                  <CompactRow
+                    order={order}
+                    onOpen={() => setSelected(order)}
+                    onMove={move}
+                    onCancel={(nextOrder) => requestCancellation(nextOrder, "pedidos")}
+                    busy={runtime.actionOrderId === order.id}
+                  />
+                </Card>
+              );
+            })}
+          </div>
+          {commandOrder ? (
+            <OrderCommandPanel
+              order={commandOrder}
+              onOpen={() => setSelected(commandOrder)}
+              onMove={move}
+              onCancel={(nextOrder) => requestCancellation(nextOrder, "pedidos")}
+              busy={runtime.actionOrderId === commandOrder.id}
+            />
+          ) : null}
         </div>
       )}
     </section>
@@ -2270,12 +3213,12 @@ const OperationalClosePanel = ({
       anchor.click();
       anchor.remove();
       window.URL.revokeObjectURL(url);
-      setNotice("CSV del rango descargado");
+      setNotice("Reporte del rango descargado");
     } catch (csvError) {
       setError(
         csvError instanceof Error
           ? csvError.message
-          : "No se pudo exportar CSV del rango",
+            : "No se pudo descargar el reporte del rango",
       );
     } finally {
       setExporting(false);
@@ -2287,12 +3230,10 @@ const OperationalClosePanel = ({
       <Card className="p-3">
         <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-200">
-              Cierre operativo
-            </p>
+            <p className="home-section-label">Cierre de caja</p>
             <h2 className="text-xl font-black">Cierre</h2>
             <p className="text-sm text-zinc-400">
-              Pagos declarados · Corte por rango operativo.
+              Rango, total, órdenes y exporte sin estados repetidos.
             </p>
           </div>
           <Button
@@ -2300,7 +3241,7 @@ const OperationalClosePanel = ({
             onClick={() => void downloadRangeCsv()}
             disabled={exporting || !sessionActive}
           >
-            {exporting ? "Exportando…" : "Exportar CSV del rango"}
+            {exporting ? "Preparando…" : "Descargar reporte"}
           </Button>
         </div>
         <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -2355,7 +3296,7 @@ const OperationalClosePanel = ({
         ) : null}
         {summary ? (
           <p className="mt-2 text-[11px] text-zinc-500">
-            Rango UTC: {summary.range.fromUtc || "inicio"} →{" "}
+            Rango calculado: {summary.range.fromUtc || "inicio"} a{" "}
             {summary.range.toUtc || "ahora"} · generado{" "}
             {formatDateTime(summary.generatedAt)}
           </p>
@@ -2369,7 +3310,7 @@ const OperationalClosePanel = ({
       ) : null}
       {!loading && summary && !hasData ? <EmptyCloseState /> : null}
 
-      {summary ? (
+      {summary && hasData ? (
         <>
           <section className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             <CloseMetricCard
@@ -2403,7 +3344,7 @@ const OperationalClosePanel = ({
 
           <section className="grid gap-3 lg:grid-cols-2">
             <Card className="p-3">
-              <h3 className="mb-2 font-bold">Por status</h3>
+              <h3 className="mb-2 font-bold">Por estado</h3>
               <div className="grid gap-2 sm:grid-cols-2">
                 {Object.entries(summary.byStatus).map(([status, count]) => (
                   <div key={status} className="row">
@@ -2417,11 +3358,11 @@ const OperationalClosePanel = ({
               <h3 className="mb-2 font-bold">Tiempos promedio</h3>
               <div className="grid gap-2 sm:grid-cols-2">
                 <CloseMetricCard
-                  label="Nuevo → listo"
+                  label="Nuevo a listo"
                   value={formatDuration(summary.durations.newToReadyAvgSeconds)}
                 />
                 <CloseMetricCard
-                  label="Nuevo → entregado"
+                  label="Nuevo a entregado"
                   value={formatDuration(
                     summary.durations.newToDeliveredAvgSeconds,
                   )}
@@ -2535,14 +3476,21 @@ const OperationalClosePanel = ({
   );
 };
 
-type PaymentFilter = "all" | OrderV2PaymentStatus;
+type PaymentFilter = "all" | "pending" | "paid";
 type PaymentPanelNotice = { tone: "success" | "error"; message: string };
 
 const paymentFilters: Array<{ value: PaymentFilter; label: string }> = [
   { value: "all", label: "Todos" },
-  { value: "pending", label: "Pendientes" },
-  { value: "paid", label: "Pagados" },
-  { value: "cancelled", label: "Cancelados" },
+  { value: "pending", label: "Pendiente" },
+  { value: "paid", label: "Pagado" },
+];
+const paymentRangeFilters: Array<{
+  value: OrdersRangeFilter;
+  label: string;
+}> = [
+  { value: "today", label: "Hoy" },
+  { value: "week", label: "Semana" },
+  { value: "all", label: "Todo" },
 ];
 
 const PaymentStatusBadge = ({ status }: { status: string }) => {
@@ -2555,10 +3503,369 @@ const PaymentStatusBadge = ({ status }: { status: string }) => {
   return <StatusPill className={tone}>{label}</StatusPill>;
 };
 
+const PaymentDetailModal = ({
+  order,
+  runtime,
+  draftNote,
+  notice,
+  onClose,
+  onDraftChange,
+  onSaveNote,
+  onCopyMessage,
+  onOpenWhatsapp,
+  onMarkPaid,
+  onMarkPending,
+}: {
+  order: InternalOrder | null;
+  runtime: OrdersRuntime;
+  draftNote: string;
+  notice?: PaymentPanelNotice;
+  onClose: () => void;
+  onDraftChange: (value: string) => void;
+  onSaveNote: () => Promise<void>;
+  onCopyMessage: () => Promise<void>;
+  onOpenWhatsapp: () => void;
+  onMarkPaid: () => Promise<void>;
+  onMarkPending: () => Promise<void>;
+}) => {
+  const dialogRef = useRef<HTMLElement | null>(null);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
+  const [ticketVisible, setTicketVisible] = useState(false);
+  const [ticketBlob, setTicketBlob] = useState<Blob | null>(null);
+  const [generatingTicket, setGeneratingTicket] = useState(false);
+  const [ticketNotice, setTicketNotice] = useState<PaymentPanelNotice | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (!order) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose, order]);
+
+  useEffect(() => {
+    if (!order) return undefined;
+    restoreFocusRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    const timeout = window.setTimeout(() => dialogRef.current?.focus(), 0);
+    return () => {
+      window.clearTimeout(timeout);
+      restoreFocusRef.current?.focus();
+    };
+  }, [order?.id]);
+
+  useEffect(() => {
+    if (!order) return;
+    setTicketVisible(false);
+    setTicketBlob(null);
+    setTicketNotice(null);
+  }, [
+    order?.id,
+    order?.folio,
+    order?.paymentMethod,
+    order?.paymentState,
+    order?.total,
+    order?.items,
+  ]);
+
+  useEffect(() => {
+    if (!ticketNotice) return undefined;
+    const timeout = window.setTimeout(() => setTicketNotice(null), 3000);
+    return () => window.clearTimeout(timeout);
+  }, [ticketNotice]);
+
+  if (!order) return null;
+
+  const busy = runtime.actionOrderId === order.id;
+  const paymentCopy = buildPaymentWhatsappCopy(order);
+  const phone = normalizeWhatsappPhone(order.customerPhone ?? "");
+  const isTransferPayment = isTransferPaymentMethod(order.paymentMethod);
+  const noteWithoutLocation = getPaymentNote(order);
+  const paymentDeliveryDetail = getPaymentDeliveryDetail(order);
+
+  const getTicketBlob = async () => {
+    if (ticketBlob) return ticketBlob;
+    setGeneratingTicket(true);
+    try {
+      const nextBlob = await generateOrderTicketImage({
+        ...order,
+        note: getPaymentNote(order),
+        deliveryDetail: paymentDeliveryDetail,
+        orderStatus: statusLabel[order.status],
+      });
+      setTicketBlob(nextBlob);
+      return nextBlob;
+    } finally {
+      setGeneratingTicket(false);
+    }
+  };
+
+  const showTicket = async () => {
+    setTicketNotice(null);
+    setTicketVisible(true);
+    try {
+      await getTicketBlob();
+      setTicketNotice({
+        tone: "success",
+        message: `${order.folio}: ticket listo para descargar.`,
+      });
+    } catch {
+      setTicketNotice({
+        tone: "error",
+        message: "No se pudo generar el PNG; el preview visual sigue disponible.",
+      });
+    }
+  };
+
+  const downloadTicket = async () => {
+    setTicketNotice(null);
+    try {
+      const blob = await getTicketBlob();
+      downloadOrderTicketImage(blob, order.folio);
+      setTicketNotice({
+        tone: "success",
+        message: `${order.folio}: ticket PNG descargado.`,
+      });
+    } catch {
+      setTicketNotice({
+        tone: "error",
+        message: "No se pudo generar el ticket PNG en este navegador.",
+      });
+    }
+  };
+
+  return (
+    <div
+      className="overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="payment-detail-title"
+      onClick={onClose}
+    >
+      <section
+        ref={dialogRef}
+        tabIndex={-1}
+        className="modal modal--wide max-h-[calc(100vh-1rem)] overflow-y-auto"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="payments-detail__header">
+          <div className="min-w-0">
+            <p className="payments-detail__eyebrow">Pago operativo</p>
+            <h2 id="payment-detail-title" className="payments-detail__title">
+              {order.folio}
+            </h2>
+            <p className="break-words text-sm font-semibold text-zinc-100">
+              {order.customer}
+            </p>
+            <p className="text-xs text-zinc-400">
+              {order.createdAt} · {channelLabel[order.channel]} ·{" "}
+              {sourceLabel(order.source)}
+            </p>
+            {order.customerPhone ? (
+              <p className="text-xs text-zinc-500">Tel: {order.customerPhone}</p>
+            ) : null}
+          </div>
+          <div className="flex flex-wrap gap-1 sm:justify-end">
+            <PaymentStatusBadge status={order.paymentState} />
+            <StatusBadge status={order.status} />
+            <Button
+              className="modal-close-button"
+              onClick={onClose}
+              aria-label="Cerrar pago"
+            >
+              Cerrar
+            </Button>
+          </div>
+        </div>
+
+        <div className="payments-detail__grid">
+          <div className="payments-detail__stat">
+            <span>Total</span>
+            <strong>{formatCurrency(order.total)}</strong>
+          </div>
+          <div className="payments-detail__stat">
+            <span>Metodo de pago</span>
+            <strong>{getPaymentMethodLabel(order.paymentMethod)}</strong>
+          </div>
+          <div className="payments-detail__stat">
+            <span>Estado de pago</span>
+            <strong>{getPaymentStatusLabel(order.paymentState)}</strong>
+          </div>
+          <div className="payments-detail__stat">
+            <span>Lugar de entrega</span>
+            <strong>{getPaymentDeliveryDetail(order)}</strong>
+          </div>
+        </div>
+
+        <div className="mt-3 space-y-3">
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/55 p-3">
+            <p className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500">
+              Resumen del pedido
+            </p>
+            <p className="mt-2 text-sm text-zinc-300">{getPaymentItemsDigest(order)}</p>
+            <OrderItems order={order} />
+          </div>
+
+          {isTransferPayment ? (
+            <div className="payments-bank-panel">
+              <p className="payments-bank-panel__label">Datos bancarios</p>
+              <div className="payments-bank-panel__grid">
+                <div className="payments-bank-panel__item">
+                  <span>Banco</span>
+                  <strong>{bankPaymentConfig.bankName}</strong>
+                </div>
+                <div className="payments-bank-panel__item">
+                  <span>Titular</span>
+                  <strong>{bankPaymentConfig.accountHolder}</strong>
+                </div>
+                <div className="payments-bank-panel__item">
+                  <span>{getBankPaymentPrimaryLabel(bankPaymentConfig)}</span>
+                  <strong>{getBankPaymentPrimaryValue(bankPaymentConfig)}</strong>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {ticketVisible ? (
+            <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-3">
+              <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-cyan-100">
+                    Ticket visual
+                  </p>
+                  <p className="text-xs text-zinc-400">
+                    Preview compacto para validar folio, lugar, pago y total.
+                  </p>
+                </div>
+                <Button
+                  className="payments-secondary-action"
+                  onClick={() => setTicketVisible(false)}
+                >
+                  Ocultar ticket
+                </Button>
+              </div>
+              <OrderTicketPreview order={order} />
+            </div>
+          ) : null}
+
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/55 p-3">
+            <label className="text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500">
+              Nota para seguimiento
+              <textarea
+                className="input mt-2 min-h-24 text-xs"
+                maxLength={500}
+                value={draftNote}
+                onChange={(event) => onDraftChange(event.target.value)}
+                placeholder="Ej. comprobante pendiente, cliente confirma por WhatsApp"
+              />
+            </label>
+            {noteWithoutLocation ? (
+              <p className="mt-2 text-[11px] text-zinc-400">
+                Nota actual: {noteWithoutLocation}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-3">
+            <label className="text-[11px] font-black uppercase tracking-[0.16em] text-cyan-100">
+              Mensaje listo para WhatsApp
+              <textarea
+                className="input mt-2 min-h-48 text-xs leading-5"
+                readOnly
+                value={paymentCopy}
+              />
+            </label>
+            {!phone ? (
+              <p className="mt-2 rounded-lg bg-amber-400/10 px-3 py-2 text-xs text-amber-100">
+                Telefono invalido para abrir WhatsApp desde esta vista.
+              </p>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="payments-detail__actions modal-action-footer">
+          {order.paymentState === "paid" ? (
+            <Button
+              className="payments-secondary-action disabled:opacity-40"
+              onClick={() => void onMarkPending()}
+              disabled={busy || !runtime.sessionActive}
+            >
+              {busy ? "Actualizando…" : "Regresar a pendiente"}
+            </Button>
+          ) : (
+            <Button
+              className="payments-success-action disabled:opacity-40"
+              onClick={() => void onMarkPaid()}
+              disabled={busy || !runtime.sessionActive}
+            >
+              {busy ? "Actualizando…" : "Marcar pagado"}
+            </Button>
+          )}
+          <Button
+            className="payments-secondary-action"
+            onClick={() => void showTicket()}
+            disabled={generatingTicket}
+          >
+            {generatingTicket ? "Generando..." : ticketVisible ? "Regenerar ticket" : "Ver ticket"}
+          </Button>
+          <Button
+            className="payments-secondary-action disabled:opacity-40"
+            onClick={() => void downloadTicket()}
+            disabled={generatingTicket}
+          >
+            {generatingTicket ? "Generando..." : "Descargar PNG"}
+          </Button>
+          <Button
+            className="payments-secondary-action"
+            onClick={() => void onCopyMessage()}
+          >
+            Copiar WhatsApp
+          </Button>
+          <Button
+            className="payments-secondary-action disabled:opacity-40"
+            onClick={onOpenWhatsapp}
+            disabled={!phone}
+          >
+            Abrir WhatsApp
+          </Button>
+          <Button
+            className="payments-secondary-action disabled:opacity-40"
+            onClick={() => void onSaveNote()}
+            disabled={busy || !runtime.sessionActive}
+          >
+            {busy ? "Guardando…" : "Guardar nota"}
+          </Button>
+        </div>
+
+        {notice ? (
+          <p
+            className={`mt-3 rounded-xl px-3 py-2 text-xs ${notice.tone === "error" ? "bg-rose-500/10 text-rose-200" : "bg-emerald-500/10 text-emerald-200"}`}
+          >
+            {notice.message}
+          </p>
+        ) : null}
+        {ticketNotice ? (
+          <p
+            className={`mt-3 rounded-xl px-3 py-2 text-xs ${ticketNotice.tone === "error" ? "bg-rose-500/10 text-rose-200" : "bg-emerald-500/10 text-emerald-200"}`}
+          >
+            {ticketNotice.message}
+          </p>
+        ) : null}
+      </section>
+    </div>
+  );
+};
+
 const PaymentNotesPanel = ({
   orders,
   runtime,
   onUpdatePayment,
+  registerBackHandler,
 }: {
   orders: InternalOrder[];
   runtime: OrdersRuntime;
@@ -2568,18 +3875,23 @@ const PaymentNotesPanel = ({
     notes?: string,
     reason?: string,
   ) => Promise<void>;
+  registerBackHandler?: (handler: BackHandler) => () => void;
 }) => {
-  const [filter, setFilter] = useState<PaymentFilter>("all");
+  const [filter, setFilter] = useState<PaymentFilter>("pending");
+  const [rangeFilter, setRangeFilter] = useState<OrdersRangeFilter>("today");
+  const [search, setSearch] = useState("");
   const [draftNotes, setDraftNotes] = useState<Record<string, string>>({});
   const [inlineNotice, setInlineNotice] = useState<
     Record<string, PaymentPanelNotice>
   >({});
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
   useEffect(() => {
     setDraftNotes((current) => {
       const next: Record<string, string> = {};
       orders.forEach((order) => {
-        next[order.id] = current[order.id] ?? order.note ?? "";
+        next[order.id] =
+          current[order.id] ?? getPaymentNote(order);
       });
       return next;
     });
@@ -2598,20 +3910,80 @@ const PaymentNotesPanel = ({
     return () => window.clearTimeout(timeout);
   }, [inlineNotice]);
 
-  const filteredOrders = orders.filter(
-    (order) => filter === "all" || order.paymentState === filter,
-  );
-  const paymentOrders =
-    runtime.source === "d1"
-      ? filteredOrders
-      : filteredOrders.filter(
-          (order) => order.paymentState === "pending" || order.note,
+  useEffect(() => {
+    if (!selectedOrderId) return;
+    if (!orders.some((order) => order.id === selectedOrderId)) {
+      setSelectedOrderId(null);
+    }
+  }, [orders, selectedOrderId]);
+
+  useEffect(() => {
+    if (!selectedOrderId || !registerBackHandler) return undefined;
+    return registerBackHandler(() => {
+      setSelectedOrderId(null);
+      return true;
+    });
+  }, [registerBackHandler, selectedOrderId]);
+
+
+  const filteredOrders = useMemo(() => {
+    const now = new Date();
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    ).getTime();
+    const startOfWeek = startOfToday - 6 * 24 * 60 * 60 * 1000;
+    const normalizedSearch = search.trim().toLowerCase();
+
+    return [...orders]
+      .sort((a, b) => (b.createdAtMs ?? 0) - (a.createdAtMs ?? 0))
+      .filter((order) => {
+        if (rangeFilter !== "all" && order.createdAtMs) {
+          const threshold =
+            rangeFilter === "today" ? startOfToday : startOfWeek;
+          if (order.createdAtMs < threshold) return false;
+        }
+
+        if (!normalizedSearch) return true;
+
+        return (
+          order.folio.toLowerCase().includes(normalizedSearch) ||
+          order.customer.toLowerCase().includes(normalizedSearch)
         );
+      });
+  }, [orders, rangeFilter, search]);
+
+  const paymentOrders = useMemo(
+    () =>
+      filteredOrders.filter(
+        (order) => filter === "all" || order.paymentState === filter,
+      ),
+    [filter, filteredOrders],
+  );
+  const paymentMetrics = useMemo(
+    () => ({
+      visible: paymentOrders.length,
+      pending: filteredOrders.filter((order) => order.paymentState === "pending")
+        .length,
+      paid: filteredOrders.filter((order) => order.paymentState === "paid")
+        .length,
+      transfer: filteredOrders.filter((order) =>
+        isTransferPaymentMethod(order.paymentMethod),
+      ).length,
+      total: filteredOrders.reduce((sum, order) => sum + order.total, 0),
+    }),
+    [filteredOrders, paymentOrders.length],
+  );
+  const selectedOrder = selectedOrderId
+    ? orders.find((order) => order.id === selectedOrderId) ?? null
+    : null;
 
   const runPaymentAction = async (
     order: InternalOrder,
     paymentStatus: OrderV2PaymentStatus,
     notes?: string,
+    reason?: string,
   ) => {
     setInlineNotice((current) => ({
       ...current,
@@ -2622,13 +3994,16 @@ const PaymentNotesPanel = ({
         order.id,
         paymentStatus,
         notes,
-        `Control de pagos: ${paymentStatus}`,
+        reason ?? `Control de pagos: ${paymentStatus}`,
       );
       setInlineNotice((current) => ({
         ...current,
         [order.id]: {
           tone: "success",
-          message: `${order.folio}: estado de pago actualizado.`,
+          message:
+            paymentStatus === "paid"
+              ? `${order.folio}: pago confirmado.`
+              : `${order.folio}: pago pendiente de confirmar.`,
         },
       }));
     } catch (paymentError) {
@@ -2639,25 +4014,76 @@ const PaymentNotesPanel = ({
           message:
             paymentError instanceof Error
               ? paymentError.message
-              : "No se pudo actualizar el pago operativo",
+              : "No se pudo actualizar el pago. Revisa la sesión e inténtalo de nuevo.",
+        },
+      }));
+      }
+  };
+
+  const copyPaymentMessage = async (order: InternalOrder) => {
+    try {
+      if (!navigator.clipboard?.writeText) {
+        throw new Error("Clipboard no disponible en este navegador");
+      }
+      await navigator.clipboard.writeText(buildPaymentWhatsappCopy(order));
+      setInlineNotice((current) => ({
+        ...current,
+        [order.id]: {
+          tone: "success",
+          message: `${order.folio}: mensaje de pago copiado.`,
+        },
+      }));
+    } catch (copyError) {
+      setInlineNotice((current) => ({
+        ...current,
+        [order.id]: {
+          tone: "error",
+          message:
+            copyError instanceof Error
+              ? copyError.message
+              : "No se pudo copiar el mensaje de pago.",
         },
       }));
     }
   };
 
+  const openPaymentWhatsapp = (order: InternalOrder) => {
+    const phone = normalizeWhatsappPhone(order.customerPhone ?? "");
+    if (!phone) {
+      setInlineNotice((current) => ({
+        ...current,
+        [order.id]: {
+          tone: "error",
+          message: `${order.folio}: telefono invalido para WhatsApp.`,
+        },
+      }));
+      return;
+    }
+    const whatsappUrl = buildWhatsappUrl(phone, buildPaymentWhatsappCopy(order));
+    window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+  };
+
+  const savePaymentNote = async (order: InternalOrder) => {
+    const nextStatus = isOrderV2PaymentStatus(order.paymentState)
+      ? order.paymentState
+      : "pending";
+    await runPaymentAction(
+      order,
+      nextStatus,
+      buildPaymentNoteWithLocation(order, draftNotes[order.id] ?? ""),
+      "Control de pagos: nota operativa",
+    );
+  };
+
   return (
-    <section className="space-y-2.5">
-      <SourcePanel runtime={runtime} includeTerminal />
-      <Card className="p-3">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+    <section className="payments-shell">
+      <Card className="payments-hero">
+        <div className="payments-hero__header">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-200">
-              Control de pagos
-            </p>
-            <h3 className="text-lg font-black">Pagos y notas</h3>
-            <p className="text-sm text-zinc-400">
-              No se realiza ningún cobro en línea. Estado de pago declarado por
-              operador.
+            <p className="home-section-label">Bandeja de cobros</p>
+            <h3 className="payments-hero__title">Pagos</h3>
+            <p className="payments-hero__summary">
+              Pendientes primero. WhatsApp, nota y confirmación viven en esta vista.
             </p>
           </div>
           <Button
@@ -2665,123 +4091,149 @@ const PaymentNotesPanel = ({
             onClick={() => runtime.reload(true)}
             disabled={runtime.loading || !runtime.sessionActive}
           >
-            {runtime.loading ? "Cargando…" : "Recargar órdenes"}
+            {runtime.loading ? "Actualizando…" : "Actualizar lista"}
           </Button>
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-2 min-[360px]:grid-cols-4">
-          {paymentFilters.map((option) => (
-            <button
-              key={option.value}
-              className={`rounded-full border px-3 py-2 text-xs font-semibold ${filter === option.value ? "border-cyan-300 bg-cyan-300 text-black" : "border-zinc-700 bg-zinc-900 text-zinc-200"}`}
-              onClick={() => setFilter(option.value)}
-            >
-              {option.label}
-            </button>
-          ))}
+
+        {filteredOrders.length ? (
+          <div className="payments-summary-grid">
+            <div className="payments-summary-card payments-summary-card--priority">
+              <span>Pendientes</span>
+              <strong>{paymentMetrics.pending}</strong>
+            </div>
+            <div className="payments-summary-card">
+              <span>Pagados</span>
+              <strong>{paymentMetrics.paid}</strong>
+            </div>
+            {paymentMetrics.transfer ? (
+              <div className="payments-summary-card">
+                <span>Transferencia</span>
+                <strong>{paymentMetrics.transfer}</strong>
+              </div>
+            ) : null}
+            <div className="payments-summary-card">
+              <span>Total visible</span>
+              <strong>{formatCurrency(paymentMetrics.total)}</strong>
+            </div>
+          </div>
+        ) : null}
+
+        <div className="payments-toolbar">
+          <label className="payments-search">
+            <span>Buscar por folio o cliente</span>
+            <input
+              className="input mt-2 text-sm"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Ej. RDY-401 o Andrea"
+            />
+          </label>
+          <div className="payments-toolbar__group">
+            <div>
+              <p className="payments-toolbar__label">Estado de pago</p>
+              <div className="payments-pill-row">
+                {paymentFilters.map((option) => (
+                  <button
+                    key={option.value}
+                    className={`payments-filter-pill ${filter === option.value ? "payments-filter-pill--active" : ""}`}
+                    onClick={() => setFilter(option.value)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="payments-toolbar__label">Rango</p>
+              <div className="payments-pill-row">
+                {paymentRangeFilters.map((option) => (
+                  <button
+                    key={option.value}
+                    className={`payments-filter-pill ${rangeFilter === option.value ? "payments-filter-pill--active" : ""}`}
+                    onClick={() => setRangeFilter(option.value)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
+
         {!runtime.sessionActive ? (
           <p className="mt-3 rounded-lg border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-100">
-            Inicia sesión para declarar pagos.
+            Inicia sesión para operar pagos y guardar seguimiento.
           </p>
         ) : null}
       </Card>
-      {runtime.source === "d1" && paymentOrders.length === 0 ? (
+      {paymentOrders.length === 0 ? (
         <EmptyOrdersState
-          title="Sin órdenes para este filtro."
-          description="Usa Recargar órdenes o cambia el filtro de estado de pago."
+          title={
+            filteredOrders.length === 0
+              ? "Sin pagos para revisar."
+              : "No hay coincidencias con este filtro."
+          }
+          description={
+            filteredOrders.length === 0
+              ? "Cuando exista un pedido con cobro registrado, aparecerá aquí."
+              : "Ajusta rango, estado o busqueda para recuperar registros."
+          }
+          action={
+            filter !== "all" || search.trim() || rangeFilter !== "today" ? (
+              <Button
+                className="border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs"
+                onClick={() => {
+                  setFilter("all");
+                  setSearch("");
+                  setRangeFilter("today");
+                }}
+              >
+                Limpiar vista
+              </Button>
+            ) : undefined
+          }
         />
       ) : null}
       <div className="grid gap-2">
         {paymentOrders.map((order) => {
-          const busy = runtime.actionOrderId === order.id;
-          const draft = draftNotes[order.id] ?? order.note ?? "";
           const notice = inlineNotice[order.id];
+          const location = getOrderLocationLabel(order);
           return (
-            <Card key={order.id} className="p-3">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <Card
+              key={order.id}
+              className={`payments-card ${order.paymentState === "pending" ? "payments-card--pending" : ""}`}
+            >
+              <div className="payments-card__head">
                 <div className="min-w-0">
-                  <p className="break-words text-sm font-bold">
-                    {order.folio} · {order.customer}
+                  <p className="payments-card__folio">{order.folio}</p>
+                  <p className="break-words text-sm font-semibold text-zinc-100">
+                    {order.customer}
                   </p>
-                  <p className="text-[11px] text-zinc-400">
-                    {order.createdAt} · {order.channel} ·{" "}
-                    {order.source === "d1" ? "Operativo" : "Local"}
-                  </p>
-                  {order.customerPhone ? (
-                    <p className="text-[11px] text-zinc-500">
-                      Tel: {order.customerPhone}
-                    </p>
-                  ) : null}
                 </div>
-                <div className="flex flex-wrap gap-1 sm:justify-end">
+                <div className="payments-card__amount">
+                  <span>Total</span>
+                  <strong>{formatCurrency(order.total)}</strong>
+                </div>
+              </div>
+
+              <div className="payments-card__status">
+                <div className="flex flex-wrap gap-1">
                   <PaymentStatusBadge status={order.paymentState} />
-                  <StatusBadge status={order.status} />
+                  <span className="orders-location-chip">Entrega: {location}</span>
                 </div>
               </div>
-              <div className="mt-2 grid gap-1 text-xs text-zinc-300 sm:grid-cols-2">
-                <span>
-                  Total: <strong>{formatCurrency(order.total)}</strong>
-                </span>
-                <span>Método de pago: {order.paymentMethod}</span>
-                <span>Estado de pago: {order.paymentState}</span>
-                <span>Estado del pedido: {statusLabel[order.status]}</span>
+
+              <div className="payments-card__meta payments-card__meta--compact">
+                <span>Metodo: {getPaymentMethodLabel(order.paymentMethod)}</span>
+                <span>Pago: {getPaymentStatusLabel(order.paymentState)}</span>
+                <span>Lugar: {location}</span>
               </div>
-              <OrderItems order={order} />
-              <WhatsappOrderActions order={order} template="received" showHint />
-              <label className="mt-2 block text-[11px] text-zinc-400">
-                Notas operativas
-                <textarea
-                  className="input mt-1 min-h-20 text-xs"
-                  maxLength={500}
-                  value={draft}
-                  onChange={(event) =>
-                    setDraftNotes((current) => ({
-                      ...current,
-                      [order.id]: event.target.value,
-                    }))
-                  }
-                  placeholder="Sin nota operativa"
-                />
-              </label>
-              <p className="mt-1 text-[11px] text-amber-200">
-                Editar notas puede reemplazar la nota operativa actual.
-              </p>
-              <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="payments-card__actions">
                 <Button
-                  className="border border-emerald-700 bg-emerald-950/50 px-3 py-1.5 text-xs text-emerald-100 disabled:opacity-40"
-                  onClick={() => void runPaymentAction(order, "paid")}
-                  disabled={busy || !runtime.sessionActive}
+                  className="payments-secondary-action"
+                  onClick={() => setSelectedOrderId(order.id)}
                 >
-                  {busy ? "Actualizando…" : "Marcar pagado"}
-                </Button>
-                <Button
-                  className="border border-amber-700 bg-amber-950/50 px-3 py-1.5 text-xs text-amber-100 disabled:opacity-40"
-                  onClick={() => void runPaymentAction(order, "pending")}
-                  disabled={busy || !runtime.sessionActive}
-                >
-                  {busy ? "Actualizando…" : "Marcar pendiente"}
-                </Button>
-                <Button
-                  className="border border-rose-700 bg-rose-950/50 px-3 py-1.5 text-xs text-rose-100 disabled:opacity-40"
-                  onClick={() => void runPaymentAction(order, "cancelled")}
-                  disabled={busy || !runtime.sessionActive}
-                >
-                  {busy ? "Actualizando…" : "Marcar pago cancelado"}
-                </Button>
-                <Button
-                  className="border border-cyan-700 bg-cyan-950/50 px-3 py-1.5 text-xs text-cyan-100 disabled:opacity-40"
-                  onClick={() =>
-                    void runPaymentAction(
-                      order,
-                      isOrderV2PaymentStatus(order.paymentState)
-                        ? order.paymentState
-                        : "pending",
-                      draft,
-                    )
-                  }
-                  disabled={busy || !runtime.sessionActive}
-                >
-                  {busy ? "Guardando…" : "Guardar nota"}
+                  Abrir pago
                 </Button>
               </div>
               {notice ? (
@@ -2795,6 +4247,45 @@ const PaymentNotesPanel = ({
           );
         })}
       </div>
+      <PaymentDetailModal
+        order={selectedOrder}
+        runtime={runtime}
+        draftNote={
+          selectedOrder
+            ? draftNotes[selectedOrder.id] ??
+              getPaymentNote(selectedOrder)
+            : ""
+        }
+        notice={selectedOrder ? inlineNotice[selectedOrder.id] : undefined}
+        onClose={() => setSelectedOrderId(null)}
+        onDraftChange={(value) => {
+          if (!selectedOrder) return;
+          setDraftNotes((current) => ({
+            ...current,
+            [selectedOrder.id]: value,
+          }));
+        }}
+        onSaveNote={() =>
+          selectedOrder ? savePaymentNote(selectedOrder) : Promise.resolve()
+        }
+        onCopyMessage={() =>
+          selectedOrder ? copyPaymentMessage(selectedOrder) : Promise.resolve()
+        }
+        onOpenWhatsapp={() => {
+          if (!selectedOrder) return;
+          openPaymentWhatsapp(selectedOrder);
+        }}
+        onMarkPaid={() =>
+          selectedOrder
+            ? runPaymentAction(selectedOrder, "paid")
+            : Promise.resolve()
+        }
+        onMarkPending={() =>
+          selectedOrder
+            ? runPaymentAction(selectedOrder, "pending")
+            : Promise.resolve()
+        }
+      />
     </section>
   );
 };
@@ -2810,14 +4301,13 @@ const HistoryPanel = ({
   const terminalOrders = orders.filter((o) => terminalStatuses.has(o.status));
   return (
     <section>
-      <SourcePanel runtime={runtime} includeTerminal />
       <Card className="p-3">
         <h3 className="mb-2">
-          Historial {runtime.source === "d1" ? "Live" : "local"}
+          Historial {runtime.source === "d1" ? "de pedidos" : "de esta vista"}
         </h3>
         {runtime.source === "d1" && terminalOrders.length === 0 ? (
           <p className="text-sm text-zinc-400">
-            Aún no hay historial de órdenes terminales.
+            Aún no hay pedidos entregados o cancelados.
           </p>
         ) : null}
         <div className="space-y-2">
@@ -2850,7 +4340,7 @@ const HistoryPanel = ({
                       disabled={runtime.actionOrderId === o.id}
                       onClick={() => void onArchiveCancelled(o)}
                     >
-                      {runtime.actionOrderId === o.id ? "Ocultando…" : "Ocultar"}
+                      {runtime.actionOrderId === o.id ? "Ocultando…" : "Ocultar del historial"}
                     </Button>
                   ) : null}
                 </div>
@@ -2871,6 +4361,109 @@ const getNextStatus = (status: OrderStatus): OrderStatus =>
         ? "delivered"
         : status;
 
+const TicketPreviewItems = ({ order }: { order: InternalOrder }) => (
+  <div className="orders-ticket-items">
+    {order.items.map((item, index) => {
+      const notes = [
+        item.comboBurgers.length
+          ? `Combo: ${item.comboBurgers.map((burger) => burger.name).join(", ")}`
+          : "",
+        item.removedIngredients.length
+          ? `Sin: ${item.removedIngredients.join(", ")}`
+          : "",
+        item.extras.length
+          ? `Extras: ${item.extras.map((extra) => extra.name).join(", ")}`
+          : "",
+        item.garnish?.name ? `Guarnición: ${item.garnish.name}` : "",
+        item.sideQuestExtras.length
+          ? `Side Quest: ${item.sideQuestExtras.map((extra) => extra.name).join(", ")}`
+          : "",
+        item.burgerNote ? `Nota: ${item.burgerNote}` : "",
+      ].map((note) => cleanPaymentText(note)).filter(Boolean);
+
+      return (
+        <div key={`${order.id}-${index}`} className="orders-ticket-item">
+          <div className="min-w-0">
+            <p className="break-words text-sm font-black text-zinc-50">
+              {item.qty}x {item.name}
+            </p>
+            {notes.length ? (
+              <p className="mt-1 break-words text-xs text-zinc-400">
+                {notes.join(" · ")}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      );
+    })}
+  </div>
+);
+
+const OrderTicketPreview = ({ order }: { order: InternalOrder }) => {
+  const itemCount = getOrderItemCount(order);
+  const location = getOrderLocationLabel(order);
+  const deliveryDetail = getPaymentDeliveryDetail(order);
+  return (
+    <section className="orders-ticket-preview">
+      <div className="orders-ticket-preview__hero">
+        <div className="orders-ticket-preview__identity">
+          <p className="orders-ticket-preview__eyebrow">
+            Ticket
+          </p>
+          <h3 className="orders-ticket-preview__folio">
+            {order.folio}
+          </h3>
+          <p className="orders-ticket-preview__customer">
+            {order.customer}
+          </p>
+          <p className="orders-ticket-preview__timestamp">
+            Fecha de entrega: {order.createdAt} · {channelLabel[order.channel]}
+          </p>
+        </div>
+        <div className="orders-ticket-preview__badges">
+          <OrdersStatusBadge status={order.status} />
+          <PaymentStatusBadge status={order.paymentState} />
+          <span className="orders-location-chip">Ubicación: {location}</span>
+        </div>
+      </div>
+
+      <div className="orders-ticket-preview__stats">
+        <div className="orders-ticket-stat">
+          <span>Total</span>
+          <strong>{formatCurrency(order.total)}</strong>
+        </div>
+        <div className="orders-ticket-stat">
+          <span>Items</span>
+          <strong>{itemCount}</strong>
+        </div>
+        <div className="orders-ticket-stat">
+          <span>Pago</span>
+          <strong>{getPaymentMethodLabel(order.paymentMethod)}</strong>
+        </div>
+        <div className="orders-ticket-stat">
+          <span>Estado pago</span>
+          <strong>{getPaymentStatusLabel(order.paymentState)}</strong>
+        </div>
+      </div>
+      <div className="orders-ticket-preview__meta">
+        <span className="info-pill">Entrega: {deliveryDetail}</span>
+      </div>
+
+      <div className="orders-ticket-preview__body">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-200">
+            Resumen del pedido
+          </p>
+          <TicketPreviewItems order={order} />
+        </div>
+        <p className="orders-ticket-preview__raffle-note">
+          {ORDER_TICKET_RAFFLE_NOTE}
+        </p>
+      </div>
+    </section>
+  );
+};
+
 const OrderDetailModal = ({
   selected,
   onClose,
@@ -2887,18 +4480,28 @@ const OrderDetailModal = ({
   ) => void;
   actionOrderId: string | null;
 }) => {
-  const [whatsappTemplate, setWhatsappTemplate] =
-    useState<Exclude<WhatsappOrderMessageType, "custom">>("received");
+  const dialogRef = useRef<HTMLElement | null>(null);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
+    if (!selected) return undefined;
     const h = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
-  }, [onClose]);
+  }, [onClose, selected]);
+
   useEffect(() => {
-    if (selected)
-      setWhatsappTemplate(getWhatsappTemplateForStatus(selected.status));
-  }, [selected?.id, selected?.status]);
+    if (!selected) return undefined;
+    restoreFocusRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    const timeout = window.setTimeout(() => dialogRef.current?.focus(), 0);
+    return () => {
+      window.clearTimeout(timeout);
+      restoreFocusRef.current?.focus();
+    };
+  }, [selected?.id]);
 
   if (!selected) return null;
   const nextStatus = getNextStatus(selected.status);
@@ -2923,22 +4526,30 @@ const OrderDetailModal = ({
       onClick={onClose}
     >
       <section
-        className="modal max-h-[calc(100vh-1rem)] overflow-y-auto"
+        ref={dialogRef}
+        tabIndex={-1}
+        className="modal modal--order-detail"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between">
-          <div>
-            <h2 id="order-title" className="text-lg font-black">
+        <div className="order-detail__header">
+          <div className="order-detail__identity">
+            <p className="order-detail__eyebrow">
+              Ticket abierto
+            </p>
+            <h2 id="order-title" className="order-detail__title">
               {selected.folio}
             </h2>
-            <p className="text-xs text-zinc-400">
-              {selected.customer} · {selected.createdAt} · {selected.channel}
+            <p className="order-detail__customer">
+              {selected.customer}
+            </p>
+            <p className="order-detail__timestamp">
+              {selected.createdAt} · {channelLabel[selected.channel]} · {sourceLabel(selected.source)}
             </p>
             {selected.customerPhone ? (
-              <p className="text-xs text-zinc-500">
+              <p className="order-detail__phone">
                 Tel:{" "}
                 <a
-                  className="text-cyan-200 underline-offset-2 hover:underline"
+                  className="order-detail__phone-link"
                   href={`tel:${selected.customerPhone}`}
                 >
                   {selected.customerPhone}
@@ -2946,97 +4557,67 @@ const OrderDetailModal = ({
               </p>
             ) : null}
           </div>
-          <StatusBadge status={selected.status} />
-        </div>
-        <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-          <p>
-            Pago: {selected.paymentMethod}/{selected.paymentState}
-          </p>
-          <p>Total: {formatCurrency(selected.total)}</p>
-          <p>Origen: {selected.source === "d1" ? "Operativo" : "Local"}</p>
-          <p>Estación: {selected.kitchenStation}</p>
-        </div>
-        <OrderItems order={selected} />
-        {selected.note ? (
-          <p className="mt-2 rounded bg-amber-500/10 px-2 py-1 text-xs text-amber-200">
-            Notas: {selected.note}
-          </p>
-        ) : null}
-        <p className="mt-2 text-right text-sm font-bold">
-          Total: {formatCurrency(selected.total)}
-        </p>
-        <div className="mt-3 rounded-lg border border-cyan-400/20 bg-cyan-400/5 p-2">
-          <label className="text-[11px] font-semibold text-cyan-100">
-            Template WhatsApp manual
-            <select
-              className="input mt-1 text-xs"
-              value={whatsappTemplate}
-              onChange={(event) =>
-                setWhatsappTemplate(
-                  event.target.value as Exclude<
-                    WhatsappOrderMessageType,
-                    "custom"
-                  >,
-                )
-              }
+          <div className="order-detail__badges">
+            <OrdersStatusBadge status={selected.status} />
+            <Button
+              className="modal-close-button"
+              onClick={onClose}
+              aria-label="Cerrar detalle"
             >
-              {whatsappTemplateLabels.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <WhatsappOrderActions
-            order={selected}
-            template={whatsappTemplate}
-            showHint
-          />
+              Cerrar
+            </Button>
+          </div>
         </div>
-        <div className="mt-3 space-y-1 rounded-lg border border-zinc-800 bg-zinc-900/60 p-2 text-xs text-zinc-300">
-          {selected.timeline.map((t) => (
-            <div key={t.id}>
-              <p>
-                {t.time} · {t.label}
-                {t.actor ? ` · ${t.actor}` : ""}
-              </p>
-              {t.previousStatus || t.nextStatus ? (
-                <p className="text-zinc-500">
-                  {t.previousStatus ? statusLabel[t.previousStatus] : "—"} →{" "}
-                  {t.nextStatus ? statusLabel[t.nextStatus] : "—"}
-                </p>
-              ) : null}
-              {t.reason ? (
-                <p className="text-amber-200">Razón: {t.reason}</p>
-              ) : null}
-            </div>
-          ))}
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="order-detail__actions order-detail__actions--priority">
           {canAdvance
             ? detailActions.map((action) => (
                 <Button
                   key={action.status}
                   onClick={() => void runAction(action.status)}
-                  className="flex-1 border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs disabled:opacity-40"
+                  className="orders-primary-action order-detail__action disabled:opacity-40"
                   disabled={busy}
                 >
-                  {busy ? "Actualizando…" : action.label}
+                  {busy ? "Actualizando…" : "Entregado"}
                 </Button>
               ))
             : null}
           {canCancel ? (
             <Button
               onClick={() => onRequestCancellation(selected, "detalle")}
-              className="flex-1 border border-rose-700 bg-rose-950/50 px-3 py-1.5 text-xs text-rose-200 disabled:opacity-40"
+              className="orders-danger-action order-detail__action disabled:opacity-40"
               disabled={busy}
             >
-              {busy ? "Cancelando…" : "Cancelar"}
+              {busy ? "Cancelando…" : "Cancelar pedido"}
             </Button>
           ) : null}
         </div>
+        <OrderTicketPreview order={selected} />
+        <details className="order-detail__panel order-detail__panel--message">
+          <summary className="order-detail__summary-trigger">Ticket y WhatsApp</summary>
+          <WhatsappOrderActions order={selected} />
+        </details>
+        <details className="order-detail__panel order-detail__timeline">
+          <summary className="order-detail__summary-trigger">Actividad del pedido</summary>
+          {selected.timeline.map((t) => (
+            <div key={t.id} className="order-detail__timeline-item">
+              <p className="order-detail__timeline-main">
+                {t.time} · {t.label}
+                {t.actor ? ` · ${t.actor}` : ""}
+              </p>
+              {t.previousStatus || t.nextStatus ? (
+                <p className="order-detail__timeline-meta">
+                  Antes: {t.previousStatus ? statusLabel[t.previousStatus] : "Sin dato"} ·{" "}
+                  Ahora: {t.nextStatus ? statusLabel[t.nextStatus] : "Sin dato"}
+                </p>
+              ) : null}
+              {t.reason ? (
+                <p className="order-detail__timeline-reason">Razón: {t.reason}</p>
+              ) : null}
+            </div>
+          ))}
+        </details>
         <Button
-          className="mt-2 w-full border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs"
+          className="order-detail__close"
           onClick={onClose}
         >
           Cerrar
@@ -3055,30 +4636,39 @@ const OperatorTabs = ({
   setTab: (v: TabKey) => void;
   content: ReactNode;
 }) => (
-  <Tabs.Root value={tab} onValueChange={(v) => setTab(v as TabKey)}>
-    <Tabs.List className="tabs">
-      {[
-        ["inicio", "Inicio"],
-        ["pedidos", "Pedidos"],
-        ["cocina", "Cocina"],
-        ["pagos", "Pagos"],
-        ["historial", "Historial"],
-        ["cierre", "Cierre"],
-        ["catalogo", "Catálogo"],
-        ["sorteos", "Sorteos"],
-      ].map(([k, l]) => (
-        <Tabs.Trigger key={k} value={k} className="tab">
-          {l}
-        </Tabs.Trigger>
-      ))}
-    </Tabs.List>
+  <Tabs.Root
+    value={tab}
+    onValueChange={(v) => setTab(v as TabKey)}
+  >
+    <div className="tabs-shell">
+      <Tabs.List className="tabs app-nav" aria-label="Navegación principal">
+        {primaryTabs.map(({ key, label, hint, icon: Icon }) => (
+          <Tabs.Trigger
+            key={key}
+            value={key}
+            className={`tab ${key === "admin" ? "tab--admin" : ""}`}
+            aria-label={`${label}: ${hint}`}
+          >
+            <span className="tab__icon">
+              <Icon size={16} aria-hidden="true" />
+            </span>
+            <span className="tab__copy">
+              <span className="tab__label">{label}</span>
+              <span className="tab__hint">{hint}</span>
+            </span>
+          </Tabs.Trigger>
+        ))}
+      </Tabs.List>
+    </div>
     {content}
   </Tabs.Root>
 );
 
 export function InternalChekeoApp() {
   const [logged, setLogged] = useState(false);
-  const [tab, setTab] = useState<TabKey>("inicio");
+  const [sessionState, setSessionState] = useState<SessionState>("checking");
+  const [tab, setTab] = useState<TabKey>("home");
+  const [adminView, setAdminView] = useState<AdminViewKey>("launcher");
   const [orders, setOrders] = useState<InternalOrder[]>(
     asInternalOrders(mockOrders),
   );
@@ -3096,6 +4686,9 @@ export function InternalChekeoApp() {
   );
   const [actionOrderId, setActionOrderId] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [limitWarning, setLimitWarning] = useState<string | null>(null);
+  const authMode = useMemo(getInternalAuthMode, []);
+  const useGlobalAuthGate = shouldUseGlobalInternalAuthGate(authMode);
   const runtimeEnvironment = useMemo(getChekeoRuntimeEnvironment, []);
   const orderEnvironment = useMemo(
     () => getOrderEnvironmentForChekeoRuntime(runtimeEnvironment),
@@ -3104,14 +4697,30 @@ export function InternalChekeoApp() {
   const reduce = useReducedMotion();
   const orderKeysRef = useRef<Set<string> | null>(null);
   const loggedRef = useRef(logged);
+  const tabRef = useRef(tab);
+  const adminViewRef = useRef(adminView);
+  const selectedRef = useRef(selected);
   const actionOrderIdRef = useRef(actionOrderId);
   const cancellationRequestRef = useRef(cancellationRequest);
   const loadingOrdersRef = useRef(loadingOrders);
   const checkingSessionRef = useRef(checkingSession);
+  const modalBackHandlersRef = useRef<BackHandler[]>([]);
 
   useEffect(() => {
     loggedRef.current = logged;
   }, [logged]);
+
+  useEffect(() => {
+    tabRef.current = tab;
+  }, [tab]);
+
+  useEffect(() => {
+    adminViewRef.current = adminView;
+  }, [adminView]);
+
+  useEffect(() => {
+    selectedRef.current = selected;
+  }, [selected]);
 
   useEffect(() => {
     actionOrderIdRef.current = actionOrderId;
@@ -3129,17 +4738,90 @@ export function InternalChekeoApp() {
     checkingSessionRef.current = checkingSession;
   }, [checkingSession]);
 
+  const registerBackHandler = useCallback((handler: BackHandler) => {
+    modalBackHandlersRef.current = [...modalBackHandlersRef.current, handler];
+    return () => {
+      modalBackHandlersRef.current = modalBackHandlersRef.current.filter(
+        (entry) => entry !== handler,
+      );
+    };
+  }, []);
+
+  const closeTopInternalView = useCallback(() => {
+    const customHandler =
+      modalBackHandlersRef.current[modalBackHandlersRef.current.length - 1];
+    if (customHandler?.()) return true;
+
+    if (cancellationRequestRef.current) {
+      cancellationRequestRef.current = null;
+      setCancellationRequest(null);
+      return true;
+    }
+
+    if (selectedRef.current) {
+      selectedRef.current = null;
+      setSelected(null);
+      return true;
+    }
+
+    if (adminViewRef.current !== "launcher") {
+      adminViewRef.current = "launcher";
+      setAdminView("launcher");
+      return true;
+    }
+
+    if (tabRef.current !== "home") {
+      tabRef.current = "home";
+      adminViewRef.current = "launcher";
+      setTab("home");
+      setAdminView("launcher");
+      return true;
+    }
+
+    return false;
+  }, []);
+
+  useEffect(() => {
+    if (!logged) return undefined;
+    window.history.replaceState(
+      { ...(window.history.state ?? {}), chekeoRoot: true },
+      "",
+      window.location.href,
+    );
+    window.history.pushState(
+      { chekeoInternal: true },
+      "",
+      window.location.href,
+    );
+
+    const onPopState = () => {
+      if (!closeTopInternalView()) return;
+      window.history.pushState(
+        { chekeoInternal: true },
+        "",
+        window.location.href,
+      );
+    };
+
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [closeTopInternalView, logged]);
+
   const expireSession = useCallback(() => {
     setLogged(false);
+    setSessionState("expired");
     setOrders(asInternalOrders(mockOrders));
     setOrdersSource("mock");
     setOrdersError("Sesión expirada. Vuelve a iniciar sesión.");
+    setOrdersNotice(null);
     setSelected(null);
     cancellationRequestRef.current = null;
     setCancellationRequest(null);
     setNewOrderNotice(null);
     setHighlightedOrderIds(new Set());
     orderKeysRef.current = null;
+    setLastUpdated(null);
+    setLimitWarning(null);
   }, []);
 
   const isRefreshBlocked = useCallback(
@@ -3168,18 +4850,15 @@ export function InternalChekeoApp() {
 
       const newIds = new Set(newOrders.map((order) => order.id));
       setHighlightedOrderIds((current) => new Set([...current, ...newIds]));
-      setNewOrderNotice({
-        message:
-          newOrders.length === 1
-            ? "Entró 1 orden nueva"
-            : `Entraron ${newOrders.length} órdenes nuevas`,
-        orderFolios: newOrders.map((order) => order.folio),
-      });
-      setOrdersNotice(
-        `${newOrders.length === 1 ? "Nueva orden" : "Nuevas órdenes"}: ${newOrders
-          .map((order) => order.folio)
-          .join(", ")}`,
-      );
+      if (tabRef.current !== "pedidos") {
+        setNewOrderNotice({
+          message:
+            newOrders.length === 1
+              ? "Entró 1 pedido nuevo"
+              : `Entraron ${newOrders.length} pedidos nuevos`,
+          orderFolios: newOrders.map((order) => order.folio),
+        });
+      }
       window.setTimeout(() => {
         setHighlightedOrderIds((current) => {
           const next = new Set(current);
@@ -3193,7 +4872,7 @@ export function InternalChekeoApp() {
 
   const loadLiveOrders = useCallback(
     async (
-      includeTerminal = tab === "historial" || tab === "pagos",
+      includeTerminal = shouldIncludeTerminalOrders(tab, adminView),
       reason: "manual" | "auto" | "session" = "manual",
     ) => {
       const isAutoRefresh = reason === "auto";
@@ -3208,15 +4887,19 @@ export function InternalChekeoApp() {
       setLoadingOrders(true);
       setOrdersError(null);
       try {
+        const requestedLimit = includeTerminal
+          ? LIVE_TERMINAL_ORDERS_LIMIT
+          : LIVE_ACTIVE_ORDERS_LIMIT;
         const liveOrders = await fetchOrdersV2Admin({
           includeTerminal,
-          limit: includeTerminal ? 50 : 25,
+          limit: requestedLimit,
           environment: orderEnvironment,
         });
         if (isAutoRefresh && isRefreshBlocked()) return;
 
         const mappedOrders = liveOrders.map(mapOrderV2ToInternalOrder);
         setOrders(mappedOrders);
+        setSessionState("active");
         setSelected((current) => {
           if (!current) return current;
           return (
@@ -3225,15 +4908,22 @@ export function InternalChekeoApp() {
         });
         setOrdersSource("d1");
         setLastUpdated(formatOrderRefreshTime(reason));
+        setLimitWarning(
+          mappedOrders.length >= requestedLimit
+            ? includeTerminal
+              ? `Mostrando los primeros ${requestedLimit} registros con estados terminales. Si necesitas el corte completo, exporta desde Admin o ajusta filtros en Cierre.`
+              : `Mostrando los primeros ${requestedLimit} pedidos activos. En hora pico puede haber más pedidos fuera de esta carga.`
+            : null,
+        );
         registerLoadedOrders(mappedOrders);
         if (reason !== "auto") {
-          setOrdersNotice("Órdenes actualizadas");
+          setOrdersNotice("Pedidos actualizados");
         }
       } catch (error) {
         const message =
           error instanceof Error
             ? error.message
-            : "No se pudieron cargar órdenes";
+            : "No se pudieron cargar pedidos. Actualiza la lista e inténtalo de nuevo.";
         if (/UNAUTHORIZED|401/i.test(message)) {
           expireSession();
           return;
@@ -3244,14 +4934,30 @@ export function InternalChekeoApp() {
         }
         setOrders(asInternalOrders(mockOrders));
         setOrdersSource("fallback");
+        setLimitWarning(null);
         setOrdersError(message);
       } finally {
         loadingOrdersRef.current = false;
         setLoadingOrders(false);
       }
     },
-    [expireSession, isRefreshBlocked, orderEnvironment, registerLoadedOrders, tab],
+    [
+      adminView,
+      expireSession,
+      isRefreshBlocked,
+      orderEnvironment,
+      registerLoadedOrders,
+      tab,
+    ],
   );
+
+  const activateInternalSession = useCallback(() => {
+    loggedRef.current = true;
+    setLogged(true);
+    setSessionState("active");
+    setOrdersError(null);
+    void loadLiveOrders(shouldIncludeTerminalOrders(tab, adminView), "session");
+  }, [adminView, loadLiveOrders, tab]);
 
   useEffect(() => {
     let cancelled = false;
@@ -3261,10 +4967,14 @@ export function InternalChekeoApp() {
         const authenticated = await fetchInternalAuthStatus();
         if (cancelled) return;
         setLogged(authenticated);
+        setSessionState(authenticated ? "active" : "inactive");
         if (authenticated)
-          void loadLiveOrders(tab === "historial" || tab === "pagos");
+          void loadLiveOrders(shouldIncludeTerminalOrders(tab, adminView));
       } catch {
-        if (!cancelled) setLogged(false);
+        if (!cancelled) {
+          setLogged(false);
+          setSessionState("inactive");
+        }
       } finally {
         if (!cancelled) setCheckingSession(false);
       }
@@ -3276,26 +4986,26 @@ export function InternalChekeoApp() {
   }, []);
 
   useEffect(() => {
-    if (logged && tab !== "catalogo" && tab !== "cierre")
-      void loadLiveOrders(tab === "historial" || tab === "pagos");
-  }, [logged, tab, loadLiveOrders]);
+    if (logged && shouldKeepOrdersLoaded(tab, adminView))
+      void loadLiveOrders(shouldIncludeTerminalOrders(tab, adminView));
+  }, [adminView, logged, tab, loadLiveOrders]);
 
   useEffect(() => {
-    if (!logged || tab === "catalogo" || tab === "cierre") return;
+    if (!logged || !shouldKeepOrdersLoaded(tab, adminView)) return;
 
     const refresh = () => {
-      void loadLiveOrders(tab === "historial" || tab === "pagos", "auto");
+      void loadLiveOrders(shouldIncludeTerminalOrders(tab, adminView), "auto");
     };
     const interval = window.setInterval(refresh, AUTO_REFRESH_INTERVAL_MS);
 
     return () => window.clearInterval(interval);
-  }, [logged, loadLiveOrders, tab]);
+  }, [adminView, logged, loadLiveOrders, tab]);
 
   useEffect(() => {
     if (!newOrderNotice) return;
     const timeout = window.setTimeout(
       () => setNewOrderNotice(null),
-      NEW_ORDER_HIGHLIGHT_MS,
+      NEW_ORDER_NOTICE_MS,
     );
     return () => window.clearTimeout(timeout);
   }, [newOrderNotice]);
@@ -3322,7 +5032,7 @@ export function InternalChekeoApp() {
           };
           return { ...o, status: s, timeline: [...o.timeline, timelineEvent] };
         });
-        return tab === "historial"
+        return shouldRetainTerminalOrdersInView(tab, adminView)
           ? next
           : next.filter((o) => !terminalStatuses.has(o.status));
       });
@@ -3351,8 +5061,8 @@ export function InternalChekeoApp() {
       });
       setOrdersNotice(
         s === "cancelled"
-          ? "Cancelación actualizada localmente"
-          : "Estado actualizado localmente",
+          ? "Cancelación actualizada en esta vista"
+          : "Estado actualizado en esta vista",
       );
       return;
     }
@@ -3369,7 +5079,7 @@ export function InternalChekeoApp() {
       const mapped = mapOrderV2ToInternalOrder(updated);
       setOrders((p) => {
         const next = p.map((o) => (o.id === id ? mapped : o));
-        return tab === "historial"
+        return shouldRetainTerminalOrdersInView(tab, adminView)
           ? next
           : next.filter((o) => !terminalStatuses.has(o.status));
       });
@@ -3381,7 +5091,7 @@ export function InternalChekeoApp() {
       const message =
         error instanceof Error
           ? error.message
-          : "No se pudo actualizar el estado live";
+          : "No se pudo actualizar el pedido. Revisa la sesión e inténtalo de nuevo.";
       setOrdersError(message);
       if (/UNAUTHORIZED|401/i.test(message)) expireSession();
       throw error instanceof Error ? error : new Error(message);
@@ -3409,7 +5119,7 @@ export function InternalChekeoApp() {
             : o,
         ),
       );
-      setOrdersNotice("Pago operativo actualizado localmente");
+      setOrdersNotice("Pago actualizado en esta vista");
       return;
     }
     actionOrderIdRef.current = id;
@@ -3429,7 +5139,7 @@ export function InternalChekeoApp() {
       const message =
         error instanceof Error
           ? error.message
-          : "No se pudo actualizar el pago operativo";
+          : "No se pudo actualizar el pago. Revisa la sesión e inténtalo de nuevo.";
       setOrdersError(message);
       if (/UNAUTHORIZED|401/i.test(message)) expireSession();
       throw error instanceof Error ? error : new Error(message);
@@ -3455,15 +5165,15 @@ export function InternalChekeoApp() {
 
   const archiveCancelledOrder = async (order: InternalOrder) => {
     if (ordersSource !== "d1") {
-      setOrdersError("Solo puedes ocultar órdenes live desde Chekeo.");
+      setOrdersError("Solo puedes ocultar pedidos reales desde Chekeo.");
       return;
     }
     if (order.status !== "cancelled") {
-      setOrdersError("Solo se pueden ocultar órdenes canceladas.");
+      setOrdersError("Solo se pueden ocultar pedidos cancelados.");
       return;
     }
     const confirmed = window.confirm(
-      "Esta orden cancelada dejará de aparecer en historial operativo y métricas. No borra el registro interno.",
+      "Este pedido cancelado dejará de aparecer en historial y métricas. No borra el registro.",
     );
     if (!confirmed) return;
 
@@ -3474,12 +5184,12 @@ export function InternalChekeoApp() {
       const updated = await archiveCancelledOrderV2(order.id, orderEnvironment);
       setOrders((current) => current.filter((entry) => entry.id !== updated.id));
       setSelected((current) => (current?.id === updated.id ? null : current));
-      setOrdersNotice(`${updated.folio}: orden cancelada oculta del historial operativo`);
+      setOrdersNotice(`${updated.folio}: pedido cancelado oculto del historial`);
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
-          : "No se pudo ocultar la orden cancelada";
+          : "No se pudo ocultar el pedido cancelado.";
       setOrdersError(message);
       if (/UNAUTHORIZED|401/i.test(message)) expireSession();
       throw error instanceof Error ? error : new Error(message);
@@ -3510,7 +5220,7 @@ export function InternalChekeoApp() {
             : order,
         ),
       );
-      setOrdersNotice("Checklist operativo actualizado localmente");
+      setOrdersNotice("Checklist actualizado en esta vista");
       return;
     }
 
@@ -3554,100 +5264,133 @@ export function InternalChekeoApp() {
     notice: ordersNotice,
     highlightedOrderIds,
     sessionActive: logged,
+    sessionState,
     onSessionExpired: expireSession,
     reload: (includeTerminal?: boolean) => {
       void loadLiveOrders(Boolean(includeTerminal));
     },
     lastUpdated,
+    limitWarning,
   };
-
   const active = orders.filter((o) => !terminalStatuses.has(o.status));
-  const content = useMemo(
-    () =>
-      ({
-        inicio: <DashboardHome orders={orders} source={ordersSource} />,
-        pedidos: (
-          <OrdersBoard
-            orders={orders.filter((o) => !terminalStatuses.has(o.status))}
-            setSelected={setSelected}
-            runtime={runtime}
-            move={move}
-            requestCancellation={requestCancellation}
-          />
-        ),
-        cocina: (
-          <KitchenQueue
-            orders={orders}
-            runtime={runtime}
-            onToggleKitchenItem={toggleKitchenItemDone}
-          />
-        ),
-        pagos: (
-          <PaymentNotesPanel
-            orders={orders}
-            runtime={runtime}
-            onUpdatePayment={updatePayment}
-          />
-        ),
-        historial: (
-          <HistoryPanel
-            orders={orders}
-            runtime={runtime}
-            onArchiveCancelled={archiveCancelledOrder}
-          />
-        ),
-        cierre: (
-          <OperationalClosePanel
-            environment={orderEnvironment}
-            sessionActive={logged}
-          />
-        ),
-        catalogo: <CatalogAdminPanel />,
-        sorteos: <RafflesAdminPanel />,
-      })[tab],
-    [logged, orderEnvironment, orders, ordersSource, tab, runtime, toggleKitchenItemDone],
-  );
-  if (!logged)
+  const shellTruth = getOperationalTruth({
+    runtime,
+    runtimeEnvironment,
+    activeCount: active.length,
+  });
+  const openPrimaryTab = useCallback((nextTab: TabKey) => {
+    setTab(nextTab);
+    if (nextTab !== "admin") setAdminView("launcher");
+  }, []);
+  const openAdminView = useCallback((nextView: AdminViewKey) => {
+    setTab("admin");
+    setAdminView(nextView);
+  }, []);
+  const content = ({
+    home: (
+      <HomePanel
+        orders={orders}
+        runtime={runtime}
+        runtimeEnvironment={runtimeEnvironment}
+        onOpenTab={openPrimaryTab}
+      />
+    ),
+    pedidos: (
+      <OrdersBoard
+        orders={orders}
+        setSelected={setSelected}
+        runtime={runtime}
+        move={move}
+        requestCancellation={requestCancellation}
+      />
+    ),
+    cocina: (
+      <KitchenQueue
+        orders={orders}
+        runtime={runtime}
+        onToggleKitchenItem={toggleKitchenItemDone}
+        onMove={move}
+      />
+    ),
+    pagos: (
+      <PaymentNotesPanel
+        orders={orders}
+        runtime={runtime}
+        onUpdatePayment={updatePayment}
+        registerBackHandler={registerBackHandler}
+      />
+    ),
+    admin: (
+      <AdminGate
+        authMode={authMode}
+        sessionActive={runtime.sessionActive}
+        onUnlock={activateInternalSession}
+      >
+        <AdminWorkspace
+          view={adminView}
+          setView={setAdminView}
+          orders={orders}
+          runtime={runtime}
+          runtimeEnvironment={runtimeEnvironment}
+          authMode={authMode}
+          onArchiveCancelled={archiveCancelledOrder}
+        />
+      </AdminGate>
+    ),
+  })[tab];
+  if (useGlobalAuthGate && !logged)
     return (
       <InternalLogin
+        authMode={authMode}
         checkingSession={checkingSession}
         runtimeEnvironment={runtimeEnvironment}
-        onLogin={() => {
-          loggedRef.current = true;
-          setLogged(true);
-          void loadLiveOrders(tab === "historial" || tab === "pagos");
-        }}
+        sessionState={sessionState}
+        sessionMessage={ordersError}
+        onLogin={activateInternalSession}
       />
     );
   return (
     <main className="shell">
+      <a className="skip-link" href="#chekeo-main-content">
+        Saltar al contenido
+      </a>
       <OperatorHeader
-        active={active.length}
-        environment={orderEnvironment}
         runtimeEnvironment={runtimeEnvironment}
-        source={ordersSource}
+        runtime={runtime}
+        activeTab={tab}
+        onOpenTab={openPrimaryTab}
+        truth={shellTruth}
+        onRefresh={() => {
+          if (runtime.sessionState !== "active") return;
+          void runtime.reload(shouldIncludeTerminalOrders(tab, adminView));
+        }}
         onLogout={() => {
           void logoutInternal();
           loggedRef.current = false;
           setLogged(false);
+          setSessionState("inactive");
           setOrdersSource("mock");
           setOrders(asInternalOrders(mockOrders));
+          setOrdersNotice(null);
+          setOrdersError(null);
           setSelected(null);
           cancellationRequestRef.current = null;
           setCancellationRequest(null);
           setNewOrderNotice(null);
           setHighlightedOrderIds(new Set());
           orderKeysRef.current = null;
+          setLastUpdated(null);
+          setLimitWarning(null);
         }}
       />
-      <RuntimeEnvironmentBanner environment={runtimeEnvironment} />
+      <RuntimeNoticeStack runtime={runtime} />
       <NewOrderBanner
         notice={newOrderNotice}
         onDismiss={() => setNewOrderNotice(null)}
       />
       <OperatorTabs
         tab={tab}
-        setTab={setTab}
+        setTab={openPrimaryTab}
         content={
           <AnimatePresence mode="wait">
             <motion.div
@@ -3656,7 +5399,8 @@ export function InternalChekeoApp() {
               animate={{ opacity: 1, y: 0 }}
               exit={reduce ? {} : { opacity: 0, y: -8 }}
               transition={{ duration: 0.18 }}
-              className="mt-2"
+              className="tab-panel"
+              id="chekeo-main-content"
             >
               {content}
             </motion.div>

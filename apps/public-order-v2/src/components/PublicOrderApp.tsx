@@ -1,4 +1,7 @@
 import {
+  bankPaymentConfig,
+  getBankPaymentPrimaryLabel,
+  getBankPaymentPrimaryValue,
   type CreateOrderV2Response,
   type MenuCategory,
   type MenuItem,
@@ -88,11 +91,6 @@ const paymentTimingLabels: Record<Exclude<PaymentTiming, "">, string> = {
   before: "Pagar antes",
   after: "Pagar después",
 };
-const TRANSFER_BANK_DETAILS = {
-  bank: "BBVA",
-  name: "Yolitzin Ameyali Zarate Otero",
-  account: "012180015645465369",
-} as const;
 const CHECKOUT_NOTES_MAX_LENGTH = 500;
 const statusLabels: Record<string, string> = {
   received: "Recibido por cocina",
@@ -1521,14 +1519,14 @@ const TransferDetailsModal = ({ onClose }: { onClose: () => void }) => {
           <p>Copia los datos clave y guarda tu comprobante para mandarlo por WhatsApp.</p>
         </header>
         <dl className="transfer-detail-list">
-          <div className="transfer-detail-row"><dt>Banco</dt><dd>{TRANSFER_BANK_DETAILS.bank}</dd></div>
+          <div className="transfer-detail-row"><dt>Banco</dt><dd>{bankPaymentConfig.bankName}</dd></div>
           <div className="transfer-detail-row with-action">
-            <div><dt>Nombre</dt><dd>{TRANSFER_BANK_DETAILS.name}</dd></div>
-            <QuestButton className="ghost transfer-copy-button" onClick={() => copyDetail(TRANSFER_BANK_DETAILS.name, "copiedName")}>Copiar nombre</QuestButton>
+            <div><dt>Nombre</dt><dd>{bankPaymentConfig.accountHolder}</dd></div>
+            <QuestButton className="ghost transfer-copy-button" onClick={() => copyDetail(bankPaymentConfig.accountHolder, "copiedName")}>Copiar nombre</QuestButton>
           </div>
           <div className="transfer-detail-row with-action">
-            <div><dt>Cuenta</dt><dd>{TRANSFER_BANK_DETAILS.account}</dd></div>
-            <QuestButton className="ghost transfer-copy-button" onClick={() => copyDetail(TRANSFER_BANK_DETAILS.account, "copiedAccount")}>Copiar cuenta</QuestButton>
+            <div><dt>{getBankPaymentPrimaryLabel(bankPaymentConfig)}</dt><dd>{getBankPaymentPrimaryValue(bankPaymentConfig)}</dd></div>
+            <QuestButton className="ghost transfer-copy-button" onClick={() => copyDetail(getBankPaymentPrimaryValue(bankPaymentConfig), "copiedAccount")}>Copiar cuenta</QuestButton>
           </div>
         </dl>
         <small className="transfer-modal-note">Si pagas antes, puedes enviar tu comprobante por WhatsApp.</small>

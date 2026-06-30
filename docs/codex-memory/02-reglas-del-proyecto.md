@@ -1,4 +1,13 @@
+> Estado: vivo
+> Uso: memoria operativa para Codex/Burgers.exe
+
 # Reglas del proyecto
+
+## Jerarquía
+
+- `AGENTS.md` es la regla dura.
+- Esta memoria es apoyo operativo.
+- Si hay contradicción, gana `AGENTS.md`.
 
 ## Workflow obligatorio
 
@@ -9,19 +18,26 @@ Todo cambio real debe seguir:
 3. Probar.
 4. Commit.
 5. Push.
-6. Crear Pull Request.
+6. Crear Pull Request cuando el usuario apruebe el cierre.
 
 ## Codex
 
 Antes de implementar:
 
-- Leer AGENTS.md.
-- Leer docs/codex-memory/00-indice.md.
+- Leer `AGENTS.md`.
+- Leer `docs/codex-memory/00-indice.md`.
+- Leer `docs/codex-memory/08-agent-workflow.md` y `docs/codex-memory/09-checklists.md` cuando el cambio sea real.
 - Usar Graphify si el cambio toca varios archivos o arquitectura.
 
 ## Restricciones
 
 - No introducir dependencias nuevas sin autorización.
 - No cambiar contratos de datos sin explicar riesgos.
-- No tocar legacy sin permiso explícito.
-- Preferir PRs grandes pero controlados cuando el cambio está bien definido.
+- No tocar `legacy/` sin permiso explícito.
+- Por defecto, usar PRs pequeños y controlados.
+- PRs grandes solo cuando el alcance esté explícitamente aprobado.
+- No mezclar bugfix + rediseño + refactor sin autorización.
+- Todo cambio de Burgers.exe debe terminar en PR cuando el usuario apruebe cierre.
+- El asistente crea el PR automáticamente cuando la rama ya esté subida; el usuario solo revisa y mergea.
+- No hacer commit, push o PR cuando el prompt pida diagnóstico o pausa.
+- No promover seeds destructivos ni migraciones de preview/testing a producción sin aprobación explícita.

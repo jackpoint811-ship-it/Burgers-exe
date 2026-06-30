@@ -1,4 +1,13 @@
+> Estado: vivo
+> Uso: memoria operativa para Codex/Burgers.exe
+
 # Prompts buenos
+
+## Reglas rápidas
+
+- `AGENTS.md` manda.
+- Esta memoria apoya, no reemplaza.
+- Si hay contradicción, reporta la diferencia antes de tocar nada.
 
 ## Prompt base para Codex
 
@@ -24,6 +33,8 @@ Restricciones:
 - No tocar legacy salvo autorización explícita.
 - No introducir dependencias nuevas salvo autorización explícita.
 - No cambiar contratos de datos, precios, tickets, promociones ni payloads salvo autorización explícita.
+- No hacer commit, push o PR cuando el prompt pida diagnóstico o pausa.
+- No promover seeds destructivos ni migraciones de preview/testing a producción sin aprobación explícita.
 - Mantener mobile-first.
 - Mantener UX clara, accesible y consistente con Burgers.exe.
 - No dejar cambios locales sin PR.

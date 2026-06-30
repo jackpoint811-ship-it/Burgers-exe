@@ -1,3 +1,6 @@
+> Estado: vivo
+> Uso: memoria operativa para Codex/Burgers.exe
+
 # Flujos Chekeo
 
 ## Pedidos
@@ -20,7 +23,7 @@ Debe concentrar:
 - Nota interna.
 - Copiar WhatsApp.
 - Abrir WhatsApp.
-- Descargar ticket/comprobante.
+- Descargar ticket o comprobante.
 
 ## Corte
 

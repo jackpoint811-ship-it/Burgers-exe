@@ -195,6 +195,7 @@ export const TicketsLookupPage = () => {
           <dl className="tickets-result-list">
             <div><dt>Tickets por burgers</dt><dd>{participant.burgerTickets}</dd></div>
             <div><dt>Tickets por referidos</dt><dd>{participant.referralTickets}</dd></div>
+            <div><dt>Tickets extra manuales</dt><dd>{participant.manualExtraTickets}</dd></div>
             <div><dt>Último folio</dt><dd>{participant.lastOrderFolio || '—'}</dd></div>
             <div><dt>Última orden</dt><dd>{formatLookupDate(participant.lastOrderAt)}</dd></div>
             <div><dt>Teléfono</dt><dd>{participant.customerPhoneMasked || 'Teléfono confirmado'}</dd></div>
