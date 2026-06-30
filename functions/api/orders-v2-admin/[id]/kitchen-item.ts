@@ -24,7 +24,7 @@ type ItemRow = {
   snapshotJson?: string | null;
 };
 type SnapshotRecord = Record<string, unknown>;
-type SideQuestSource = "included-garnish" | "sidequest-extra";
+type SideQuestSource = "included-garnish" | "included-drink" | "sidequest-extra";
 
 const KITCHEN_ITEM_KINDS = new Set<UpdateKitchenItemPayload["itemKind"]>([
   "burger",
@@ -79,7 +79,13 @@ const buildSideQuestLineKey = (
   parentLineKey: string,
   source: SideQuestSource,
   index = 0,
-) => `${parentLineKey}${SIDE_QUEST_LINE_KEY_PREFIX}${source === "included-garnish" ? "included-garnish" : `extra-${index}`}`;
+) => `${parentLineKey}${SIDE_QUEST_LINE_KEY_PREFIX}${
+  source === "included-garnish"
+    ? "included-garnish"
+    : source === "included-drink"
+      ? "included-drink"
+      : `extra-${index}`
+}`;
 
 const isValidNestedSideQuestLineKey = (
   snapshot: SnapshotRecord,
@@ -91,6 +97,9 @@ const isValidNestedSideQuestLineKey = (
 
   if (payload.lineKey === buildSideQuestLineKey(parentLineKey, "included-garnish")) {
     return Boolean(getOptionalString(asRecord(snapshot.garnish)?.name));
+  }
+  if (payload.lineKey === buildSideQuestLineKey(parentLineKey, "included-drink")) {
+    return Boolean(getOptionalString(asRecord(snapshot.includedDrink)?.name));
   }
 
   const extraPrefix = `${parentLineKey}${SIDE_QUEST_LINE_KEY_PREFIX}extra-`;
@@ -162,6 +171,11 @@ const appendKitchenSideQuestItems = (items: OrderV2Item[]) =>
     const garnish = asRecord(snapshot.garnish);
     if (garnish) {
       const sideQuestItem = createKitchenSideQuestItem(item, garnish, "included-garnish");
+      if (sideQuestItem) syntheticItems.push(sideQuestItem);
+    }
+    const includedDrink = asRecord(snapshot.includedDrink);
+    if (includedDrink) {
+      const sideQuestItem = createKitchenSideQuestItem(item, includedDrink, "included-drink");
       if (sideQuestItem) syntheticItems.push(sideQuestItem);
     }
 

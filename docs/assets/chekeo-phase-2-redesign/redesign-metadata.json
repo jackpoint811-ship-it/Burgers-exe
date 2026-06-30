@@ -1,0 +1,228 @@
+{
+  "generatedAt": "2026-06-21T18:22:40.563Z",
+  "localUrl": "http://127.0.0.1:5174/",
+  "remoteApiBase": "https://burgers-exe-internal-v2-preview.pages.dev",
+  "pinUsed": "BOG_INTERNAL_PIN",
+  "loginModes": [
+    {
+      "file": "operacion-mobile-390.png",
+      "mode": "pin-submitted"
+    },
+    {
+      "file": "pedidos-mobile-320.png",
+      "mode": "already-active"
+    },
+    {
+      "file": "pedidos-mobile-390.png",
+      "mode": "already-active"
+    },
+    {
+      "file": "pedidos-mobile-430.png",
+      "mode": "already-active"
+    },
+    {
+      "file": "pedidos-desktop.png",
+      "mode": "already-active"
+    },
+    {
+      "file": "cocina-mobile-390.png",
+      "mode": "already-active"
+    },
+    {
+      "file": "pagos-mobile-390.png",
+      "mode": "already-active"
+    },
+    {
+      "file": "admin-mobile-390.png",
+      "mode": "already-active"
+    },
+    {
+      "file": "catalogo-mobile-390.png",
+      "mode": "already-active"
+    },
+    {
+      "file": "sorteos-mobile-390.png",
+      "mode": "already-active"
+    },
+    {
+      "file": "corte-mobile-390.png",
+      "mode": "already-active"
+    },
+    {
+      "file": "desktop-general.png",
+      "mode": "already-active"
+    }
+  ],
+  "screenshots": [
+    {
+      "file": "login-mobile-390.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "scrollWidth": 390,
+      "bodyScrollWidth": 390,
+      "fullHeight": 844,
+      "activeText": "Burgers.exe\n\nCHEKEO\n\nPIN de acceso\nEntrar\n\nLocal: UI para pruebas internas.\n\nLOCAL\nNO ACTIVA\n\nNo cambia pedidos reales.\n\nVer Burgers.exe Preview",
+      "horizontalOverflow": false,
+      "offenders": []
+    },
+    {
+      "file": "operacion-mobile-390.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "scrollWidth": 390,
+      "bodyScrollWidth": 390,
+      "fullHeight": 1360,
+      "activeText": "Saltar al contenido\nBx\n\nChekeo Burgers.exe\n\nLOCAL\nPREVIEW D1\nSalir\n\nPedidos actualizados\n\nOperación\nPedidos\nCocina\nPagos\nAdmin\n\nOPERACIÓN\n\nPrioridad de turno\n\nLectura compacta para decidir el siguiente movimiento sin entrar a módulos técnicos.\n\nDATOS LIVE\nLOCAL\n\nPEDIDOS ACTIVOS\n\n0\n\nPedidos hoy que siguen abiertos\n\nPAGOS PENDIENTES\n\n0\n\nConfirmaciones por revisar\n\nPEDIDOS DE HOY\n\n0\n\nLectura del corte actual\n\nVENTA DE HOY\n\n$0.00\n\nSin cálculo de utilidad en este PR\n\nPedidos\nCola y detalle\nCocina\nPreparación\nPagos\nCobros\nCorte\nCaja\n\nSIGUIENTE ACCIÓN\n\nOperación sin pendientes\n\nNo hay pedidos abiertos que requieran acción inmediata.\n\nVer Pedidos\n\nSin pedidos abiertos por resolver.\n\nMINI RESUMEN K\n\nProducción\nBurgers\n0\nGuarniciones\n0\nIngredientes\n0\nCosto\n-\nAbrir Cocina",
+      "horizontalOverflow": false,
+      "offenders": []
+    },
+    {
+      "file": "pedidos-mobile-320.png",
+      "viewport": {
+        "width": 320,
+        "height": 844
+      },
+      "scrollWidth": 320,
+      "bodyScrollWidth": 320,
+      "fullHeight": 844,
+      "activeText": "Saltar al contenido\nBx\n\nChekeo Burgers.exe\n\nLOCAL\nPREVIEW D1\nSalir\n\nPedidos actualizados\n\nOperación\nPedidos\nCocina\nPagos\nAdmin\n\nCOLA COMPACTA\n\nPedidos\n0 VISIBLES\n0 LISTOS\n0 PAGO PENDIENTE\n\nSin pedidos activos.\n\nLa cola está vacía en este entorno. Cuando entre un pedido nuevo, aparecerá aquí.\n\nActualizar",
+      "horizontalOverflow": false,
+      "offenders": []
+    },
+    {
+      "file": "pedidos-mobile-390.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "scrollWidth": 390,
+      "bodyScrollWidth": 390,
+      "fullHeight": 844,
+      "activeText": "Saltar al contenido\nBx\n\nChekeo Burgers.exe\n\nLOCAL\nPREVIEW D1\nSalir\n\nPedidos actualizados\n\nOperación\nPedidos\nCocina\nPagos\nAdmin\n\nCOLA COMPACTA\n\nPedidos\n0 VISIBLES\n0 LISTOS\n0 PAGO PENDIENTE\n\nSin pedidos activos.\n\nLa cola está vacía en este entorno. Cuando entre un pedido nuevo, aparecerá aquí.\n\nActualizar",
+      "horizontalOverflow": false,
+      "offenders": []
+    },
+    {
+      "file": "pedidos-mobile-430.png",
+      "viewport": {
+        "width": 430,
+        "height": 844
+      },
+      "scrollWidth": 430,
+      "bodyScrollWidth": 430,
+      "fullHeight": 844,
+      "activeText": "Saltar al contenido\nBx\n\nChekeo Burgers.exe\n\nLOCAL\nPREVIEW D1\nSalir\n\nPedidos actualizados\n\nOperación\nPedidos\nCocina\nPagos\nAdmin\n\nCOLA COMPACTA\n\nPedidos\n0 VISIBLES\n0 LISTOS\n0 PAGO PENDIENTE\n\nSin pedidos activos.\n\nLa cola está vacía en este entorno. Cuando entre un pedido nuevo, aparecerá aquí.\n\nActualizar",
+      "horizontalOverflow": false,
+      "offenders": []
+    },
+    {
+      "file": "pedidos-desktop.png",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "scrollWidth": 1440,
+      "bodyScrollWidth": 1440,
+      "fullHeight": 1000,
+      "activeText": "Saltar al contenido\nBx\n\nChekeo Burgers.exe\n\nLOCAL\nPREVIEW D1\nACTIVA\nSync 12:22 p.m.\nSalir\n\nPedidos actualizados\n\nOperación\nPrioridad\nPedidos\nCola\nCocina\nPrep\nPagos\nCobros\nAdmin\nMás\n\nCOLA COMPACTA\n\nPedidos\n\nPrioriza folio, cliente, estado, pago, total y siguiente acción.\n\n0 VISIBLES\n0 LISTOS\n0 PAGO PENDIENTE\n\nSin pedidos activos.\n\nLa cola está vacía en este entorno. Cuando entre un pedido nuevo, aparecerá aquí.\n\nActualizar",
+      "horizontalOverflow": false,
+      "offenders": []
+    },
+    {
+      "file": "cocina-mobile-390.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "scrollWidth": 390,
+      "bodyScrollWidth": 390,
+      "fullHeight": 1603,
+      "activeText": "Saltar al contenido\nBx\n\nChekeo Burgers.exe\n\nLOCAL\nPREVIEW D1\nSalir\n\nPedidos actualizados\n\nOperación\nPedidos\nCocina\nPagos\nAdmin\n\nPREPARACIÓN\n\nCocina\n\nCocina conectada a preview. Producción actual por item, ordenada por llegada.\n\nActualizado: 12:22 p.m.\nActualizar\n0\n\nPOR HACER\n\n0\n\nHECHO\n\n0\n\nLISTOS\n\n0\n\nSIDE QUEST\n\nPreparación\n0\n\nPOR ITEM\n\nListos\n0\n\nCOMPACTO\n\nSide Quest\n0\n\nEXTRAS\n\nResumen K\n0\n\nTOTAL\n\nSIGUIENTE EN COCINA\n\nSin items por hacer\nAbrir lista\n\nPOR HACER\n\nProducción accionable\n\nIncluye pedidos en Preparación y pedidos Listos con items pendientes.\n\n0 items\n\nSin items por hacer.",
+      "horizontalOverflow": false,
+      "offenders": []
+    },
+    {
+      "file": "pagos-mobile-390.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "scrollWidth": 390,
+      "bodyScrollWidth": 390,
+      "fullHeight": 982,
+      "activeText": "Saltar al contenido\nBx\n\nChekeo Burgers.exe\n\nLOCAL\nPREVIEW D1\nSalir\n\nPedidos actualizados\n\nOperación\nPedidos\nCocina\nPagos\nAdmin\n\nBANDEJA DE COBROS\n\nPagos\n\nPendientes primero. WhatsApp, nota y confirmación viven en esta vista.\n\nActualizar lista\nBUSCAR POR FOLIO O CLIENTE\n\nESTADO DE PAGO\n\nTodos\nPendiente\nPagado\n\nRANGO\n\nHoy\nSemana\nTodo\n\nSin pagos para revisar.\n\nCuando exista un pedido con cobro registrado, aparecerá aquí.\n\nLimpiar vista",
+      "horizontalOverflow": false,
+      "offenders": []
+    },
+    {
+      "file": "admin-mobile-390.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "scrollWidth": 390,
+      "bodyScrollWidth": 390,
+      "fullHeight": 2988,
+      "activeText": "Saltar al contenido\nBx\n\nChekeo Burgers.exe\n\nLOCAL\nPREVIEW D1\nSalir\n\nPedidos actualizados\n\nOperación\nPedidos\nCocina\nPagos\nAdmin\n\nADMIN\n\nMódulos secundarios\n\nDatos bancarios, historial, cierre, catálogo, sorteos y reportes viven aquí para mantener la navegación principal enfocada en operación.\n\nModo seguro global activo. Toda la app sigue pidiendo PIN antes de abrir.\n\nOperación\n\nCierre actual e historial fuera del flujo diario.\n\n2 MÓDULOS\nBase lista\nHistorial\nENTREGADOS/CANCELADOS\nPedidos entregados y cancelados sin saturar el centro operativo.\nVer módulo\n→\nBase lista\nCierre\nCORTE ACTUAL\nResumen de operación por rango y descarga del corte actual.\nVer módulo\n→\nConfiguración\n\nDatos y catálogo que alimentan módulos internos.\n\n2 MÓDULOS\nSolo lectura\nDatos bancarios\nTRANSFERENCIA\nFuente central de transferencia para Pagos y mensajes operativos.\nVer módulo\n→\nBase lista\nCatálogo\nMENÚ Y STOCK\nProd",
+      "horizontalOverflow": false,
+      "offenders": []
+    },
+    {
+      "file": "catalogo-mobile-390.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "scrollWidth": 390,
+      "bodyScrollWidth": 390,
+      "fullHeight": 5452,
+      "activeText": "Saltar al contenido\nBx\n\nChekeo Burgers.exe\n\nLOCAL\nPREVIEW D1\nSalir\n\nPedidos actualizados\n\nOperación\nPedidos\nCocina\nPagos\nAdmin\n\nADMIN\n\nCatálogo\n\nProductos, promos, banners e ingredientes con el panel existente.\n\nVolver al hub\nCambiar módulo\nHub\nDatos bancarios\nHistorial\nCierre\nCatálogo\nSorteos\nReportes\n\nModo seguro global activo. Toda la app sigue pidiendo PIN antes de abrir.\n\nCatálogo\n\nEstado: Listo para editar\n\nSesión activa\nCatálogo\nProductos\nPromos\nBanners\nIngredientes\nTodas categorías\nBurgers\nGuarniciones\nCombos\nExtras\nTodos\nDisponibles\nAgotados\nRecargar\nCrear producto\nBURGERS\n2 productos\n\nOG\n\nOG\nDisponible\n\nCarne \"Especial\" 250g aprox, tocino, queso americano, queso manchego, jitomate, lechuga, pepinillos, catsup, mostaza y mayonesa.\n\n$85\nburgers\nOrden 1\nStock sin gestionar\nAssets y datos técnicos\nDisponible\nAgotado\nEditar\n\nBBQ\n\nBBQ\nDisponible\n\nCarne \"Especial\" 250g aprox, tocino, ",
+      "horizontalOverflow": false,
+      "offenders": []
+    },
+    {
+      "file": "sorteos-mobile-390.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "scrollWidth": 390,
+      "bodyScrollWidth": 390,
+      "fullHeight": 2969,
+      "activeText": "Saltar al contenido\nBx\n\nChekeo Burgers.exe\n\nLOCAL\nPREVIEW D1\nSalir\n\nPedidos actualizados\n\nOperación\nPedidos\nCocina\nPagos\nAdmin\n\nADMIN\n\nSorteos\n\nCampañas, participantes, referidos y tickets extra manuales.\n\nVolver al hub\nCambiar módulo\nHub\nDatos bancarios\nHistorial\nCierre\nCatálogo\nSorteos\nReportes\n\nModo seguro global activo. Toda la app sigue pidiendo PIN antes de abrir.\n\nSORTEOS\n\nPRIMER GRAN SORTE.exe\n\nLa campaña activa todavía no tiene descripción visible.\n\nActualizado: 03/06/26, 11:25 a.m.\n\nPrueba · Local\nCampaña activa\nRecargar\n\nPREMIO VISIBLE\n\nPRIMER GRAN SORTE.exe\n\nVálido del 03 al 30 de junio de 2026. 1 burger comprada = 1 ticket. Referido válido = +2 tickets si usa tu código, paga y ordena al menos 1 burger. Premio: $500 MXN o 4 burgers gratis. No aplican pedidos cancelados, no pagados, duplicados o de prueba. Ganador: primer sábado de julio 2026. Sujeto a verificación por Burgers",
+      "horizontalOverflow": false,
+      "offenders": []
+    },
+    {
+      "file": "corte-mobile-390.png",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "scrollWidth": 390,
+      "bodyScrollWidth": 390,
+      "fullHeight": 1205,
+      "activeText": "Saltar al contenido\nBx\n\nChekeo Burgers.exe\n\nLOCAL\nPREVIEW D1\nSalir\n\nPedidos actualizados\n\nOperación\nPedidos\nCocina\nPagos\nAdmin\n\nADMIN\n\nCierre\n\nResumen de operación por rango y descarga del corte actual.\n\nVolver al hub\nCambiar módulo\nHub\nDatos bancarios\nHistorial\nCierre\nCatálogo\nSorteos\nReportes\n\nModo seguro global activo. Toda la app sigue pidiendo PIN antes de abrir.\n\nCIERRE DE CAJA\n\nCierre\n\nRango, total, órdenes y exporte sin estados repetidos.\n\nDescargar reporte\nDesde\nHasta\nIncluir terminales\nActualizar cierre\n\nCierre actualizado\n\nRango calculado: 2026-06-21T00:00:00.000Z a 2026-06-21T23:59:59.999Z · generado 21/06/26, 12:23 p.m.\n\nNo hay datos de cierre para el rango seleccionado.",
+      "horizontalOverflow": false,
+      "offenders": []
+    },
+    {
+      "file": "desktop-general.png",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "scrollWidth": 1440,
+      "bodyScrollWidth": 1440,
+      "fullHeight": 1000,
+      "activeText": "Saltar al contenido\nBx\n\nChekeo Burgers.exe\n\nLOCAL\nPREVIEW D1\nACTIVA\nSync 12:23 p.m.\nSalir\n\nPedidos actualizados\n\nOperación\nPrioridad\nPedidos\nCola\nCocina\nPrep\nPagos\nCobros\nAdmin\nMás\n\nOPERACIÓN\n\nPrioridad de turno\n\nLectura compacta para decidir el siguiente movimiento sin entrar a módulos técnicos.\n\nDATOS LIVE\nLOCAL\n\nPEDIDOS ACTIVOS\n\n0\n\nPedidos hoy que siguen abiertos\n\nPAGOS PENDIENTES\n\n0\n\nConfirmaciones por revisar\n\nPEDIDOS DE HOY\n\n0\n\nLectura del corte actual\n\nVENTA DE HOY\n\n$0.00\n\nSin cálculo de utilidad en este PR\n\nPedidos\nCola y detalle\nCocina\nPreparación\nPagos\nCobros\nCorte\nCaja\n\nSIGUIENTE ACCIÓN\n\nOperación sin pendientes\n\nNo hay pedidos abiertos que requieran acción inmediata.\n\nVer Pedidos\n\nSin pedidos abiertos por resolver.\n\nMINI RESUMEN K\n\nProducción\nBurgers\n0\nGuarniciones\n0\nIngredientes\n0\nCosto\n-\nAbrir Cocina",
+      "horizontalOverflow": false,
+      "offenders": []
+    }
+  ],
+  "consoleMessages": []
+}

@@ -2,6 +2,8 @@ export type RaffleShareImageData = {
   customerName: string;
   customerPhoneMasked: string;
   campaignTitle: string;
+  baseTickets: number;
+  manualExtraTickets: number;
   burgerTickets: number;
   referralTickets: number;
   totalTickets: number;
@@ -86,6 +88,8 @@ export const buildRaffleShareText = (data: RaffleShareImageData): string => [
   "Tus tickets del sorteo:",
   "",
   `Nombre: ${safeText(data.customerName)}`,
+  `Base tickets: ${data.baseTickets}`,
+  `Tickets extra manuales: ${data.manualExtraTickets}`,
   `Total tickets: ${data.totalTickets}`,
   `Burger tickets: ${data.burgerTickets}`,
   `Referidos: ${data.referralTickets}`,

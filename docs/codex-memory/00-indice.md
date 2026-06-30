@@ -1,6 +1,15 @@
+> Estado: vivo
+> Uso: memoria operativa para Codex/Burgers.exe
+
 # Memoria Codex / Obsidian - Burgers.exe
 
 Esta carpeta funciona como memoria viva del proyecto.
+
+## Jerarquía
+
+1. `AGENTS.md` es la regla dura del repositorio.
+2. Esta memoria en `docs/codex-memory/` es apoyo operativo.
+3. Si hay contradicción, gana `AGENTS.md`; el agente debe verificar el código y reportar la diferencia.
 
 ## Orden recomendado para Codex
 
@@ -18,7 +27,7 @@ Esta carpeta funciona como memoria viva del proyecto.
    - Backlog: `05-backlog.md`
    - Prompts reutilizables: `06-prompts-buenos.md`
 5. Usar Graphify antes de cambios grandes, de arquitectura o de varios archivos.
-6. Terminar cambios en rama, commit, push y PR.
+6. Terminar cambios en rama, commit, push y PR cuando el usuario apruebe el cierre.
 
 ## Mapa rápido
 
@@ -38,4 +47,4 @@ Esta carpeta funciona como memoria viva del proyecto.
 
 Obsidian solo edita estos archivos Markdown. La fuente real para Codex son estos `.md` dentro del repo.
 
-Si estas notas contradicen el código actual, el agente debe verificar el código y reportar la diferencia antes de proponer cambios.
+El asistente prepara el PR cuando la rama ya esté subida y el usuario apruebe el cierre. El usuario revisa y mergea.

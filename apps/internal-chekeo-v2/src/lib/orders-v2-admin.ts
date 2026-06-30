@@ -57,15 +57,15 @@ const parseJsonEnvelope = async <
   if (!res.ok) {
     const message =
       envelope?.error?.message || envelope?.error?.code || `HTTP ${res.status}`;
-    throw new Error(`Backend V2 rechazó la solicitud: ${message}`);
+    throw new Error(`No se pudo completar la solicitud. Revisa la sesión e inténtalo de nuevo. Detalle: ${message}`);
   }
 
-  if (!envelope) throw new Error("Backend V2 respondió con JSON inválido");
+  if (!envelope) throw new Error("No se pudo leer la respuesta. Actualiza la lista e inténtalo de nuevo.");
   if (!envelope.ok)
     throw new Error(
       envelope.error?.message ||
         envelope.error?.code ||
-        "Backend V2 respondió ok=false",
+        "No se pudo completar la solicitud. Inténtalo de nuevo.",
     );
   return envelope;
 };
@@ -106,7 +106,7 @@ export const fetchOrdersV2Summary = async (
   );
   const envelope = await parseJsonEnvelope<OrdersV2SummaryResponse>(res);
   if (!envelope.data)
-    throw new Error("Backend V2 no devolvió el cierre operativo");
+    throw new Error("No se pudo cargar el cierre. Actualiza la pantalla e inténtalo de nuevo.");
   return envelope.data;
 };
 
@@ -127,7 +127,7 @@ export const updateOrderV2Status = async (
   );
   const envelope = await parseJsonEnvelope<UpdateOrderV2StatusResponse>(res);
   if (!envelope.data?.order)
-    throw new Error("Backend V2 no devolvió la orden actualizada");
+    throw new Error("No se pudo confirmar el cambio. Actualiza la lista e inténtalo de nuevo.");
   return envelope.data.order;
 };
 
@@ -147,7 +147,7 @@ export const updateKitchenItemV2 = async (
   );
   const envelope = await parseJsonEnvelope<UpdateKitchenItemResponse>(res);
   if (!envelope.data?.order)
-    throw new Error("Backend V2 no devolvió la orden actualizada");
+    throw new Error("No se pudo confirmar el cambio. Actualiza la lista e inténtalo de nuevo.");
   return envelope.data.order;
 };
 
@@ -176,7 +176,7 @@ export const updateOrderV2Payment = async (
   );
   const envelope = await parseJsonEnvelope<UpdateOrderV2PaymentResponse>(res);
   if (!envelope.data?.order)
-    throw new Error("Backend V2 no devolvió la orden actualizada");
+    throw new Error("No se pudo confirmar el pago. Actualiza la lista e inténtalo de nuevo.");
   return envelope.data.order;
 };
 
@@ -191,7 +191,7 @@ export const archiveCancelledOrderV2 = async (
   );
   const envelope = await parseJsonEnvelope<ArchiveOrderV2Response>(res);
   if (!envelope.data?.order)
-    throw new Error("Backend V2 no devolvió la orden ocultada");
+    throw new Error("No se pudo ocultar el pedido. Actualiza la lista e inténtalo de nuevo.");
   return envelope.data.order;
 };
 
@@ -230,7 +230,7 @@ export const exportOrdersV2Csv = async (
     } catch {
       // Keep the error generic. Never include request headers or session details.
     }
-    throw new Error(`No se pudo exportar CSV desde Backend V2: ${message}`);
+    throw new Error(`No se pudo descargar el reporte. Revisa la sesión e inténtalo de nuevo. Detalle: ${message}`);
   }
 
   return res.blob();

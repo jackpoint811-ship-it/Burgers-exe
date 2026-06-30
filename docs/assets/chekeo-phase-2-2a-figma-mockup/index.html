@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Chekeo Control Room - Fase 2.2A</title>
+    <link rel="stylesheet" href="./prototype.css" />
+  </head>
+  <body>
+    <main id="prototype" class="prototype-shell" data-export-root>
+      <section class="control-rail" aria-label="Controles del prototipo">
+        <div class="brand-lockup">
+          <span class="brand-mark">B.exe</span>
+          <div>
+            <strong>Chekeo Control Room</strong>
+            <span>Fase 2.2A fallback importable</span>
+          </div>
+        </div>
+        <div class="rail-group">
+          <span class="rail-label">Variante</span>
+          <div class="segmented" role="tablist" aria-label="Variantes A y B">
+            <button type="button" data-variant="A">A</button>
+            <button type="button" data-variant="B">B</button>
+          </div>
+        </div>
+        <div class="rail-group">
+          <span class="rail-label">Pantallas</span>
+          <div id="screenList" class="screen-list"></div>
+        </div>
+        <div class="rail-note">
+          <strong>Base real</strong>
+          <span>QA-UIUX-PHASE2-1, preview Pages, PIN BOG_INTERNAL_PIN, screenshots Phase 2.1 y verificacion live 2026-06-22.</span>
+        </div>
+      </section>
+
+      <section id="deviceStage" class="device-stage">
+        <div id="screenRoot"></div>
+      </section>
+    </main>
+    <script src="./prototype.js"></script>
+  </body>
+</html>

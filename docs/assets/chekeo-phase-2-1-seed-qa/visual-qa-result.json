@@ -1,0 +1,210 @@
+{
+  "generatedAt": "2026-06-21T23:18:24.041Z",
+  "baseUrl": "https://burgers-exe-internal-v2-preview.pages.dev/",
+  "screenshots": [
+    {
+      "file": "operacion-seeded-mobile-390.png",
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "bodyScrollWidth": 390,
+      "overflowX": false,
+      "activeText": "Saltar al contenidoBxChekeo Burgers.exePREVIEWPreview D1ActivaSync 05:18 p.m.Sal"
+    },
+    {
+      "file": "resumen-k-seeded-mobile-390.png",
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "bodyScrollWidth": 390,
+      "overflowX": false,
+      "activeText": "Saltar al contenidoBxChekeo Burgers.exePREVIEWPreview D1ActivaSync 05:18 p.m.Sal"
+    },
+    {
+      "file": "pedidos-seeded-mobile-390.png",
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "bodyScrollWidth": 390,
+      "overflowX": false,
+      "activeText": "PedidosCola"
+    },
+    {
+      "file": "pedidos-detail-mobile-390.png",
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "bodyScrollWidth": 390,
+      "overflowX": false,
+      "activeText": "Ver ticket"
+    },
+    {
+      "file": "cocina-seeded-mobile-390.png",
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "bodyScrollWidth": 390,
+      "overflowX": false,
+      "activeText": "CocinaPrep"
+    },
+    {
+      "file": "pagos-seeded-mobile-390.png",
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "bodyScrollWidth": 390,
+      "overflowX": false,
+      "activeText": "PagosCobros"
+    },
+    {
+      "file": "admin-mobile-390.png",
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "bodyScrollWidth": 390,
+      "overflowX": false,
+      "activeText": "AdminMás"
+    },
+    {
+      "file": "corte-seeded-mobile-390.png",
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "bodyScrollWidth": 390,
+      "overflowX": false,
+      "activeText": "Saltar al contenidoBxChekeo Burgers.exePREVIEWPreview D1ActivaSync 05:19 p.m.Sal"
+    },
+    {
+      "file": "historial-seeded-mobile-390.png",
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "bodyScrollWidth": 390,
+      "overflowX": false,
+      "activeText": "Saltar al contenidoBxChekeo Burgers.exePREVIEWPreview D1ActivaSync 05:19 p.m.Sal"
+    },
+    {
+      "file": "catalogo-mobile-390.png",
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "bodyScrollWidth": 390,
+      "overflowX": false,
+      "activeText": "Saltar al contenidoBxChekeo Burgers.exePREVIEWPreview D1ActivaSync 05:19 p.m.Sal"
+    },
+    {
+      "file": "sorteos-mobile-390.png",
+      "width": 390,
+      "height": 844,
+      "scrollWidth": 390,
+      "bodyScrollWidth": 390,
+      "overflowX": false,
+      "activeText": "Saltar al contenidoBxChekeo Burgers.exePREVIEWPreview D1ActivaSync 05:19 p.m.Sal"
+    },
+    {
+      "file": "pedidos-seeded-mobile-320.png",
+      "width": 320,
+      "height": 780,
+      "scrollWidth": 320,
+      "bodyScrollWidth": 320,
+      "overflowX": false,
+      "activeText": "PedidosCola"
+    },
+    {
+      "file": "pedidos-seeded-mobile-430.png",
+      "width": 430,
+      "height": 932,
+      "scrollWidth": 430,
+      "bodyScrollWidth": 430,
+      "overflowX": false,
+      "activeText": "PedidosCola"
+    },
+    {
+      "file": "cocina-seeded-mobile-430.png",
+      "width": 430,
+      "height": 932,
+      "scrollWidth": 430,
+      "bodyScrollWidth": 430,
+      "overflowX": false,
+      "activeText": "CocinaPrep"
+    },
+    {
+      "file": "desktop-seeded-overview.png",
+      "width": 1440,
+      "height": 1000,
+      "scrollWidth": 1440,
+      "bodyScrollWidth": 1440,
+      "overflowX": false,
+      "activeText": "Saltar al contenidoBxChekeo Burgers.exePREVIEWPreview D1ActivaSync 05:19 p.m.Sal"
+    }
+  ],
+  "checks": [
+    {
+      "viewport": "390x844",
+      "check": "initial response",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "viewport": "390x844",
+      "check": "login and preview D1 visible",
+      "ok": true
+    },
+    {
+      "viewport": "320x780",
+      "check": "initial response",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "viewport": "320x780",
+      "check": "login and preview D1 visible",
+      "ok": true
+    },
+    {
+      "viewport": "430x932",
+      "check": "initial response",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "viewport": "430x932",
+      "check": "login and preview D1 visible",
+      "ok": true
+    },
+    {
+      "viewport": "1440x1000",
+      "check": "initial response",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "viewport": "1440x1000",
+      "check": "login and preview D1 visible",
+      "ok": true
+    }
+  ],
+  "console": [],
+  "pageErrors": [],
+  "overflowFailures": [],
+  "consoleErrors": [],
+  "regeneratedAdminScreenshots": {
+    "generatedAt": "2026-06-21T23:20:51.923Z",
+    "files": [
+      "admin-mobile-390.png",
+      "corte-seeded-mobile-390.png",
+      "historial-seeded-mobile-390.png",
+      "catalogo-mobile-390.png",
+      "sorteos-mobile-390.png"
+    ],
+    "reason": "Reset scroll before fullPage capture to avoid fixed-header stitching artifact."
+  },
+  "filterCheck": {
+    "generatedAt": "2026-06-21T23:21:50.781Z",
+    "file": "pedidos-filter-listo-mobile-390.png",
+    "filter": "Listo",
+    "containsReadySeed": true,
+    "containsBatch": true,
+    "overflowX": false
+  }
+}

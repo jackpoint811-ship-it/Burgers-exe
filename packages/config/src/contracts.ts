@@ -81,6 +81,19 @@ export type SiteConfig = {
   updatedAt?: string;
 };
 
+export type BankPaymentConfig = {
+  bankName: string;
+  accountHolder: string;
+  accountNumber?: string;
+  clabe?: string;
+  reference?: string;
+  accountLabel?: string;
+  transferOnly: boolean;
+  editable: boolean;
+  source: "shared-config";
+  updatedAt?: string;
+};
+
 export type MenuV2Response = {
   categories: MenuCategory[];
   items: MenuItem[];
@@ -398,13 +411,37 @@ export type RaffleCampaignPublicV2 = Pick<
 >;
 
 export type RaffleParticipantSummary = {
+  participantKey: string;
   customerName: string;
   customerPhoneMasked: string;
   burgerTickets: number;
   referralTickets: number;
+  manualExtraTickets: number;
   totalTickets: number;
   lastOrderFolio: string;
   lastOrderAt: string;
+  referralCode?: string;
+  referralCodeIsActive?: boolean;
+  lastAdjustmentAt?: string;
+  lastAdjustmentReason?: string;
+};
+
+export type RaffleTicketAdjustmentStatus = "active" | "reverted";
+
+export type RaffleTicketAdjustmentV2 = {
+  id: string;
+  campaignId: string;
+  participantKey: string;
+  participantName: string;
+  participantPhoneMasked: string;
+  ticketsDelta: number;
+  reason: string;
+  actor: string;
+  status: RaffleTicketAdjustmentStatus;
+  createdAt: string;
+  updatedAt: string;
+  revertedAt?: string;
+  revertedBy?: string;
 };
 
 export type RaffleReferralBurgerWord = "BURGER" | "SMASH" | "BACON" | "PICKLES" | "PICKLE" | "CHEESE" | "FRIES" | "PAPAS" | "TOCINO" | "QUESO" | "CRUNCH" | "BBQ" | "COMBO" | "OG" | "CHEDDAR" | "KETCHUP" | "MOSTAZA";
@@ -523,11 +560,33 @@ export type RaffleSummaryResponse = {
   ok: boolean;
   data?: {
     campaign: RaffleCampaignV2 | null;
+    baseTickets: number;
+    extraTickets: number;
     totalTickets: number;
     totalParticipants: number;
     topParticipants: RaffleParticipantSummary[];
     participantResults: RaffleParticipantSummary[];
+    recentAdjustments: RaffleTicketAdjustmentV2[];
   };
+  error?: OrderV2Error;
+};
+
+export type CreateRaffleTicketAdjustmentPayload = {
+  campaignId: string;
+  participantKey: string;
+  ticketsDelta: number;
+  reason: string;
+  actor?: string;
+};
+
+export type UpdateRaffleTicketAdjustmentPayload = {
+  status: RaffleTicketAdjustmentStatus;
+  actor?: string;
+};
+
+export type RaffleTicketAdjustmentMutationResponse = {
+  ok: boolean;
+  data?: { adjustment: RaffleTicketAdjustmentV2 };
   error?: OrderV2Error;
 };
 

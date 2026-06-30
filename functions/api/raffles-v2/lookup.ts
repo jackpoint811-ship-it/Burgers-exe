@@ -51,6 +51,14 @@ type ParticipantAccumulator = NonNullable<RaffleTicketsLookupResult['participant
 
 const normalizeLookupCode = (value: unknown) => String(value ?? '').trim().toUpperCase().slice(0, 32);
 const maskPhone = (normalized: string) => `****${normalized.slice(-4).padStart(Math.min(4, normalized.length), '*')}`;
+const makeParticipantKey = (normalizedPhone: string) => {
+  let hash = 0x811c9dc5;
+  for (const char of normalizedPhone) {
+    hash ^= char.codePointAt(0) ?? 0;
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return `pk-${(hash >>> 0).toString(36)}-${normalizedPhone.length.toString(36)}`;
+};
 
 const mapPublicCampaign = (row: RaffleCampaignRow): RaffleTicketsLookupResult['campaign'] => ({
   id: row.id,
@@ -113,11 +121,25 @@ const mapReferralCode = (row: ReferralCodeLookupRow | null | undefined): RaffleT
 const loadParticipant = async (db: D1Database, campaign: RaffleCampaignRow, phone: string): Promise<RaffleTicketsLookupResult['participant']> => {
   const ticketPerBurger = Number(campaign.ticket_per_burger) || 1;
   const ticketPerReferral = Number(campaign.ticket_per_referral) || 2;
+  const participantKey = makeParticipantKey(phone);
   const { startsAt, endsAt } = campaignDateBounds(campaign);
   const orderConditions = ["o.status IN ('new', 'preparing', 'ready', 'delivered')", "o.source = 'public-v2'", 'o.customer_phone = ?'];
   const orderBindings: string[] = [phone];
   if (startsAt) { orderConditions.push('o.created_at >= ?'); orderBindings.push(startsAt); }
   if (endsAt) { orderConditions.push('o.created_at <= ?'); orderBindings.push(endsAt); }
+
+  const makeParticipant = (base: Pick<ParticipantAccumulator, 'customerName' | 'customerPhoneMasked' | 'lastOrderFolio' | 'lastOrderAt' | 'lastActivityAt'>): ParticipantAccumulator => ({
+    participantKey: makeParticipantKey(phone),
+    customerName: base.customerName,
+    customerPhoneMasked: base.customerPhoneMasked,
+    burgerTickets: 0,
+    referralTickets: 0,
+    manualExtraTickets: 0,
+    totalTickets: 0,
+    lastOrderFolio: base.lastOrderFolio,
+    lastOrderAt: base.lastOrderAt,
+    lastActivityAt: base.lastActivityAt
+  });
 
   const orderRows = await db.prepare(
     `SELECT o.folio, o.customer_name, o.created_at, i.qty, i.snapshot_json
@@ -134,23 +156,18 @@ const loadParticipant = async (db: D1Database, campaign: RaffleCampaignRow, phon
       ? Math.max(0, Number(row.qty) || 0) * ticketPerBurger
       : 0;
     const rowCreatedAt = String(row.created_at || '');
-    if (!participant) {
-      participant = {
-        customerName: String(row.customer_name || 'Sin nombre'),
-        customerPhoneMasked: maskPhone(phone),
-        burgerTickets: 0,
-        referralTickets: 0,
-        totalTickets: 0,
-        lastOrderFolio: String(row.folio || '—'),
-        lastOrderAt: rowCreatedAt,
-        lastActivityAt: rowCreatedAt
-      };
-    }
-    participant.burgerTickets += burgerTickets;
-    if (rowCreatedAt && (!participant.lastOrderAt || rowCreatedAt > participant.lastOrderAt)) {
-      participant.customerName = String(row.customer_name || participant.customerName);
-      participant.lastOrderFolio = String(row.folio || participant.lastOrderFolio || '—');
-      participant.lastOrderAt = rowCreatedAt;
+    const currentParticipant = participant ?? (participant = makeParticipant({
+      customerName: String(row.customer_name || 'Sin nombre'),
+      customerPhoneMasked: maskPhone(phone),
+      lastOrderFolio: String(row.folio || '—'),
+      lastOrderAt: rowCreatedAt,
+      lastActivityAt: rowCreatedAt
+    }));
+    currentParticipant.burgerTickets += burgerTickets;
+    if (rowCreatedAt && (!currentParticipant.lastOrderAt || rowCreatedAt > currentParticipant.lastOrderAt)) {
+      currentParticipant.customerName = String(row.customer_name || currentParticipant.customerName);
+      currentParticipant.lastOrderFolio = String(row.folio || currentParticipant.lastOrderFolio || '—');
+      currentParticipant.lastOrderAt = rowCreatedAt;
     }
   }
 
@@ -163,23 +180,18 @@ const loadParticipant = async (db: D1Database, campaign: RaffleCampaignRow, phon
 
   for (const row of referralRows.results ?? []) {
     const activityAt = String(row.updated_at || row.created_at || '');
-    if (!participant) {
-      participant = {
-        customerName: String(row.referrer_name || 'Sin nombre'),
-        customerPhoneMasked: maskPhone(phone),
-        burgerTickets: 0,
-        referralTickets: 0,
-        totalTickets: 0,
-        lastOrderFolio: '—',
-        lastOrderAt: activityAt,
-        lastActivityAt: activityAt
-      };
-    }
-    participant.referralTickets += Math.max(0, Number(row.tickets_awarded) || ticketPerReferral);
-    if (activityAt && (!participant.lastActivityAt || activityAt > participant.lastActivityAt)) {
-      participant.customerName = String(row.referrer_name || participant.customerName);
-      participant.lastActivityAt = activityAt;
-      if (!participant.lastOrderAt || participant.lastOrderFolio === '—') participant.lastOrderAt = activityAt;
+    const currentParticipant = participant ?? (participant = makeParticipant({
+      customerName: String(row.referrer_name || 'Sin nombre'),
+      customerPhoneMasked: maskPhone(phone),
+      lastOrderFolio: '—',
+      lastOrderAt: activityAt,
+      lastActivityAt: activityAt
+    }));
+    currentParticipant.referralTickets += Math.max(0, Number(row.tickets_awarded) || ticketPerReferral);
+    if (activityAt && (!currentParticipant.lastActivityAt || activityAt > currentParticipant.lastActivityAt)) {
+      currentParticipant.customerName = String(row.referrer_name || currentParticipant.customerName);
+      currentParticipant.lastActivityAt = activityAt;
+      if (!currentParticipant.lastOrderAt || currentParticipant.lastOrderFolio === '—') currentParticipant.lastOrderAt = activityAt;
     }
   }
 
@@ -193,29 +205,50 @@ const loadParticipant = async (db: D1Database, campaign: RaffleCampaignRow, phon
 
   for (const row of invitedRows.results ?? []) {
     const activityAt = String(row.updated_at || row.created_at || '');
-    if (!participant) {
-      participant = {
-        customerName: String(row.referred_customer_name || 'Sin nombre'),
-        customerPhoneMasked: maskPhone(phone),
-        burgerTickets: 0,
-        referralTickets: 0,
-        totalTickets: 0,
-        lastOrderFolio: String(row.referred_order_folio || '—'),
-        lastOrderAt: activityAt,
-        lastActivityAt: activityAt
-      };
-    }
-    participant.referralTickets += 1;
-    if (activityAt && (!participant.lastActivityAt || activityAt > participant.lastActivityAt)) {
-      participant.customerName = String(row.referred_customer_name || participant.customerName);
-      participant.lastActivityAt = activityAt;
-      if (row.referred_order_folio) participant.lastOrderFolio = String(row.referred_order_folio);
-      if (!participant.lastOrderAt || participant.lastOrderFolio === '—') participant.lastOrderAt = activityAt;
+    const currentParticipant = participant ?? (participant = makeParticipant({
+      customerName: String(row.referred_customer_name || 'Sin nombre'),
+      customerPhoneMasked: maskPhone(phone),
+      lastOrderFolio: String(row.referred_order_folio || '—'),
+      lastOrderAt: activityAt,
+      lastActivityAt: activityAt
+    }));
+    currentParticipant.referralTickets += 1;
+    if (activityAt && (!currentParticipant.lastActivityAt || activityAt > currentParticipant.lastActivityAt)) {
+      currentParticipant.customerName = String(row.referred_customer_name || currentParticipant.customerName);
+      currentParticipant.lastActivityAt = activityAt;
+      if (row.referred_order_folio) currentParticipant.lastOrderFolio = String(row.referred_order_folio);
+      if (!currentParticipant.lastOrderAt || currentParticipant.lastOrderFolio === '—') currentParticipant.lastOrderAt = activityAt;
     }
   }
 
+  const manualExtraTicketsRow = await db.prepare(
+    `SELECT COALESCE(SUM(tickets_delta), 0) AS manual_extra_tickets
+     FROM raffle_ticket_adjustments_v2
+     WHERE campaign_id = ? AND participant_key = ? AND status = 'active'`
+  ).bind(campaign.id, participantKey).first<{ manual_extra_tickets: number }>();
+
+  const manualExtraTickets = Math.max(0, Number(manualExtraTicketsRow?.manual_extra_tickets) || 0);
+  if (!participant && manualExtraTickets > 0) {
+    const latestAdjustmentRow = await db.prepare(
+      `SELECT participant_name, participant_phone_masked, created_at, updated_at
+       FROM raffle_ticket_adjustments_v2
+       WHERE campaign_id = ? AND participant_key = ? AND status = 'active'
+       ORDER BY updated_at DESC, created_at DESC
+       LIMIT 1`
+    ).bind(campaign.id, participantKey).first<{ participant_name: string; participant_phone_masked: string; created_at: string; updated_at: string }>();
+    const lastAdjustmentAt = String(latestAdjustmentRow?.updated_at || latestAdjustmentRow?.created_at || '');
+    participant = makeParticipant({
+      customerName: String(latestAdjustmentRow?.participant_name || 'Sin nombre'),
+      customerPhoneMasked: String(latestAdjustmentRow?.participant_phone_masked || maskPhone(phone)),
+      lastOrderFolio: '—',
+      lastOrderAt: '',
+      lastActivityAt: lastAdjustmentAt
+    });
+  }
+
   if (!participant) return null;
-  participant.totalTickets = participant.burgerTickets + participant.referralTickets;
+  participant.manualExtraTickets = manualExtraTickets;
+  participant.totalTickets = participant.burgerTickets + participant.referralTickets + participant.manualExtraTickets;
   if (participant.totalTickets <= 0) return null;
   const { lastActivityAt: _lastActivityAt, ...safeParticipant } = participant;
   return safeParticipant;

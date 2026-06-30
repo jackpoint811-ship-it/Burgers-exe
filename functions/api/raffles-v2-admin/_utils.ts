@@ -1,5 +1,6 @@
 import type { CreateRaffleCampaignPayload, RaffleCampaignV2, RaffleParticipantSummary, UpdateRaffleCampaignPayload } from '../../../packages/config/src';
 import { errorResponse, generateId, json, normalizePhone, parseJsonObject, requireAdminToken, type AdminEnv } from '../_orders-v2-utils';
+import type { RaffleTicketAdjustmentV2 } from '../../../packages/config/src';
 
 export type Env = AdminEnv;
 export type RaffleCampaignRow = {
@@ -52,6 +53,31 @@ type ParticipantAccumulator = RaffleParticipantSummary & {
   customerPhoneNormalized: string;
   searchName: string;
   lastActivityAt: string;
+};
+
+export type RaffleTicketAdjustmentRow = {
+  id: string;
+  campaign_id: string;
+  participant_key: string;
+  participant_name: string;
+  participant_phone_masked: string;
+  tickets_delta: number;
+  reason: string;
+  actor: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  reverted_at: string | null;
+  reverted_by: string | null;
+};
+
+const makeParticipantKey = (normalizedPhone: string) => {
+  let hash = 0x811c9dc5;
+  for (const char of normalizedPhone) {
+    hash ^= char.codePointAt(0) ?? 0;
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return `pk-${(hash >>> 0).toString(36)}-${normalizedPhone.length.toString(36)}`;
 };
 
 const MAX_DESCRIPTION_LENGTH = 600;
@@ -267,68 +293,116 @@ const getSnapshotItemKind = (snapshotJson: string): string | null => {
 };
 
 const toParticipant = (participant: ParticipantAccumulator): RaffleParticipantSummary => ({
+  participantKey: participant.participantKey,
   customerName: participant.customerName,
   customerPhoneMasked: participant.customerPhoneMasked,
   burgerTickets: participant.burgerTickets,
   referralTickets: participant.referralTickets,
+  manualExtraTickets: participant.manualExtraTickets,
   totalTickets: participant.totalTickets,
   lastOrderFolio: participant.lastOrderFolio,
-  lastOrderAt: participant.lastOrderAt
+  lastOrderAt: participant.lastOrderAt,
+  referralCode: participant.referralCode,
+  referralCodeIsActive: participant.referralCodeIsActive,
+  lastAdjustmentAt: participant.lastAdjustmentAt,
+  lastAdjustmentReason: participant.lastAdjustmentReason
+});
+
+export const mapTicketAdjustment = (row: RaffleTicketAdjustmentRow): RaffleTicketAdjustmentV2 => ({
+  id: row.id,
+  campaignId: row.campaign_id,
+  participantKey: row.participant_key,
+  participantName: row.participant_name,
+  participantPhoneMasked: row.participant_phone_masked,
+  ticketsDelta: Number(row.tickets_delta) || 0,
+  reason: row.reason,
+  actor: row.actor,
+  status: row.status === 'reverted' ? 'reverted' : 'active',
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+  revertedAt: row.reverted_at ?? undefined,
+  revertedBy: row.reverted_by ?? undefined
 });
 
 export const calculateSummary = async (db: D1Database, campaign: RaffleCampaignV2 | null, q: string) => {
   if (!campaign) {
-    return { totalTickets: 0, totalParticipants: 0, topParticipants: [], participantResults: [] };
+    return {
+      baseTickets: 0,
+      extraTickets: 0,
+      totalTickets: 0,
+      totalParticipants: 0,
+      topParticipants: [],
+      participantResults: [],
+      recentAdjustments: [],
+    };
   }
+
   const conditions = ["o.status IN ('new', 'preparing', 'ready', 'delivered')", "o.source = 'public-v2'"];
   const bindings: string[] = [];
   const startsAt = campaign.startsAt && /^\d{4}-\d{2}-\d{2}$/.test(campaign.startsAt) ? `${campaign.startsAt}T00:00:00.000Z` : campaign.startsAt;
   const endsAt = campaign.endsAt && /^\d{4}-\d{2}-\d{2}$/.test(campaign.endsAt) ? `${campaign.endsAt}T23:59:59.999Z` : campaign.endsAt;
-  if (startsAt) { conditions.push('o.created_at >= ?'); bindings.push(startsAt); }
-  if (endsAt) { conditions.push('o.created_at <= ?'); bindings.push(endsAt); }
+  if (startsAt) { conditions.push("o.created_at >= ?"); bindings.push(startsAt); }
+  if (endsAt) { conditions.push("o.created_at <= ?"); bindings.push(endsAt); }
+
   const rows = await db.prepare(
     `SELECT o.id AS order_id, o.folio, o.customer_name, o.customer_phone, o.created_at, i.qty, i.snapshot_json
      FROM orders_v2 o
      JOIN order_items_v2 i ON i.order_id = o.id
-     WHERE ${conditions.join(' AND ')}
+     WHERE ${conditions.join(" AND ")}
      ORDER BY o.created_at DESC`
   ).bind(...bindings).all<OrderTicketRow>();
 
-  const byPhone = new Map<string, ParticipantAccumulator>();
+  const participantsByKey = new Map<string, ParticipantAccumulator>();
+  const ensureParticipant = (participantKey: string, defaults: {
+    customerName: string;
+    customerPhoneNormalized: string;
+    customerPhoneMasked: string;
+    searchName: string;
+    lastOrderFolio: string;
+    lastOrderAt: string;
+    lastActivityAt: string;
+  }) => {
+    const current = participantsByKey.get(participantKey);
+    if (current) return current;
+    const next: ParticipantAccumulator = {
+      participantKey,
+      customerName: defaults.customerName,
+      customerPhoneMasked: defaults.customerPhoneMasked,
+      customerPhoneNormalized: defaults.customerPhoneNormalized,
+      searchName: defaults.searchName,
+      burgerTickets: 0,
+      referralTickets: 0,
+      manualExtraTickets: 0,
+      totalTickets: 0,
+      lastOrderFolio: defaults.lastOrderFolio,
+      lastOrderAt: defaults.lastOrderAt,
+      lastActivityAt: defaults.lastActivityAt,
+      referralCode: undefined,
+      referralCodeIsActive: undefined,
+      lastAdjustmentAt: undefined,
+      lastAdjustmentReason: undefined,
+    };
+    participantsByKey.set(participantKey, next);
+    return next;
+  };
+
   for (const row of rows.results ?? []) {
     const phone = normalizePhone(row.customer_phone);
     if (!phone) continue;
-    const itemKind = getSnapshotItemKind(String(row.snapshot_json ?? ''));
-    const burgerTickets = itemKind === 'burger' || itemKind === 'combo' ? Math.max(0, Number(row.qty) || 0) * (campaign.ticketPerBurger || 1) : 0;
-    if (burgerTickets <= 0 && !byPhone.has(phone)) {
-      byPhone.set(phone, {
-        customerName: String(row.customer_name || 'Sin nombre'),
-        customerPhoneMasked: maskPhone(phone),
-        customerPhoneNormalized: phone,
-        searchName: String(row.customer_name || '').toLowerCase(),
-        burgerTickets: 0,
-        referralTickets: 0,
-        totalTickets: 0,
-        lastOrderFolio: String(row.folio || ''),
-        lastOrderAt: String(row.created_at || ''),
-        lastActivityAt: String(row.created_at || '')
-      });
-      continue;
-    }
-    const current = byPhone.get(phone) ?? {
-      customerName: String(row.customer_name || 'Sin nombre'),
-      customerPhoneMasked: maskPhone(phone),
+    const participantKey = makeParticipantKey(phone);
+    const itemKind = getSnapshotItemKind(String(row.snapshot_json ?? ""));
+    const burgerTickets = itemKind === "burger" || itemKind === "combo" ? Math.max(0, Number(row.qty) || 0) * (campaign.ticketPerBurger || 1) : 0;
+    const current = ensureParticipant(participantKey, {
+      customerName: String(row.customer_name || "Sin nombre"),
       customerPhoneNormalized: phone,
-      searchName: String(row.customer_name || '').toLowerCase(),
-      burgerTickets: 0,
-      referralTickets: 0,
-      totalTickets: 0,
-      lastOrderFolio: String(row.folio || ''),
-      lastOrderAt: String(row.created_at || ''),
-      lastActivityAt: String(row.created_at || '')
-    };
+      customerPhoneMasked: maskPhone(phone),
+      searchName: String(row.customer_name || "").toLowerCase(),
+      lastOrderFolio: String(row.folio || ""),
+      lastOrderAt: String(row.created_at || ""),
+      lastActivityAt: String(row.created_at || ""),
+    });
     current.burgerTickets += burgerTickets;
-    current.totalTickets = current.burgerTickets + current.referralTickets;
+    current.totalTickets = current.burgerTickets + current.referralTickets + current.manualExtraTickets;
     if (!current.lastOrderAt || String(row.created_at) > current.lastOrderAt) {
       current.customerName = String(row.customer_name || current.customerName);
       current.searchName = current.customerName.toLowerCase();
@@ -336,9 +410,7 @@ export const calculateSummary = async (db: D1Database, campaign: RaffleCampaignV
       current.lastOrderAt = String(row.created_at || current.lastOrderAt);
       current.lastActivityAt = String(row.created_at || current.lastActivityAt);
     }
-    byPhone.set(phone, current);
   }
-
 
   const referralRows = await db.prepare(
     `SELECT referrer_phone, referrer_name, tickets_awarded, created_at, updated_at, '' AS code
@@ -350,28 +422,25 @@ export const calculateSummary = async (db: D1Database, campaign: RaffleCampaignV
   for (const row of referralRows.results ?? []) {
     const phone = normalizePhone(row.referrer_phone);
     if (!phone) continue;
-    const activityAt = String(row.updated_at || row.created_at || '');
-    const current = byPhone.get(phone) ?? {
-      customerName: String(row.referrer_name || 'Sin nombre'),
-      customerPhoneMasked: maskPhone(phone),
+    const participantKey = makeParticipantKey(phone);
+    const activityAt = String(row.updated_at || row.created_at || "");
+    const current = ensureParticipant(participantKey, {
+      customerName: String(row.referrer_name || "Sin nombre"),
       customerPhoneNormalized: phone,
-      searchName: String(row.referrer_name || '').toLowerCase(),
-      burgerTickets: 0,
-      referralTickets: 0,
-      totalTickets: 0,
-      lastOrderFolio: '—',
+      customerPhoneMasked: maskPhone(phone),
+      searchName: String(row.referrer_name || "").toLowerCase(),
+      lastOrderFolio: "—",
       lastOrderAt: activityAt,
-      lastActivityAt: activityAt
-    };
+      lastActivityAt: activityAt,
+    });
     current.referralTickets += Math.max(0, Number(row.tickets_awarded) || campaign.ticketPerReferral || 2);
-    current.totalTickets = current.burgerTickets + current.referralTickets;
+    current.totalTickets = current.burgerTickets + current.referralTickets + current.manualExtraTickets;
     if (!current.lastActivityAt || activityAt > current.lastActivityAt) {
       current.customerName = String(row.referrer_name || current.customerName);
       current.searchName = current.customerName.toLowerCase();
       current.lastActivityAt = activityAt;
-      if (!current.lastOrderFolio || current.lastOrderFolio === '—') current.lastOrderAt = activityAt;
+      if (!current.lastOrderFolio || current.lastOrderFolio === "—") current.lastOrderAt = activityAt;
     }
-    byPhone.set(phone, current);
   }
 
   const invitedRows = await db.prepare(
@@ -385,51 +454,110 @@ export const calculateSummary = async (db: D1Database, campaign: RaffleCampaignV
   for (const row of invitedRows.results ?? []) {
     const phone = normalizePhone(row.referred_customer_phone);
     if (!phone) continue;
-    const activityAt = String(row.updated_at || row.created_at || '');
-    const current = byPhone.get(phone) ?? {
-      customerName: String(row.referred_customer_name || 'Sin nombre'),
-      customerPhoneMasked: maskPhone(phone),
+    const participantKey = makeParticipantKey(phone);
+    const activityAt = String(row.updated_at || row.created_at || "");
+    const current = ensureParticipant(participantKey, {
+      customerName: String(row.referred_customer_name || "Sin nombre"),
       customerPhoneNormalized: phone,
-      searchName: String(row.referred_customer_name || '').toLowerCase(),
-      burgerTickets: 0,
-      referralTickets: 0,
-      totalTickets: 0,
-      lastOrderFolio: String(row.referred_order_folio || '—'),
+      customerPhoneMasked: maskPhone(phone),
+      searchName: String(row.referred_customer_name || "").toLowerCase(),
+      lastOrderFolio: String(row.referred_order_folio || "—"),
       lastOrderAt: activityAt,
-      lastActivityAt: activityAt
-    };
+      lastActivityAt: activityAt,
+    });
     current.referralTickets += 1;
-    current.totalTickets = current.burgerTickets + current.referralTickets;
+    current.totalTickets = current.burgerTickets + current.referralTickets + current.manualExtraTickets;
     if (!current.lastActivityAt || activityAt > current.lastActivityAt) {
       current.customerName = String(row.referred_customer_name || current.customerName);
       current.searchName = current.customerName.toLowerCase();
       current.lastActivityAt = activityAt;
       if (row.referred_order_folio) current.lastOrderFolio = String(row.referred_order_folio);
-      if (!current.lastOrderAt || current.lastOrderFolio === '—') current.lastOrderAt = activityAt;
+      if (!current.lastOrderAt || current.lastOrderFolio === "—") current.lastOrderAt = activityAt;
     }
-    byPhone.set(phone, current);
   }
 
-  const participants = [...byPhone.values()]
+  const codeRows = await db.prepare(
+    `SELECT owner_phone, code, is_active
+     FROM raffle_referral_codes_v2
+     WHERE campaign_id = ?`
+  ).bind(campaign.id).all<{ owner_phone: string; code: string; is_active: number }>();
+
+  for (const row of codeRows.results ?? []) {
+    const phone = normalizePhone(row.owner_phone);
+    if (!phone) continue;
+    const participantKey = makeParticipantKey(phone);
+    const current = participantsByKey.get(participantKey);
+    if (!current) continue;
+    current.referralCode = row.code;
+    current.referralCodeIsActive = Boolean(row.is_active);
+  }
+
+  const adjustmentRows = await db.prepare(
+    `SELECT id, campaign_id, participant_key, participant_name, participant_phone_masked, tickets_delta, reason, actor, status, created_at, updated_at, reverted_at, reverted_by
+     FROM raffle_ticket_adjustments_v2
+     WHERE campaign_id = ?
+     ORDER BY updated_at DESC, created_at DESC`
+  ).bind(campaign.id).all<RaffleTicketAdjustmentRow>();
+
+  let extraTickets = 0;
+  for (const row of adjustmentRows.results ?? []) {
+    const current = ensureParticipant(row.participant_key, {
+      customerName: row.participant_name || "Sin nombre",
+      customerPhoneNormalized: "",
+      customerPhoneMasked: row.participant_phone_masked || "—",
+      searchName: String(row.participant_name || "").toLowerCase(),
+      lastOrderFolio: "—",
+      lastOrderAt: row.created_at,
+      lastActivityAt: row.updated_at || row.created_at,
+    });
+    current.customerName = row.participant_name || current.customerName;
+    current.customerPhoneMasked = row.participant_phone_masked || current.customerPhoneMasked;
+    if (!current.searchName) current.searchName = String(current.customerName || "").toLowerCase();
+    current.lastAdjustmentAt = row.updated_at || row.created_at;
+    current.lastAdjustmentReason = row.reason;
+    current.lastActivityAt = row.updated_at || row.created_at;
+    if (row.status !== "reverted") {
+      const delta = Math.max(0, Number(row.tickets_delta) || 0);
+      current.manualExtraTickets += delta;
+      extraTickets += delta;
+    }
+    current.totalTickets = current.burgerTickets + current.referralTickets + current.manualExtraTickets;
+  }
+
+  const participants = [...participantsByKey.values()]
     .filter((participant) => participant.totalTickets > 0)
-    .sort((a, b) => b.totalTickets - a.totalTickets || b.lastActivityAt.localeCompare(a.lastActivityAt));
+    .sort((a, b) => b.totalTickets - a.totalTickets || b.manualExtraTickets - a.manualExtraTickets || b.lastActivityAt.localeCompare(a.lastActivityAt));
+
+  const baseTickets = participants.reduce((sum, participant) => sum + participant.burgerTickets + participant.referralTickets, 0);
+  const totalTickets = participants.reduce((sum, participant) => sum + participant.totalTickets, 0);
   const trimmedQ = q.trim();
   const normalizedQ = normalizePhone(trimmedQ);
   const lowerQ = trimmedQ.toLowerCase();
+  const upperQ = trimmedQ.toUpperCase();
+
   const participantResults = trimmedQ
     ? participants.filter((participant) => {
-        if (participant.searchName.includes(lowerQ)) return true;
-        if (normalizedQ && participant.customerPhoneNormalized.includes(normalizedQ)) return true;
-        if (normalizedQ.length <= 4 && participant.customerPhoneNormalized.endsWith(normalizedQ)) return true;
-        return false;
-      }).slice(0, 25).map(toParticipant)
+      if (participant.searchName.includes(lowerQ)) return true;
+      if (normalizedQ && participant.customerPhoneNormalized.includes(normalizedQ)) return true;
+      if (normalizedQ.length <= 4 && participant.customerPhoneNormalized.endsWith(normalizedQ)) return true;
+      if (participant.lastOrderFolio.toLowerCase().includes(lowerQ)) return true;
+      if (participant.participantKey.includes(lowerQ)) return true;
+      if (participant.referralCode && participant.referralCode.includes(upperQ)) return true;
+      if (participant.lastAdjustmentReason?.toLowerCase().includes(lowerQ)) return true;
+      return false;
+    }).slice(0, 25).map(toParticipant)
     : [];
+
   const topParticipants = participants.slice(0, 10).map(toParticipant);
+
   return {
-    totalTickets: participants.reduce((sum, participant) => sum + participant.totalTickets, 0),
+    baseTickets,
+    extraTickets,
+    totalTickets,
     totalParticipants: participants.length,
     topParticipants,
-    participantResults
+    participantResults,
+    recentAdjustments: (adjustmentRows.results ?? []).slice(0, 20).map(mapTicketAdjustment),
   };
 };
 

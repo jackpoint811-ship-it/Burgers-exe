@@ -5,6 +5,9 @@ Estas reglas aplican a todo el repositorio salvo que un `AGENTS.md` más especí
 ## Forma de trabajo
 - Trabajar por PRs pequeños, controlados y fáciles de revisar.
 - No hacer merges automáticos ni resolver conflictos sin instrucción explícita.
+- No hacer merge directo a producción ni deploy directo sin instrucción explícita.
+- No hacer push, commit, PR o publicación si el prompt pide diagnóstico, pausa o revisión previa.
+- No usar `git add .`, `git add -A` ni `git reset --hard` salvo autorización explícita del prompt.
 - No introducir frameworks, CDNs ni librerías externas salvo autorización explícita del prompt.
 - No modificar `package.json`, lockfiles ni dependencias salvo autorización explícita.
 - No tocar carpetas legacy, especialmente `legacy/`, salvo que el prompt lo autorice.
@@ -17,11 +20,14 @@ Estas reglas aplican a todo el repositorio salvo que un `AGENTS.md` más especí
 - Usar Graphify antes de cambios grandes, arquitectura, varios archivos o flujos conectados.
 - Actualizar `docs/codex-memory/05-backlog.md`, `06-prompts-buenos.md` o `07-decisiones.md` cuando el cambio altere backlog, prompts reutilizables o decisiones.
 - No dejar cambios locales sin PR salvo instrucción explícita.
+- El asistente puede preparar rama, commit, push y PR solo cuando el usuario apruebe el cierre; el usuario revisa y mergea.
 
 ## Contratos de producto y datos
 - No cambiar backend, payloads, contratos de datos, nombres de campos, precios, tickets, promociones ni reglas comerciales salvo autorización explícita.
 - No modificar migraciones, esquemas, seeds ni servicios backend si el PR es de UI o documentación.
+- No promover seeds destructivos, datos de preview/testing ni migraciones de limpieza a producción sin aprobación explícita.
 - Preservar compatibilidad con flujos existentes de pedidos, tickets, menú, ubicación y WhatsApp.
+- No tocar secretos, `.dev.vars`, `.wrangler/`, variables locales, credenciales ni tokens.
 
 ## UX/UI permanente
 - Mantener enfoque mobile-first en layout, copy, interacción y validación.
