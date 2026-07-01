@@ -605,16 +605,16 @@ const MenuSection = ({ menuData, raffleCampaign, onExplore, onStart, reduce }: {
           <QuestButton onClick={onStart}>ARMAR MI PEDIDO</QuestButton>
           {hasBonusContent ? <button type="button" className="hero-link-button" onClick={scrollToBonusZone}>Ver sorteo activo</button> : null}
         </div>
-        <ul className="hero-proof-list" aria-label="Puntos clave de Burgers.exe">
-          <li><strong>Menu V2</strong><span>Flujo mobile-first por pasos.</span></li>
-          <li><strong>{hasBonusContent ? "Tickets activos" : "Ticket claro"}</strong><span>{hasBonusContent ? "El sorteo vive como bonus, no como ruido." : "Resumen visible antes de enviar."}</span></li>
-          <li><strong>Pickup simple</strong><span>Torre, pago y contacto en orden.</span></li>
+        <ul className="hero-proof-list" aria-label="Por qué elegir Burgers.exe">
+          <li><strong>Arma tu orden</strong><span>Elige tu burger, personaliza y confirma en minutos.</span></li>
+          <li><strong>{hasBonusContent ? "Gana con cada pedido" : "Ticket siempre a mano"}</strong><span>{hasBonusContent ? "Participa en el sorteo con tu próxima orden." : "Tu resumen completo antes de enviar, sin sorpresas."}</span></li>
+          <li><strong>Retiro rápido</strong><span>Indícanos torre y método de pago, nosotros hacemos el resto.</span></li>
         </ul>
         {raffleCampaign ? (
-          <aside className="hero-raffle-signal" aria-label="Sorteo activo">
-            <span>Sorteo activo</span>
+          <aside className="hero-raffle-signal" aria-label="Promoción activa">
+            <span>🎁 Promo activa</span>
             <strong>{raffleCampaign.title}</strong>
-            <p>Consulta tickets y referidos desde la zona bonus.</p>
+            <p>Ordena y participa automáticamente en el sorteo.</p>
           </aside>
         ) : null}
       </div>
