@@ -97,14 +97,6 @@ const paymentTimingLabels: Record<Exclude<PaymentTiming, "">, string> = {
   after: "Pagar después",
 };
 const CHECKOUT_NOTES_MAX_LENGTH = 500;
-const statusLabels: Record<string, string> = {
-  received: "Recibido por cocina",
-  new: "Nuevo",
-  preparing: "En preparación",
-  ready: "Listo",
-  delivered: "Entregado",
-  cancelled: "Cancelado",
-};
 
 const createEmptyCustomer = (): CustomerDraft => ({
   name: "",
@@ -1779,11 +1771,23 @@ const Success = ({ order, campaign, onCreateAnother }: { order: OrderConfirmatio
   const earnedTickets = order.earnedTickets;
   const hasEarnedTickets = (earnedTickets?.totalTickets ?? 0) > 0;
   const raffleTitle = order.activeRaffleTitle ?? campaign?.title;
-  const statusLabel = statusLabels[order.status] ?? order.status;
+  const hasShareCode = Boolean(order.customerReferralCode);
+  const hasReferralFeedback = typeof order.referralAccepted === "boolean";
+  const hasRaffleContext = Boolean(raffleTitle || campaign);
+  const successBonusTitle = isPreviewMode
+    ? "Beneficios del pedido real"
+    : hasRaffleContext || hasEarnedTickets || hasShareCode || hasReferralFeedback
+      ? "Tickets y código para compartir"
+      : "Consulta privada";
+  const successBonusCopy = isPreviewMode
+    ? "Los tickets y códigos se confirman cuando el pedido es real."
+    : hasRaffleContext || hasEarnedTickets || hasShareCode || hasReferralFeedback
+      ? "Tu pedido también puede sumar chances para el sorteo activo."
+      : "Revisa tus tickets cuando quieras desde una página separada.";
   const referralRewardCopy = campaign ? `${ticketLabel(campaign.ticketPerReferral)} extra` : "tickets extra";
   const referralLeadCopy = hasEarnedTickets
-    ? `Comparte este código. Si tu compa lo usa y ordena al menos 1 burger pagada, tú ganas ${referralRewardCopy}.`
-    : "Este pedido no sumó tickets porque no incluye burger, pero puedes compartir tu código para ganar tickets cuando tus invitados pidan burger.";
+    ? `Comparte este código. Cuando alguien ordene con él, tú ganas ${referralRewardCopy}.`
+    : `Comparte tu código: cuando alguien pida una burger con él, tú ganas ${referralRewardCopy}.`;
   const copyReferralCode = async () => {
     if (!order.customerReferralCode) return;
     try {
@@ -1797,57 +1801,66 @@ const Success = ({ order, campaign, onCreateAnother }: { order: OrderConfirmatio
   return (
     <section className="quest-panel success-panel" aria-live="polite">
       <section className="success-operational-block" aria-labelledby="successOrderTitle">
-        <span className="eyebrow">{isPreviewMode ? "Preview operativo" : "Confirmación operativa"}</span>
-        <h2 id="successOrderTitle">{isPreviewMode ? "Pedido preview recibido" : "Pedido recibido"}</h2>
-        <p className="muted section-subcopy">
-          {isPreviewMode ? "Tu orden entró como prueba interna. No preparar." : "Tu orden ya entró a cocina."}
-        </p>
-        <div className="success-folio-card">
+        <span className="eyebrow success-kicker">{isPreviewMode ? "Pedido de prueba" : "Pedido confirmado"}</span>
+        <div className="success-title-stack">
+          <h2 id="successOrderTitle">{isPreviewMode ? "Orden recibida" : "Tu burger ya está en cocina"}</h2>
+          <p className="muted section-subcopy">
+            {isPreviewMode ? "Este folio sirve para revisar la experiencia antes de abrir pedidos reales." : "Guarda tu folio. Te avisaremos por WhatsApp cuando esté lista para pickup."}
+          </p>
+        </div>
+        <div className="success-folio-card" aria-label={`Folio ${order.folio}`}>
           <span>Folio</span>
           <strong>{order.folio}</strong>
         </div>
         <dl className="success-details">
           <div><dt>Total</dt><dd>{formatCurrency(order.total)}</dd></div>
-          <div><dt>Ubicación</dt><dd>{order.location}</dd></div>
+          <div><dt>Pickup</dt><dd>{order.location}</dd></div>
           <div><dt>Pago</dt><dd>{paymentMethodLabels[order.paymentMethod]}</dd></div>
-          <div><dt>Estado</dt><dd className="success-status-pill">{statusLabel}</dd></div>
-          <div><dt>Tiempo estimado</dt><dd>15–25 min</dd></div>
+          <div><dt>Tiempo estimado</dt><dd>15-25 min</dd></div>
         </dl>
         <p className="success-whatsapp">
-          {isPreviewMode ? "Modo preview: este folio es solo para validar cambios." : "Te avisaremos por WhatsApp cuando tu pedido esté listo."}
+          {isPreviewMode ? "Pedido de prueba: no cuenta para cocina ni sorteo." : "Ten tu WhatsApp a la mano para el aviso de entrega."}
         </p>
       </section>
       <section className="success-bonus-block" aria-labelledby="successBonusTitle">
-        <span className="eyebrow">Bonus secundario</span>
-        <h3 id="successBonusTitle">Tickets / referido</h3>
-      {isPreviewMode ? <p className="success-note muted">Preview no genera tickets, referidos ni métricas reales.</p> : null}
+        <span className="eyebrow">Recompensas</span>
+        <div className="success-title-stack">
+          <h3 id="successBonusTitle">{successBonusTitle}</h3>
+          <p className="success-bonus-copy">{successBonusCopy}</p>
+        </div>
+      {isPreviewMode ? <p className="success-note muted">Pedido de prueba: los beneficios se confirman en pedidos reales.</p> : null}
       {!isPreviewMode && hasEarnedTickets && earnedTickets ? <article className="success-reward-card">
-        <span className="eyebrow">Loot desbloqueado</span>
-        <strong className="success-ticket-total">+{earnedTickets.totalTickets} tickets</strong>
-        {raffleTitle ? <p className="success-raffle-title">Van para: {raffleTitle}</p> : null}
-        <ul>
-          <li>Burgers/combos de tu pedido: +{earnedTickets.burgerTickets}</li>
-          {earnedTickets.referralUsedTickets > 0 ? <li>Código de invitado aplicado: +{earnedTickets.referralUsedTickets}</li> : null}
+        <span className="eyebrow">Tickets sumados</span>
+        <div className="success-ticket-total" aria-label={`${earnedTickets.totalTickets} tickets sumados`}>
+          <span>+</span>
+          <strong>{earnedTickets.totalTickets}</strong>
+          <small>tickets</small>
+        </div>
+        {raffleTitle ? <p className="success-raffle-title">Participas en {raffleTitle}</p> : null}
+        <ul className="success-ticket-breakdown">
+          <li><span>Pedido</span><strong>+{earnedTickets.burgerTickets}</strong></li>
+          {earnedTickets.referralUsedTickets > 0 ? <li><span>Código invitado</span><strong>+{earnedTickets.referralUsedTickets}</strong></li> : null}
         </ul>
-        {order.referralAccepted === true && earnedTickets.referralUsedTickets === 0 ? <p>Tu código invitado quedó aplicado. Los tickets de referido se asignan a quien te compartió el código.</p> : null}
+        {order.referralAccepted === true && earnedTickets.referralUsedTickets === 0 ? <p>El código invitado quedó aplicado para quien te lo compartió.</p> : null}
       </article> : null}
       {!isPreviewMode && order.customerReferralCode ? <article className="success-referral-card">
-        <span className="eyebrow">Power-up de invitado</span>
+        <span className="eyebrow">Código para compartir</span>
         <p className="success-referral-lead">{referralLeadCopy}</p>
         <strong className="success-referral-code">{order.customerReferralCode}</strong>
         {raffleTitle ? <p>Sorteo activo: {raffleTitle}</p> : null}
         <div className="success-referral-actions">
-          <QuestButton className="ghost" onClick={copyReferralCode}>{copyStatus === "copied" ? "Código copiado ✅" : "Copiar código"}</QuestButton>
-          <QuestButton onClick={() => setShareModalOpen(true)}>Compartir mi código</QuestButton>
+          <QuestButton className="ghost" onClick={copyReferralCode}>{copyStatus === "copied" ? "Código copiado" : "Copiar código"}</QuestButton>
+          <QuestButton onClick={() => setShareModalOpen(true)}>Compartir por WhatsApp</QuestButton>
         </div>
-        {copyStatus === "idle" ? <p className="success-copy-status muted">Toca copiar y pégalo en WhatsApp, Discord o donde armen la raid.</p> : null}
-        {copyStatus === "copied" ? <p className="success-copy-status">Copiado al portapapeles. GG.</p> : null}
+        {copyStatus === "idle" ? <p className="success-copy-status muted">Compártelo por WhatsApp o donde armen el plan.</p> : null}
+        {copyStatus === "copied" ? <p className="success-copy-status">Código copiado.</p> : null}
         {copyStatus === "error" ? <p className="success-copy-status error">No se pudo copiar automático. Mantén presionado el código para copiarlo manualmente.</p> : null}
         {shareModalOpen ? <ReferralShareModal code={order.customerReferralCode} raffleTitle={raffleTitle} onClose={() => setShareModalOpen(false)} /> : null}
       </article> : null}
       {!isPreviewMode && order.referralAccepted === true && !earnedTickets ? <p className="success-note">Código de invitado aplicado.</p> : null}
       {!isPreviewMode && order.referralAccepted === false ? <p className="success-note muted">Pedido recibido. El código de invitado no aplicó.</p> : null}
-        {!isPreviewMode && !hasEarnedTickets && !order.customerReferralCode ? <p className="success-note muted">Tickets y referido quedan como bonus secundario cuando el sistema los confirme.</p> : null}
+        {!isPreviewMode && !hasEarnedTickets && !order.customerReferralCode && !hasReferralFeedback ? <p className="success-note muted">Este pedido quedó registrado. Si tienes tickets disponibles, podrás revisarlos desde la consulta privada.</p> : null}
+        {!isPreviewMode ? <a className="success-ticket-link" href="/tickets">Consultar mis tickets</a> : null}
       </section>
       <QuestButton onClick={onCreateAnother}>Nuevo pedido</QuestButton>
     </section>
