@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import { createPortal } from 'react-dom';
 import { PublicOrderApp } from './components/PublicOrderApp';
-import { TicketsLookupPage } from './components/TicketsLookupPage';
 import './styles.css';
-import './tickets.css';
+
+const TicketsLookupPage = React.lazy(() =>
+  import('./components/TicketsLookupPage').then((module) => ({ default: module.TicketsLookupPage }))
+);
 
 const normalizedPath = window.location.pathname.replace(/\/+$/, '') || '/';
 
@@ -66,6 +68,10 @@ const HomeTicketsCta = () => {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    {normalizedPath === '/tickets' ? <TicketsLookupPage /> : <><PublicOrderApp /><HomeTicketsCta /></>}
+    {normalizedPath === '/tickets' ? (
+      <Suspense fallback={<main className="app-shell"><section className="terminal-window"><p className="muted">Cargando consulta de tickets...</p></section></main>}>
+        <TicketsLookupPage />
+      </Suspense>
+    ) : <><PublicOrderApp /><HomeTicketsCta /></>}
   </React.StrictMode>
 );
