@@ -84,7 +84,7 @@ const MENU_GROUPS: Array<{ key: MenuCategory["key"] | "combos"; label: string }>
 const MENU_GROUP_COPY: Partial<Record<MenuCategory["key"] | "combos", string>> = {
   burgers: "La base del build: elige tu burger y revisa ingredientes rapido.",
   combos: "Loadouts completos para resolver comida, side quest y bebida en una pasada.",
-  guarniciones: "Side quests para sumar crunch, papas o bebidas sin perder el flujo.",
+  guarniciones: "Side quests para sumar crunch, papas o bebidas sin complicarte.",
 };
 const paymentMethodLabels: Record<OrderV2PaymentMethod, string> = {
   cash: "Efectivo",
@@ -251,7 +251,7 @@ const getKnownProductIngredients = (item: MenuItem): readonly string[] | null =>
 };
 const getProductSalesCopy = (item: MenuItem): string => {
   const description = item.description.trim();
-  if (!description) return "Drop especial del sistema, listo para entrar a tu ticket.";
+  if (!description) return "Drop especial de la casa, listo para entrar a tu ticket.";
   return description.length > 118 ? `${description.slice(0, 115).trim()}…` : description;
 };
 
@@ -556,18 +556,25 @@ const RouteVisual = ({ title, src }: { title: string; src?: string }) => {
 
 const MenuSection = ({ menuData, raffleCampaign, onExplore, onStart, reduce }: { menuData: MenuV2Response; raffleCampaign: RaffleCampaignPublicV2 | null; onExplore: (item: MenuItem) => void; onStart: () => void; reduce: boolean }) => {
   const bonusZoneRef = useRef<HTMLElement | null>(null);
-  const activePromos = menuData.promos.filter((promo) => promo.isAvailable);
+  const activePromos = useMemo(() => menuData.promos.filter((promo) => promo.isAvailable), [menuData.promos]);
   const usingFallbackMenu = menuData.source === "fallback";
-  const featuredPromo = activePromos.filter((promo) => promo.isFeatured).sort((a, b) => a.sortOrder - b.sortOrder).slice(0, 1);
-  const inlinePromos = activePromos.filter((promo) => !promo.isFeatured);
+  const featuredPromo = useMemo(() => activePromos.filter((promo) => promo.isFeatured).sort((a, b) => a.sortOrder - b.sortOrder).slice(0, 1), [activePromos]);
+  const inlinePromos = useMemo(() => activePromos.filter((promo) => !promo.isFeatured), [activePromos]);
   const hasBonusContent = Boolean(raffleCampaign);
-  const visibleItems = menuData.items.filter((item) => item.category !== "extras" && !isDrinkItem(item));
-  const comboItems = menuData.items.filter((item) => inferItemKind(item) === "combo");
-  const byGroup = (key: MenuCategory["key"] | "combos") => key === "combos" ? comboItems : visibleItems.filter((item) => item.category === key);
-  const promosForItems = (items: MenuItem[]) => {
-    const skus = new Set(items.map((item) => normalizeMenuLink(item.sku)));
-    return inlinePromos.filter((promo) => promo.comboLinks.some((link) => skus.has(normalizeMenuLink(link))));
-  };
+  const groups = useMemo(() => {
+    const visibleItems = menuData.items.filter((item) => item.category !== "extras" && !isDrinkItem(item));
+    const comboItems = menuData.items.filter((item) => inferItemKind(item) === "combo");
+    return MENU_GROUPS.reduce<Record<MenuCategory["key"] | "combos", MenuItem[]>>((acc, { key }) => {
+      const groupItems = key === "combos" ? comboItems : visibleItems.filter((item) => item.category === key);
+      acc[key] = [...groupItems].sort((a, b) => a.sortOrder - b.sortOrder);
+      return acc;
+    }, {} as Record<MenuCategory["key"] | "combos", MenuItem[]>);
+  }, [menuData.items]);
+  const promosByGroup = useMemo(() => MENU_GROUPS.reduce<Record<MenuCategory["key"] | "combos", PromoCard[]>>((acc, { key }) => {
+    const skus = new Set((groups[key] ?? []).map((item) => normalizeMenuLink(item.sku)));
+    acc[key] = inlinePromos.filter((promo) => promo.comboLinks.some((link) => skus.has(normalizeMenuLink(link))));
+    return acc;
+  }, {} as Record<MenuCategory["key"] | "combos", PromoCard[]>), [groups, inlinePromos]);
   const scrollToBonusZone = () => {
     const bonusZone = bonusZoneRef.current;
     if (!bonusZone) return;
@@ -590,9 +597,9 @@ const MenuSection = ({ menuData, raffleCampaign, onExplore, onStart, reduce }: {
             <span className="hero-brand-exe" aria-hidden="true">.exe</span>
             <span className="hero-brand-cursor" aria-hidden="true" />
           </h1>
-          <p className="hero-brand-status">&gt; order system online</p>
+          <p className="hero-brand-status">&gt; pedidos listos</p>
         </div>
-        <p>Carga tu burger, revisa el ticket sin ruido y manda tu orden al sistema en pocos pasos.</p>
+        <p>Carga tu burger, revisa el ticket sin ruido y manda tu orden en pocos pasos.</p>
         <div className="hero-action-row">
           <QuestButton onClick={onStart}>ARMAR MI PEDIDO</QuestButton>
           {hasBonusContent ? <button type="button" className="hero-link-button" onClick={scrollToBonusZone}>Ver sorteo activo</button> : null}
@@ -619,7 +626,7 @@ const MenuSection = ({ menuData, raffleCampaign, onExplore, onStart, reduce }: {
       ) : null}
       {featuredPromo.length ? <PromoRail promos={featuredPromo} items={menuData.items} onViewCombo={onExplore} label="Promo destacada" variant="featured" /> : null}
       {MENU_GROUPS.map(({ key, label }) => {
-        const list = byGroup(key).sort((a, b) => a.sortOrder - b.sortOrder);
+        const list = groups[key] ?? [];
         return (
           <section className="menu-cluster" key={key}>
             <header className="menu-cluster-header">
@@ -630,8 +637,8 @@ const MenuSection = ({ menuData, raffleCampaign, onExplore, onStart, reduce }: {
               </div>
               <span className="menu-cluster-count">{list.length} opcion{list.length === 1 ? "" : "es"}</span>
             </header>
-            {list.length ? <div className="kiosk-grid">{list.map((item) => <ProductCard key={item.sku} item={item} mode="info" onClick={onExplore} reduce={reduce} />)}</div> : <EmptyState title={key === "combos" ? "Combos en carga… el sistema está preparando el siguiente drop." : key === "guarniciones" ? "Side quests disponibles pronto." : `${label} en carga…`} description="Vuelve a revisar el menú para desbloquear el siguiente drop." />}
-            <PromoRail promos={promosForItems(list)} items={menuData.items} onViewCombo={onExplore} label={`Promos de ${label}`} />
+            {list.length ? <div className="kiosk-grid">{list.map((item) => <ProductCard key={item.sku} item={item} mode="info" onClick={onExplore} reduce={reduce} />)}</div> : <EmptyState title={key === "combos" ? "Combos en carga… estamos preparando el siguiente drop." : key === "guarniciones" ? "Side quests disponibles pronto." : `${label} en carga…`} description="Vuelve a revisar el menú para desbloquear el siguiente drop." />}
+            <PromoRail promos={promosByGroup[key] ?? []} items={menuData.items} onViewCombo={onExplore} label={`Promos de ${label}`} />
           </section>
         );
       })}
@@ -1917,14 +1924,15 @@ export function PublicOrderApp() {
   const [burgerSelectionError, setBurgerSelectionError] = useState<string | null>(null);
   const [cartCustomizationError, setCartCustomizationError] = useState<string | null>(null);
   const total = useMemo(() => getCartTotal(cart, menuData.items), [cart, menuData.items]);
-  const count = getCartCount(cart);
+  const count = useMemo(() => getCartCount(cart), [cart]);
   const availableBurgerItems = useMemo(() => menuData.items.filter((item) => inferItemKind(item) === "burger" && item.isAvailable), [menuData.items]);
   const availableComboItems = useMemo(() => menuData.items.filter((item) => inferItemKind(item) === "combo" && item.isAvailable), [menuData.items]);
-  const extras = menuData.items.filter((item) => item.category === "extras" && inferItemKind(item) !== "combo" && item.isAvailable);
-  const garnishes = menuData.items.filter((item) => item.category === "guarniciones" && item.isAvailable);
-  const drinks = menuData.items.filter((item) => isDrinkItem(item) && item.isAvailable);
-  const hasBurgerOrComboInCart = cart.some((entry) => entry.itemKind === "burger" || entry.itemKind === "combo");
-  const sideHasSelection = Object.values(extraGarnishQuantities).some((quantity) => quantity > 0);
+  const extras = useMemo(() => menuData.items.filter((item) => item.category === "extras" && inferItemKind(item) !== "combo" && item.isAvailable), [menuData.items]);
+  const garnishes = useMemo(() => menuData.items.filter((item) => item.category === "guarniciones" && item.isAvailable), [menuData.items]);
+  const drinks = useMemo(() => menuData.items.filter((item) => isDrinkItem(item) && item.isAvailable), [menuData.items]);
+  const menuItemsBySku = useMemo(() => new Map(menuData.items.map((item) => [item.sku, item])), [menuData.items]);
+  const hasBurgerOrComboInCart = useMemo(() => cart.some((entry) => entry.itemKind === "burger" || entry.itemKind === "combo"), [cart]);
+  const sideHasSelection = useMemo(() => Object.values(extraGarnishQuantities).some((quantity) => quantity > 0), [extraGarnishQuantities]);
   const clearCheckoutErrorMessage = () => setCheckoutError(null);
   const clearCheckoutFieldError = (field: CheckoutField) => setCheckoutFieldErrors((prev) => {
     if (!prev[field]) return prev;
@@ -2182,7 +2190,7 @@ export function PublicOrderApp() {
       garnish: entry.garnish ? { sku: entry.garnish.sku, name: entry.garnish.name, upcharge: entry.garnish.upcharge } : null,
       includedDrink: entry.includedDrink ? { sku: entry.includedDrink.sku, name: entry.includedDrink.name } : null,
       sideQuestExtras: (entry.sideQuestExtras ?? []).map((extra) => {
-        const menuItem = extra.sku ? menuData.items.find((item) => item.sku === extra.sku) : null;
+        const menuItem = extra.sku ? menuItemsBySku.get(extra.sku) : null;
         const kind = menuItem ? inferItemKind(menuItem) : "other";
         return { sku: extra.sku, name: extra.name, price: extra.price, itemKind: kind === "drink" ? "drink" as const : "garnish" as const };
       }),
@@ -2196,7 +2204,7 @@ export function PublicOrderApp() {
       const referralCode = customer.referralCode.trim().toUpperCase();
       const response = await createOrderV2({ customer: { name: customer.name.trim(), phone: normalizePhoneDigits(customer.phone) }, orderMode: orderModeForBackend, paymentMethod: customer.paymentMethod, notes, items: payloadItems, ...(referralCode ? { referralCode } : {}), ...(isPreviewMode ? { environment: orderEnvironment } : {}) }, idempotencyKey);
       const order = response.data?.order;
-      if (!order) throw new Error("El backend no devolvió folio de confirmación.");
+      if (!order) throw new Error("No pudimos confirmar el folio del pedido. Intenta de nuevo.");
       setOrderConfirmation({ ...order, paymentMethod: customer.paymentMethod, location: customer.location, environment: orderEnvironment, referralAccepted: response.data?.referralAccepted, customerReferralCode: response.data?.customerReferralCode, activeRaffleTitle: response.data?.activeRaffleTitle, earnedTickets: response.data?.earnedTickets });
       setCart([]);
       setCustomer(createEmptyCustomer());

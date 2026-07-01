@@ -1,6 +1,7 @@
 import type { RaffleTicketsLookupResult } from '@config/index';
 import { useState } from 'react';
 import { lookupRaffleTicketsV2 } from '../lib/raffles-v2';
+import '../tickets.css';
 
 type LookupState = 'idle' | 'loading' | 'success' | 'error';
 type CopyKind = 'code' | 'link' | 'message';
@@ -131,17 +132,17 @@ export const TicketsLookupPage = () => {
     <main className="tickets-page app-shell" aria-labelledby="ticketsPageTitle">
       <section className="terminal-window tickets-hero-card">
         <div className="tickets-hero-lockup">
-          <span className="terminal-path">Burgers.exe campaign module</span>
+          <span className="terminal-path">Burgers.exe sorteo</span>
           <h1 id="ticketsPageTitle">Consulta tus tickets</h1>
         </div>
         <p className="hero-copy">Busca con tu teléfono o código referido. La consulta es privada: solo mostramos teléfonos enmascarados.</p>
-        <div className="tickets-hero-signal" aria-hidden="true"><span>Tickets</span><strong>Referral loop</strong></div>
+        <div className="tickets-hero-signal" aria-hidden="true"><span>Tickets</span><strong>Comparte y suma</strong></div>
         <a className="tickets-back-link" href="/">← Volver al menú</a>
       </section>
 
       <section className="terminal-window tickets-lookup-card" aria-labelledby="lookupTitle">
         <div className="tickets-module-heading">
-          <span className="terminal-path">Lookup seguro</span>
+          <span className="terminal-path">Consulta privada</span>
           <h2 id="lookupTitle">Buscar tickets</h2>
         </div>
         <form onSubmit={handleLookup} noValidate>
@@ -206,7 +207,7 @@ export const TicketsLookupPage = () => {
           {referralCode ? (
             <>
               <label className="terminal-label" htmlFor="shareMessage">
-                Copy listo para WhatsApp
+                Mensaje para WhatsApp
                 <textarea id="shareMessage" value={shareMessage} readOnly rows={5} />
               </label>
               <div className="tickets-actions-grid">
@@ -231,7 +232,7 @@ export const TicketsLookupPage = () => {
             <div><dt>Estado del código</dt><dd>{referralCode.isActive ? 'Activo' : 'Inactivo'}</dd></div>
           </dl>
           <label className="terminal-label" htmlFor="shareMessageCodeOnly">
-            Copy listo para WhatsApp
+            Mensaje para WhatsApp
             <textarea id="shareMessageCodeOnly" value={shareMessage} readOnly rows={5} />
           </label>
           <div className="tickets-actions-grid">
