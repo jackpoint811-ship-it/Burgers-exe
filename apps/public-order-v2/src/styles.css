@@ -4,21 +4,87 @@
 
 :root {
   color-scheme: dark;
-  --neon: #39ff88;
-  --neon-soft: rgba(57, 255, 136, 0.13);
-  --amber: #ffd166;
-  --danger: #ff6b4a;
-  --ink: #060908;
-  --panel: rgba(9, 15, 13, 0.88);
-  --panel-strong: rgba(12, 20, 17, 0.96);
-  --line: rgba(234, 255, 240, 0.1);
-  --text: #f3fff6;
-  --muted: #a9bcb0;
+
+  /* Premium Public V2 visual tokens: dark terminal, neon controls, mobile-first surfaces. */
+  --bg-base: #030504;
+  --bg-base-deep: #010201;
+  --bg-base-raised: #0a0f0d;
+  --bg-surface: rgba(9, 15, 13, 0.88);
+  --bg-surface-strong: rgba(12, 20, 17, 0.96);
+  --bg-surface-card: rgba(8, 17, 13, 0.9);
+  --bg-surface-card-strong: rgba(10, 22, 17, 0.94);
+  --bg-surface-input: rgba(2, 5, 4, 0.74);
+  --fg-primary: #f3fff6;
+  --fg-heading: #ffffff;
+  --fg-muted: #b7c9bf;
+  --fg-muted-strong: #d7eadf;
+  --fg-on-neon: #021207;
+  --fg-on-amber: #201300;
+  --brand-primary: #39ff88;
+  --brand-primary-soft: rgba(57, 255, 136, 0.13);
+  --brand-primary-glow: rgba(57, 255, 136, 0.22);
+  --brand-primary-line: rgba(57, 255, 136, 0.34);
+  --brand-primary-line-strong: rgba(57, 255, 136, 0.54);
+  --brand-secondary-cyan: #41f0ff;
+  --brand-secondary-magenta: #ff4fd8;
+  --accent-warning: #ffd166;
+  --accent-warning-soft: rgba(255, 209, 102, 0.1);
+  --accent-danger: #ff6b4a;
+  --accent-danger-soft: rgba(255, 107, 74, 0.14);
+  --accent-success: #34d399;
+  --line-soft: rgba(234, 255, 240, 0.08);
+  --line-default: rgba(234, 255, 240, 0.12);
+  --line-strong: rgba(234, 255, 240, 0.18);
+  --line-card: rgba(216, 255, 230, 0.13);
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+  --radius-2xl: 28px;
+  --radius-pill: 999px;
+  --space-page: 14px;
+  --space-page-wide: 22px;
+  --space-panel: 18px;
+  --touch-target-min: 44px;
+  --motion-fast: 150ms;
+  --motion-base: 180ms;
+  --motion-slow: 260ms;
+  --motion-ease: ease;
+  --z-base: 1;
+  --z-sticky: 18;
+  --z-floating: 24;
+  --z-modal: 30;
+  --z-overlay: 20;
+  --shadow-panel: 0 22px 70px rgba(0, 0, 0, 0.5);
+  --shadow-card: 0 16px 42px rgba(0, 0, 0, 0.32);
+  --shadow-floating: 0 18px 60px rgba(0, 0, 0, 0.5);
+  --shadow-cta: 0 10px 30px rgba(57, 255, 136, 0.18);
+  --glow-brand-soft: 0 0 18px rgba(57, 255, 136, 0.18);
+  --glow-brand: 0 0 28px rgba(57, 255, 136, 0.24);
+  --focus-ring: rgba(65, 240, 255, 0.78);
+
+  --neon: var(--brand-primary);
+  --neon-soft: var(--brand-primary-soft);
+  --amber: var(--accent-warning);
+  --danger: var(--accent-danger);
+  --ink: var(--bg-base);
+  --panel: var(--bg-surface);
+  --panel-strong: var(--bg-surface-strong);
+  --line: var(--line-default);
+  --text: var(--fg-primary);
+  --muted: var(--fg-muted);
+  --muted-strong: var(--fg-muted-strong);
+  --card-surface: var(--bg-surface-card);
+  --card-surface-strong: var(--bg-surface-card-strong);
+  --card-line: var(--line-card);
+  --card-line-active: var(--brand-primary-line-strong);
+  --card-shadow: var(--shadow-card);
 }
 
 * {
   box-sizing: border-box;
   scrollbar-width: thin;
+  scrollbar-color: var(--brand-primary-line) rgba(0, 0, 0, 0.28);
 }
 
 html,
@@ -31,6 +97,7 @@ body,
 body {
   margin: 0;
   overflow-x: hidden;
+  accent-color: var(--brand-primary);
   font-family:
     Inter,
     ui-sans-serif,
@@ -50,8 +117,9 @@ body {
       rgba(255, 209, 102, 0.1),
       transparent 28%
     ),
-    linear-gradient(180deg, #0a0f0d 0%, #030504 62%, #010201 100%);
+    linear-gradient(180deg, var(--bg-base-raised) 0%, var(--bg-base) 62%, var(--bg-base-deep) 100%);
   color: var(--text);
+  -webkit-tap-highlight-color: rgba(57, 255, 136, 0.16);
 }
 
 body::before {
@@ -83,15 +151,20 @@ select {
   @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neon focus-visible:ring-offset-2 focus-visible:ring-offset-black;
 }
 button {
-  min-height: 44px;
+  min-height: var(--touch-target-min);
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
 }
 input,
 textarea,
 select {
   width: 100%;
-  border: 1px solid rgba(234, 255, 240, 0.12);
-  border-radius: 1rem;
-  background: rgba(2, 5, 4, 0.74);
+  min-height: var(--touch-target-min);
+  border: 1px solid var(--line-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface-input);
   padding: 0.9rem;
   color: var(--text);
 }
@@ -101,30 +174,30 @@ textarea {
 
 .app-shell {
   position: relative;
-  z-index: 1;
+  z-index: var(--z-base);
   width: min(1120px, 100%);
   margin: 0 auto;
-  padding: 14px;
+  padding: var(--space-page);
   display: grid;
-  gap: 14px;
+  gap: var(--space-page);
 }
 .terminal-window {
   border: 1px solid var(--line);
-  border-radius: 24px;
+  border-radius: var(--radius-xl);
   background: linear-gradient(
     180deg,
     rgba(14, 23, 19, 0.92),
     rgba(3, 6, 5, 0.9)
   );
   box-shadow:
-    0 22px 70px rgba(0, 0, 0, 0.5),
+    var(--shadow-panel),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
   backdrop-filter: blur(16px);
 }
 .terminal-hero,
 .flow-window,
 .trust-grid {
-  padding: 18px;
+  padding: var(--space-panel);
 }
 .terminal-path,
 .status-line,
@@ -461,7 +534,7 @@ p {
 .boot-overlay {
   position: fixed;
   inset: 0;
-  z-index: 20;
+  z-index: var(--z-overlay);
   display: grid;
   place-items: center;
   padding: 18px;
@@ -513,7 +586,7 @@ p {
 
 @media (min-width: 640px) {
   .app-shell {
-    padding: 22px;
+    padding: var(--space-page-wide);
   }
   .hero-grid,
   .checkout-grid {
@@ -576,7 +649,7 @@ p {
 .order-dialog-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 30;
+  z-index: var(--z-modal);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -685,7 +758,7 @@ p {
   left: max(12px, env(safe-area-inset-left));
   right: max(12px, env(safe-area-inset-right));
   bottom: max(12px, env(safe-area-inset-bottom));
-  z-index: 18;
+  z-index: var(--z-sticky);
   width: min(720px, calc(100vw - 24px));
   margin: 0 auto;
   display: grid;
@@ -817,7 +890,7 @@ p {
 .guided-flow-heading {
   position: sticky;
   top: max(0px, env(safe-area-inset-top));
-  z-index: 18;
+  z-index: var(--z-sticky);
   display: grid;
   gap: 12px;
   margin: -8px -8px 2px;
@@ -896,7 +969,7 @@ p {
   left: max(12px, env(safe-area-inset-left));
   right: max(12px, env(safe-area-inset-right));
   bottom: max(12px, env(safe-area-inset-bottom));
-  z-index: 24;
+  z-index: var(--z-floating);
   width: min(760px, calc(100vw - 24px));
   margin: 0 auto;
   display: grid;
@@ -3563,7 +3636,7 @@ body {
 .checkout-panel textarea:focus-visible,
 .checkout-panel button:focus-visible,
 .checkout-panel [tabindex="-1"]:focus-visible {
-  outline: 3px solid rgba(65, 240, 255, 0.78);
+  outline: 3px solid var(--focus-ring);
   outline-offset: 3px;
 }
 
@@ -3577,11 +3650,6 @@ body {
 html {
   scroll-padding-top: calc(74px + env(safe-area-inset-top));
   scroll-padding-bottom: calc(124px + env(safe-area-inset-bottom));
-}
-
-:root {
-  --muted: #b7c9bf;
-  --muted-strong: #d7eadf;
 }
 
 .hero-copy,
@@ -5268,26 +5336,21 @@ html {
   }
 }
 
-/* Stage 2 visual foundation: safer mobile CTA, richer fallbacks, quieter cards. */
-:root {
-  --card-surface: rgba(8, 17, 13, 0.9);
-  --card-surface-strong: rgba(10, 22, 17, 0.94);
-  --card-line: rgba(216, 255, 230, 0.13);
-  --card-line-active: rgba(57, 255, 136, 0.54);
-  --card-shadow: 0 16px 42px rgba(0, 0, 0, 0.32);
-}
-
 .quest-button {
-  transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease, color 180ms ease;
+  transition:
+    border-color var(--motion-base) var(--motion-ease),
+    background var(--motion-base) var(--motion-ease),
+    box-shadow var(--motion-base) var(--motion-ease),
+    color var(--motion-base) var(--motion-ease);
 }
 
 .quest-button:not(.ghost) {
-  box-shadow: 0 10px 30px rgba(57, 255, 136, 0.18);
+  box-shadow: var(--shadow-cta);
 }
 
 .quest-button.ghost,
 .ticket-item footer button {
-  border-color: rgba(234, 255, 240, 0.2);
+  border-color: var(--line-strong);
   background: rgba(255, 255, 255, 0.035);
 }
 
@@ -5317,7 +5380,10 @@ html {
 .burger-pick-card,
 .side-card,
 .side-option-card {
-  transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+  transition:
+    border-color var(--motion-base) var(--motion-ease),
+    background var(--motion-base) var(--motion-ease),
+    box-shadow var(--motion-base) var(--motion-ease);
 }
 
 .kiosk-card:hover,
