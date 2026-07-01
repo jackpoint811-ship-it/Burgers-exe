@@ -81,6 +81,11 @@ const MENU_GROUPS: Array<{ key: MenuCategory["key"] | "combos"; label: string }>
   { key: "combos", label: "Combos" },
   { key: "guarniciones", label: "Guarniciones" },
 ];
+const MENU_GROUP_COPY: Partial<Record<MenuCategory["key"] | "combos", string>> = {
+  burgers: "La base del build: elige tu burger y revisa ingredientes rapido.",
+  combos: "Loadouts completos para resolver comida, side quest y bebida en una pasada.",
+  guarniciones: "Side quests para sumar crunch, papas o bebidas sin perder el flujo.",
+};
 const paymentMethodLabels: Record<OrderV2PaymentMethod, string> = {
   cash: "Efectivo",
   transfer: "Transferencia",
@@ -501,11 +506,12 @@ const ProductCard = ({ item, mode, onClick, reduce, descriptionMode = "paragraph
   const kind = inferItemKind(item);
   const ingredientBullets = descriptionMode === "ingredients" ? getProductIngredientBullets(item) : [];
   const visualClassName = showImage ? "kiosk-visual" : `kiosk-visual no-image no-image-${kind}`;
+  const cardCtaLabel = !item.isAvailable ? "Agotado" : kind === "combo" ? "Ver combo" : kind === "burger" ? "Ver burger" : "Ver item";
   return (
     <motion.button
       type="button"
       whileTap={reduce ? undefined : { scale: 0.98 }}
-      className="kiosk-card"
+      className={`kiosk-card kiosk-card-${kind}`}
       onClick={() => onClick(item)}
       aria-label={`${mode === "info" ? "Ver información de" : "Elegir"} ${item.name}`}
       disabled={mode === "select" && !item.isAvailable}
@@ -522,8 +528,11 @@ const ProductCard = ({ item, mode, onClick, reduce, descriptionMode = "paragraph
           </ul>
         ) : <p>{item.description}</p>}
         <footer>
-          <strong>{formatCurrency(item.price)}</strong>
-          <em>{item.isAvailable ? "Disponible" : "Agotado"}</em>
+          <div className="kiosk-price-stack">
+            <strong>{formatCurrency(item.price)}</strong>
+            <em>{item.isAvailable ? "Disponible" : "Agotado"}</em>
+          </div>
+          <span className={`kiosk-card-cta ${item.isAvailable ? "" : "is-disabled"}`}>{cardCtaLabel}</span>
         </footer>
       </div>
     </motion.button>
@@ -591,8 +600,23 @@ const MenuSection = ({ menuData, raffleCampaign, onExplore, onStart, reduce }: {
           </h1>
           <p className="hero-brand-status">&gt; order system online</p>
         </div>
-        <p>Carga tu burger, desbloquea upgrades y manda tu orden al sistema.</p>
-        <QuestButton onClick={onStart}>ARMAR MI PEDIDO</QuestButton>
+        <p>Carga tu burger, revisa el ticket sin ruido y manda tu orden al sistema en pocos pasos.</p>
+        <div className="hero-action-row">
+          <QuestButton onClick={onStart}>ARMAR MI PEDIDO</QuestButton>
+          {hasBonusContent ? <button type="button" className="hero-link-button" onClick={scrollToBonusZone}>Ver sorteo activo</button> : null}
+        </div>
+        <ul className="hero-proof-list" aria-label="Puntos clave de Burgers.exe">
+          <li><strong>Menu V2</strong><span>Flujo mobile-first por pasos.</span></li>
+          <li><strong>{hasBonusContent ? "Tickets activos" : "Ticket claro"}</strong><span>{hasBonusContent ? "El sorteo vive como bonus, no como ruido." : "Resumen visible antes de enviar."}</span></li>
+          <li><strong>Pickup simple</strong><span>Torre, pago y contacto en orden.</span></li>
+        </ul>
+        {raffleCampaign ? (
+          <aside className="hero-raffle-signal" aria-label="Sorteo activo">
+            <span>Sorteo activo</span>
+            <strong>{raffleCampaign.title}</strong>
+            <p>Consulta tickets y referidos desde la zona bonus.</p>
+          </aside>
+        ) : null}
       </div>
       {usingFallbackMenu ? (
         <section className="menu-sync-notice" role="status" aria-live="polite">
@@ -606,7 +630,14 @@ const MenuSection = ({ menuData, raffleCampaign, onExplore, onStart, reduce }: {
         const list = byGroup(key).sort((a, b) => a.sortOrder - b.sortOrder);
         return (
           <section className="menu-cluster" key={key}>
-            <h2>{label}</h2>
+            <header className="menu-cluster-header">
+              <div>
+                <span className="menu-cluster-kicker">Loadout</span>
+                <h2>{label}</h2>
+                <p>{MENU_GROUP_COPY[key] ?? "Elige una opcion para ver detalles antes de ordenar."}</p>
+              </div>
+              <span className="menu-cluster-count">{list.length} opcion{list.length === 1 ? "" : "es"}</span>
+            </header>
             {list.length ? <div className="kiosk-grid">{list.map((item) => <ProductCard key={item.sku} item={item} mode="info" onClick={onExplore} reduce={reduce} />)}</div> : <EmptyState title={key === "combos" ? "Combos en carga… el sistema está preparando el siguiente drop." : key === "guarniciones" ? "Side quests disponibles pronto." : `${label} en carga…`} description="Vuelve a revisar el menú para desbloquear el siguiente drop." />}
             <PromoRail promos={promosForItems(list)} items={menuData.items} onViewCombo={onExplore} label={`Promos de ${label}`} />
           </section>
