@@ -839,7 +839,7 @@ const UnitEditor = ({ unit, index, item, extras, garnishes, onChange }: { unit: 
   const removedSummary = changeSummary.removed.length ? `Quitado: ${changeSummary.removed.join(", ")}` : "Burger original";
   const extrasSummaryText = changeSummary.extras.length ? changeSummary.extras.map((entry) => `${entry.name} x${entry.quantity}`).join(", ") : "Sin upgrades";
   const upgradeTotal = unit.extras.reduce((sum, extra) => sum + (extra.price ?? 0), 0);
-  const upgradeTotalLabel = `Upgrade actual: ${upgradeTotal ? `+${formatCurrency(upgradeTotal)}` : formatCurrency(0)}`;
+  const upgradeTotalLabel = upgradeTotal ? `Total en extras: +${formatCurrency(upgradeTotal)}` : "Sin extras agregados";
   const togglePanel = (panel: keyof typeof openPanels) => setOpenPanels((current) => ({ ...current, [panel]: !current[panel] }));
 
   return (
@@ -867,7 +867,7 @@ const UnitEditor = ({ unit, index, item, extras, garnishes, onChange }: { unit: 
                 <div className="chip-grid mod-chip-grid">
                   {ingredients.map((ingredient) => {
                     const active = unit.removedIngredients.includes(ingredient);
-                    return <button type="button" key={ingredient} className={active ? "chip mod-chip active" : "chip mod-chip"} aria-pressed={active} aria-label={active ? `${ingredient} quitado. Toca para regresarlo.` : `Quitar ${ingredient}`} onClick={() => onChange({ ...unit, removedIngredients: active ? unit.removedIngredients.filter((entry) => entry !== ingredient) : [...unit.removedIngredients, ingredient] })}><span>{ingredient}</span>{active ? <strong>✓ Quitado</strong> : <em>Quitar</em>}</button>;
+                    return <button type="button" key={ingredient} className={active ? "chip mod-chip active" : "chip mod-chip"} aria-pressed={active} aria-label={active ? `${ingredient} quitado. Toca para regresarlo.` : `Quitar ${ingredient}`} onClick={() => onChange({ ...unit, removedIngredients: active ? unit.removedIngredients.filter((entry) => entry !== ingredient) : [...unit.removedIngredients, ingredient] })}><span>{ingredient}</span>{active ? <strong>Quitado</strong> : <em>Incluido</em>}</button>;
                   })}
                 </div>
               ) : <p className="muted unavailable-mod-copy">Esta burger no tiene MOD disponible por ahora.</p>}
