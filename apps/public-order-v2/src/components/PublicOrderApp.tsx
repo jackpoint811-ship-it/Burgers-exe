@@ -1681,7 +1681,7 @@ const Checkout = ({ cart, items, total, customer, setCustomer, checkoutStep, set
           ) : null}
         </div>
         <div className="checkout-total checkout-payment-total"><span>Total a pagar</span><strong>{formatCurrency(total)}</strong></div>
-        <QuestButton onClick={onSubmit} disabled={submitting || !cart.length}>{submitting ? "Enviando pedido..." : "Confirmar pedido"}</QuestButton>
+        <QuestButton className="checkout-cta" onClick={onSubmit} disabled={submitting || !cart.length}>{submitting ? "Enviando pedido..." : "Confirmar pedido"}</QuestButton>
         {error ? <p className="inline-error" role="alert">{error}</p> : null}
       </section> : null}
       {transferModalOpen ? <TransferDetailsModal onClose={() => setTransferModalOpen(false)} /> : null}
