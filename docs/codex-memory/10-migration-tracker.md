@@ -6,13 +6,12 @@
 ## Estado
 
 - Vivo
-- Fase actual: Fase 3
+- Fase actual: Fase 4
 
 ## Kanban
 
 ### Backlog
 
-- [ ] Fase 4 - Separar carpetas activas
 - [ ] Fase 5 - Mover legacy a cuarentena
 - [ ] Fase 6 - Remover Sheets/App Script del proyecto activo
 - [ ] Fase 7 - Preview 1:1 con DB/R2 espejo
@@ -24,7 +23,7 @@
 
 ### En revision
 
-- [ ] Fase 3 - Estandarizar ambientes Cloudflare
+- [ ] Fase 4 - Separar carpetas activas
 
 ### Bloqueado
 
@@ -36,6 +35,7 @@
 - [x] Fase 1 - Validacion local de skills/herramientas
 - [x] Fase 1.1 - Skills oficiales: Obsidian, Graphify y skills faltantes
 - [x] Fase 2 - Inventario real con Graphify
+- [x] Fase 3 - Estandarizar ambientes Cloudflare
 
 ## Fases de la migracion
 
@@ -64,6 +64,7 @@
 - Confirmar bindings efectivos de los cuatro proyectos Pages en Cloudflare Dashboard o via auditoria read-only mas profunda.
 - Confirmar el valor efectivo de `ORDERS_V2_WRITE_ENABLED` por ambiente sin imprimir secrets.
 - Definir en Fase 7 la estrategia exacta de seed/reset preview 1:1.
+- Decidir en Fase 5 la estructura exacta de cuarentena para `cloudflare/*`, Apps Script raiz, `planning/`, docs historicas y assets legacy.
 
 ## Bloqueadores
 
@@ -71,6 +72,7 @@
 - Ninguno para Fase 1.1.
 - Ninguno para Fase 2. Graphify code graph quedo actualizado; semantic analysis fallo por cuota Gemini y se aplico fallback manual aprobado.
 - Ninguno bloquea Fase 3. La lista read-only de Pages no expone bindings/secrets, asi que queda como riesgo documentado para Fase 7.
+- Ninguno bloquea Fase 4. La fase es documental y no mueve legacy.
 
 ## Riesgos
 
@@ -86,6 +88,7 @@
 - Wrangler local esta autenticado con permisos amplios; en Fase 3 solo se usaron comandos read-only.
 - `wrangler.toml` existe como config local ignorada y no debe versionarse.
 - `cloudflare/public-order/wrangler.toml` sigue como config legacy/riesgo porque apunta a recursos live.
+- `functions/api/referral-tickets.ts` existe como endpoint D1, pero no se encontro consumo directo desde apps V2; requiere revision antes de mover o borrar.
 
 ## Hallazgos Fase 1 - 2026-07-02
 
@@ -222,6 +225,28 @@
 - `tests/internal-chekeo/kitchen-production-board.spec.ts` sigue apuntando a `migrations/0008_preview_realistic_orders_seed.sql`, que no existe.
 - Los scripts `public-order:*` siguen clasificados como legacy/riesgo por usar config live bajo `cloudflare/public-order/wrangler.toml`.
 
+## Hallazgos Fase 4 - 2026-07-02
+
+### Superficie activa
+
+- Se creo `docs/codex-memory/14-active-surface-map.md`.
+- Apps oficiales confirmadas: `apps/public-order-v2` y `apps/internal-chekeo-v2`.
+- Runtime compartido activo confirmado: `functions/api`, `packages/config`, `packages/ui`, `vite.config.ts`, `package.json`, `migrations/`, tests y `tools/codex`.
+- Graphify code graph OK: `1565` nodos, `2855` edges, `96` comunidades.
+- `packages/domain` y `packages/cloudflare` siguen siendo objetivo futuro, no paquetes reales actuales.
+
+### Endpoints y scripts
+
+- Endpoints V2 activos documentados: `menu-v2`, `orders-v2`, `assets-v2`, `internal-v2-auth`, `orders-v2-admin`, `menu-v2-admin`, `ingredients-v2-admin`, `kitchen-v2-admin`, `raffles-v2`, `raffles-v2-admin` y `campaign-config`.
+- `campaign-config` queda como activo/soporte porque `apps/public-order-v2/src/main.tsx` lo consume.
+- `referral-tickets` queda como riesgo porque no se encontro consumo directo desde apps V2.
+- Scripts `dev:*`, `build:*`, `typecheck`, `preview:*` y `qa:visual` quedan clasificados; scripts `db:v2:*:remote` y `public-order:*` quedan como riesgo/prohibidos sin autorizacion.
+
+### Candidatos Fase 5
+
+- `cloudflare/public-order/`, `cloudflare/internal-chekeo/`, `cloudflare/tickets/`, Apps Script raiz, `planning/`, docs historicas y assets legacy quedan listados para cuarentena futura.
+- No se movio ni borro legacy en Fase 4.
+
 ## Checklist para aprobar la siguiente fase
 
 - [x] Existe este tracker oficial.
@@ -242,6 +267,9 @@
 - [x] Confirmar recursos Pages/D1/R2 por comandos read-only.
 - [x] Documentar scripts Cloudflare seguros, prohibidos y legacy.
 - [x] Retirar `.wrangler` trackeado del indice sin borrar archivos locales.
+- [x] Crear mapa oficial de superficie activa antes de mover legacy.
+- [x] Actualizar README con Active repo surface.
+- [x] Preparar lista de candidatos Fase 5 sin mover ni borrar archivos.
 
 ## Ultima actualizacion
 
@@ -250,7 +278,7 @@
 
 ## Siguiente fase sugerida
 
-- Fase 4 - Separar carpetas activas.
+- Fase 5 - Mover legacy a cuarentena.
 
 ## Regla permanente
 

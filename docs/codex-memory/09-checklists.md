@@ -64,6 +64,19 @@ Aplicar cuando el cambio toque Pages, Wrangler, D1, R2, preview/prod, secrets o 
 - [ ] Si usa Wrangler, separe comandos read-only de comandos que mutan recursos.
 - [ ] Si hay duda sobre binding real en Cloudflare Dashboard, marque bloqueo o riesgo en el PR.
 
+## Checklist superficie activa y Fase 5
+
+Aplicar cuando una fase separe codigo activo de legacy o prepare movimientos de carpetas.
+
+- [ ] Confirme que `docs/codex-memory/14-active-surface-map.md` esta actualizado.
+- [ ] Confirme que las apps oficiales siguen siendo solo `apps/public-order-v2` y `apps/internal-chekeo-v2`.
+- [ ] Confirme que `functions/api`, `packages/config`, `packages/ui`, `vite.config.ts`, `package.json` y `migrations/` estan clasificados.
+- [ ] Liste endpoints V2 activos y cualquier endpoint de riesgo antes de mover carpetas.
+- [ ] Clasifique scripts como activos, tooling, legacy/riesgo o prohibidos sin autorizacion.
+- [ ] No mueva `cloudflare/public-order/`, `cloudflare/internal-chekeo/`, `cloudflare/tickets/`, `legacy/`, Apps Script raiz ni docs historicas sin fase autorizada.
+- [ ] Si un archivo parece legacy pero tiene imports o fetch desde apps V2, marcarlo activo o bloqueo.
+- [ ] Antes de Fase 5, preparar lista de rutas, motivo, riesgo y validacion requerida.
+
 ## Checklist Skills oficiales
 
 - [ ] Valide `graphify`.
