@@ -162,7 +162,7 @@ Nota: `packages/domain` y `packages/cloudflare` aparecen en la arquitectura obje
 ### Configs
 
 - `wrangler.example.toml`: plantilla local/preview con `BOG_MENU_DB` y `BOG_MENU_ASSETS`.
-- `cloudflare/public-order/wrangler.toml`: config legacy/deprecated que apunta a `burgers-exe-menu-live` y `burgers-exe-menu-assets`; contiene identificadores reales y debe revisarse en Fase 3/Fase 5 antes de mantenerlo o moverlo.
+- `legacy/cloudflare/public-order/wrangler.toml`: config legacy/deprecated que apunta a `burgers-exe-menu-live` y `burgers-exe-menu-assets`; contiene identificadores reales y se conserva solo como rollback historico/riesgo.
 - No se ejecuto ningun comando remoto de Cloudflare.
 - No se ejecutaron migraciones ni seeds.
 
@@ -190,15 +190,15 @@ Riesgo detectado: `tests/internal-chekeo/kitchen-production-board.spec.ts` refer
 
 | Ruta | Referencia | Estado recomendado | Motivo |
 |---|---|---|---|
-| `legacy/` | Apps Script, HTML historico y planning | mantener-doc-historica | ya tiene `DEPRECATED.md`; no tocar sin fase explicita |
-| `Code.gs`, `appsscript.json`, `backend_*.gs`, `menu_live_service.gs`, `setup_chekeo_2_sheets.gs`, `Index.html`, `scripts.html`, `styles.html` | Apps Script / Google Sheets en raiz | mover-a-legacy en Fase 5 o Fase 6 | siguen fuera de `legacy/` y no son runtime oficial V2 |
-| `cloudflare/public-order/` | public order Cloudflare anterior, `/api/menu`, `/api/order`, Apps Script vars | mover-a-legacy en Fase 5 | tiene `DEPRECATED.md`; contiene assets historicos y `.wrangler` trackeado |
-| `cloudflare/internal-chekeo/` | Chekeo anterior, `/api/auth`, `/api/session`, `/api/logout`, `/api/rpc`, Apps Script RPC | mover-a-legacy en Fase 5 | tiene `DEPRECATED.md`; no es Chekeo V2 actual |
-| `cloudflare/tickets/` | tickets Cloudflare historico | requiere-revision | no forma parte de las dos apps oficiales V2 |
-| `docs/chekeo-2-*.md` | contratos Google Sheets/Drive | mantener-doc-historica o mover a `legacy/docs` | contradicen arquitectura D1/R2 si se leen como actuales |
-| `docs/menu-live-contract.md`, `docs/normalized-*.md`, `docs/ui-ux-mobile-first-plan.md` | `/api/order`, Apps Script, Sheets | mantener-doc-historica o mover a `legacy/docs` | utiles como historia, no como runtime actual |
-| `docs/cloudflare-internal-chekeo-*.md` | Chekeo Cloudflare viejo, PIN/session/RPC legacy | mantener-doc-historica o mover a `legacy/docs` | describe flujo anterior |
-| `cloudflare/public-order/.wrangler/` | artefactos Wrangler/Miniflare trackeados | eliminar-en-fase-futura del indice, no borrar sin revision | `.gitignore` ignora `.wrangler/`, pero hay 15 archivos trackeados en esa subcarpeta |
+| `legacy/` | Apps Script, HTML historico, planning, legacy Cloudflare y docs historicas | mantener-doc-historica | Fase 5 agrego `legacy/README.md` y `legacy/MOVED.md`; no tocar sin fase explicita |
+| `legacy/apps-script/` | Apps Script / Google Sheets antes en raiz | cuarentena Fase 5 | no es runtime oficial V2 |
+| `legacy/cloudflare/public-order/` | public order Cloudflare anterior, `/api/menu`, `/api/order`, Apps Script vars | cuarentena Fase 5 | tiene `DEPRECATED.md`; contiene assets historicos y `wrangler.toml` live-risk |
+| `legacy/cloudflare/internal-chekeo/` | Chekeo anterior, `/api/auth`, `/api/session`, `/api/logout`, `/api/rpc`, Apps Script RPC | cuarentena Fase 5 | tiene `DEPRECATED.md`; no es Chekeo V2 actual |
+| `legacy/cloudflare/tickets/` | tickets Cloudflare historico | cuarentena Fase 5 | no forma parte de las dos apps oficiales V2 |
+| `legacy/docs/chekeo-2-*.md` | contratos Google Sheets/Drive | cuarentena Fase 5 | contradicen arquitectura D1/R2 si se leen como actuales |
+| `legacy/docs/menu-live-contract.md`, `legacy/docs/normalized-*.md`, `legacy/docs/ui-ux-mobile-first-plan.md` | `/api/order`, Apps Script, Sheets | cuarentena Fase 5 | utiles como historia, no como runtime actual |
+| `legacy/docs/cloudflare-internal-chekeo-*.md` | Chekeo Cloudflare viejo, PIN/session/RPC legacy | cuarentena Fase 5 | describe flujo anterior |
+| `legacy/cloudflare/public-order/.wrangler/` | artefactos Wrangler/Miniflare historicos | no trackeado/resuelto | retirado del indice en Fase 3; no recrear ni versionar |
 | `APPS_SCRIPT_*` referencias | legacy Cloudflare y docs | mover-a-legacy/requiere-revision | no deben ser runtime V2 oficial |
 | `BOG_ACTIVE_ENV` | busqueda sin hallazgos relevantes | no-tocar | no se detecto uso activo |
 | `public-order-v1` | busqueda sin hallazgos | no-tocar | no existe referencia directa |
@@ -227,16 +227,16 @@ Riesgo detectado: `tests/internal-chekeo/kitchen-production-board.spec.ts` refer
 
 ### Docs historicas utiles o candidatas a mover despues
 
-- `docs/chekeo-2-*.md`
-- `docs/cloudflare-internal-chekeo-*.md`
-- `docs/menu-live-contract.md`
-- `docs/normalized-*.md`
+- `legacy/docs/chekeo-2-*.md`
+- `legacy/docs/cloudflare-internal-chekeo-*.md`
+- `legacy/docs/menu-live-contract.md`
+- `legacy/docs/normalized-*.md`
 - `docs/ui-redesign-*.md`
 - `docs/ui-ux-*.md`
 - `docs/public-order-mobile-qa.md`
 - `docs/chekeo-phase-*.md`
 
-No se mueven en Fase 2. La clasificacion fina de docs debe hacerse en Fase 5/Fase 6.
+Fase 5 movio docs historicas claras a `legacy/docs/`. Docs de auditoria visual y redesign que aun tienen referencias activas quedan fuera hasta una fase especifica.
 
 ## Assets
 
@@ -244,17 +244,16 @@ No se mueven en Fase 2. La clasificacion fina de docs debe hacerse en Fase 5/Fas
 |---|---|---|---|
 | R2 via `BOG_MENU_ASSETS` | Public V2, Chekeo V2 | activo-v2 | `/api/assets-v2/[[key]].ts` y helpers de upload |
 | `imageKey` / `imageUrl` en D1 | Public V2, Chekeo catalogo/sorteos | activo-v2 | `resolveAssetUrl()` y admin upload endpoints |
-| `cloudflare/public-order/assets/` | legacy public-order | mover-a-legacy en Fase 5 | carpeta bajo `cloudflare/public-order` deprecated |
+| `legacy/cloudflare/public-order/assets/` | legacy public-order | cuarentena Fase 5 | carpeta bajo superficie deprecated |
 | `docs/assets/chekeo-phase-*` | docs historicas, QA, mockups | mantener-doc-historica | evidencia de auditorias y prototipos |
 | `apps/public-order-v2` assets locales | Public V2 | no aplica | no hay carpeta de assets dedicada; usa CSS y R2 |
 | `apps/internal-chekeo-v2` assets locales | Chekeo V2 | no aplica | no hay carpeta de assets dedicada; genera canvas/PNG en runtime |
 
 ## Candidatos para Fase 5 y Fase 6
 
-- Mover `cloudflare/public-order/`, `cloudflare/internal-chekeo/` y `cloudflare/tickets/` a cuarentena legacy, preservando `DEPRECATED.md` y cualquier rollback util.
-- Mover Apps Script y HTML historico de la raiz a `legacy/apps-script` o estructura equivalente.
-- Separar docs activas de docs historicas para evitar que Sheets/App Script parezcan source of truth actual.
-- Retirar del indice los artefactos `cloudflare/public-order/.wrangler/` si se confirma que son residuos locales y no rollback deliberado.
+- Revisar en Fase 6 si los scripts `public-order:*` deben eliminarse o reescribirse hacia `legacy/cloudflare/public-order`.
+- Separar las referencias historicas restantes en docs activas para evitar que Sheets/App Script parezcan source of truth actual.
+- Mantener fuera del indice cualquier artefacto `.wrangler/`; Fase 3 ya retiro del indice los residuos de `cloudflare/public-order/.wrangler/`.
 - Revisar o corregir el test que referencia `migrations/0008_preview_realistic_orders_seed.sql`, porque el archivo no existe.
 
 ## Bloqueadores
@@ -266,7 +265,7 @@ No se mueven en Fase 2. La clasificacion fina de docs debe hacerse en Fase 5/Fas
 
 - Cuales son los nombres definitivos de los proyectos Pages preview para Public V2 e Internal V2?
 - Cuales son los nombres definitivos de D1/R2 preview frente a produccion?
-- `cloudflare/public-order/wrangler.toml` debe conservarse como rollback historico o moverse completo a legacy en Fase 5?
+- `legacy/cloudflare/public-order/wrangler.toml` debe conservarse como rollback historico o eliminarse en una fase futura?
 - El test que referencia `0008_preview_realistic_orders_seed.sql` debe actualizarse, restaurar fixture no destructiva o moverse a legacy?
 
 ## Siguiente fase sugerida

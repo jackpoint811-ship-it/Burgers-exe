@@ -12,7 +12,7 @@ La migracion `0013_v2_raffles_ticket_adjustments.sql` ya fue aplicada manualment
 
 ## 3. Metodo usado
 
-La aplicacion se hizo con `wrangler d1 execute --file`, apuntando al `wrangler.toml` operativo ya existente para `cloudflare/public-order`.
+La aplicacion se hizo con `wrangler d1 execute --file`, apuntando al `wrangler.toml` operativo legacy que en Fase 5 quedo en `legacy/cloudflare/public-order`.
 
 No se uso `wrangler d1 migrations apply`.
 
@@ -55,7 +55,7 @@ Columnas confirmadas:
 - No se tocaron datos manualmente mas alla del import SQL.
 - No se hizo rollback.
 - No se modifico `legacy`.
-- No se modifico `cloudflare/public-order/**`.
+- No se modifico `legacy/cloudflare/public-order/**` en esa operacion historica.
 
 ## 7. Validacion de codigo
 

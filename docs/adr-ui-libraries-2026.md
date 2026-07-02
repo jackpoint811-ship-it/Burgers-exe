@@ -7,8 +7,8 @@
 Burgers.exe/Burger-OG se encuentra en una etapa de evolución UI/UX para los módulos `public-order` e `internal-chekeo`, manteniendo la operación en Cloudflare Pages con HTML/CSS/JS vanilla y backend en Google Apps Script/Sheets.
 
 Antes de iniciar PR-2 (accesibilidad estructural) y PR-3 (sistema visual compartido), ya se completaron:
-- A1: hardening técnico de `cloudflare/public-order/app.js`.
-- A2: hardening técnico de `cloudflare/internal-chekeo/app.js`.
+- A1: hardening técnico de `legacy/cloudflare/public-order/app.js`.
+- A2: hardening técnico de `legacy/cloudflare/internal-chekeo/app.js`.
 
 Los documentos de auditoría y planeación UX 2026 recomiendan patrones modernos y buenas prácticas actuales. Aun así, el proyecto mantiene restricciones estrictas:
 - sin frameworks,
@@ -19,7 +19,7 @@ Los documentos de auditoría y planeación UX 2026 recomiendan patrones modernos
 
 Por ello, es necesario definir una política explícita de librerías para alinear decisiones técnicas y evitar desviaciones durante PR-2 y PR-3.
 
-> Nota: `deep-research-report-actualizado.md` no está disponible en el workspace al momento de esta ADR; se usa el resto de documentación base listada.
+> Nota: `legacy/docs/deep-research-report-actualizado.md` no estaba disponible en el workspace al momento de esta ADR; se usa el resto de documentación base listada.
 
 ## Opciones evaluadas
 
@@ -127,8 +127,8 @@ Reabrir esta ADR si ocurre alguno de los siguientes escenarios:
 ## Criterios de aceptación de esta fase (A3)
 - Solo se crea `docs/adr-ui-libraries-2026.md`.
 - No se toca código funcional.
-- No se toca `cloudflare/public-order`.
-- No se toca `cloudflare/internal-chekeo`.
+- No se toca `legacy/cloudflare/public-order`.
+- No se toca `legacy/cloudflare/internal-chekeo`.
 - No se toca `legacy/`.
 - No se toca `BOG_ACTIVE_ENV`.
 - No se agregan dependencias.
@@ -137,7 +137,7 @@ Reabrir esta ADR si ocurre alguno de los siguientes escenarios:
 
 ## Referencias utilizadas
 - `docs/ui-ux-2026-audit-chekeo-and-public-order.md`
-- `docs/ui-ux-mobile-first-plan.md`
-- `docs/cloudflare-internal-chekeo-phase-0-audit.md`
-- `cloudflare/internal-chekeo/README.md`
-- `cloudflare/public-order/README.md`
+- `legacy/docs/ui-ux-mobile-first-plan.md`
+- `legacy/docs/cloudflare-internal-chekeo-phase-0-audit.md`
+- `legacy/cloudflare/internal-chekeo/README.md`
+- `legacy/cloudflare/public-order/README.md`

@@ -6,13 +6,12 @@
 ## Estado
 
 - Vivo
-- Fase actual: Fase 4
+- Fase actual: Fase 5
 
 ## Kanban
 
 ### Backlog
 
-- [ ] Fase 5 - Mover legacy a cuarentena
 - [ ] Fase 6 - Remover Sheets/App Script del proyecto activo
 - [ ] Fase 7 - Preview 1:1 con DB/R2 espejo
 - [ ] Fase 8 - Estandarizar rutina diaria, modelos, prompts y QA
@@ -23,7 +22,7 @@
 
 ### En revision
 
-- [ ] Fase 4 - Separar carpetas activas
+- [ ] Fase 5 - Mover legacy a cuarentena
 
 ### Bloqueado
 
@@ -36,6 +35,7 @@
 - [x] Fase 1.1 - Skills oficiales: Obsidian, Graphify y skills faltantes
 - [x] Fase 2 - Inventario real con Graphify
 - [x] Fase 3 - Estandarizar ambientes Cloudflare
+- [x] Fase 4 - Separar carpetas activas
 
 ## Fases de la migracion
 
@@ -64,7 +64,7 @@
 - Confirmar bindings efectivos de los cuatro proyectos Pages en Cloudflare Dashboard o via auditoria read-only mas profunda.
 - Confirmar el valor efectivo de `ORDERS_V2_WRITE_ENABLED` por ambiente sin imprimir secrets.
 - Definir en Fase 7 la estrategia exacta de seed/reset preview 1:1.
-- Decidir en Fase 5 la estructura exacta de cuarentena para `cloudflare/*`, Apps Script raiz, `planning/`, docs historicas y assets legacy.
+- Decidir en Fase 6 si se eliminan o reescriben scripts npm legacy `public-order:*` ahora que la cuarentena vive bajo `legacy/cloudflare/public-order`.
 
 ## Bloqueadores
 
@@ -73,6 +73,7 @@
 - Ninguno para Fase 2. Graphify code graph quedo actualizado; semantic analysis fallo por cuota Gemini y se aplico fallback manual aprobado.
 - Ninguno bloquea Fase 3. La lista read-only de Pages no expone bindings/secrets, asi que queda como riesgo documentado para Fase 7.
 - Ninguno bloquea Fase 4. La fase es documental y no mueve legacy.
+- Ninguno bloquea Fase 5. Se aplico cuarentena con `git mv`, sin borrar archivos ni tocar runtime.
 
 ## Riesgos
 
@@ -82,12 +83,13 @@
 - La separacion preview vs produccion sigue dependiendo de validar configuracion real en fases posteriores.
 - La Fase 1 se trabajo sobre la rama de Fase 0 porque `origin/main` todavia no tenia los documentos del PR #333.
 - `C:\Users\yoliz\.codex\skills` existe como ruta historica de una PC anterior. La ruta canonica actual es `$env:USERPROFILE\.codex\skills`, que en esta PC resuelve a `C:\Users\JackPoint\.codex\skills`.
-- El inventario Fase 2 detecto `cloudflare/public-order/.wrangler/` con 15 archivos trackeados dentro de una carpeta que `.gitignore` ya ignora.
+- El inventario Fase 2 detecto `cloudflare/public-order/.wrangler/` con 15 archivos trackeados dentro de una carpeta que `.gitignore` ya ignora; Fase 3 los retiro del indice sin borrar archivos locales.
 - El inventario Fase 2 detecto Apps Script/Sheets todavia en la raiz del repo; son legacy y candidatos para Fase 5/Fase 6.
 - `tests/internal-chekeo/kitchen-production-board.spec.ts` referencia `migrations/0008_preview_realistic_orders_seed.sql`, pero ese archivo no existe actualmente.
 - Wrangler local esta autenticado con permisos amplios; en Fase 3 solo se usaron comandos read-only.
 - `wrangler.toml` existe como config local ignorada y no debe versionarse.
-- `cloudflare/public-order/wrangler.toml` sigue como config legacy/riesgo porque apunta a recursos live.
+- `legacy/cloudflare/public-order/wrangler.toml` sigue como config legacy/riesgo porque apunta a recursos live.
+- Los scripts `public-order:*` de `package.json` no se modificaron en Fase 5; siguen prohibidos/riesgo y pueden apuntar a la ruta previa hasta Fase 6 o una fase especifica de cleanup de scripts.
 - `functions/api/referral-tickets.ts` existe como endpoint D1, pero no se encontro consumo directo desde apps V2; requiere revision antes de mover o borrar.
 
 ## Hallazgos Fase 1 - 2026-07-02
@@ -191,7 +193,7 @@
 ### Legacy y riesgos
 
 - `legacy/` ya esta marcado como deprecated.
-- `cloudflare/public-order/`, `cloudflare/internal-chekeo/` y `cloudflare/tickets/` quedan como candidatos para Fase 5.
+- `cloudflare/public-order/`, `cloudflare/internal-chekeo/` y `cloudflare/tickets/` quedaron como candidatos para Fase 5 y fueron movidos a `legacy/cloudflare/` en Fase 5.
 - Apps Script/Sheets de la raiz quedan como candidatos para Fase 5/Fase 6.
 - Docs historicas con Sheets/App Script deben reclasificarse en Fase 5/Fase 6 para no contradecir D1/R2 como source of truth.
 
@@ -223,7 +225,7 @@
 
 - La lista read-only de Pages no confirma bindings ni secrets por proyecto.
 - `tests/internal-chekeo/kitchen-production-board.spec.ts` sigue apuntando a `migrations/0008_preview_realistic_orders_seed.sql`, que no existe.
-- Los scripts `public-order:*` siguen clasificados como legacy/riesgo por usar config live bajo `cloudflare/public-order/wrangler.toml`.
+- Los scripts `public-order:*` siguen clasificados como legacy/riesgo; no se reescribieron en Fase 5.
 
 ## Hallazgos Fase 4 - 2026-07-02
 
@@ -244,8 +246,33 @@
 
 ### Candidatos Fase 5
 
-- `cloudflare/public-order/`, `cloudflare/internal-chekeo/`, `cloudflare/tickets/`, Apps Script raiz, `planning/`, docs historicas y assets legacy quedan listados para cuarentena futura.
+- `cloudflare/public-order/`, `cloudflare/internal-chekeo/`, `cloudflare/tickets/`, Apps Script raiz, `planning/` y docs historicas claras fueron movidos a cuarentena en Fase 5; assets legacy de docs quedaron en revision.
 - No se movio ni borro legacy en Fase 4.
+
+## Hallazgos Fase 5 - 2026-07-02
+
+### Cuarentena aplicada
+
+- Se movieron con `git mv` las carpetas legacy `cloudflare/public-order/`, `cloudflare/internal-chekeo/` y `cloudflare/tickets/` a `legacy/cloudflare/`.
+- Se movieron los archivos root de Apps Script/Sheets a `legacy/apps-script/`.
+- Se movio `planning/` a `legacy/planning/`.
+- Se movieron docs historicas claras a `legacy/docs/`: `docs/chekeo-2-*.md`, `docs/cloudflare-internal-chekeo-*.md`, `docs/menu-live-contract.md`, `docs/normalized-*.md`, `docs/ui-ux-mobile-first-plan.md`, `docs/public-order-mobile-qa.md` y `deep-research-report-actualizado.md`.
+- Se movio `skills/ui-ux-pro-max/` a `legacy/skills/ui-ux-pro-max/` porque era una copia incompleta sin `SKILL.md`; la skill valida permanece en `.agents/skills/ui-ux-pro-max/`.
+- Se agregaron `legacy/README.md` y `legacy/MOVED.md` como guia y ledger de movimientos.
+
+### No movido
+
+- No se movieron `apps/`, `functions/api/`, `packages/`, `migrations/`, `tests/` ni `tools/`.
+- No se movio `functions/api/referral-tickets.ts`.
+- No se movieron `docs/assets/chekeo-phase-*` porque `tests/internal-chekeo/kitchen-screenshots.spec.ts` todavia referencia `docs/assets/chekeo-phase-2-3-kitchen-production-line`.
+- No se modifico `package.json`; los scripts `public-order:*` quedan como legacy/riesgo prohibido y requieren decision de Fase 6 o cleanup especifico.
+
+### Validacion Fase 5
+
+- `git grep` no encontro dependencias desde `apps`, `functions`, `packages`, `migrations` o `tests` hacia `cloudflare/public-order`, `cloudflare/internal-chekeo`, `cloudflare/tickets` o `skills/ui-ux-pro-max`.
+- Graphify code graph OK despues del move: `1352` nodos, `2388` edges, `88` comunidades.
+- Graphify semantic analysis no se ejecuto en Fase 5; se aplico fallback manual con `git grep`, `git ls-files`, revision de rutas, docs, endpoints y scripts.
+- No se ejecutaron deploys, migrations, seeds, cambios de bindings, cambios de secrets ni comandos remotos de Cloudflare.
 
 ## Checklist para aprobar la siguiente fase
 
@@ -270,6 +297,8 @@
 - [x] Crear mapa oficial de superficie activa antes de mover legacy.
 - [x] Actualizar README con Active repo surface.
 - [x] Preparar lista de candidatos Fase 5 sin mover ni borrar archivos.
+- [x] Mover legacy claro a cuarentena sin borrar archivos.
+- [x] Documentar estructura de `legacy/` y ledger de movimientos.
 
 ## Ultima actualizacion
 
@@ -278,7 +307,7 @@
 
 ## Siguiente fase sugerida
 
-- Fase 5 - Mover legacy a cuarentena.
+- Fase 6 - Remover Sheets/App Script del proyecto activo.
 
 ## Regla permanente
 

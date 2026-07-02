@@ -5,8 +5,8 @@
 ## 1) Objetivo y alcance
 
 Definir un sistema visual compartido v1 para:
-- `cloudflare/public-order`
-- `cloudflare/internal-chekeo`
+- `legacy/cloudflare/public-order`
+- `legacy/cloudflare/internal-chekeo`
 
 Este documento establece lineamientos de diseño y contratos visuales para evolución incremental, sin implementar estilos ni modificar UI funcional en esta fase.
 
@@ -203,8 +203,8 @@ No se aprueban cambios visuales posteriores sin cobertura explícita de estados.
 ## 14) Criterios de aceptación de esta fase (PR-3A)
 
 - Solo se crea `docs/ui-visual-system-v1.md`.
-- No se toca `cloudflare/public-order`.
-- No se toca `cloudflare/internal-chekeo`.
+- No se toca `legacy/cloudflare/public-order`.
+- No se toca `legacy/cloudflare/internal-chekeo`.
 - No se toca `legacy/`.
 - No se toca `BOG_ACTIVE_ENV`.
 - No se agregan dependencias.
@@ -216,8 +216,8 @@ No se aprueban cambios visuales posteriores sin cobertura explícita de estados.
 
 - `docs/ui-ux-2026-audit-chekeo-and-public-order.md`
 - `docs/adr-ui-libraries-2026.md`
-- `docs/ui-ux-mobile-first-plan.md`
-- `docs/cloudflare-internal-chekeo-phase-0-audit.md`
-- `cloudflare/internal-chekeo/README.md`
-- `cloudflare/public-order/README.md`
-- `deep-research-report-actualizado.md`
+- `legacy/docs/ui-ux-mobile-first-plan.md`
+- `legacy/docs/cloudflare-internal-chekeo-phase-0-audit.md`
+- `legacy/cloudflare/internal-chekeo/README.md`
+- `legacy/cloudflare/public-order/README.md`
+- `legacy/docs/deep-research-report-actualizado.md`

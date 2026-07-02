@@ -48,7 +48,7 @@ Active environments:
 - Public preview: `burgers-exe-public-v2-preview`
 - Internal preview: `burgers-exe-internal-v2-preview`
 
-Legacy exists only for history, rollback, or future quarantine work until Fase 5/Fase 6. Google Sheets and Apps Script are not the current source of truth. Cloudflare D1 and R2 are the current source of truth for V2 data and assets.
+Legacy exists only for history, rollback, or future cleanup work. Google Sheets and Apps Script are not the current source of truth. Cloudflare D1 and R2 are the current source of truth for V2 data and assets.
 
 ## Official app surfaces
 
@@ -80,7 +80,8 @@ Legacy exists only for history, rollback, or future quarantine work until Fase 5
 The previous Google Sheets and Apps Script based architecture is deprecated.
 It is kept only for history, rollback, or reference in `legacy/`.
 The official current architecture uses Cloudflare D1 and R2.
-Additional legacy candidates still outside `legacy/` are tracked in `docs/codex-memory/14-active-surface-map.md`; do not move them without the approved Fase 5 PR.
+Fase 5 moved the clear legacy quarantine surface into `legacy/`: legacy Cloudflare folders, root Apps Script files, historical planning, selected historical docs, and the incomplete `skills/ui-ux-pro-max` mirror.
+See `legacy/README.md` and `legacy/MOVED.md` before using any legacy reference.
 
 ## Repo rules
 

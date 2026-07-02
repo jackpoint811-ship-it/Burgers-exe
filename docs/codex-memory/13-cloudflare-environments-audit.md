@@ -63,10 +63,10 @@ Nota: `wrangler d1 list` es inventario de recursos, no verificacion de schema ni
 | `wrangler.example.toml` | template | local/preview | `template` | seguro si mantiene placeholders y no secrets |
 | `/wrangler.toml` | config local raiz ignorada | local/preview | `riesgo controlado` | contiene bindings locales reales; no versionar; protegido por `.gitignore` |
 | `.dev.vars` | secrets locales ignorados | local | `riesgo controlado` | no leer, imprimir ni versionar |
-| `cloudflare/public-order/wrangler.toml` | config legacy trackeada | legacy/live | `riesgo` | apunta a recursos live; revisar en Fase 5 |
-| `cloudflare/public-order/.wrangler/` | artefactos Wrangler/Miniflare | local legacy | `riesgo resuelto en indice` | retirado del indice; archivos locales preservados |
-| `cloudflare/internal-chekeo/` | Pages legacy/deprecated | legacy | `legacy` | candidato Fase 5 |
-| `cloudflare/tickets/` | Worker legacy/deprecated | legacy | `legacy` | candidato Fase 5 |
+| `legacy/cloudflare/public-order/wrangler.toml` | config legacy trackeada | legacy/live | `riesgo` | apunta a recursos live; no usar sin aprobacion explicita |
+| `legacy/cloudflare/public-order/.wrangler/` | artefactos Wrangler/Miniflare | local legacy | `riesgo resuelto en indice` | retirado del indice; archivos locales preservados |
+| `legacy/cloudflare/internal-chekeo/` | Pages legacy/deprecated | legacy | `legacy` | cuarentena Fase 5 |
+| `legacy/cloudflare/tickets/` | Worker legacy/deprecated | legacy | `legacy` | cuarentena Fase 5 |
 | `functions/api/*` | Pages Functions activas | prod/preview segun binding | `activo` | requiere bindings correctos por proyecto |
 | `migrations/*.sql` | migraciones D1 | prod/preview segun comando | `activo/riesgo` | comandos remotos prohibidos en fases documentales |
 
@@ -81,7 +81,7 @@ Nota: `wrangler d1 list` es inventario de recursos, no verificacion de schema ni
 | `qa:visual` | QA visual | no requerido en Fase 3 | solo aplicar si hay cambio UI |
 | `db:v2:*:local` | D1 local/preview explicita | no ejecutado | puede mutar DB local; requiere intencion explicita |
 | `db:v2:*:remote` | D1 remoto preview | prohibido en Fase 3 | muta recurso Cloudflare |
-| `public-order:*` | legacy/public live | prohibido en Fase 3 | usa config legacy y recursos live |
+| `public-order:*` | legacy/public live | prohibido | no actualizado en Fase 5; revisar/remover en Fase 6 antes de cualquier uso |
 
 Propuestas futuras para Fase 7, no implementadas en Fase 3:
 
@@ -145,7 +145,7 @@ Impacto: cualquier QA que dependa de ese seed puede fallar o no representar prev
 - Definir seed preview controlado y no destructivo para QA.
 - Definir estrategia de reset de pedidos preview sin tocar produccion.
 - Validar que Chekeo preview abre/usa URLs de Public preview y que Chekeo prod abre/usa Public prod.
-- Mantener `cloudflare/public-order/wrangler.toml` como legacy hasta Fase 5; no usarlo para nuevos flujos.
+- `legacy/cloudflare/public-order/wrangler.toml` queda como legacy/riesgo; no usarlo para nuevos flujos ni comandos live sin aprobacion explicita.
 
 ## Bloqueadores abiertos
 

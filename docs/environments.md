@@ -2,6 +2,8 @@
 
 Nota Fase 3: esta matriz fue alineada con auditoria read-only de Wrangler el 2026-07-02. Los nombres de recursos existen, pero los bindings/secrets reales por Pages project deben confirmarse en Cloudflare Dashboard o por una auditoria read-only mas profunda antes de cualquier deploy o escritura.
 
+Nota Fase 5: las superficies Cloudflare legacy quedaron en `legacy/cloudflare/`. Cualquier config bajo `legacy/cloudflare/public-order/wrangler.toml` es historica/riesgo live y no debe usarse para local, preview ni produccion sin aprobacion explicita.
+
 ## Reglas globales
 
 - Preview y produccion nunca comparten escritura.

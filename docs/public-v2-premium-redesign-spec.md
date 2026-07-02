@@ -8,7 +8,7 @@ Propuesta documental para la V2 oficial. Este PR no implementa UI, no agrega lib
 
 - Superficie objetivo: `apps/public-order-v2`
 - App oficial: V2 publica de pedidos y consulta de tickets
-- Fuera de alcance: `cloudflare/public-order/**`
+- Fuera de alcance: `legacy/cloudflare/public-order/**`
 - Fuera de alcance: cambios de backend, contratos, payloads, precios, promociones, reglas comerciales, deploy y produccion
 
 La spec define direccion visual, prioridades de UX y plan incremental para futuras implementaciones en PRs separados.
@@ -307,7 +307,7 @@ Esta fase documental se considera aceptada si:
 
 - se crea `docs/public-v2-premium-redesign-spec.md`,
 - el alcance deja claro que el objetivo es `apps/public-order-v2`,
-- queda explicito que `cloudflare/public-order/**` no es el target,
+- queda explicito que `legacy/cloudflare/public-order/**` no es el target,
 - no se toca codigo de produccion,
 - no se agregan librerias,
 - no se tocan backend, payloads, contratos ni precios,
