@@ -1,30 +1,52 @@
 # Checklists para agentes en Burgers.exe
 
-Este archivo define checklists mínimos para que Codex o cualquier agente entregue cambios revisables y seguros.
+Este archivo define checklists minimos para que Codex o cualquier agente entregue cambios revisables y seguros.
 
 ## Checklist universal
 
 Aplicar en todo PR:
 
-- [ ] Leí `AGENTS.md`.
-- [ ] Leí `docs/codex-memory/00-indice.md`.
-- [ ] Identifiqué el área afectada.
-- [ ] No toqué `legacy/` salvo autorización explícita.
-- [ ] No agregué dependencias, CDNs ni frameworks salvo autorización explícita.
-- [ ] No cambié contratos de datos, precios, tickets, promociones ni payloads salvo autorización explícita.
-- [ ] Revisé el diff completo.
-- [ ] Ejecuté `git diff --check` o reporté por qué no pude ejecutarlo.
-- [ ] Abrí PR desde una rama limpia.
+- [ ] Lei `AGENTS.md`.
+- [ ] Lei `docs/codex-memory/00-indice.md`.
+- [ ] Identifique el area afectada.
+- [ ] No toque `legacy/` salvo autorizacion explicita.
+- [ ] No agregue dependencias, CDNs ni frameworks salvo autorizacion explicita.
+- [ ] No cambie contratos de datos, precios, tickets, promociones ni payloads salvo autorizacion explicita.
+- [ ] Revise el diff completo.
+- [ ] Ejecute `git diff --check` o reporte por que no pude ejecutarlo.
+- [ ] Abri PR desde una rama limpia.
 
-## Checklist de documentación
+## Checklist de documentacion
 
 Para cambios solo de docs:
 
-- [ ] No cambié código de app.
-- [ ] No cambié scripts ni configuración.
-- [ ] La documentación nueva tiene un propósito claro.
-- [ ] El índice enlaza cualquier archivo nuevo importante.
-- [ ] Reporté que no se ejecutaron checks técnicos porque no aplican.
+- [ ] No cambie codigo de app.
+- [ ] No cambie scripts ni configuracion.
+- [ ] La documentacion nueva tiene un proposito claro.
+- [ ] El indice enlaza cualquier archivo nuevo importante.
+- [ ] Reporte que no se ejecutaron checks tecnicos porque no aplican.
+
+## Checklist Migracion V2 Clean Architecture
+
+- [ ] Lei `10-migration-tracker.md`.
+- [ ] Confirme fase actual.
+- [ ] Confirme fase autorizada.
+- [ ] No salte fases.
+- [ ] Revise `11-skills-and-tools.md` cuando aplico.
+- [ ] No mezcle preview con produccion.
+- [ ] No movi legacy salvo que la fase lo autorice.
+- [ ] No borre archivos salvo autorizacion explicita.
+- [ ] No toque secrets.
+- [ ] Actualice el tracker antes de cerrar.
+- [ ] Reporte bloqueadores y siguiente fase sugerida.
+
+## Checklist de tooling
+
+- [ ] Valide si Graphify aplica.
+- [ ] Valide si Playwright aplica.
+- [ ] Valide si Wrangler aplica.
+- [ ] Valide si npm, typecheck y build aplican.
+- [ ] Si alguna herramienta falto, reporte bloqueo o limitacion.
 
 ## Checklist UI/UX general
 
@@ -33,13 +55,13 @@ Para cambios visibles:
 - [ ] Mantiene enfoque mobile-first.
 - [ ] Funciona en 320px sin overflow horizontal.
 - [ ] Funciona en 390px.
-- [ ] Mantiene targets táctiles de al menos 44px.
+- [ ] Mantiene targets tactiles de al menos 44px.
 - [ ] Mantiene foco visible.
 - [ ] Mantiene labels persistentes.
-- [ ] No reemplaza información esencial por placeholders.
+- [ ] No reemplaza informacion esencial por placeholders.
 - [ ] Tiene estados loading, success, error o empty cuando aplican.
 - [ ] Respeta `prefers-reduced-motion`.
-- [ ] Mantiene estética Burgers.exe: cyberpunk, gaming, fondo oscuro, verde neón, glow y tono de quest.
+- [ ] Mantiene estetica Burgers.exe: cyberpunk, gaming, fondo oscuro, verde neon, glow y tono de quest.
 
 ## Checklist Chekeo
 
@@ -54,7 +76,7 @@ Validar:
 - [ ] No se rompe el flujo de marcar pagado / regresar a pendiente.
 - [ ] No se rompe nota interna.
 - [ ] No se rompe WhatsApp.
-- [ ] No se rompe descarga o generación de ticket si aplica.
+- [ ] No se rompe descarga o generacion de ticket si aplica.
 
 ## Checklist public-order
 
@@ -63,37 +85,37 @@ Antes de tocar public order, leer `04-flujo-public-order.md`.
 Validar:
 
 - [ ] CTA para iniciar pedido sigue claro.
-- [ ] Personalización del pedido sigue comprensible.
+- [ ] Personalizacion del pedido sigue comprensible.
 - [ ] Checkout mantiene labels, helper text y errores inline.
 - [ ] No se rompen payloads enviados desde `orders-v2`.
-- [ ] No se cambia lectura de menú, tickets, promociones, precios ni ubicación sin autorización.
-- [ ] Se probó o se dejó QA sugerido para pedido completo.
+- [ ] No se cambia lectura de menu, tickets, promociones, precios ni ubicacion sin autorizacion.
+- [ ] Se probo o se dejo QA sugerido para pedido completo.
 
 ## Checklist pagos, tickets y WhatsApp
 
 Aplicar si el cambio toca pagos, ticket, comprobante o mensajes:
 
-- [ ] No cambié reglas de precio sin autorización.
-- [ ] No cambié reglas de tickets sin autorización.
-- [ ] El copy de WhatsApp incluye solo información necesaria.
-- [ ] La información bancaria aparece solo cuando el pago es por transferencia, si aplica.
+- [ ] No cambie reglas de precio sin autorizacion.
+- [ ] No cambie reglas de tickets sin autorizacion.
+- [ ] El copy de WhatsApp incluye solo informacion necesaria.
+- [ ] La informacion bancaria aparece solo cuando el pago es por transferencia, si aplica.
 - [ ] El ticket mantiene folio, fecha/entrega, datos del cliente, desglose y total cuando aplique.
 - [ ] El contenido no se satura visualmente.
-- [ ] El tono mantiene la temática Burgers.exe.
+- [ ] El tono mantiene la tematica Burgers.exe.
 
-## Checklist Resumen K / operación
+## Checklist Resumen K / operacion
 
-Aplicar si el cambio toca producción o resumen operativo:
+Aplicar si el cambio toca produccion o resumen operativo:
 
 - [ ] Muestra burgers necesarias.
 - [ ] Muestra ingredientes necesarios.
 - [ ] Muestra extras necesarios.
-- [ ] Distingue cantidades operativas de información para cliente.
-- [ ] No mezcla datos del sorteo con producción salvo que el flujo lo requiera.
+- [ ] Distingue cantidades operativas de informacion para cliente.
+- [ ] No mezcla datos del sorteo con produccion salvo que el flujo lo requiera.
 
 ## Checklist PR
 
-La descripción del PR debe incluir:
+La descripcion del PR debe incluir:
 
 ```md
 ## Summary
