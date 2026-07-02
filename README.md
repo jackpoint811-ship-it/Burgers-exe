@@ -17,10 +17,38 @@ Burgers.exe V2 is the official project and production architecture for this repo
 - Living repo memory: `docs/codex-memory/`
 - Migration tracker: `docs/codex-memory/10-migration-tracker.md`
 - Skills and tools guide: `docs/codex-memory/11-skills-and-tools.md`
+- V2 inventory: `docs/codex-memory/12-v2-inventory.md`
+- Cloudflare environments audit: `docs/codex-memory/13-cloudflare-environments-audit.md`
+- Active surface map: `docs/codex-memory/14-active-surface-map.md`
 - Clean architecture migration spec: `docs/refactor-v2-clean-architecture.md`
 - Environment matrix: `docs/environments.md`
 - Current Cloudflare architecture notes: `docs/burgers-v2-architecture.md`
 - Current Cloudflare data notes: `docs/burgers-v2-cloudflare-data.md`
+
+## Active repo surface
+
+Burgers.exe V2 has 2 official apps:
+
+- Public V2: `apps/public-order-v2`
+- Internal Chekeo V2: `apps/internal-chekeo-v2`
+
+Active shared runtime:
+
+- Cloudflare Pages Functions V2: `functions/api/*`
+- Shared config/contracts: `packages/config`
+- Shared UI primitives: `packages/ui`
+- App selector and aliases: `vite.config.ts`
+- Active D1 migrations: `migrations/`
+- Living migration/docs memory: `docs/codex-memory/`
+
+Active environments:
+
+- Public production: `burgers-exe`
+- Internal production: `chekeo2-0`
+- Public preview: `burgers-exe-public-v2-preview`
+- Internal preview: `burgers-exe-internal-v2-preview`
+
+Legacy exists only for history, rollback, or future quarantine work until Fase 5/Fase 6. Google Sheets and Apps Script are not the current source of truth. Cloudflare D1 and R2 are the current source of truth for V2 data and assets.
 
 ## Official app surfaces
 
@@ -52,6 +80,7 @@ Burgers.exe V2 is the official project and production architecture for this repo
 The previous Google Sheets and Apps Script based architecture is deprecated.
 It is kept only for history, rollback, or reference in `legacy/`.
 The official current architecture uses Cloudflare D1 and R2.
+Additional legacy candidates still outside `legacy/` are tracked in `docs/codex-memory/14-active-surface-map.md`; do not move them without the approved Fase 5 PR.
 
 ## Repo rules
 

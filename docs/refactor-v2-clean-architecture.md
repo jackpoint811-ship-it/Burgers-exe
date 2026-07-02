@@ -28,10 +28,8 @@ Definir la migracion oficial para dejar el repo limpio, entendible y estandariza
 
 - `packages/ui`
 - `packages/config`
-- `packages/domain`
-- `packages/cloudflare`
 
-Nota Fase 2: en el inventario real actual existen `packages/ui` y `packages/config`. `packages/domain` y `packages/cloudflare` son parte del mapa objetivo, pero todavia no existen como paquetes reales en el repo.
+Nota Fase 4: la superficie compartida real actual es `packages/ui` y `packages/config`. `packages/domain` y `packages/cloudflare` siguen siendo parte del mapa objetivo futuro, pero todavia no existen como paquetes reales en el repo y no deben tratarse como superficie activa.
 
 ### Cloudflare
 
@@ -41,6 +39,8 @@ Nota Fase 2: en el inventario real actual existen `packages/ui` y `packages/conf
 - Wrangler y bindings solo como capa de configuracion y operacion
 
 Nota Fase 3: la auditoria read-only confirmo existencia de los Pages projects `burgers-exe`, `chekeo2-0`, `burgers-exe-public-v2-preview` y `burgers-exe-internal-v2-preview`; D1 `burgers-exe-menu-live` y `burgers-exe-menu-v2-preview`; y R2 `burgers-exe-menu-assets` y `burgers-exe-assets-v2-preview`. Esta confirmacion no sustituye validar bindings/secrets por proyecto antes de deploy o escritura.
+
+Nota Fase 4: `docs/codex-memory/14-active-surface-map.md` define la superficie activa antes de mover legacy. Fase 4 no movio carpetas, no cambio runtime y no autoriza borrar archivos.
 
 ### Legacy
 
@@ -150,6 +150,7 @@ legacy/
 - Fase 2 detecto Apps Script/Sheets todavia en la raiz del repo y carpetas Cloudflare deprecated fuera de `legacy/`; no moverlas hasta Fase 5/Fase 6.
 - Fase 3 detecto que los recursos Cloudflare canonicos existen, pero los bindings/secrets reales por Pages project siguen pendientes de confirmacion segura.
 - `cloudflare/public-order/wrangler.toml` sigue como legacy/riesgo porque apunta a recursos live; no usarlo para nuevos flujos antes de Fase 5.
+- Fase 4 dejo `functions/api/referral-tickets.ts` como endpoint de riesgo porque no se encontro consumo directo desde apps V2; no mover ni borrar sin revision puntual.
 
 ## Checklist de seguridad
 
