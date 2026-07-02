@@ -44,6 +44,8 @@ Nota Fase 4: `docs/codex-memory/14-active-surface-map.md` define la superficie a
 
 Nota Fase 5: la cuarentena legacy clara vive ahora bajo `legacy/`: `legacy/cloudflare/`, `legacy/apps-script/`, `legacy/planning/`, `legacy/docs/` y `legacy/skills/`. Este movimiento no cambio runtime, Functions V2, D1/R2, migraciones, seeds, secrets ni deploys.
 
+Nota Fase 6: se removieron del `package.json` activo los scripts legacy `public-order:*`. Las referencias restantes a Sheets/App Script o Cloudflare public-order anterior deben estar bajo `legacy/` o marcadas como historia/no runtime.
+
 ### Legacy
 
 - Google Sheets
@@ -150,6 +152,7 @@ legacy/
 - La falta de inventario real puede ocultar dependencias vivas antes de mover carpetas.
 - La ausencia de control de tooling puede hacer que distintos clones ejecuten fases con criterios distintos.
 - Fase 5 movio Apps Script/Sheets de la raiz y carpetas Cloudflare deprecated a `legacy/`; no usar esos archivos como runtime oficial.
+- Fase 6 removio scripts root legacy `public-order:*`; no existe reemplazo automatico ni permiso implicito para ejecutar flujos antiguos.
 - Fase 3 detecto que los recursos Cloudflare canonicos existen, pero los bindings/secrets reales por Pages project siguen pendientes de confirmacion segura.
 - `legacy/cloudflare/public-order/wrangler.toml` sigue como legacy/riesgo porque apunta a recursos live; no usarlo para nuevos flujos.
 - Fase 4 dejo `functions/api/referral-tickets.ts` como endpoint de riesgo porque no se encontro consumo directo desde apps V2; no mover ni borrar sin revision puntual.

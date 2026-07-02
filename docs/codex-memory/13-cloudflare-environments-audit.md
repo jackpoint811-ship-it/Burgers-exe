@@ -81,7 +81,7 @@ Nota: `wrangler d1 list` es inventario de recursos, no verificacion de schema ni
 | `qa:visual` | QA visual | no requerido en Fase 3 | solo aplicar si hay cambio UI |
 | `db:v2:*:local` | D1 local/preview explicita | no ejecutado | puede mutar DB local; requiere intencion explicita |
 | `db:v2:*:remote` | D1 remoto preview | prohibido en Fase 3 | muta recurso Cloudflare |
-| `public-order:*` | legacy/public live | prohibido | no actualizado en Fase 5; revisar/remover en Fase 6 antes de cualquier uso |
+| `public-order:*` | legacy/public live | removido en Fase 6 | ya no existe en `package.json`; no hay reemplazo automatico ni permiso de uso |
 
 Propuestas futuras para Fase 7, no implementadas en Fase 3:
 

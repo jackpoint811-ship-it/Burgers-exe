@@ -30,7 +30,7 @@ Esta fase separa documentalmente lo activo de lo legacy. No autoriza mover carpe
 | `packages/config` | apps V2 y Functions | activo-v2 | imports `@config/index` en apps; imports relativos en `functions/api/*`; aliases en `vite.config.ts` y `tsconfig.json` | critico: rompe contratos, payloads, tipos, fallback y runtime env |
 | `packages/ui` | apps V2 | activo-v2 | imports `@ui/index` en ambas apps; aliases en `vite.config.ts` y `tsconfig.json` | alto: rompe UI compartida |
 | `vite.config.ts` | builds public/internal | activo-v2 | selecciona `apps/internal-chekeo-v2` con `APP_TARGET=internal`; aliases `@ui` y `@config` | critico: rompe builds |
-| `package.json` | scripts de desarrollo, build, checks y DB | activo/riesgo mixto | contiene scripts V2 activos y scripts legacy/riesgo `public-order:*` | alto: no modificar scripts sin fase autorizada |
+| `package.json` | scripts de desarrollo, build, checks y DB | activo/riesgo remoto | Fase 6 removio scripts legacy/riesgo `public-order:*`; conserva scripts V2 y `db:v2:*` | alto: no ejecutar scripts remotos sin autorizacion |
 | `migrations/` | D1 V2 schema/seed/reparaciones | activo/riesgo | contiene `0001` a `0013`; docs Fase 2/3 las mantienen activas | alto: mover o ejecutar mal puede romper D1 o mezclar prod/preview |
 | `tests/internal-chekeo` | QA Internal/Cocina | activo con riesgo | specs actuales de cocina; una spec referencia seed faltante `0008_preview_realistic_orders_seed.sql` | medio: no mover hasta resolver estrategia Fase 7 |
 | `tests/visual` | QA visual public | activo tooling | `public-preflight.spec.ts` para preflight visual | bajo/medio: mover rompe QA manual/visual |
@@ -94,7 +94,7 @@ Fase 5 movio docs historicas claras a `legacy/docs/`. Algunas docs de auditoria/
 | `qa:visual` | tooling QA | Playwright visual | usar solo cuando aplique UI/QA |
 | `db:v2:*:local` | D1 local/preview explicita | migrar/seed local | no ejecutar salvo intencion explicita |
 | `db:v2:*:remote` | riesgo remoto | muta D1 remoto preview | prohibido sin autorizacion explicita |
-| `public-order:*` | legacy/riesgo live | referenciaba `cloudflare/public-order/wrangler.toml`; Fase 5 no modifico `package.json` | prohibido; revisar/remover en Fase 6 |
+| `public-order:*` | legacy/riesgo live | removido de `package.json` en Fase 6 | no hay reemplazo automatico; no ejecutar flujos legacy sin aprobacion |
 
 ## Assets activos
 
@@ -128,7 +128,7 @@ Fase 5 movio docs historicas claras a `legacy/docs/`. Algunas docs de auditoria/
 | Ruta | Motivo |
 | --- | --- |
 | `docs/assets/chekeo-phase-*` | `tests/internal-chekeo/kitchen-screenshots.spec.ts` referencia `docs/assets/chekeo-phase-2-3-kitchen-production-line`; moverlo requiere fase de referencias. |
-| `package.json` | contiene scripts legacy/riesgo `public-order:*`; no se modifico porque la fase fue de cuarentena, no cleanup de scripts. |
+| `package.json` | Fase 6 removio scripts legacy/riesgo `public-order:*`; no se cambio runtime ni dependencias. |
 
 ## Carpetas y archivos que NO se deben tocar en Fase 4
 
@@ -150,7 +150,7 @@ Fase 5 movio docs historicas claras a `legacy/docs/`. Algunas docs de auditoria/
 - `referral-tickets.ts` existe como endpoint D1 pero no se encontro consumo directo en apps V2; revisar antes de mover o borrar.
 - `tests/internal-chekeo/kitchen-production-board.spec.ts` referencia `migrations/0008_preview_realistic_orders_seed.sql`, que no existe; candidato Fase 7.
 - `docs/burgers-v2-cloudflare-data.md` y docs historicas contienen comandos y referencias legacy; Fase 5/Fase 6 debe reclasificarlas para evitar confusion.
-- `public-order:*` scripts siguen presentes y no fueron reescritos en Fase 5; no ejecutarlos sin aprobacion explicita.
+- `public-order:*` scripts fueron removidos en Fase 6; si una fase futura necesita un flujo legacy, debe definirlo de nuevo con ambiente explicito y aprobacion.
 - `.graphify/` existe como artefacto local ignorado en varias rutas; no versionar.
 
 ## Siguiente fase sugerida

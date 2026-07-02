@@ -24,6 +24,8 @@
 - Legacy, Apps Script, and Sheets remain deprecated but not deleted.
 - Public V2 preview and Internal V2 preview remain available as backup.
 
+Fase 6 note: root `public-order:*` scripts were removed from active `package.json`. Any remaining Apps Script, Sheets, or old Cloudflare public-order references in this historical architecture log are legacy/no-runtime unless a newer section explicitly says otherwise.
+
 ## Estructura propuesta
 
 - `apps/public-order-v2`: landing + ordering shell.

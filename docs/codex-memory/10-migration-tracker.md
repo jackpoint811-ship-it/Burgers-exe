@@ -6,13 +6,12 @@
 ## Estado
 
 - Vivo
-- Fase actual: Fase 5
+- Fase actual: Fase 6
 
 ## Kanban
 
 ### Backlog
 
-- [ ] Fase 6 - Remover Sheets/App Script del proyecto activo
 - [ ] Fase 7 - Preview 1:1 con DB/R2 espejo
 - [ ] Fase 8 - Estandarizar rutina diaria, modelos, prompts y QA
 
@@ -22,7 +21,7 @@
 
 ### En revision
 
-- [ ] Fase 5 - Mover legacy a cuarentena
+- [ ] Fase 6 - Remover Sheets/App Script del proyecto activo
 
 ### Bloqueado
 
@@ -36,6 +35,7 @@
 - [x] Fase 2 - Inventario real con Graphify
 - [x] Fase 3 - Estandarizar ambientes Cloudflare
 - [x] Fase 4 - Separar carpetas activas
+- [x] Fase 5 - Mover legacy a cuarentena
 
 ## Fases de la migracion
 
@@ -64,7 +64,7 @@
 - Confirmar bindings efectivos de los cuatro proyectos Pages en Cloudflare Dashboard o via auditoria read-only mas profunda.
 - Confirmar el valor efectivo de `ORDERS_V2_WRITE_ENABLED` por ambiente sin imprimir secrets.
 - Definir en Fase 7 la estrategia exacta de seed/reset preview 1:1.
-- Decidir en Fase 6 si se eliminan o reescriben scripts npm legacy `public-order:*` ahora que la cuarentena vive bajo `legacy/cloudflare/public-order`.
+- Definir en Fase 7 la estrategia exacta de comandos preview 1:1, seeds/reset y validacion de bindings sin tocar produccion.
 
 ## Bloqueadores
 
@@ -74,6 +74,7 @@
 - Ninguno bloquea Fase 3. La lista read-only de Pages no expone bindings/secrets, asi que queda como riesgo documentado para Fase 7.
 - Ninguno bloquea Fase 4. La fase es documental y no mueve legacy.
 - Ninguno bloquea Fase 5. Se aplico cuarentena con `git mv`, sin borrar archivos ni tocar runtime.
+- Ninguno bloquea Fase 6. La limpieza es de scripts/docs y no toca runtime, legacy, Cloudflare real, D1/R2, migrations, seeds ni secrets.
 
 ## Riesgos
 
@@ -89,7 +90,7 @@
 - Wrangler local esta autenticado con permisos amplios; en Fase 3 solo se usaron comandos read-only.
 - `wrangler.toml` existe como config local ignorada y no debe versionarse.
 - `legacy/cloudflare/public-order/wrangler.toml` sigue como config legacy/riesgo porque apunta a recursos live.
-- Los scripts `public-order:*` de `package.json` no se modificaron en Fase 5; siguen prohibidos/riesgo y pueden apuntar a la ruta previa hasta Fase 6 o una fase especifica de cleanup de scripts.
+- Los scripts `public-order:*` de `package.json` fueron removidos en Fase 6; si se requiere un flujo legacy futuro, debe definirse de nuevo con ambiente explicito y aprobacion.
 - `functions/api/referral-tickets.ts` existe como endpoint D1, pero no se encontro consumo directo desde apps V2; requiere revision antes de mover o borrar.
 
 ## Hallazgos Fase 1 - 2026-07-02
@@ -274,6 +275,30 @@
 - Graphify semantic analysis no se ejecuto en Fase 5; se aplico fallback manual con `git grep`, `git ls-files`, revision de rutas, docs, endpoints y scripts.
 - No se ejecutaron deploys, migrations, seeds, cambios de bindings, cambios de secrets ni comandos remotos de Cloudflare.
 
+## Hallazgos Fase 6 - 2026-07-02
+
+### Cleanup activo aplicado
+
+- Se creo `docs/codex-memory/15-active-cleanup-sheets-appscript.md`.
+- Se removieron del `package.json` activo los 11 scripts legacy `public-order:*`.
+- No se creo reemplazo automatico para flujos legacy ni comandos live.
+- Se actualizaron README, matriz de ambientes, spec de clean architecture, inventario, audit Cloudflare y mapa de superficie activa.
+- Se marcaron docs UI/UX historicas para que rutas antiguas `cloudflare/public-order` y `cloudflare/internal-chekeo` se lean como `legacy/cloudflare/*`, no como superficie V2 activa.
+
+### Referencias reclasificadas
+
+- `APPS_SCRIPT_*` y `SpreadsheetApp` quedan permitidos solo como legacy/historico bajo `legacy/` o docs marcadas.
+- `BOG_ACTIVE_ENV` queda como referencia historica/no-touch; no se detecto selector activo V2.
+- `script.google.com` no aparecio como URL literal en el repo auditado.
+
+### No tocado
+
+- No se modifico runtime V2 en `apps/`, `functions/api/`, `packages/`, `migrations/` ni `tests/`.
+- No se modifico `legacy/` salvo `legacy/README.md` para aclarar contexto.
+- No se modifico `functions/api/referral-tickets.ts`.
+- No se movieron `docs/assets/chekeo-phase-*`.
+- No se ejecutaron deploys, migrations, seeds, comandos remotos de Cloudflare, cambios de bindings ni cambios de secrets.
+
 ## Checklist para aprobar la siguiente fase
 
 - [x] Existe este tracker oficial.
@@ -299,6 +324,9 @@
 - [x] Preparar lista de candidatos Fase 5 sin mover ni borrar archivos.
 - [x] Mover legacy claro a cuarentena sin borrar archivos.
 - [x] Documentar estructura de `legacy/` y ledger de movimientos.
+- [x] Remover scripts legacy `public-order:*` del `package.json` activo.
+- [x] Crear memoria Fase 6 para Sheets/App Script cleanup.
+- [x] Reclasificar referencias Sheets/App Script como historicas o legacy-only.
 
 ## Ultima actualizacion
 
@@ -307,7 +335,7 @@
 
 ## Siguiente fase sugerida
 
-- Fase 6 - Remover Sheets/App Script del proyecto activo.
+- Fase 7 - Preview 1:1 con DB/R2 espejo.
 
 ## Regla permanente
 

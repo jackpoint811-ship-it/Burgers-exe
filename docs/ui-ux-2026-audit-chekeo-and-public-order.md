@@ -2,6 +2,8 @@
 
 ## 0) Alcance y restricciones aplicadas
 
+Nota Fase 6: esta auditoria queda como referencia historica de superficies legacy. Las rutas `cloudflare/public-order` y `cloudflare/internal-chekeo` mencionadas abajo corresponden al material que ahora vive en `legacy/cloudflare/`; no son superficie activa V2.
+
 Esta auditoría es **solo de documentación** y cubre:
 - `cloudflare/public-order`
 - `cloudflare/internal-chekeo`
