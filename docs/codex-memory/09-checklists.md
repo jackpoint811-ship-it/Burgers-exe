@@ -48,6 +48,19 @@ Para cambios solo de docs:
 - [ ] Valide si npm, typecheck y build aplican.
 - [ ] Si alguna herramienta falto, reporte bloqueo o limitacion.
 
+## Checklist Skills oficiales
+
+- [ ] Valide `graphify`.
+- [ ] Valide Graphify Codex install.
+- [ ] Valide Graphify Agent Skills install si aplica.
+- [ ] Valide Obsidian skills.
+- [ ] Valide `burgers-pr-workflow`.
+- [ ] Valide `playwright-qa`.
+- [ ] Valide `burgers-brand`.
+- [ ] No copie repos externos completos al repo de Burgers.exe sin necesidad.
+- [ ] No sobrescribi skills sin revisar.
+- [ ] Actualice `11-skills-and-tools.md`.
+
 ## Checklist de validacion local
 
 - [ ] Confirme `AGENTS.md`.

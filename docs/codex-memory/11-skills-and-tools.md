@@ -14,6 +14,16 @@ Evitar que Codex falle por llamar skills no instaladas, usar herramientas incorr
 - Obsidian no reemplaza Codex ni reemplaza la lectura directa de Markdown en el repo.
 - Si una skill o herramienta falta, primero se reporta el faltante y luego se sigue el mejor flujo manual permitido por la fase.
 
+## Decision de estrategia
+
+- Global = runtime real de Codex.
+- Repo = respaldo, documentacion, scripts y control.
+- No versionar repos externos completos dentro de Burgers.exe sin una razon explicita.
+- La ruta primaria en esta PC es `$env:USERPROFILE\.codex\skills`.
+- En esta PC, `$env:USERPROFILE` resuelve a `C:\Users\JackPoint`.
+- `C:\Users\yoliz\.codex\skills` es una ruta historica de una PC anterior; puede revisarse como referencia si existe, pero no es canonica.
+- `graphify install --platform codex` tambien instalo skill en `C:\Users\JackPoint\.agents\skills\graphify`.
+
 ## Skills oficiales
 
 ### `graphify`
@@ -23,6 +33,11 @@ Evitar que Codex falle por llamar skills no instaladas, usar herramientas incorr
 - Cuando es opcional: revisiones documentales pequenas o cambios muy localizados con archivo conocido.
 - Cuando NO conviene usarla: tareas de copy simple o docs aisladas sin impacto estructural.
 - Que hacer si falta: reportar el faltante, documentar el riesgo y continuar con inspeccion manual solo si la fase lo permite.
+- PowerShell: usar `graphify .`.
+- Codex: usar `$graphify`.
+- Fase 2 debe usar Graphify CLI directo si la skill no responde.
+- `graphify install --platform codex` instala la skill para Codex.
+- `graphify install --platform agents` esta documentado upstream, pero fallo en Graphify `0.10.1` como plataforma desconocida.
 
 ### `burgers-pr-workflow`
 
@@ -55,6 +70,49 @@ Evitar que Codex falle por llamar skills no instaladas, usar herramientas incorr
 - Cuando es opcional: docs tecnicas donde basta claridad operativa.
 - Cuando NO conviene usarla: tareas puramente tecnicas sin copy de producto.
 - Que hacer si falta: conservar tono Burgers.exe con las reglas permanentes del repo y reportar el faltante si era importante.
+
+## Obsidian Agent Skills
+
+Fuente autorizada: `kepano/obsidian-skills`.
+
+Estas skills siguen el formato Agent Skills y son compatibles con agentes que leen `SKILL.md`. Para Codex, la instalacion manual recomendada por el repo externo es copiar `skills/` al path de skills de Codex.
+
+### `obsidian-markdown`
+
+- Uso: editar memoria Markdown de Obsidian con wikilinks, embeds, callouts, propiedades y sintaxis Obsidian.
+- Usar cuando se editen `.md` dentro de `docs/codex-memory/` o memoria Markdown compatible.
+- No crea una memoria paralela; Codex sigue leyendo los `.md` del repo.
+
+### `obsidian-bases`
+
+- Uso: crear o editar archivos `.base`.
+- Usar solo si el flujo requiere Obsidian Bases.
+- No usar para docs Markdown normales.
+
+### `json-canvas`
+
+- Uso: crear o editar archivos `.canvas` con formato JSON Canvas.
+- Usar solo si se crean canvases, mapas visuales o diagramas Obsidian Canvas.
+- No sustituye diagramas Mermaid ni docs Markdown cuando no hay `.canvas`.
+
+### `obsidian-cli`
+
+- Uso: interactuar con vaults mediante Obsidian CLI.
+- Usar solo si Obsidian CLI esta instalado y el flujo lo requiere.
+- No instalar plugins de Obsidian dentro del repo de Burgers.exe.
+
+### `defuddle`
+
+- Uso: limpiar paginas web a Markdown cuando haya que guardar o analizar contenido web para memoria.
+- Usar solo cuando se necesite limpiar paginas web; no usar para URLs que ya son Markdown.
+
+## Graphify Skill
+
+- `graphify --version` validado en Fase 1.1: `0.10.1`.
+- `graphify install --platform codex` validado: instala `C:\Users\JackPoint\.agents\skills\graphify\SKILL.md`.
+- `graphify install --platform agents` probado: falla en `0.10.1` por plataforma desconocida.
+- No correr `graphify .` hasta Fase 2.
+- Si se crea `graphify-out/`, debe ser tratado como artefacto de Fase 2 y decidir si se ignora o se conserva.
 
 ## Herramientas oficiales
 
@@ -194,10 +252,10 @@ debe poder validar, segun la fase:
 - Wrangler: OK, `4.86.0`.
 - Playwright: OK, `1.60.0`.
 
-### Resultado de skills
+### Resultado de skills registrado en Fase 1
 
-- `graphify`: encontrada en `C:\Users\yoliz\.codex\skills\graphify`, con `SKILL.md`.
-- `ui-ux-pro-max`: encontrada en `C:\Users\yoliz\.codex\skills\ui-ux-pro-max`, con `SKILL.md`.
+- `graphify`: encontrada en ruta historica `C:\Users\yoliz\.codex\skills\graphify`, con `SKILL.md`.
+- `ui-ux-pro-max`: encontrada en ruta historica `C:\Users\yoliz\.codex\skills\ui-ux-pro-max`, con `SKILL.md`.
 - `ui-ux-pro-max`: encontrada en `C:\Documentos\Burgers-exe\Preview\.agents\skills\ui-ux-pro-max`, con `SKILL.md`.
 - `ui-ux-pro-max`: encontrada en `C:\Documentos\Burgers-exe\Preview\skills\ui-ux-pro-max`, incompleta porque no tiene `SKILL.md`.
 - `burgers-pr-workflow`: faltante.
@@ -206,7 +264,8 @@ debe poder validar, segun la fase:
 
 ### Estrategia recomendada para skills
 
-- Estrategia preferida: mantener skills canonicas en una ruta global clara, por ejemplo `C:\Users\yoliz\.codex\skills`, y documentar cualquier ruta alternativa.
+- Estrategia preferida: mantener skills canonicas en `$env:USERPROFILE\.codex\skills`.
+- En esta PC, la ruta canonica actual es `C:\Users\JackPoint\.codex\skills`.
 - Estrategia local: usar `.agents\skills` solo para skills aprobadas que deban viajar con el repo o con un clon de trabajo.
 - Sincronizacion: ejecutar siempre primero `tools/codex/prepare-skills-sync.ps1` en dry-run.
 - No sobrescribir carpetas existentes sin revision humana.
@@ -220,10 +279,40 @@ debe poder validar, segun la fase:
 
 ### Resultado de dry-run de sync
 
-- Fuente probada: `C:\Users\yoliz\.codex\skills`.
+- Fuente probada en Fase 1 antes de normalizar esta PC: ruta historica `C:\Users\yoliz\.codex\skills`.
 - `graphify`: se podria copiar a `.agents\skills` si el equipo decide versionarla localmente.
 - `ui-ux-pro-max`: no se copia porque ya existe en `.agents\skills`.
 - `burgers-pr-workflow`, `playwright-qa` y `burgers-brand`: no se copian porque no existen en la fuente validada.
+
+## Validacion local Fase 1.1 - 2026-07-02
+
+### Resultado de skills
+
+- `graphify`: OK en `C:\Users\JackPoint\.agents\skills\graphify`; tambien existe una copia historica en `C:\Users\yoliz\.codex\skills\graphify`.
+- `ui-ux-pro-max`: OK en `.agents\skills\ui-ux-pro-max`; tambien existe una copia historica en `C:\Users\yoliz\.codex\skills\ui-ux-pro-max`; incompleta en `skills\ui-ux-pro-max` porque no tiene `SKILL.md`.
+- `burgers-pr-workflow`: OK en `C:\Users\JackPoint\.codex\skills\burgers-pr-workflow`.
+- `playwright-qa`: OK en `C:\Users\JackPoint\.codex\skills\playwright-qa`.
+- `burgers-brand`: OK en `C:\Users\JackPoint\.codex\skills\burgers-brand`.
+- `obsidian-markdown`: OK en `C:\Users\JackPoint\.codex\skills\obsidian-markdown`.
+- `obsidian-bases`: OK en `C:\Users\JackPoint\.codex\skills\obsidian-bases`.
+- `json-canvas`: OK en `C:\Users\JackPoint\.codex\skills\json-canvas`.
+- `obsidian-cli`: OK en `C:\Users\JackPoint\.codex\skills\obsidian-cli`.
+- `defuddle`: OK en `C:\Users\JackPoint\.codex\skills\defuddle`.
+
+### Instalacion Obsidian
+
+- `npx skills --help` esta disponible, pero la instalacion global con `npx skills` sigue el usuario activo.
+- Se uso copia manual controlada desde un clon temporal de `kepano/obsidian-skills`.
+- El clon temporal se borro despues de copiar las skills necesarias.
+- La copia a la ruta historica `C:\Users\yoliz\.codex\skills` fallo por permisos y no dejo carpetas parciales de Obsidian skills.
+- La copia a `C:\Users\JackPoint\.codex\skills` fue exitosa.
+
+### Scripts actualizados
+
+- `verify-skills.ps1` detecta 10 skills oficiales, usa `$env:USERPROFILE` como ruta primaria, descubre rutas historicas dinamicamente bajo `C:\Users`, y compara actual vs historica.
+- `verify-skills.ps1` diferencia `OK`, `FALTA`, `INCOMPLETA`, `EXTERNAL` y `PROPIA`.
+- `verify-local-tooling.ps1` valida tambien `npx skills`.
+- `prepare-skills-sync.ps1` incluye Obsidian skills y skills propias en su dry-run.
 
 ### Fallback si Graphify falla en Fase 2
 

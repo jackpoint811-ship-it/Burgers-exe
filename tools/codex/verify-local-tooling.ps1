@@ -48,6 +48,7 @@ $toolResults = @(
   Test-Command "git" { git --version }
   Test-Command "gh" { gh --version }
   Test-Command "graphify" { graphify --version } $false
+  Test-Command "skills-cli" { npx skills --version } $false
   Test-Command "wrangler" { npx wrangler --version } $false
   Test-Command "playwright" { npx playwright --version } $false
 )
