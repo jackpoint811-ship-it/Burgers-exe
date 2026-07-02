@@ -3,10 +3,15 @@ param(
   [string]$DestinationRoot = (Join-Path (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path ".agents\skills"),
   [string[]]$OfficialSkills = @(
     "graphify",
+    "ui-ux-pro-max",
     "burgers-pr-workflow",
     "playwright-qa",
-    "ui-ux-pro-max",
-    "burgers-brand"
+    "burgers-brand",
+    "obsidian-markdown",
+    "obsidian-bases",
+    "json-canvas",
+    "obsidian-cli",
+    "defuddle"
   ),
   [switch]$Apply
 )
@@ -21,7 +26,7 @@ Write-Host ""
 if (-not $SourceRoot) {
   Write-Host "No SourceRoot was provided. Nothing to copy."
   Write-Host "Example dry-run:"
-  Write-Host "  powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\codex\prepare-skills-sync.ps1 -SourceRoot C:\Users\yoliz\.codex\skills"
+  Write-Host "  powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\codex\prepare-skills-sync.ps1 -SourceRoot `$env:USERPROFILE\.codex\skills"
   exit 0
 }
 

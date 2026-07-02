@@ -6,7 +6,7 @@
 ## Estado
 
 - Vivo
-- Fase actual: Fase 1
+- Fase actual: Fase 1.1
 
 ## Kanban
 
@@ -26,7 +26,7 @@
 
 ### En revision
 
-- [ ] Fase 1 - Validacion local de skills/herramientas
+- [ ] Fase 1.1 - Skills oficiales: Obsidian, Graphify y skills faltantes
 
 ### Bloqueado
 
@@ -35,11 +35,13 @@
 ### Terminado
 
 - [x] Fase 0 - Gobernanza, tracker Kanban, README limpio y control de herramientas
+- [x] Fase 1 - Validacion local de skills/herramientas
 
 ## Fases de la migracion
 
 - Fase 0 - Gobernanza, tracker Kanban, README limpio y control de herramientas.
 - Fase 1 - Validacion local de skills y herramientas.
+- Fase 1.1 - Skills oficiales: Obsidian, Graphify y skills faltantes.
 - Fase 2 - Inventario real con Graphify.
 - Fase 3 - Estandarizar ambientes Cloudflare.
 - Fase 4 - Separar carpetas activas.
@@ -59,15 +61,15 @@
 
 ## Decisiones abiertas
 
-- Confirmar instalacion real de `graphify` para Fase 2.
-- Confirmar disponibilidad real de la skill `burgers-pr-workflow` o su reemplazo operativo.
+- Confirmar si Fase 2 usara solo Graphify CLI directo o tambien la skill `$graphify`.
 - Confirmar nombres finales y bindings efectivos de los proyectos Pages preview antes de Fase 3.
 - Confirmar la estrategia exacta de local: D1 local por defecto o preview explicita segun cada flujo.
 
 ## Bloqueadores
 
 - Ninguno para Fase 1.
-- Para Fase 2, confirmar si se usara Graphify CLI directo o si se instalara una skill local adicional.
+- Ninguno para Fase 1.1.
+- Para Fase 2, Graphify CLI esta disponible; si la skill falla, usar fallback manual documentado.
 
 ## Riesgos
 
@@ -75,8 +77,8 @@
 - Algunas herramientas o skills mencionadas en prompts pueden no estar instaladas en todos los clones.
 - Si no se mantiene este tracker al dia, la migracion puede perder continuidad entre PRs y sesiones.
 - La separacion preview vs produccion sigue dependiendo de validar configuracion real en fases posteriores.
-- `git-fix.js` y `update-public-app.js` siguen como archivos locales no trackeados dentro de `Preview`; ambos modifican app code si se ejecutan y requieren decision explicita antes de borrarse.
 - La Fase 1 se trabajo sobre la rama de Fase 0 porque `origin/main` todavia no tenia los documentos del PR #333.
+- `C:\Users\yoliz\.codex\skills` existe como ruta historica de una PC anterior. La ruta canonica actual es `$env:USERPROFILE\.codex\skills`, que en esta PC resuelve a `C:\Users\JackPoint\.codex\skills`.
 
 ## Hallazgos Fase 1 - 2026-07-02
 
@@ -92,8 +94,8 @@
 
 ### Skills encontradas
 
-- `graphify`: `C:\Users\yoliz\.codex\skills\graphify`, con `SKILL.md`.
-- `ui-ux-pro-max`: `C:\Users\yoliz\.codex\skills\ui-ux-pro-max`, con `SKILL.md`.
+- `graphify`: encontrada en la ruta historica `C:\Users\yoliz\.codex\skills\graphify`, con `SKILL.md`.
+- `ui-ux-pro-max`: encontrada en la ruta historica `C:\Users\yoliz\.codex\skills\ui-ux-pro-max`, con `SKILL.md`.
 - `ui-ux-pro-max`: `C:\Documentos\Burgers-exe\Preview\.agents\skills\ui-ux-pro-max`, con `SKILL.md`.
 - `ui-ux-pro-max`: `C:\Documentos\Burgers-exe\Preview\skills\ui-ux-pro-max`, incompleta porque no tiene `SKILL.md`.
 
@@ -121,6 +123,44 @@
 - `tools/codex/verify-skills.ps1`
 - `tools/codex/prepare-skills-sync.ps1`
 
+## Hallazgos Fase 1.1 - 2026-07-02
+
+### Graphify
+
+- `graphify --version`: `0.10.1`.
+- `graphify install --platform codex`: OK; instalo `C:\Users\JackPoint\.agents\skills\graphify\SKILL.md`.
+- `graphify install --platform agents`: fallo en `0.10.1` con plataforma desconocida, aunque la documentacion actual ya menciona `agents`.
+- En PowerShell se usa `graphify .`.
+- En Codex se usa `$graphify`.
+- No se ejecuto extraccion grande ni se creo `graphify-out/`.
+
+### Obsidian skills
+
+- Fuente autorizada revisada: `kepano/obsidian-skills`.
+- Instalada copia manual controlada en `C:\Users\JackPoint\.codex\skills`.
+- Skills instaladas con `SKILL.md`: `obsidian-markdown`, `obsidian-bases`, `json-canvas`, `obsidian-cli`, `defuddle`.
+- No se copio el repo externo completo dentro de Burgers.exe.
+- No se instalaron plugins de Obsidian dentro del repo.
+- Intento previo de copia a `C:\Users\yoliz\.codex\skills`: fallo por permisos, no dejo carpetas parciales de Obsidian skills, y esa ruta queda como historica/no canonica.
+
+### Skills propias Burgers.exe
+
+- `burgers-pr-workflow`: creada en `C:\Users\JackPoint\.codex\skills\burgers-pr-workflow\SKILL.md`.
+- `playwright-qa`: creada en `C:\Users\JackPoint\.codex\skills\playwright-qa\SKILL.md`.
+- `burgers-brand`: creada en `C:\Users\JackPoint\.codex\skills\burgers-brand\SKILL.md`.
+
+### Limpieza local
+
+- `git-fix.js`: borrado; era script temporal no trackeado que escribia app code.
+- `update-public-app.js`: borrado; era script temporal no trackeado que escribia app code.
+
+### Validacion
+
+- `tools/codex/verify-skills.ps1`: OK con 10 skills oficiales efectivas.
+- `tools/codex/verify-skills.ps1`: usa `$env:USERPROFILE` como ruta primaria y descubre rutas historicas dinamicamente bajo `C:\Users`.
+- `tools/codex/verify-local-tooling.ps1`: OK e incluye `skills-cli`.
+- `tools/codex/prepare-skills-sync.ps1`: dry-run OK desde `C:\Users\JackPoint\.codex\skills`.
+
 ## Checklist para aprobar la siguiente fase
 
 - [x] Existe este tracker oficial.
@@ -133,7 +173,9 @@
 - [x] Validar presencia real de skills y herramientas en el clon local de trabajo.
 - [x] Confirmar que Graphify CLI esta disponible.
 - [ ] Confirmar que la siguiente fase autorizada es Fase 2.
-- [ ] Decidir si instalar `burgers-pr-workflow`, `playwright-qa` y `burgers-brand` antes de Fase 2.
+- [x] Instalar o preparar `burgers-pr-workflow`, `playwright-qa` y `burgers-brand` antes de Fase 2.
+- [x] Instalar o preparar Obsidian Agent Skills.
+- [x] Validar Graphify para Codex.
 
 ## Ultima actualizacion
 
