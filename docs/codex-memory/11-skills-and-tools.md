@@ -111,8 +111,12 @@ Estas skills siguen el formato Agent Skills y son compatibles con agentes que le
 - `graphify --version` validado en Fase 1.1: `0.10.1`.
 - `graphify install --platform codex` validado: instala `C:\Users\JackPoint\.agents\skills\graphify\SKILL.md`.
 - `graphify install --platform agents` probado: falla en `0.10.1` por plataforma desconocida.
-- No correr `graphify .` hasta Fase 2.
-- Si se crea `graphify-out/`, debe ser tratado como artefacto de Fase 2 y decidir si se ignora o se conserva.
+- Fase 2 ejecuto Graphify.
+- Code graph OK con `graphify update . --force --no-description`: `1565` nodos, `2855` edges y `96` comunidades.
+- `graphify .` y `graphify extract . --backend gemini` no completaron semantic analysis del corpus completo.
+- Causa del fallo semantico: primero corpus mixto con imagenes/documentos; despues cuota Gemini agotada. La key se valido solo por presencia y no se imprimio ni guardo.
+- Si semantic analysis falla, el fallback aprobado sigue siendo `git ls-files`, `git grep`, lectura de imports/rutas/scripts y revision manual de endpoints/API/D1/R2/legacy/docs/assets.
+- `.graphify/` queda como artefacto local ignorado; no versionar outputs pesados salvo decision explicita.
 
 ## Herramientas oficiales
 

@@ -31,6 +31,8 @@ Definir la migracion oficial para dejar el repo limpio, entendible y estandariza
 - `packages/domain`
 - `packages/cloudflare`
 
+Nota Fase 2: en el inventario real actual existen `packages/ui` y `packages/config`. `packages/domain` y `packages/cloudflare` son parte del mapa objetivo, pero todavia no existen como paquetes reales en el repo.
+
 ### Cloudflare
 
 - Cloudflare Pages para cada superficie oficial
@@ -143,6 +145,7 @@ legacy/
 - Mezclar preview con produccion puede contaminar pedidos, assets o reportes.
 - La falta de inventario real puede ocultar dependencias vivas antes de mover carpetas.
 - La ausencia de control de tooling puede hacer que distintos clones ejecuten fases con criterios distintos.
+- Fase 2 detecto Apps Script/Sheets todavia en la raiz del repo y carpetas Cloudflare deprecated fuera de `legacy/`; no moverlas hasta Fase 5/Fase 6.
 
 ## Checklist de seguridad
 

@@ -47,6 +47,7 @@ Esta carpeta funciona como memoria viva del proyecto.
 | `09-checklists.md` | Checklists de QA, PR y areas criticas. |
 | `10-migration-tracker.md` | Tracker Kanban oficial de la migracion V2 Clean Architecture. |
 | `11-skills-and-tools.md` | Reglas oficiales de skills, herramientas y validacion local. |
+| `12-v2-inventory.md` | Inventario real de apps V2, shared code, endpoints, D1/R2, docs, assets y legacy. |
 
 ## Nota
 

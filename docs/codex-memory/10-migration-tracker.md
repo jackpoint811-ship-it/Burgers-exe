@@ -6,13 +6,12 @@
 ## Estado
 
 - Vivo
-- Fase actual: Fase 1.1
+- Fase actual: Fase 2
 
 ## Kanban
 
 ### Backlog
 
-- [ ] Fase 2 - Inventario real con Graphify
 - [ ] Fase 3 - Estandarizar ambientes Cloudflare
 - [ ] Fase 4 - Separar carpetas activas
 - [ ] Fase 5 - Mover legacy a cuarentena
@@ -26,7 +25,7 @@
 
 ### En revision
 
-- [ ] Fase 1.1 - Skills oficiales: Obsidian, Graphify y skills faltantes
+- [ ] Fase 2 - Inventario real con Graphify
 
 ### Bloqueado
 
@@ -36,6 +35,7 @@
 
 - [x] Fase 0 - Gobernanza, tracker Kanban, README limpio y control de herramientas
 - [x] Fase 1 - Validacion local de skills/herramientas
+- [x] Fase 1.1 - Skills oficiales: Obsidian, Graphify y skills faltantes
 
 ## Fases de la migracion
 
@@ -69,7 +69,7 @@
 
 - Ninguno para Fase 1.
 - Ninguno para Fase 1.1.
-- Para Fase 2, Graphify CLI esta disponible; si la skill falla, usar fallback manual documentado.
+- Ninguno para Fase 2. Graphify code graph quedo actualizado; semantic analysis fallo por cuota Gemini y se aplico fallback manual aprobado.
 
 ## Riesgos
 
@@ -79,6 +79,9 @@
 - La separacion preview vs produccion sigue dependiendo de validar configuracion real en fases posteriores.
 - La Fase 1 se trabajo sobre la rama de Fase 0 porque `origin/main` todavia no tenia los documentos del PR #333.
 - `C:\Users\yoliz\.codex\skills` existe como ruta historica de una PC anterior. La ruta canonica actual es `$env:USERPROFILE\.codex\skills`, que en esta PC resuelve a `C:\Users\JackPoint\.codex\skills`.
+- El inventario Fase 2 detecto `cloudflare/public-order/.wrangler/` con 15 archivos trackeados dentro de una carpeta que `.gitignore` ya ignora.
+- El inventario Fase 2 detecto Apps Script/Sheets todavia en la raiz del repo; son legacy y candidatos para Fase 5/Fase 6.
+- `tests/internal-chekeo/kitchen-production-board.spec.ts` referencia `migrations/0008_preview_realistic_orders_seed.sql`, pero ese archivo no existe actualmente.
 
 ## Hallazgos Fase 1 - 2026-07-02
 
@@ -161,6 +164,30 @@
 - `tools/codex/verify-local-tooling.ps1`: OK e incluye `skills-cli`.
 - `tools/codex/prepare-skills-sync.ps1`: dry-run OK desde `C:\Users\JackPoint\.codex\skills`.
 
+## Hallazgos Fase 2 - 2026-07-02
+
+### Inventario
+
+- Se creo `docs/codex-memory/12-v2-inventory.md`.
+- Apps oficiales confirmadas: `apps/public-order-v2` y `apps/internal-chekeo-v2`.
+- Codigo compartido activo confirmado: `packages/config`, `packages/ui`, `vite.config.ts` y helpers de `functions/api/_*.ts`.
+- Endpoints activos V2 confirmados bajo `functions/api/*`: `menu-v2`, `orders-v2`, `assets-v2`, `internal-v2-auth`, `orders-v2-admin`, `menu-v2-admin`, `ingredients-v2-admin`, `kitchen-v2-admin`, `raffles-v2` y `raffles-v2-admin`.
+- Bindings activos esperados: `BOG_MENU_DB`, `BOG_MENU_ASSETS`, `BOG_INTERNAL_PIN` y `ORDERS_V2_WRITE_ENABLED`.
+- Migraciones actuales inventariadas de `0001` a `0013`.
+
+### Graphify
+
+- Code graph OK: `1565` nodos, `2855` edges, `96` comunidades.
+- Semantic analysis no quedo completa: el corpus tiene documentos e imagenes; el intento con Gemini fallo por cuota del proveedor.
+- Fallback manual aplicado con `git ls-files`, `git grep`, imports, rutas, scripts, endpoints, D1/R2, legacy, docs y assets.
+
+### Legacy y riesgos
+
+- `legacy/` ya esta marcado como deprecated.
+- `cloudflare/public-order/`, `cloudflare/internal-chekeo/` y `cloudflare/tickets/` quedan como candidatos para Fase 5.
+- Apps Script/Sheets de la raiz quedan como candidatos para Fase 5/Fase 6.
+- Docs historicas con Sheets/App Script deben reclasificarse en Fase 5/Fase 6 para no contradecir D1/R2 como source of truth.
+
 ## Checklist para aprobar la siguiente fase
 
 - [x] Existe este tracker oficial.
@@ -172,10 +199,11 @@
 - [x] Confirmar que la siguiente fase autorizada es Fase 1.
 - [x] Validar presencia real de skills y herramientas en el clon local de trabajo.
 - [x] Confirmar que Graphify CLI esta disponible.
-- [ ] Confirmar que la siguiente fase autorizada es Fase 2.
+- [x] Confirmar que la siguiente fase autorizada es Fase 2.
 - [x] Instalar o preparar `burgers-pr-workflow`, `playwright-qa` y `burgers-brand` antes de Fase 2.
 - [x] Instalar o preparar Obsidian Agent Skills.
 - [x] Validar Graphify para Codex.
+- [x] Crear inventario real de Fase 2 antes de mover legacy.
 
 ## Ultima actualizacion
 
@@ -184,7 +212,7 @@
 
 ## Siguiente fase sugerida
 
-- Fase 2 - Inventario real con Graphify.
+- Fase 3 - Estandarizar ambientes Cloudflare preview/prod.
 
 ## Regla permanente
 
