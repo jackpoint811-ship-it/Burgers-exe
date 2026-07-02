@@ -39,6 +39,7 @@ type CustomerDraft = {
   location: "" | "Torre GGA" | "Torre Valcob";
   paymentMethod: OrderV2PaymentMethod;
   paymentTiming: PaymentTiming;
+  wantsWhatsappGroup: boolean;
 };
 type BuilderDraft = {
   item: MenuItem;
@@ -106,6 +107,7 @@ const createEmptyCustomer = (): CustomerDraft => ({
   location: "",
   paymentMethod: "unknown",
   paymentTiming: "",
+  wantsWhatsappGroup: true,
 });
 const normalizePhoneDigits = (phone: string) => phone.replace(/\D/g, "");
 const formatPhoneForDisplay = (phone: string) => {
@@ -312,6 +314,7 @@ const createDraftFingerprint = (snapshot: DraftSnapshot) =>
       location: snapshot.customer.location,
       paymentMethod: snapshot.customer.paymentMethod,
       paymentTiming: snapshot.customer.paymentTiming,
+      wantsWhatsappGroup: snapshot.customer.wantsWhatsappGroup,
     },
     items: snapshot.items.map(({ lineKey, sku, itemDisplayIndex, itemKind, removedIngredients, extras, burgerNote, garnish, includedDrink, sideQuestExtras, comboBurgers }) => ({
       lineKey,
@@ -346,7 +349,8 @@ const buildCheckoutNotes = (customer: CustomerDraft): string => {
     `Pago: ${paymentMethodLabels[customer.paymentMethod]}`,
     customer.paymentMethod === "transfer" && customer.paymentTiming ? `Momento de pago: ${paymentTimingLabels[customer.paymentTiming]}` : "",
   ].filter(Boolean);
-  return [`Ubicación: ${customer.location}`, ...paymentNotes, customer.notes.trim()].filter(Boolean).join("\n");
+  const whatsappNote = `Grupo WhatsApp: ${customer.wantsWhatsappGroup ? "Sí" : "No"}`;
+  return [`Ubicación: ${customer.location}`, ...paymentNotes, whatsappNote, customer.notes.trim()].filter(Boolean).join("\n");
 };
 const validateCheckout = (customer: CustomerDraft, cart: CartEntry[], items: MenuItem[]): { global: string | null; fields: CheckoutErrors } => {
   const fields: CheckoutErrors = {};
@@ -1635,6 +1639,15 @@ const Checkout = ({ cart, items, total, customer, setCustomer, checkoutStep, set
             <input id="checkoutPhone" inputMode="numeric" autoComplete="tel" value={customer.phone} onChange={(event) => { clearFieldError("phone"); clearCheckoutError(); setCustomer({ ...customer, phone: formatPhoneForDisplay(event.target.value) }); }} placeholder="222 123 4567" aria-invalid={fieldErrors.phone ? "true" : "false"} aria-describedby={`checkoutPhoneHelp${fieldErrors.phone ? " checkoutPhoneError" : ""}`} />
             <small id="checkoutPhoneHelp">Escribe 10 dígitos. Ej. 2221234567.</small>
             {fieldErrors.phone ? <span className="inline-error" id="checkoutPhoneError" role="alert">{fieldErrors.phone}</span> : null}
+          </label>
+          <label className="whatsapp-opt-in" htmlFor="checkoutWhatsappGroup">
+            <input
+              id="checkoutWhatsappGroup"
+              type="checkbox"
+              checked={customer.wantsWhatsappGroup}
+              onChange={(event) => setCustomer({ ...customer, wantsWhatsappGroup: event.target.checked })}
+            />
+            <span>Quiero entrar al Grupo de WhatsApp</span>
           </label>
           <label className="field-label wide field-label-optional" htmlFor="checkoutNotes">
             <span>Nota general <em>opcional</em></span>
