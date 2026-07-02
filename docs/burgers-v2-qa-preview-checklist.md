@@ -97,8 +97,8 @@ Checklist final para validar el pulido operativo de Public V2 y Chekeo V2. Esta 
 - [ ] README principal apunta a V2 oficial.
 - [ ] `docs/README.md` existe o el índice documental es claro.
 - [ ] `legacy` folders tienen `DEPRECATED.md`/`README.md`.
-- [ ] `cloudflare/public-order` tiene `DEPRECATED.md`/`README.md`.
-- [ ] `cloudflare/internal-chekeo` tiene `DEPRECATED.md`/`README.md`.
+- [ ] `legacy/cloudflare/public-order` tiene `DEPRECATED.md`/`README.md`.
+- [ ] `legacy/cloudflare/internal-chekeo` tiene `DEPRECATED.md`/`README.md`.
 - [ ] No se modificó código legacy.
 - [ ] No se borró código.
 - [ ] No se tocó Apps Script.

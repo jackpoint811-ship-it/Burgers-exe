@@ -63,8 +63,8 @@ The official Internal Chekeo V2 flow is:
 The following flows are deprecated and are no longer official production flows:
 
 - `legacy/**`.
-- `cloudflare/public-order/**`.
-- `cloudflare/internal-chekeo/**`.
+- `legacy/cloudflare/public-order/**`.
+- `legacy/cloudflare/internal-chekeo/**`.
 - Apps Script.
 - Google Sheets as the operational source of truth.
 - Legacy `/api/order`.

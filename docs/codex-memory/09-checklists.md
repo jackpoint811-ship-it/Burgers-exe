@@ -73,7 +73,7 @@ Aplicar cuando una fase separe codigo activo de legacy o prepare movimientos de 
 - [ ] Confirme que `functions/api`, `packages/config`, `packages/ui`, `vite.config.ts`, `package.json` y `migrations/` estan clasificados.
 - [ ] Liste endpoints V2 activos y cualquier endpoint de riesgo antes de mover carpetas.
 - [ ] Clasifique scripts como activos, tooling, legacy/riesgo o prohibidos sin autorizacion.
-- [ ] No mueva `cloudflare/public-order/`, `cloudflare/internal-chekeo/`, `cloudflare/tickets/`, `legacy/`, Apps Script raiz ni docs historicas sin fase autorizada.
+- [ ] No mueva `legacy/cloudflare/`, `legacy/apps-script/`, `legacy/planning/`, `legacy/docs/`, `legacy/skills/` ni otros archivos historicos sin fase autorizada.
 - [ ] Si un archivo parece legacy pero tiene imports o fetch desde apps V2, marcarlo activo o bloqueo.
 - [ ] Antes de Fase 5, preparar lista de rutas, motivo, riesgo y validacion requerida.
 

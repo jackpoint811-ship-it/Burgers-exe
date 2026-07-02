@@ -60,8 +60,8 @@ Si Pages está conectado a GitHub:
 - Revisar tamaño de bundles en cada PR V2.
 
 ## Qué NO hace este setup
-- No toca `cloudflare/public-order/**`.
-- No toca `cloudflare/internal-chekeo/**`.
+- No toca `legacy/cloudflare/public-order/**`.
+- No toca `legacy/cloudflare/internal-chekeo/**`.
 - No toca `legacy/`.
 - No toca `BOG_ACTIVE_ENV`.
 - No modifica Cloudflare Functions actuales.

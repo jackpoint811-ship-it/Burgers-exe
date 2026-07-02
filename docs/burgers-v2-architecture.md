@@ -34,7 +34,7 @@
 
 ## Decisiones técnicas
 
-- V2 corre en paralelo, sin mutar `cloudflare/public-order` ni `cloudflare/internal-chekeo`.
+- V2 corre en paralelo, sin mutar las superficies legacy que ahora viven en `legacy/cloudflare/public-order` y `legacy/cloudflare/internal-chekeo`.
 - Configuración single-repo con `APP_TARGET` para dev/build independiente por app.
 - Contratos TS explícitos para reducir acoplamiento con backend.
 
@@ -221,7 +221,7 @@ Alcance de la fase:
 No cambia en V2-9D:
 
 - No se agregan endpoints ni bindings.
-- No se modifica `/api/order`, `/api/rpc`, `functions/api`, migrations, Apps Script, Sheets, legacy, `cloudflare/public-order`, `cloudflare/internal-chekeo` ni `BOG_ACTIVE_ENV`.
+- No se modifica `/api/order`, `/api/rpc`, `functions/api`, migrations, Apps Script, Sheets, legacy, `legacy/cloudflare/public-order`, `legacy/cloudflare/internal-chekeo` ni `BOG_ACTIVE_ENV`.
 - No se conectan pagos reales ni WhatsApp real.
 
 ## V2-10A.1 Protected orders CSV export
@@ -274,7 +274,7 @@ No-touch confirmations:
 - No changes to Public V2 checkout behavior.
 - No changes to `/api/order` legacy or `/api/rpc` legacy.
 - No Apps Script or Sheets sync is introduced.
-- No changes to `cloudflare/public-order`, `cloudflare/internal-chekeo`, legacy code, migrations, payments, WhatsApp, or `BOG_ACTIVE_ENV`.
+- No changes to `legacy/cloudflare/public-order`, `legacy/cloudflare/internal-chekeo`, legacy code, migrations, payments, WhatsApp, or `BOG_ACTIVE_ENV`.
 
 ## V2-11A Manual WhatsApp order actions
 

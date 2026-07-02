@@ -414,7 +414,7 @@ V2-9D no agrega endpoints, tablas, migrations ni bindings de Cloudflare. El fluj
 - `GET /api/orders-v2-admin`
 - `PATCH /api/orders-v2-admin/:id/status`
 
-La consola interna sigue usando D1 orders mediante Backend V2 y sesión interna por cookie HttpOnly; Public V2 sigue creando órdenes con `Idempotency-Key`. No se modifica `/api/order`, `/api/rpc`, Apps Script, Sheets, legacy, `cloudflare/public-order`, `cloudflare/internal-chekeo`, pagos, WhatsApp ni `BOG_ACTIVE_ENV`.
+La consola interna sigue usando D1 orders mediante Backend V2 y sesión interna por cookie HttpOnly; Public V2 sigue creando órdenes con `Idempotency-Key`. No se modifica `/api/order`, `/api/rpc`, Apps Script, Sheets, legacy, `legacy/cloudflare/public-order`, `legacy/cloudflare/internal-chekeo`, pagos, WhatsApp ni `BOG_ACTIVE_ENV`.
 
 ## V2-10A.1 Protected orders CSV export
 
@@ -472,7 +472,7 @@ The endpoint:
 
 ### No changes in V2-10A.1
 
-V2-10A.1 does not change Public V2, Internal V2, `/api/order`, `/api/rpc`, Apps Script, Sheets, legacy code, `cloudflare/public-order`, `cloudflare/internal-chekeo`, migrations, payments, WhatsApp, or `BOG_ACTIVE_ENV`.
+V2-10A.1 does not change Public V2, Internal V2, `/api/order`, `/api/rpc`, Apps Script, Sheets, legacy code, `legacy/cloudflare/public-order`, `legacy/cloudflare/internal-chekeo`, migrations, payments, WhatsApp, or `BOG_ACTIVE_ENV`.
 
 ## V2-10A.2 Internal CSV export usage
 
@@ -546,7 +546,7 @@ The Cierre tab does not use mock fallback; missing credencial or backend errors 
 
 ### No changes in V2-10B
 
-V2-10B does not change Public V2, `/api/order`, `/api/rpc`, Apps Script, Sheets sync, `cloudflare/public-order`, `cloudflare/internal-chekeo`, legacy code, migrations, payments, WhatsApp, or `BOG_ACTIVE_ENV`. Sheets remains a manual destination for downloaded CSV files only.
+V2-10B does not change Public V2, `/api/order`, `/api/rpc`, Apps Script, Sheets sync, `legacy/cloudflare/public-order`, `legacy/cloudflare/internal-chekeo`, legacy code, migrations, payments, WhatsApp, or `BOG_ACTIVE_ENV`. Sheets remains a manual destination for downloaded CSV files only.
 
 ## V2-11A Manual WhatsApp data policy
 
@@ -721,7 +721,7 @@ No-touch V2-12:
 
 ## Sorteos V2 / Raffles migrations
 
-Este bloque es el checklist operativo para no omitir las migraciones de Sorteos V2 al preparar o reparar el D1 de `burgers-exe-menu-live` desde Codespace. Usa siempre `cloudflare/public-order/wrangler.toml`; no cambies `BOG_ACTIVE_ENV` para ejecutar estas migraciones.
+Este bloque es historico y de alto riesgo: en Fase 5 la config legacy se movio a `legacy/cloudflare/public-order/wrangler.toml`. No uses este flujo contra live sin aprobacion explicita; no cambies `BOG_ACTIVE_ENV` para ejecutar estas migraciones.
 
 Prerequisitos de schema en el mismo D1:
 
@@ -754,13 +754,13 @@ npm run public-order:d1:raffles:referrals:migrate:remote
 Validación de tablas críticas después de migrar local:
 
 ```bash
-npx wrangler d1 execute burgers-exe-menu-live --local --config cloudflare/public-order/wrangler.toml --command "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('orders_v2','order_items_v2','raffle_campaigns_v2','raffle_referral_codes_v2','raffle_referrals_v2');"
+npx wrangler d1 execute burgers-exe-menu-live --local --config legacy/cloudflare/public-order/wrangler.toml --command "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('orders_v2','order_items_v2','raffle_campaigns_v2','raffle_referral_codes_v2','raffle_referrals_v2');"
 ```
 
 Validación de tablas críticas después de migrar remote/live:
 
 ```bash
-npx wrangler d1 execute burgers-exe-menu-live --remote --config cloudflare/public-order/wrangler.toml --command "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('orders_v2','order_items_v2','raffle_campaigns_v2','raffle_referral_codes_v2','raffle_referrals_v2');"
+npx wrangler d1 execute burgers-exe-menu-live --remote --config legacy/cloudflare/public-order/wrangler.toml --command "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('orders_v2','order_items_v2','raffle_campaigns_v2','raffle_referral_codes_v2','raffle_referrals_v2');"
 ```
 
 SQL de validación, para copiarlo en consola D1 si no se usa Wrangler:
@@ -831,7 +831,7 @@ Troubleshooting:
 Migración remote/live para columnas de imagen vertical:
 
 ```bash
-npx wrangler d1 execute burgers-exe-menu-live --remote --config cloudflare/public-order/wrangler.toml --file=./migrations/0008_v2_raffle_detail_images.sql
+npx wrangler d1 execute burgers-exe-menu-live --remote --config legacy/cloudflare/public-order/wrangler.toml --file=./migrations/0008_v2_raffle_detail_images.sql
 ```
 
 ### Cálculo de tickets desde D1

@@ -42,6 +42,8 @@ Nota Fase 3: la auditoria read-only confirmo existencia de los Pages projects `b
 
 Nota Fase 4: `docs/codex-memory/14-active-surface-map.md` define la superficie activa antes de mover legacy. Fase 4 no movio carpetas, no cambio runtime y no autoriza borrar archivos.
 
+Nota Fase 5: la cuarentena legacy clara vive ahora bajo `legacy/`: `legacy/cloudflare/`, `legacy/apps-script/`, `legacy/planning/`, `legacy/docs/` y `legacy/skills/`. Este movimiento no cambio runtime, Functions V2, D1/R2, migraciones, seeds, secrets ni deploys.
+
 ### Legacy
 
 - Google Sheets
@@ -147,9 +149,9 @@ legacy/
 - Mezclar preview con produccion puede contaminar pedidos, assets o reportes.
 - La falta de inventario real puede ocultar dependencias vivas antes de mover carpetas.
 - La ausencia de control de tooling puede hacer que distintos clones ejecuten fases con criterios distintos.
-- Fase 2 detecto Apps Script/Sheets todavia en la raiz del repo y carpetas Cloudflare deprecated fuera de `legacy/`; no moverlas hasta Fase 5/Fase 6.
+- Fase 5 movio Apps Script/Sheets de la raiz y carpetas Cloudflare deprecated a `legacy/`; no usar esos archivos como runtime oficial.
 - Fase 3 detecto que los recursos Cloudflare canonicos existen, pero los bindings/secrets reales por Pages project siguen pendientes de confirmacion segura.
-- `cloudflare/public-order/wrangler.toml` sigue como legacy/riesgo porque apunta a recursos live; no usarlo para nuevos flujos antes de Fase 5.
+- `legacy/cloudflare/public-order/wrangler.toml` sigue como legacy/riesgo porque apunta a recursos live; no usarlo para nuevos flujos.
 - Fase 4 dejo `functions/api/referral-tickets.ts` como endpoint de riesgo porque no se encontro consumo directo desde apps V2; no mover ni borrar sin revision puntual.
 
 ## Checklist de seguridad

@@ -1,5 +1,5 @@
 > Estado: vivo
-> Uso: mapa oficial Fase 4 de superficie activa antes de mover legacy
+> Uso: mapa oficial Fase 4 de superficie activa y resultado de cuarentena Fase 5
 
 # Fase 4 - Mapa de superficie activa V2
 
@@ -81,7 +81,7 @@ Helpers activos: `functions/api/_asset-utils.ts`, `_menu-v2-utils.ts`, `_orders-
 | `docs/v2-deprecated-cleanup-plan.md` | activo para legacy cleanup | guia futura, no permiso de borrar |
 | `docs/operations/2026-07-01-d1-0013-ticket-adjustments-live.md` | activo operacional | evidencia de operacion D1 0013 |
 
-Docs historicas o candidatas a legacy deben conservarse hasta Fase 5/Fase 6; no se mueven en Fase 4.
+Fase 5 movio docs historicas claras a `legacy/docs/`. Algunas docs de auditoria/redesign siguen fuera por referencias activas o ambiguedad.
 
 ## Scripts activos
 
@@ -94,7 +94,7 @@ Docs historicas o candidatas a legacy deben conservarse hasta Fase 5/Fase 6; no 
 | `qa:visual` | tooling QA | Playwright visual | usar solo cuando aplique UI/QA |
 | `db:v2:*:local` | D1 local/preview explicita | migrar/seed local | no ejecutar salvo intencion explicita |
 | `db:v2:*:remote` | riesgo remoto | muta D1 remoto preview | prohibido sin autorizacion explicita |
-| `public-order:*` | legacy/riesgo live | usa `cloudflare/public-order/wrangler.toml` y recursos live | prohibido en Fase 4; revisar en Fase 5 |
+| `public-order:*` | legacy/riesgo live | referenciaba `cloudflare/public-order/wrangler.toml`; Fase 5 no modifico `package.json` | prohibido; revisar/remover en Fase 6 |
 
 ## Assets activos
 
@@ -103,26 +103,32 @@ Docs historicas o candidatas a legacy deben conservarse hasta Fase 5/Fase 6; no 
 | R2 `BOG_MENU_ASSETS` | activo-v2 | `/api/assets-v2/[[key]].ts`; uploads admin de catalogo/sorteos | source of truth actual para assets oficiales |
 | `imageKey` / `imageUrl` en D1 | activo-v2 | Public V2 resuelve `/api/assets-v2/<key>`; CatalogAdminPanel edita imagenes | no mover como archivos locales |
 | `docs/assets/**` | docs/QA historico | screenshots y mockups referenciados por docs de auditoria/redesign | no mover sin Fase 5/Fase 6 |
-| `cloudflare/public-order/assets/` | legacy public-order | bajo carpeta deprecated; no usado por apps V2 actuales | candidato Fase 5 |
+| `legacy/cloudflare/public-order/assets/` | legacy public-order | bajo carpeta deprecated; no usado por apps V2 actuales | cuarentena Fase 5 |
 | assets locales en `apps/public-order-v2` | no aplica | no hay carpeta dedicada; usa CSS y R2 | no crear/mover en Fase 4 |
 | assets locales en `apps/internal-chekeo-v2` | runtime generado | ticket/share image se generan en canvas desde codigo | no crear/mover en Fase 4 |
 | brand board dedicado | no encontrado | no se encontro carpeta/archivo canonico de brand board activo en Fase 4 | no inventar ni mover assets |
 
-## Candidatos para Fase 5 - mover a legacy
+## Resultado Fase 5 - movido a legacy
 
 | Ruta | Motivo | Riesgo | Requiere validacion antes de mover |
 | --- | --- | --- | --- |
-| `cloudflare/public-order/` | public order Cloudflare anterior con `/api/order`, assets locales y config legacy | alto: contiene `wrangler.toml` live y rollback historico | confirmar que ninguna app V2 ni script activo lo usa; preservar `DEPRECATED.md` |
-| `cloudflare/internal-chekeo/` | Chekeo Cloudflare anterior con `/api/rpc` y Apps Script RPC | alto: rollback/operacion historica | confirmar que Chekeo V2 no depende de ningun archivo |
-| `cloudflare/tickets/` | superficie historica de tickets | medio | confirmar uso real o archivarlo completo |
-| `Code.gs`, `appsscript.json`, `backend_*.gs`, `menu_live_service.gs`, `setup_chekeo_2_sheets.gs`, `Index.html`, `scripts.html`, `styles.html` | Apps Script / Google Sheets en raiz | alto: riesgo de romper rollback si se mueve sin mapa | decidir estructura `legacy/apps-script` y validar referencias humanas |
-| `planning/` | planeacion historica fuera de docs activas | medio | confirmar si queda como `legacy/planning` o docs historicas |
-| `docs/chekeo-2-*.md` | contratos Sheets/Drive historicos | medio | marcar como historico o mover a `legacy/docs` |
-| `docs/cloudflare-internal-chekeo-*.md` | Cloudflare internal legacy | medio | confirmar si se conserva como rollback |
-| `docs/menu-live-contract.md`, `docs/normalized-*.md`, `docs/ui-ux-mobile-first-plan.md` | docs con `/api/order`, Apps Script o Sheets | medio | separar historia vs vigente |
-| `docs/assets/chekeo-phase-*` | evidencia visual historica/redesign | bajo/medio | mantener si docs activas la enlazan; mover solo con referencias actualizadas |
-| `deep-research-report-actualizado.md` | reporte suelto de investigacion | bajo/medio | clasificar si es referencia activa o legacy docs |
-| `skills/ui-ux-pro-max` | skill incompleta sin `SKILL.md` | bajo | no corregir en Fase 4; ya documentado como incompleto |
+| `legacy/cloudflare/public-order/` | public order Cloudflare anterior con `/api/order`, assets locales y config legacy | alto: contiene `wrangler.toml` live y rollback historico | movido; no usar sin aprobacion |
+| `legacy/cloudflare/internal-chekeo/` | Chekeo Cloudflare anterior con `/api/rpc` y Apps Script RPC | alto: rollback/operacion historica | movido; no usar sin aprobacion |
+| `legacy/cloudflare/tickets/` | superficie historica de tickets | medio | movido |
+| `legacy/apps-script/` | Apps Script / Google Sheets antes en raiz | alto: rollback historico; no runtime V2 | movido |
+| `legacy/planning/` | planeacion historica fuera de docs activas | medio | movido |
+| `legacy/docs/chekeo-2-*.md` | contratos Sheets/Drive historicos | medio | movido |
+| `legacy/docs/cloudflare-internal-chekeo-*.md` | Cloudflare internal legacy | medio | movido |
+| `legacy/docs/menu-live-contract.md`, `legacy/docs/normalized-*.md`, `legacy/docs/ui-ux-mobile-first-plan.md` | docs con `/api/order`, Apps Script o Sheets | medio | movido |
+| `legacy/docs/deep-research-report-actualizado.md` | reporte suelto de investigacion | bajo/medio | movido |
+| `legacy/skills/ui-ux-pro-max` | skill incompleta sin `SKILL.md` | bajo | movido; skill valida sigue en `.agents/skills/ui-ux-pro-max` |
+
+## No movido en Fase 5
+
+| Ruta | Motivo |
+| --- | --- |
+| `docs/assets/chekeo-phase-*` | `tests/internal-chekeo/kitchen-screenshots.spec.ts` referencia `docs/assets/chekeo-phase-2-3-kitchen-production-line`; moverlo requiere fase de referencias. |
+| `package.json` | contiene scripts legacy/riesgo `public-order:*`; no se modifico porque la fase fue de cuarentena, no cleanup de scripts. |
 
 ## Carpetas y archivos que NO se deben tocar en Fase 4
 
@@ -132,9 +138,9 @@ Docs historicas o candidatas a legacy deben conservarse hasta Fase 5/Fase 6; no 
 - `packages/config`
 - `packages/ui`
 - `migrations`
-- `cloudflare/public-order`
-- `cloudflare/internal-chekeo`
-- `cloudflare/tickets`
+- `legacy/cloudflare/public-order`
+- `legacy/cloudflare/internal-chekeo`
+- `legacy/cloudflare/tickets`
 - `legacy`
 - Apps Script / Sheets en raiz
 - `.dev.vars`, `/wrangler.toml`, `/wrangler.local.toml`, `.wrangler/`, `.graphify/`
@@ -144,9 +150,9 @@ Docs historicas o candidatas a legacy deben conservarse hasta Fase 5/Fase 6; no 
 - `referral-tickets.ts` existe como endpoint D1 pero no se encontro consumo directo en apps V2; revisar antes de mover o borrar.
 - `tests/internal-chekeo/kitchen-production-board.spec.ts` referencia `migrations/0008_preview_realistic_orders_seed.sql`, que no existe; candidato Fase 7.
 - `docs/burgers-v2-cloudflare-data.md` y docs historicas contienen comandos y referencias legacy; Fase 5/Fase 6 debe reclasificarlas para evitar confusion.
-- `public-order:*` scripts siguen presentes y apuntan a config legacy/live; no ejecutarlos sin aprobacion explicita.
+- `public-order:*` scripts siguen presentes y no fueron reescritos en Fase 5; no ejecutarlos sin aprobacion explicita.
 - `.graphify/` existe como artefacto local ignorado en varias rutas; no versionar.
 
 ## Siguiente fase sugerida
 
-Fase 5 - Mover legacy a cuarentena.
+Fase 6 - Remover Sheets/App Script del proyecto activo.
