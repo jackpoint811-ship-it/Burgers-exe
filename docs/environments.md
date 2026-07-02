@@ -24,6 +24,8 @@
   - [ ] Si se usan Functions, los bindings locales estan claros.
   - [ ] No apunta a produccion por default.
 
+Nota Fase 1: `.wrangler/`, `.dev.vars` y `wrangler.toml` deben mantenerse fuera del indice de Git. Si existen localmente, tratarlos como configuracion/artefactos locales y revisar manualmente antes de compartir.
+
 ## Local internal
 
 - App: `apps/internal-chekeo-v2`
@@ -40,6 +42,8 @@
   - [ ] El build interno compila.
   - [ ] El auth interno usa solo `BOG_INTERNAL_PIN`.
   - [ ] No usa produccion por accidente.
+
+Nota Fase 1: el runtime local con Pages Functions puede generar `.wrangler/`; esa carpeta no debe versionarse.
 
 ## Preview public
 

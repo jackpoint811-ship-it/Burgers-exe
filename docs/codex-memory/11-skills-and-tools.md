@@ -170,6 +170,73 @@ debe poder validar, segun la fase:
 - [ ] Confirmar Playwright si la fase toca UI.
 - [ ] Si algo falta, reportar si es bloqueo total o limitacion operativa.
 
+## Validacion local Fase 1 - 2026-07-02
+
+### Comandos ejecutados
+
+- `node --version`
+- `npm --version`
+- `git --version`
+- `gh --version`
+- `graphify --version`
+- `npx wrangler --version`
+- `npx playwright --version`
+- `git status --short`
+- `git branch --show-current`
+
+### Resultado de herramientas
+
+- Node: OK, `v24.18.0`.
+- npm: OK, `11.16.0`.
+- Git: OK, `2.54.0.windows.1`.
+- GitHub CLI: OK, `2.95.0`.
+- Graphify CLI: OK, `0.10.1`.
+- Wrangler: OK, `4.86.0`.
+- Playwright: OK, `1.60.0`.
+
+### Resultado de skills
+
+- `graphify`: encontrada en `C:\Users\yoliz\.codex\skills\graphify`, con `SKILL.md`.
+- `ui-ux-pro-max`: encontrada en `C:\Users\yoliz\.codex\skills\ui-ux-pro-max`, con `SKILL.md`.
+- `ui-ux-pro-max`: encontrada en `C:\Documentos\Burgers-exe\Preview\.agents\skills\ui-ux-pro-max`, con `SKILL.md`.
+- `ui-ux-pro-max`: encontrada en `C:\Documentos\Burgers-exe\Preview\skills\ui-ux-pro-max`, incompleta porque no tiene `SKILL.md`.
+- `burgers-pr-workflow`: faltante.
+- `playwright-qa`: faltante como skill local, aunque Playwright CLI esta disponible.
+- `burgers-brand`: faltante.
+
+### Estrategia recomendada para skills
+
+- Estrategia preferida: mantener skills canonicas en una ruta global clara, por ejemplo `C:\Users\yoliz\.codex\skills`, y documentar cualquier ruta alternativa.
+- Estrategia local: usar `.agents\skills` solo para skills aprobadas que deban viajar con el repo o con un clon de trabajo.
+- Sincronizacion: ejecutar siempre primero `tools/codex/prepare-skills-sync.ps1` en dry-run.
+- No sobrescribir carpetas existentes sin revision humana.
+- No copiar skills pesadas o incompletas al repo sin decidir que deben versionarse.
+
+### Scripts agregados
+
+- `tools/codex/verify-local-tooling.ps1`: valida herramientas, archivos base de Fase 0 y estado Git.
+- `tools/codex/verify-skills.ps1`: valida rutas de skills oficiales y presencia de `SKILL.md`.
+- `tools/codex/prepare-skills-sync.ps1`: prepara copia de skills oficiales en modo dry-run por defecto.
+
+### Resultado de dry-run de sync
+
+- Fuente probada: `C:\Users\yoliz\.codex\skills`.
+- `graphify`: se podria copiar a `.agents\skills` si el equipo decide versionarla localmente.
+- `ui-ux-pro-max`: no se copia porque ya existe en `.agents\skills`.
+- `burgers-pr-workflow`, `playwright-qa` y `burgers-brand`: no se copian porque no existen en la fuente validada.
+
+### Fallback si Graphify falla en Fase 2
+
+Graphify CLI esta disponible en este clon. Si falla durante Fase 2, el fallback manual aprobado es:
+
+- `git ls-files`
+- `git grep`
+- `npm run typecheck`
+- `npm run build:public`
+- `npm run build:internal`
+- revision de imports, rutas y scripts
+- busqueda de referencias a Apps Script, Sheets, legacy, `.wrangler`, `/api/order` y `/api/rpc`
+
 ## Regla permanente
 
-No crear scripts de validacion en esta fase. Si hacen falta automatizaciones, se planean en Fase 1.
+Los scripts de validacion local viven en `tools/codex/`. Deben ser no destructivos por defecto y documentar cualquier accion antes de ejecutarla.

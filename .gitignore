@@ -2,3 +2,10 @@ node_modules/
 dist/
 test-results/
 playwright-report/
+.wrangler/
+.wrangler/tmp/
+.dev.vars
+*.local
+*.log
+.DS_Store
+Thumbs.db
