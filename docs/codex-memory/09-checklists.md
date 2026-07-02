@@ -48,6 +48,32 @@ Para cambios solo de docs:
 - [ ] Valide si npm, typecheck y build aplican.
 - [ ] Si alguna herramienta falto, reporte bloqueo o limitacion.
 
+## Checklist de validacion local
+
+- [ ] Confirme `AGENTS.md`.
+- [ ] Confirme `.git`.
+- [ ] Confirme `docs/codex-memory/00-indice.md`.
+- [ ] Confirme `docs/codex-memory/10-migration-tracker.md`.
+- [ ] Confirme `docs/codex-memory/11-skills-and-tools.md`.
+- [ ] Confirme `docs/refactor-v2-clean-architecture.md`.
+- [ ] Confirme `docs/environments.md`.
+- [ ] Confirme `package.json`.
+- [ ] Confirme `README.md`.
+- [ ] Ejecute `tools/codex/verify-local-tooling.ps1` o reporte por que no se pudo.
+- [ ] Ejecute `tools/codex/verify-skills.ps1` o reporte por que no se pudo.
+- [ ] Clasifique archivos sueltos no trackeados antes de borrarlos.
+
+## Checklist de limpieza de clones locales
+
+- [ ] Busque carpetas bajo `C:\Documentos\Burgers-exe`.
+- [ ] Identifique cuales tienen `.git` y `AGENTS.md`.
+- [ ] Confirme que no sean `C:\Documentos\Burgers-exe\Preview`.
+- [ ] Revise rama actual y `git status --short`.
+- [ ] Revise si hay archivos no trackeados importantes.
+- [ ] Revise si hay secrets, `.dev.vars`, credenciales o datos que deban preservarse.
+- [ ] Si hay duda, marque `no borrar - requiere revision`.
+- [ ] Si borra, verifique que la ruta resuelta este dentro de `C:\Documentos\Burgers-exe` y no sea `Preview`.
+
 ## Checklist UI/UX general
 
 Para cambios visibles:
