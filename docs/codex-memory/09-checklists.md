@@ -48,6 +48,22 @@ Para cambios solo de docs:
 - [ ] Valide si npm, typecheck y build aplican.
 - [ ] Si alguna herramienta falto, reporte bloqueo o limitacion.
 
+## Checklist ambientes Cloudflare
+
+Aplicar cuando el cambio toque Pages, Wrangler, D1, R2, preview/prod, secrets o scripts de deploy/migracion.
+
+- [ ] Confirme la app oficial afectada: `apps/public-order-v2` o `apps/internal-chekeo-v2`.
+- [ ] Confirme el ambiente: local, preview o produccion.
+- [ ] Confirme el Pages project esperado antes de ejecutar cualquier comando remoto.
+- [ ] Confirme que `BOG_MENU_DB` apunta al D1 correcto para ese ambiente.
+- [ ] Confirme que `BOG_MENU_ASSETS` apunta al R2 correcto para ese ambiente.
+- [ ] Confirme presencia de `BOG_INTERNAL_PIN` solo como secreto, sin imprimir ni guardar su valor.
+- [ ] Confirme `ORDERS_V2_WRITE_ENABLED` por ambiente antes de aceptar escrituras publicas.
+- [ ] No ejecute deploy, migrations remotas, seeds remotos ni cambios de secrets en PRs documentales.
+- [ ] Confirme que `.dev.vars`, `wrangler.toml` local y `.wrangler/` no queden trackeados.
+- [ ] Si usa Wrangler, separe comandos read-only de comandos que mutan recursos.
+- [ ] Si hay duda sobre binding real en Cloudflare Dashboard, marque bloqueo o riesgo en el PR.
+
 ## Checklist Skills oficiales
 
 - [ ] Valide `graphify`.

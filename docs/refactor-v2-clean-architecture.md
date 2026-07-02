@@ -40,6 +40,8 @@ Nota Fase 2: en el inventario real actual existen `packages/ui` y `packages/conf
 - Cloudflare R2 para assets oficiales
 - Wrangler y bindings solo como capa de configuracion y operacion
 
+Nota Fase 3: la auditoria read-only confirmo existencia de los Pages projects `burgers-exe`, `chekeo2-0`, `burgers-exe-public-v2-preview` y `burgers-exe-internal-v2-preview`; D1 `burgers-exe-menu-live` y `burgers-exe-menu-v2-preview`; y R2 `burgers-exe-menu-assets` y `burgers-exe-assets-v2-preview`. Esta confirmacion no sustituye validar bindings/secrets por proyecto antes de deploy o escritura.
+
 ### Legacy
 
 - Google Sheets
@@ -146,6 +148,8 @@ legacy/
 - La falta de inventario real puede ocultar dependencias vivas antes de mover carpetas.
 - La ausencia de control de tooling puede hacer que distintos clones ejecuten fases con criterios distintos.
 - Fase 2 detecto Apps Script/Sheets todavia en la raiz del repo y carpetas Cloudflare deprecated fuera de `legacy/`; no moverlas hasta Fase 5/Fase 6.
+- Fase 3 detecto que los recursos Cloudflare canonicos existen, pero los bindings/secrets reales por Pages project siguen pendientes de confirmacion segura.
+- `cloudflare/public-order/wrangler.toml` sigue como legacy/riesgo porque apunta a recursos live; no usarlo para nuevos flujos antes de Fase 5.
 
 ## Checklist de seguridad
 
