@@ -4,6 +4,8 @@
 **Propuesta para aprobación**
 
 ## Contexto
+Nota Fase 6: este ADR describe una etapa historica de las superficies legacy. Las menciones a Google Apps Script/Sheets y a `public-order`/`internal-chekeo` vanilla no representan el runtime oficial V2 actual; el source of truth vigente es Cloudflare D1/R2 y las apps oficiales viven en `apps/public-order-v2` y `apps/internal-chekeo-v2`.
+
 Burgers.exe/Burger-OG se encuentra en una etapa de evolución UI/UX para los módulos `public-order` e `internal-chekeo`, manteniendo la operación en Cloudflare Pages con HTML/CSS/JS vanilla y backend en Google Apps Script/Sheets.
 
 Antes de iniciar PR-2 (accesibilidad estructural) y PR-3 (sistema visual compartido), ya se completaron:

@@ -20,6 +20,7 @@ Burgers.exe V2 is the official project and production architecture for this repo
 - V2 inventory: `docs/codex-memory/12-v2-inventory.md`
 - Cloudflare environments audit: `docs/codex-memory/13-cloudflare-environments-audit.md`
 - Active surface map: `docs/codex-memory/14-active-surface-map.md`
+- Active Sheets/App Script cleanup: `docs/codex-memory/15-active-cleanup-sheets-appscript.md`
 - Clean architecture migration spec: `docs/refactor-v2-clean-architecture.md`
 - Environment matrix: `docs/environments.md`
 - Current Cloudflare architecture notes: `docs/burgers-v2-architecture.md`
@@ -49,6 +50,8 @@ Active environments:
 - Internal preview: `burgers-exe-internal-v2-preview`
 
 Legacy exists only for history, rollback, or future cleanup work. Google Sheets and Apps Script are not the current source of truth. Cloudflare D1 and R2 are the current source of truth for V2 data and assets.
+
+Fase 6 removed the legacy `public-order:*` npm scripts from the active root `package.json`. Historical Sheets/App Script and old public-order Cloudflare flows remain only under `legacy/` or clearly marked historical docs.
 
 ## Official app surfaces
 
@@ -81,6 +84,7 @@ The previous Google Sheets and Apps Script based architecture is deprecated.
 It is kept only for history, rollback, or reference in `legacy/`.
 The official current architecture uses Cloudflare D1 and R2.
 Fase 5 moved the clear legacy quarantine surface into `legacy/`: legacy Cloudflare folders, root Apps Script files, historical planning, selected historical docs, and the incomplete `skills/ui-ux-pro-max` mirror.
+Fase 6 removed active root scripts that still pointed to the old public-order Cloudflare location.
 See `legacy/README.md` and `legacy/MOVED.md` before using any legacy reference.
 
 ## Repo rules

@@ -199,8 +199,8 @@ Riesgo detectado: `tests/internal-chekeo/kitchen-production-board.spec.ts` refer
 | `legacy/docs/menu-live-contract.md`, `legacy/docs/normalized-*.md`, `legacy/docs/ui-ux-mobile-first-plan.md` | `/api/order`, Apps Script, Sheets | cuarentena Fase 5 | utiles como historia, no como runtime actual |
 | `legacy/docs/cloudflare-internal-chekeo-*.md` | Chekeo Cloudflare viejo, PIN/session/RPC legacy | cuarentena Fase 5 | describe flujo anterior |
 | `legacy/cloudflare/public-order/.wrangler/` | artefactos Wrangler/Miniflare historicos | no trackeado/resuelto | retirado del indice en Fase 3; no recrear ni versionar |
-| `APPS_SCRIPT_*` referencias | legacy Cloudflare y docs | mover-a-legacy/requiere-revision | no deben ser runtime V2 oficial |
-| `BOG_ACTIVE_ENV` | busqueda sin hallazgos relevantes | no-tocar | no se detecto uso activo |
+| `APPS_SCRIPT_*` referencias | legacy Cloudflare y docs | legacy-only Fase 6 | no son runtime V2 oficial; conservar solo como historia bajo `legacy/` o docs marcadas |
+| `BOG_ACTIVE_ENV` | docs historicas/no-touch | no-tocar | no se detecto uso activo como selector V2 |
 | `public-order-v1` | busqueda sin hallazgos | no-tocar | no existe referencia directa |
 
 ## Docs
@@ -223,7 +223,7 @@ Riesgo detectado: `tests/internal-chekeo/kitchen-production-board.spec.ts` refer
 
 ### Memoria viva
 
-- `docs/codex-memory/00-indice.md` a `docs/codex-memory/12-v2-inventory.md`.
+- `docs/codex-memory/00-indice.md` a `docs/codex-memory/15-active-cleanup-sheets-appscript.md`.
 
 ### Docs historicas utiles o candidatas a mover despues
 
@@ -251,8 +251,8 @@ Fase 5 movio docs historicas claras a `legacy/docs/`. Docs de auditoria visual y
 
 ## Candidatos para Fase 5 y Fase 6
 
-- Revisar en Fase 6 si los scripts `public-order:*` deben eliminarse o reescribirse hacia `legacy/cloudflare/public-order`.
-- Separar las referencias historicas restantes en docs activas para evitar que Sheets/App Script parezcan source of truth actual.
+- Fase 6 removio los scripts `public-order:*` del `package.json` activo; no se creo reemplazo automatico.
+- Fase 6 separo las referencias historicas restantes en docs activas para evitar que Sheets/App Script parezcan source of truth actual.
 - Mantener fuera del indice cualquier artefacto `.wrangler/`; Fase 3 ya retiro del indice los residuos de `cloudflare/public-order/.wrangler/`.
 - Revisar o corregir el test que referencia `migrations/0008_preview_realistic_orders_seed.sql`, porque el archivo no existe.
 

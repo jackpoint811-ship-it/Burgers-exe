@@ -4,6 +4,8 @@ Nota Fase 3: esta matriz fue alineada con auditoria read-only de Wrangler el 202
 
 Nota Fase 5: las superficies Cloudflare legacy quedaron en `legacy/cloudflare/`. Cualquier config bajo `legacy/cloudflare/public-order/wrangler.toml` es historica/riesgo live y no debe usarse para local, preview ni produccion sin aprobacion explicita.
 
+Nota Fase 6: los scripts npm legacy `public-order:*` fueron removidos del `package.json` activo. Sheets/App Script no son runtime ni source of truth V2; cualquier referencia restante debe leerse como legacy/historica.
+
 ## Reglas globales
 
 - Preview y produccion nunca comparten escritura.

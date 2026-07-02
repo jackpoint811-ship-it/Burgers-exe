@@ -77,6 +77,17 @@ Aplicar cuando una fase separe codigo activo de legacy o prepare movimientos de 
 - [ ] Si un archivo parece legacy pero tiene imports o fetch desde apps V2, marcarlo activo o bloqueo.
 - [ ] Antes de Fase 5, preparar lista de rutas, motivo, riesgo y validacion requerida.
 
+## Checklist Fase 6 - Sheets/App Script cleanup
+
+Aplicar cuando una fase remueva referencias activas a Sheets, Apps Script o scripts legacy.
+
+- [ ] Confirmar que `package.json` no contiene scripts `public-order:*`.
+- [ ] Confirmar que no hay imports o fetch activos desde apps V2 hacia Apps Script/Sheets.
+- [ ] Clasificar `APPS_SCRIPT_*`, `SpreadsheetApp` y Sheets como legacy/historico cuando aparezcan fuera de runtime V2.
+- [ ] Confirmar que `BOG_ACTIVE_ENV` no se usa como selector activo V2.
+- [ ] No tocar `legacy/`, Cloudflare real, D1/R2, migrations, seeds, secrets ni deploys.
+- [ ] Actualizar `15-active-cleanup-sheets-appscript.md`, tracker, inventario, audit de ambientes y mapa de superficie activa.
+
 ## Checklist Skills oficiales
 
 - [ ] Valide `graphify`.

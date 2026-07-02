@@ -2,6 +2,8 @@
 
 ## 0) Alcance, método y restricciones aplicadas
 
+Nota Fase 6: este backlog es historico para superficies legacy. Si aparece una ruta antigua `cloudflare/public-order` o `cloudflare/internal-chekeo`, debe leerse como `legacy/cloudflare/public-order` o `legacy/cloudflare/internal-chekeo`; no es ruta activa V2.
+
 Este documento consolida la auditoría final **post-rediseño visual controlado** para:
 - `legacy/cloudflare/public-order`
 - `legacy/cloudflare/internal-chekeo`
