@@ -6,13 +6,12 @@
 ## Estado
 
 - Vivo
-- Fase actual: Fase 2
+- Fase actual: Fase 3
 
 ## Kanban
 
 ### Backlog
 
-- [ ] Fase 3 - Estandarizar ambientes Cloudflare
 - [ ] Fase 4 - Separar carpetas activas
 - [ ] Fase 5 - Mover legacy a cuarentena
 - [ ] Fase 6 - Remover Sheets/App Script del proyecto activo
@@ -25,7 +24,7 @@
 
 ### En revision
 
-- [ ] Fase 2 - Inventario real con Graphify
+- [ ] Fase 3 - Estandarizar ambientes Cloudflare
 
 ### Bloqueado
 
@@ -36,6 +35,7 @@
 - [x] Fase 0 - Gobernanza, tracker Kanban, README limpio y control de herramientas
 - [x] Fase 1 - Validacion local de skills/herramientas
 - [x] Fase 1.1 - Skills oficiales: Obsidian, Graphify y skills faltantes
+- [x] Fase 2 - Inventario real con Graphify
 
 ## Fases de la migracion
 
@@ -61,15 +61,16 @@
 
 ## Decisiones abiertas
 
-- Confirmar si Fase 2 usara solo Graphify CLI directo o tambien la skill `$graphify`.
-- Confirmar nombres finales y bindings efectivos de los proyectos Pages preview antes de Fase 3.
-- Confirmar la estrategia exacta de local: D1 local por defecto o preview explicita segun cada flujo.
+- Confirmar bindings efectivos de los cuatro proyectos Pages en Cloudflare Dashboard o via auditoria read-only mas profunda.
+- Confirmar el valor efectivo de `ORDERS_V2_WRITE_ENABLED` por ambiente sin imprimir secrets.
+- Definir en Fase 7 la estrategia exacta de seed/reset preview 1:1.
 
 ## Bloqueadores
 
 - Ninguno para Fase 1.
 - Ninguno para Fase 1.1.
 - Ninguno para Fase 2. Graphify code graph quedo actualizado; semantic analysis fallo por cuota Gemini y se aplico fallback manual aprobado.
+- Ninguno bloquea Fase 3. La lista read-only de Pages no expone bindings/secrets, asi que queda como riesgo documentado para Fase 7.
 
 ## Riesgos
 
@@ -82,6 +83,9 @@
 - El inventario Fase 2 detecto `cloudflare/public-order/.wrangler/` con 15 archivos trackeados dentro de una carpeta que `.gitignore` ya ignora.
 - El inventario Fase 2 detecto Apps Script/Sheets todavia en la raiz del repo; son legacy y candidatos para Fase 5/Fase 6.
 - `tests/internal-chekeo/kitchen-production-board.spec.ts` referencia `migrations/0008_preview_realistic_orders_seed.sql`, pero ese archivo no existe actualmente.
+- Wrangler local esta autenticado con permisos amplios; en Fase 3 solo se usaron comandos read-only.
+- `wrangler.toml` existe como config local ignorada y no debe versionarse.
+- `cloudflare/public-order/wrangler.toml` sigue como config legacy/riesgo porque apunta a recursos live.
 
 ## Hallazgos Fase 1 - 2026-07-02
 
@@ -188,6 +192,36 @@
 - Apps Script/Sheets de la raiz quedan como candidatos para Fase 5/Fase 6.
 - Docs historicas con Sheets/App Script deben reclasificarse en Fase 5/Fase 6 para no contradecir D1/R2 como source of truth.
 
+## Hallazgos Fase 3 - 2026-07-02
+
+### Auditoria Cloudflare
+
+- Se creo `docs/codex-memory/13-cloudflare-environments-audit.md`.
+- Wrangler CLI respondio comandos read-only: version, whoami, Pages project list, D1 list y R2 bucket list.
+- Pages projects Burgers.exe detectados: `burgers-exe`, `chekeo2-0`, `burgers-exe-public-v2-preview` y `burgers-exe-internal-v2-preview`.
+- D1 detectados: `burgers-exe-menu-live` y `burgers-exe-menu-v2-preview`.
+- R2 detectados: `burgers-exe-menu-assets` y `burgers-exe-assets-v2-preview`.
+- `nutrimoney` aparece en la cuenta como Pages project no relacionado y no debe tocarse desde Burgers.exe.
+
+### Separacion prod/preview/local
+
+- Public V2 prod usa `burgers-exe`, D1 live y R2 live.
+- Internal Chekeo V2 prod usa `chekeo2-0`, D1 live, R2 live y `BOG_INTERNAL_PIN`.
+- Public V2 preview usa `burgers-exe-public-v2-preview`, D1 preview y R2 preview.
+- Internal Chekeo V2 preview usa `burgers-exe-internal-v2-preview`, D1 preview, R2 preview y `BOG_INTERNAL_PIN` preview.
+- Local debe usar D1 local por defecto o preview explicita; nunca produccion por default.
+
+### Limpieza de indice
+
+- `cloudflare/public-order/.wrangler/` seguia trackeado con 15 artefactos locales de Wrangler/Miniflare.
+- Se retiro del indice con staging explicito y sin borrar archivos locales.
+
+### Riesgos para fases siguientes
+
+- La lista read-only de Pages no confirma bindings ni secrets por proyecto.
+- `tests/internal-chekeo/kitchen-production-board.spec.ts` sigue apuntando a `migrations/0008_preview_realistic_orders_seed.sql`, que no existe.
+- Los scripts `public-order:*` siguen clasificados como legacy/riesgo por usar config live bajo `cloudflare/public-order/wrangler.toml`.
+
 ## Checklist para aprobar la siguiente fase
 
 - [x] Existe este tracker oficial.
@@ -204,6 +238,10 @@
 - [x] Instalar o preparar Obsidian Agent Skills.
 - [x] Validar Graphify para Codex.
 - [x] Crear inventario real de Fase 2 antes de mover legacy.
+- [x] Crear auditoria Fase 3 de ambientes Cloudflare antes de separar carpetas.
+- [x] Confirmar recursos Pages/D1/R2 por comandos read-only.
+- [x] Documentar scripts Cloudflare seguros, prohibidos y legacy.
+- [x] Retirar `.wrangler` trackeado del indice sin borrar archivos locales.
 
 ## Ultima actualizacion
 
@@ -212,7 +250,7 @@
 
 ## Siguiente fase sugerida
 
-- Fase 3 - Estandarizar ambientes Cloudflare preview/prod.
+- Fase 4 - Separar carpetas activas.
 
 ## Regla permanente
 
