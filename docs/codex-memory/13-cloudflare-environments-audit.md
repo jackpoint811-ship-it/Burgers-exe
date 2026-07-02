@@ -61,9 +61,9 @@ Nota: `wrangler d1 list` es inventario de recursos, no verificacion de schema ni
 | Ruta | Tipo | Ambiente | Estado | Riesgo |
 | --- | --- | --- | --- | --- |
 | `wrangler.example.toml` | template | local/preview | `template` | seguro si mantiene placeholders y no secrets |
-| `wrangler.toml` | config local ignorada | local/preview | `riesgo controlado` | contiene bindings locales reales; no versionar |
+| `/wrangler.toml` | config local raiz ignorada | local/preview | `riesgo controlado` | contiene bindings locales reales; no versionar; protegido por `.gitignore` |
 | `.dev.vars` | secrets locales ignorados | local | `riesgo controlado` | no leer, imprimir ni versionar |
-| `cloudflare/public-order/wrangler.toml` | config legacy trackeada | produccion legacy | `legacy/riesgo` | apunta a recursos live; no usar en Fase 3 |
+| `cloudflare/public-order/wrangler.toml` | config legacy trackeada | legacy/live | `riesgo` | apunta a recursos live; revisar en Fase 5 |
 | `cloudflare/public-order/.wrangler/` | artefactos Wrangler/Miniflare | local legacy | `riesgo resuelto en indice` | retirado del indice; archivos locales preservados |
 | `cloudflare/internal-chekeo/` | Pages legacy/deprecated | legacy | `legacy` | candidato Fase 5 |
 | `cloudflare/tickets/` | Worker legacy/deprecated | legacy | `legacy` | candidato Fase 5 |
