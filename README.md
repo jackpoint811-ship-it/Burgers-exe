@@ -1,62 +1,61 @@
 # Burgers.exe
 
-## Official V2 production status
+Burgers.exe V2 is the official project and production architecture for this repo.
 
-Burgers.exe V2 is the official production flow after the completed cutover.
+## Official V2 architecture
 
-* Public oficial: https://burgers-exe.pages.dev
-* Chekeo oficial: https://chekeo2-0.pages.dev
-* Source of truth: Cloudflare D1.
-* Assets: Cloudflare R2.
-* Internal auth: PIN-only.
-* V2 apps oficiales:
-  * `apps/public-order-v2`
-  * `apps/internal-chekeo-v2`
-* Legacy, Apps Script, Sheets sync, and old Cloudflare folders are deprecated and kept only for rollback/history.
+- Official public app: `apps/public-order-v2`
+- Official internal app: `apps/internal-chekeo-v2`
+- Public production URL: <https://burgers-exe.pages.dev>
+- Internal production URL: <https://chekeo2-0.pages.dev>
+- Source of truth for catalog, orders, operations, close, and V2 raffle reporting: Cloudflare D1
+- Source of truth for catalog and promo assets: Cloudflare R2
+- Internal authentication model: `BOG_INTERNAL_PIN` plus HttpOnly session cookie
 
-For current V2 architecture and cutover details, see `docs/v2-official-cutover.md`, `docs/burgers-v2-architecture.md`, and `docs/burgers-v2-cloudflare-data.md`.
+## Working docs
 
-## Historical legacy status
+- Living repo memory: `docs/codex-memory/`
+- Migration tracker: `docs/codex-memory/10-migration-tracker.md`
+- Skills and tools guide: `docs/codex-memory/11-skills-and-tools.md`
+- Clean architecture migration spec: `docs/refactor-v2-clean-architecture.md`
+- Environment matrix: `docs/environments.md`
+- Current Cloudflare architecture notes: `docs/burgers-v2-architecture.md`
+- Current Cloudflare data notes: `docs/burgers-v2-cloudflare-data.md`
 
-The notes below describe the pre-V2 legacy flow and are preserved for historical reference only. They are no longer the official production architecture.
+## Official app surfaces
 
-## Estado final del proyecto
-Proyecto operativo por fases con transición hacia arquitectura de dos superficies: **Burgers.exe** (pública) y **Chekeo 2.0** (interna), usando Google Sheets como backend.
+### Public Order V2
 
-## Fases completadas
-- Fase 0: Reset legacy.
-- Fase 1: Contrato de datos y hojas.
-- Fase 2: Backend Apps Script base.
-- Fase 3: Web App shell móvil.
-- Fase 4: Pedidos + Cocina.
-- Fase 5: Ticket cliente + WhatsApp.
-- Fase 6: Resumen operativo + histórico.
-- Fase 7: Migración a producción (validación, preview y preparación segura).
+- Path: `apps/public-order-v2`
+- Production: <https://burgers-exe.pages.dev>
+- Build command: `npm run build:public`
+- Output directory: `dist/public-order-v2`
+- Runtime expectation: public ordering only, no internal PIN
 
-## Stack permitido
-- Google Sheets
-- Google Apps Script (solo backend/bridge, no como superficie operativa visible)
-- HTML/CSS/JS embebido (sin librerías externas, CDN ni frameworks)
+### Internal Chekeo V2
 
-## Superficie operativa actual
-- **Burgers.exe**: app pública de pedidos.
-- **Chekeo 2.0**: app interna de operación (Home, Pedidos, Cocina, Opciones).
-- Apps Script puede permanecer como backend/bridge técnico cuando sea necesario, pero ya no se considera la superficie visible de operación.
+- Path: `apps/internal-chekeo-v2`
+- Production: <https://chekeo2-0.pages.dev>
+- Build command: `npm run build:internal`
+- Output directory: `dist/internal-chekeo-v2`
+- Runtime expectation: internal operations only, PIN-only access with HttpOnly session
 
-## Modo prueba / producción
-La app usa `ScriptProperties` con la clave `BOG_ACTIVE_ENV`:
-- `TEST` → opera sobre `Chekeo Nuevo`.
-- `PROD` → opera sobre `Chekeo`.
+## Environment policy
 
-### Regla de seguridad
-- Si `BOG_ACTIVE_ENV` falta o tiene valor inválido, el sistema usa **TEST** por defecto.
-- **Producción no se activa automáticamente**.
-- Cambiar a `PROD` requiere aprobación manual del usuario y checklist validado.
-- Rollback operativo: regresar `BOG_ACTIVE_ENV` a `TEST`.
+- Production and preview must never share writes.
+- Preview may be feature-equivalent to production, but it must use separate D1 and R2 resources.
+- Local work must never write to production by accident.
+- Any environment that points to production data must be treated as a manual-risk flow and documented before use.
 
-## Restricciones críticas
-- No borrar `legacy/`.
-- No borrar hojas ni datos.
-- No borrar: `Chekeo Nuevo`, `Chekeo`, `Historico`, `Resumen Pedidos`.
-- No activar producción automáticamente.
-- No migrar datos automáticamente.
+## Legacy / historical context
+
+The previous Google Sheets and Apps Script based architecture is deprecated.
+It is kept only for history, rollback, or reference in `legacy/`.
+The official current architecture uses Cloudflare D1 and R2.
+
+## Repo rules
+
+- `AGENTS.md` is the hard rule set.
+- Codex should read `docs/codex-memory/00-indice.md` before real changes.
+- Every migration PR must update the migration tracker before closing.
+- Do not treat legacy Google Sheets or Apps Script flows as official runtime surfaces.
