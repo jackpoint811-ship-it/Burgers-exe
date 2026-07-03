@@ -1,7 +1,7 @@
 > Estado: vivo
-> Uso: Fase 7A, runbook seguro para preview 1:1 con D1/R2 espejo
+> Uso: Fase 7A/7B.1, runbook seguro para preview 1:1 con D1/R2 espejo
 
-# Fase 7A - Preview mirror runbook
+# Fase 7A / 7B.1 - Preview mirror runbook
 
 ## Objetivo
 
@@ -15,7 +15,7 @@ El objetivo operativo es que:
 - Local nunca apunte a produccion por default.
 - Todo comando remoto quede documentado como futuro y requiera autorizacion explicita.
 
-Fase 7A es auditoria, documentacion y tooling read-only. No ejecuta deploys, migrations, seeds, resets, writes D1/R2, creacion de recursos, cambios de bindings ni cambios de secrets.
+Fase 7A es auditoria, documentacion y tooling read-only. Fase 7B.1 prepara scripts/seed/docs para una ejecucion posterior autorizada. Ninguna de estas fases ejecuta deploys, migrations remotas, seeds remotos, resets, writes D1/R2, creacion de recursos, cambios de bindings ni cambios de secrets.
 
 ## Auditoria read-only ejecutada
 
@@ -89,9 +89,9 @@ Notas de seguridad:
 | `db:v2:migrate:local` | D1 execute `--local` 0001 | local D1 | si local | permitido solo con intencion | no ejecutar automaticamente |
 | `db:v2:seed:local` | D1 execute `--local` 0002 | local D1 | si local | permitido solo con intencion | no ejecutar automaticamente |
 | `db:v2:orders:migrate:local` | D1 execute `--local` 0003 | local D1 | si local | permitido solo con intencion | no ejecutar automaticamente |
-| `db:v2:migrate:remote` | D1 execute `--remote` 0001 sobre `burgers-exe-menu-v2-preview` | preview remoto | si remoto | prohibido en Fase 7A | renombrar/proponer `db:v2:preview:migrate` en Fase 7B |
-| `db:v2:seed:remote` | D1 execute `--remote` 0002 sobre `burgers-exe-menu-v2-preview` | preview remoto | si remoto | prohibido en Fase 7A | renombrar/proponer `db:v2:preview:seed` en Fase 7B |
-| `db:v2:orders:migrate:remote` | D1 execute `--remote` 0003 sobre `burgers-exe-menu-v2-preview` | preview remoto | si remoto | prohibido en Fase 7A | renombrar/proponer `db:v2:preview:orders:migrate` en Fase 7B |
+| `db:v2:preview:migrate` | D1 execute `--remote` 0001 sobre `burgers-exe-menu-v2-preview` | preview remoto | si remoto | preparado en Fase 7B.1; no ejecutado | requiere autorizacion explicita antes de usar |
+| `db:v2:preview:seed` | D1 execute `--remote` 0002 sobre `burgers-exe-menu-v2-preview` | preview remoto | si remoto | preparado en Fase 7B.1; no ejecutado | requiere autorizacion explicita antes de usar |
+| `db:v2:preview:orders:migrate` | D1 execute `--remote` 0003 sobre `burgers-exe-menu-v2-preview` | preview remoto | si remoto | preparado en Fase 7B.1; no ejecutado | requiere autorizacion explicita antes de usar |
 
 ## Bindings esperados
 
@@ -110,19 +110,36 @@ Notas de seguridad:
 | Internal Chekeo V2 | preview | `BOG_MENU_ASSETS` | `burgers-exe-assets-v2-preview` | R2 existe | confirmar binding real del Pages project |
 | Internal Chekeo V2 | preview | `BOG_INTERNAL_PIN` | secret Pages preview | nombre en codigo/docs | confirmar presencia sin imprimir valor |
 
-## Seed faltante
+## Checklist Dashboard antes de ejecutar preview mirror
+
+Confirmar manualmente en Cloudflare Dashboard, sin imprimir ni copiar valores de secrets:
+
+- `burgers-exe-public-v2-preview`: binding `BOG_MENU_DB` apunta a `burgers-exe-menu-v2-preview`.
+- `burgers-exe-public-v2-preview`: binding `BOG_MENU_ASSETS` apunta a `burgers-exe-assets-v2-preview`.
+- `burgers-exe-public-v2-preview`: var `ORDERS_V2_WRITE_ENABLED` tiene valor preview intencional.
+- `burgers-exe-internal-v2-preview`: binding `BOG_MENU_DB` apunta a `burgers-exe-menu-v2-preview`.
+- `burgers-exe-internal-v2-preview`: binding `BOG_MENU_ASSETS` apunta a `burgers-exe-assets-v2-preview`.
+- `burgers-exe-internal-v2-preview`: secret `BOG_INTERNAL_PIN` existe como valor preview, sin registrar su contenido.
+- `burgers-exe`: bindings public prod siguen apuntando a `burgers-exe-menu-live` y `burgers-exe-menu-assets`.
+- `chekeo2-0`: bindings internal prod siguen apuntando a `burgers-exe-menu-live` y `burgers-exe-menu-assets`.
+- `chekeo2-0`: secret `BOG_INTERNAL_PIN` prod existe, sin registrar su contenido.
+- Confirmar que ningun proyecto preview apunta a D1/R2 live antes de deploy, migration, seed o QA remoto.
+
+## Seed preview/test-only
 
 Hallazgo:
 
 - `tests/internal-chekeo/kitchen-production-board.spec.ts` lee `migrations/0008_preview_realistic_orders_seed.sql`.
-- El archivo no existe.
-- El test solo valida contenido textual: `PVW-`, `public-v2-preview`, `[FIXTURE:PREVIEW_REALISTIC_ORDERS]`, ubicaciones Torre Valcob/GGA, nombres realistas, y ausencia de marcadores antiguos `QA-COCINA`/`CRIT-001`.
+- El archivo fue creado en Fase 7B.1 como fixture PREVIEW/TEST ONLY.
+- El test valida contenido textual: `PVW-`, `public-v2-preview`, `[FIXTURE:PREVIEW_REALISTIC_ORDERS]`, ubicaciones Torre Valcob/GGA, nombres realistas, y ausencia de marcadores antiguos `QA-COCINA`/`CRIT-001`.
 
-Decision Fase 7A:
+Decision Fase 7B.1:
 
-- No se crea ni ejecuta el seed en Fase 7A.
+- Se creo `migrations/0008_preview_realistic_orders_seed.sql`.
+- No se ejecuto el seed local ni remoto.
 - Aunque parece test/local-only, vive bajo `migrations/` y podria ejecutarse por error contra remoto.
-- Fase 7B debe crearlo con encabezado `PREVIEW/TEST ONLY`, datos ficticios, marcador unico, sin datos reales, y comandos de ejecucion separados por ambiente.
+- El seed tiene encabezado `PREVIEW/TEST ONLY`, datos ficticios, marcador unico, sin datos reales, y comandos de ejecucion separados por ambiente.
+- El seed usa upsert deterministico por IDs fixture y no contiene `DELETE`.
 - El seed no debe usar nombres de clientes reales ni telefonos reales.
 - El seed no debe incluir instrucciones para prod.
 
@@ -130,8 +147,8 @@ Decision Fase 7A:
 
 1. Confirmar bindings en Cloudflare Dashboard para los cuatro Pages projects.
 2. Confirmar presencia de secrets/vars sin imprimir valores.
-3. Proponer scripts `db:v2:preview:*` con nombres preview explicitos.
-4. Crear seed/reset preview local/test-only con marcador unico.
+3. Scripts `db:v2:preview:*` con nombres preview explicitos: preparado en Fase 7B.1.
+4. Seed preview/test-only con marcador unico: preparado en Fase 7B.1.
 5. Si se autoriza, ejecutar migrations preview contra `burgers-exe-menu-v2-preview`.
 6. Si se autoriza, ejecutar seed preview contra `burgers-exe-menu-v2-preview`.
 7. Si se autoriza, deploy preview de Public V2 e Internal V2.
@@ -140,12 +157,12 @@ Decision Fase 7A:
 
 ## Comandos futuros
 
-Todos los siguientes son **NO EJECUTAR EN FASE 7A** y **REQUIEREN AUTORIZACION**:
+Todos los siguientes son **NO EJECUTAR EN FASE 7B.1** y **REQUIEREN AUTORIZACION EXPLICITA FUTURA**:
 
 ```powershell
-npm run db:v2:migrate:remote
-npm run db:v2:seed:remote
-npm run db:v2:orders:migrate:remote
+npm run db:v2:preview:migrate
+npm run db:v2:preview:seed
+npm run db:v2:preview:orders:migrate
 npx wrangler d1 execute burgers-exe-menu-v2-preview --remote --file=./migrations/0008_preview_realistic_orders_seed.sql
 npx wrangler pages deploy dist/public-order-v2 --project-name burgers-exe-public-v2-preview
 npx wrangler pages deploy dist/internal-chekeo-v2 --project-name burgers-exe-internal-v2-preview
@@ -178,9 +195,9 @@ El script no ejecuta deploys, migrations, seeds, writes R2, secrets, creates ni 
 - No se confirmaron bindings reales por Pages project desde Dashboard.
 - No se confirmo valor de `ORDERS_V2_WRITE_ENABLED`.
 - No se confirmo presencia de `BOG_INTERNAL_PIN` preview/prod sin imprimir valor.
-- El seed `0008_preview_realistic_orders_seed.sql` sigue pendiente.
-- Los scripts remotos actuales usan nombre `remote` aunque apuntan a preview; renombrar reduce riesgo humano.
+- El seed `0008_preview_realistic_orders_seed.sql` existe, pero no se ha ejecutado ni validado contra D1 preview.
+- Los scripts remotos ambiguos `db:v2:*:remote` fueron reemplazados por `db:v2:preview:*`; siguen requiriendo autorizacion explicita porque usan `--remote`.
 
 ## Siguiente fase sugerida
 
-Fase 7B - Ejecutar preview mirror autorizado.
+Fase 7B.2 - Ejecutar preview mirror autorizado, solo despues de confirmar Dashboard y autorizacion explicita.

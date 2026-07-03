@@ -15,11 +15,11 @@
     "qa:visual": "playwright test --config=playwright.visual.config.ts",
     "preview:internal": "npm run build:internal && cross-env APP_TARGET=internal vite preview",
     "db:v2:migrate:local": "wrangler d1 execute burgers-exe-menu-v2-preview --local --file=./migrations/0001_v2_menu_schema.sql",
-    "db:v2:migrate:remote": "wrangler d1 execute burgers-exe-menu-v2-preview --remote --file=./migrations/0001_v2_menu_schema.sql",
     "db:v2:seed:local": "wrangler d1 execute burgers-exe-menu-v2-preview --local --file=./migrations/0002_v2_menu_seed.sql",
-    "db:v2:seed:remote": "wrangler d1 execute burgers-exe-menu-v2-preview --remote --file=./migrations/0002_v2_menu_seed.sql",
     "db:v2:orders:migrate:local": "wrangler d1 execute burgers-exe-menu-v2-preview --local --file=./migrations/0003_v2_orders_schema.sql",
-    "db:v2:orders:migrate:remote": "wrangler d1 execute burgers-exe-menu-v2-preview --remote --file=./migrations/0003_v2_orders_schema.sql"
+    "db:v2:preview:migrate": "wrangler d1 execute burgers-exe-menu-v2-preview --remote --file=./migrations/0001_v2_menu_schema.sql",
+    "db:v2:preview:seed": "wrangler d1 execute burgers-exe-menu-v2-preview --remote --file=./migrations/0002_v2_menu_seed.sql",
+    "db:v2:preview:orders:migrate": "wrangler d1 execute burgers-exe-menu-v2-preview --remote --file=./migrations/0003_v2_orders_schema.sql"
   },
   "dependencies": {
     "@radix-ui/react-tabs": "^1.1.12",

@@ -178,13 +178,14 @@ Nota: `packages/domain` y `packages/cloudflare` aparecen en la arquitectura obje
 | `migrations/0006_public_live_menu_d1_schema.sql` | schema live menu/public | mantener-activo |
 | `migrations/0007_public_live_menu_seed.sql` | seed live menu | requiere-revision antes de prod |
 | `migrations/0008_v2_raffle_detail_images.sql` | ALTER raffle images | mantener-activo |
+| `migrations/0008_preview_realistic_orders_seed.sql` | seed preview/test-only de pedidos ficticios | mantener-activo con riesgo; no ejecutar sin autorizacion |
 | `migrations/0009_orders_archive_raffles_delete.sql` | archive/delete soft fields | mantener-activo |
 | `migrations/0010_catalog_creation_stock_category_banners.sql` | stock/category banners | mantener-activo |
 | `migrations/0011_ingredients_recipe_summary.sql` | ingredientes/recetas/resumen K | mantener-activo |
 | `migrations/0012_add_combo_bbq_live.sql` | combo BBQ live/fallback | mantener-activo |
 | `migrations/0013_v2_raffles_ticket_adjustments.sql` | ajustes manuales de tickets | mantener-activo |
 
-Riesgo detectado: `tests/internal-chekeo/kitchen-production-board.spec.ts` referencia `migrations/0008_preview_realistic_orders_seed.sql`, pero ese archivo no existe actualmente en `migrations/`.
+Nota Fase 7B.1: `migrations/0008_preview_realistic_orders_seed.sql` fue creado como PREVIEW/TEST ONLY, no destructivo y no ejecutado.
 
 ## Legacy detectado
 
@@ -254,7 +255,7 @@ Fase 5 movio docs historicas claras a `legacy/docs/`. Docs de auditoria visual y
 - Fase 6 removio los scripts `public-order:*` del `package.json` activo; no se creo reemplazo automatico.
 - Fase 6 separo las referencias historicas restantes en docs activas para evitar que Sheets/App Script parezcan source of truth actual.
 - Mantener fuera del indice cualquier artefacto `.wrangler/`; Fase 3 ya retiro del indice los residuos de `cloudflare/public-order/.wrangler/`.
-- Revisar o corregir el test que referencia `migrations/0008_preview_realistic_orders_seed.sql`, porque el archivo no existe.
+- El test que referencia `migrations/0008_preview_realistic_orders_seed.sql` ya tiene fixture PREVIEW/TEST ONLY desde Fase 7B.1; cualquier ejecucion remota requiere autorizacion explicita.
 
 ## Bloqueadores
 
@@ -266,7 +267,7 @@ Fase 5 movio docs historicas claras a `legacy/docs/`. Docs de auditoria visual y
 - Cuales son los nombres definitivos de los proyectos Pages preview para Public V2 e Internal V2?
 - Cuales son los nombres definitivos de D1/R2 preview frente a produccion?
 - `legacy/cloudflare/public-order/wrangler.toml` debe conservarse como rollback historico o eliminarse en una fase futura?
-- El test que referencia `0008_preview_realistic_orders_seed.sql` debe actualizarse, restaurar fixture no destructiva o moverse a legacy?
+- El seed `0008_preview_realistic_orders_seed.sql` ya fue restaurado como fixture no destructiva en Fase 7B.1; queda pendiente decidir ejecucion preview autorizada.
 
 ## Siguiente fase sugerida
 

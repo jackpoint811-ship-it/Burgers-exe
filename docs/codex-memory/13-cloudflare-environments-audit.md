@@ -80,18 +80,19 @@ Nota: `wrangler d1 list` es inventario de recursos, no verificacion de schema ni
 | `preview:public`, `preview:internal` | preview local Vite | si, local | no valida bindings Cloudflare |
 | `qa:visual` | QA visual | no requerido en Fase 3 | solo aplicar si hay cambio UI |
 | `db:v2:*:local` | D1 local/preview explicita | no ejecutado | puede mutar DB local; requiere intencion explicita |
-| `db:v2:*:remote` | D1 remoto preview | prohibido en Fase 3 | muta recurso Cloudflare |
+| `db:v2:preview:*` | D1 remoto preview | prohibido en Fase 3 y preparado sin ejecutar en Fase 7B.1 | muta recurso Cloudflare; requiere autorizacion explicita |
 | `public-order:*` | legacy/public live | removido en Fase 6 | ya no existe en `package.json`; no hay reemplazo automatico ni permiso de uso |
 
-Propuestas futuras para Fase 7, no implementadas en Fase 3:
+Propuestas futuras para Fase 7, no implementadas en Fase 3 y preparadas en Fase 7B.1:
 
 - `db:v2:preview:migrate`
 - `db:v2:preview:seed`
+- `db:v2:preview:orders:migrate`
 - `db:v2:preview:reset-orders`
 - `preview:public:cloudflare`
 - `preview:internal:cloudflare`
 
-Nota Fase 7A: los scripts actuales `db:v2:*:remote` apuntan a `burgers-exe-menu-v2-preview`, pero siguen usando `--remote` y mutan D1. No ejecutarlos en Fase 7A. Antes de Fase 7B, preferir nombres `db:v2:preview:*` o guardas explicitas de ambiente.
+Nota Fase 7B.1: los scripts ambiguos `db:v2:*:remote` fueron reemplazados por `db:v2:preview:*`. Siguen usando `--remote` y mutan D1 preview, por lo que no deben ejecutarse sin autorizacion explicita y Dashboard confirmado.
 
 ## Comandos
 
@@ -128,15 +129,15 @@ Accion: se retiro del indice con staging explicito y sin borrar archivos locales
 
 ## Seed/test faltante
 
-`tests/internal-chekeo/kitchen-production-board.spec.ts` referencia `migrations/0008_preview_realistic_orders_seed.sql`, pero el archivo no existe actualmente.
+`tests/internal-chekeo/kitchen-production-board.spec.ts` referencia `migrations/0008_preview_realistic_orders_seed.sql`, creado en Fase 7B.1 como fixture PREVIEW/TEST ONLY.
 
 Clasificacion:
 
 - riesgo de ambiente preview/test
-- candidato Fase 7
-- no corregir en Fase 3 porque implicaria decidir datos seed y reglas de reset preview
+- preparado en Fase 7B.1 sin ejecucion local ni remota
+- no corregido en Fase 3 porque implicaba decidir datos seed y reglas de reset preview
 
-Impacto: cualquier QA que dependa de ese seed puede fallar o no representar preview 1:1 hasta que Fase 7 defina estrategia de DB espejo.
+Impacto: cualquier QA que dependa de ese seed requiere aplicar explicitamente el seed en preview autorizado; el archivo existe, pero no fue ejecutado en Fase 7B.1.
 
 ## Pendientes para Fase 7
 
@@ -169,7 +170,7 @@ Auditoria ejecutada solo con comandos read-only. Recursos confirmados:
 
 - La lista read-only de Pages no expone bindings ni secrets por proyecto.
 - No se valido Dashboard porque Fase 3 no debe modificar ni depender de cambios manuales.
-- El test seed faltante requiere decision de Fase 7.
+- Nota Fase 7B.1: el seed preview/test-only existe; queda pendiente autorizacion para cualquier ejecucion remota.
 
 ## Cierre Fase 3
 

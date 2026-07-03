@@ -44,6 +44,12 @@ $packageJson.scripts.PSObject.Properties | Sort-Object Name | ForEach-Object {
   $risk = if ($value -match "--remote|pages deploy|r2 object put|secret put|d1 create|r2 bucket create|pages project create") { "MUTATING_OR_REMOTE" } elseif ($value -match "--local") { "LOCAL_MUTATION" } else { "READ_OR_BUILD" }
   Write-Output ("{0} = {1} [{2}]" -f $name, $value, $risk)
 }
+$ambiguousRemoteScripts = @($packageJson.scripts.PSObject.Properties | Where-Object { $_.Name -match "^db:v2:.*:remote$" })
+if ($ambiguousRemoteScripts.Count -eq 0) {
+  Write-Output "ambiguous db:v2:*:remote scripts: ABSENT"
+} else {
+  Write-Output "ambiguous db:v2:*:remote scripts: PRESENT"
+}
 
 Write-Section "Expected resources in repo references"
 $patterns = @(

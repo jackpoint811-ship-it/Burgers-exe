@@ -32,7 +32,7 @@ Esta fase separa documentalmente lo activo de lo legacy. No autoriza mover carpe
 | `vite.config.ts` | builds public/internal | activo-v2 | selecciona `apps/internal-chekeo-v2` con `APP_TARGET=internal`; aliases `@ui` y `@config` | critico: rompe builds |
 | `package.json` | scripts de desarrollo, build, checks y DB | activo/riesgo remoto | Fase 6 removio scripts legacy/riesgo `public-order:*`; conserva scripts V2 y `db:v2:*` | alto: no ejecutar scripts remotos sin autorizacion |
 | `migrations/` | D1 V2 schema/seed/reparaciones | activo/riesgo | contiene `0001` a `0013`; docs Fase 2/3 las mantienen activas | alto: mover o ejecutar mal puede romper D1 o mezclar prod/preview |
-| `tests/internal-chekeo` | QA Internal/Cocina | activo con riesgo | specs actuales de cocina; una spec referencia seed faltante `0008_preview_realistic_orders_seed.sql` | medio: no mover hasta resolver estrategia Fase 7 |
+| `tests/internal-chekeo` | QA Internal/Cocina | activo con riesgo | specs actuales de cocina; una spec referencia seed preview/test-only `0008_preview_realistic_orders_seed.sql` | medio: no mover hasta resolver estrategia de ejecucion preview |
 | `tests/visual` | QA visual public | activo tooling | `public-preflight.spec.ts` para preflight visual | bajo/medio: mover rompe QA manual/visual |
 | `tools/codex` | validacion local de agentes | activo tooling | `verify-local-tooling.ps1`, `verify-skills.ps1`, `prepare-skills-sync.ps1` | medio: mover rompe workflow de agentes |
 
@@ -93,7 +93,7 @@ Fase 5 movio docs historicas claras a `legacy/docs/`. Algunas docs de auditoria/
 | `preview:public`, `preview:internal` | activo local | preview Vite post-build | no equivale a deploy Cloudflare |
 | `qa:visual` | tooling QA | Playwright visual | usar solo cuando aplique UI/QA |
 | `db:v2:*:local` | D1 local/preview explicita | migrar/seed local | no ejecutar salvo intencion explicita |
-| `db:v2:*:remote` | riesgo remoto | muta D1 remoto preview | prohibido sin autorizacion explicita |
+| `db:v2:preview:*` | riesgo remoto preview explicito | muta D1 remoto preview | prohibido sin autorizacion explicita |
 | `public-order:*` | legacy/riesgo live | removido de `package.json` en Fase 6 | no hay reemplazo automatico; no ejecutar flujos legacy sin aprobacion |
 
 ## Assets activos
@@ -148,7 +148,7 @@ Fase 5 movio docs historicas claras a `legacy/docs/`. Algunas docs de auditoria/
 ## Riesgos residuales
 
 - `referral-tickets.ts` existe como endpoint D1 pero no se encontro consumo directo en apps V2; revisar antes de mover o borrar.
-- `tests/internal-chekeo/kitchen-production-board.spec.ts` referencia `migrations/0008_preview_realistic_orders_seed.sql`, que no existe; candidato Fase 7.
+- `migrations/0008_preview_realistic_orders_seed.sql` existe como fixture PREVIEW/TEST ONLY, pero no debe ejecutarse sin autorizacion y Dashboard confirmado.
 - `docs/burgers-v2-cloudflare-data.md` y docs historicas contienen comandos y referencias legacy; Fase 5/Fase 6 debe reclasificarlas para evitar confusion.
 - `public-order:*` scripts fueron removidos en Fase 6; si una fase futura necesita un flujo legacy, debe definirlo de nuevo con ambiente explicito y aprobacion.
 - `.graphify/` existe como artefacto local ignorado en varias rutas; no versionar.

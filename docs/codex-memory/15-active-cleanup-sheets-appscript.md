@@ -61,7 +61,7 @@ No autoriza cambios de runtime, Cloudflare real, D1/R2, migrations, seeds, secre
 
 - `BOG_ACTIVE_ENV` sigue apareciendo en runbooks y bitacoras como regla de no-touch. No se borra porque ayuda a evitar cambios accidentales.
 - Algunas docs historicas fuera de `legacy/` siguen citando rutas antiguas como parte de auditorias. Quedan marcadas como historicas en Fase 6.
-- `tests/internal-chekeo/kitchen-production-board.spec.ts` sigue referenciando `migrations/0008_preview_realistic_orders_seed.sql`, que no existe; queda para Fase 7.
+- Nota Fase 7B.1: `migrations/0008_preview_realistic_orders_seed.sql` existe como fixture PREVIEW/TEST ONLY, sin ejecucion local ni remota.
 - Bindings reales de Pages por ambiente siguen pendientes de confirmacion read-only mas profunda o Dashboard.
 
 ## Validacion esperada
@@ -74,9 +74,9 @@ No autoriza cambios de runtime, Cloudflare real, D1/R2, migrations, seeds, secre
 ## Preguntas antes de Fase 7
 
 - Cual sera la estrategia exacta de seed/reset preview 1:1 sin tocar produccion?
-- Se restaurara o reemplazara `migrations/0008_preview_realistic_orders_seed.sql` para QA?
+- Ejecutar `migrations/0008_preview_realistic_orders_seed.sql` en preview requiere autorizacion explicita y Dashboard confirmado.
 - Como se confirmaran bindings reales por Pages project sin imprimir secrets?
-- Los scripts `db:v2:*:remote` se renombraran a preview explicito o se mantendran como riesgo documentado?
+- Los scripts `db:v2:*:remote` fueron reemplazados por `db:v2:preview:*`; siguen siendo mutacion remota y requieren autorizacion.
 
 ## Siguiente fase sugerida
 
