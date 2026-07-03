@@ -88,6 +88,19 @@ Aplicar cuando una fase remueva referencias activas a Sheets, Apps Script o scri
 - [ ] No tocar `legacy/`, Cloudflare real, D1/R2, migrations, seeds, secrets ni deploys.
 - [ ] Actualizar `15-active-cleanup-sheets-appscript.md`, tracker, inventario, audit de ambientes y mapa de superficie activa.
 
+## Checklist Fase 7A - Preview mirror read-only
+
+Aplicar cuando una fase prepare preview 1:1 con D1/R2 espejo sin mutar Cloudflare.
+
+- [ ] Confirmar que Fase 0 a Fase 6 estan en `main`.
+- [ ] Ejecutar solo auditoria Cloudflare read-only.
+- [ ] No ejecutar deploys, migrations, seeds, resets, creates, R2 puts/deletes ni cambios de secrets.
+- [ ] Clasificar scripts `db:v2:*:remote` como mutacion remota preview y no ejecutarlos.
+- [ ] Confirmar recursos Pages/D1/R2 esperados por lista read-only o documentar falla de auth.
+- [ ] Documentar bindings esperados sin leer ni imprimir secrets.
+- [ ] Revisar el seed `0008_preview_realistic_orders_seed.sql` sin ejecutarlo.
+- [ ] Actualizar `16-preview-mirror-runbook.md`, tracker, ambientes y audit Cloudflare.
+
 ## Checklist Skills oficiales
 
 - [ ] Valide `graphify`.

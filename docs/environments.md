@@ -6,6 +6,8 @@ Nota Fase 5: las superficies Cloudflare legacy quedaron en `legacy/cloudflare/`.
 
 Nota Fase 6: los scripts npm legacy `public-order:*` fueron removidos del `package.json` activo. Sheets/App Script no son runtime ni source of truth V2; cualquier referencia restante debe leerse como legacy/historica.
 
+Nota Fase 7A: la preparacion preview 1:1 vive en `docs/codex-memory/16-preview-mirror-runbook.md`. Los recursos preview existen por auditoria read-only, pero bindings/secrets reales por Pages project siguen pendientes de confirmacion en Dashboard o auditoria read-only mas profunda antes de cualquier deploy, migration, seed o QA remoto.
+
 ## Reglas globales
 
 - Preview y produccion nunca comparten escritura.
