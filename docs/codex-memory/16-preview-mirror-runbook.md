@@ -68,7 +68,7 @@ Notas de seguridad:
 - No ejecutar `wrangler pages deploy` en Fase 7A.
 - No ejecutar `wrangler d1 execute --remote` en Fase 7A.
 - No ejecutar `wrangler r2 object put/delete` en Fase 7A.
-- No ejecutar `wrangler secret put/delete` en Fase 7A.
+- No modificar ni crear Pages secrets en Fase 7A.
 - No crear Pages, D1 ni R2 en Fase 7A.
 - No imprimir secrets, tokens ni valores reales de PIN.
 
@@ -150,8 +150,10 @@ npx wrangler d1 execute burgers-exe-menu-v2-preview --remote --file=./migrations
 npx wrangler pages deploy dist/public-order-v2 --project-name burgers-exe-public-v2-preview
 npx wrangler pages deploy dist/internal-chekeo-v2 --project-name burgers-exe-internal-v2-preview
 npx wrangler r2 object put burgers-exe-assets-v2-preview/<key> --file <file>
-npx wrangler secret put BOG_INTERNAL_PIN --project-name burgers-exe-internal-v2-preview
+# Pages secret de Internal preview: configurar en Cloudflare Dashboard o con Wrangler Pages; no usar el comando de Workers.
 ```
+
+Nota: `BOG_INTERNAL_PIN` es un secret de Cloudflare Pages. Para Fase 7B, usar Cloudflare Dashboard o Wrangler Pages con `--project-name`; no usar el comando de Workers porque apunta al target equivocado.
 
 ## Script read-only
 
