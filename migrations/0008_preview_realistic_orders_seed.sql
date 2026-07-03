@@ -170,7 +170,7 @@ INSERT INTO order_items_v2 (
   2,
   10900,
   21800,
-  '{"fixture":"PREVIEW_REALISTIC_ORDERS","sku":"classic-burger","name":"Classic Burger","priceCents":10900,"category":"burgers","tags":"[]","itemKind":"burger","removedIngredients":[],"extras":[{"sku":"extra-cheese","name":"Queso","price":0}],"garnish":null,"includedDrink":null,"sideQuestExtras":[],"comboBurgers":[]}',
+  '{"fixture":"PREVIEW_REALISTIC_ORDERS","sku":"classic-burger","name":"Classic Burger","priceCents":10900,"category":"burgers","tags":"[]","lineKey":"pvw-1001-line-1","itemDisplayIndex":1,"itemKind":"burger","removedIngredients":[],"extras":[{"sku":"extra-cheese","name":"Queso","price":0}],"garnish":null,"includedDrink":null,"sideQuestExtras":[],"comboBurgers":[]}',
   strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-24 minutes')
 ) ON CONFLICT(id) DO UPDATE SET
   order_id = excluded.order_id,
@@ -200,7 +200,7 @@ INSERT INTO order_items_v2 (
   1,
   6100,
   6100,
-  '{"fixture":"PREVIEW_REALISTIC_ORDERS","sku":"loaded-fries","name":"Loaded Fries","priceCents":6100,"category":"guarniciones","tags":"[]","itemKind":"garnish","removedIngredients":[],"extras":[],"garnish":null,"includedDrink":null,"sideQuestExtras":[],"comboBurgers":[]}',
+  '{"fixture":"PREVIEW_REALISTIC_ORDERS","sku":"loaded-fries","name":"Loaded Fries","priceCents":6100,"category":"guarniciones","tags":"[]","lineKey":"pvw-1001-line-2","itemDisplayIndex":2,"itemKind":"garnish","removedIngredients":[],"extras":[],"garnish":null,"includedDrink":null,"sideQuestExtras":[],"comboBurgers":[]}',
   strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-24 minutes')
 ) ON CONFLICT(id) DO UPDATE SET
   order_id = excluded.order_id,
@@ -230,7 +230,7 @@ INSERT INTO order_items_v2 (
   1,
   12900,
   12900,
-  '{"fixture":"PREVIEW_REALISTIC_ORDERS","sku":"smash-burger","name":"Smash Burger","priceCents":12900,"category":"burgers","tags":"[]","itemKind":"burger","removedIngredients":[],"extras":[],"garnish":null,"includedDrink":null,"sideQuestExtras":[{"sku":"onion-rings","name":"Aros","price":0,"itemKind":"garnish"}],"comboBurgers":[]}',
+  '{"fixture":"PREVIEW_REALISTIC_ORDERS","sku":"smash-burger","name":"Smash Burger","priceCents":12900,"category":"burgers","tags":"[]","lineKey":"pvw-1002-line-1","itemDisplayIndex":1,"itemKind":"burger","removedIngredients":[],"extras":[],"garnish":null,"includedDrink":null,"sideQuestExtras":[{"sku":"onion-rings","name":"Aros","price":0,"itemKind":"garnish"}],"comboBurgers":[]}',
   strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-16 minutes')
 ) ON CONFLICT(id) DO UPDATE SET
   order_id = excluded.order_id,
@@ -260,7 +260,7 @@ INSERT INTO order_items_v2 (
   1,
   6900,
   6900,
-  '{"fixture":"PREVIEW_REALISTIC_ORDERS","sku":"house-drink","name":"House Drink","priceCents":6900,"category":"drinks","tags":"[]","itemKind":"drink","removedIngredients":[],"extras":[],"garnish":null,"includedDrink":null,"sideQuestExtras":[],"comboBurgers":[]}',
+  '{"fixture":"PREVIEW_REALISTIC_ORDERS","sku":"house-drink","name":"House Drink","priceCents":6900,"category":"drinks","tags":"[]","lineKey":"pvw-1002-line-2","itemDisplayIndex":2,"itemKind":"drink","removedIngredients":[],"extras":[],"garnish":null,"includedDrink":null,"sideQuestExtras":[],"comboBurgers":[]}',
   strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-16 minutes')
 ) ON CONFLICT(id) DO UPDATE SET
   order_id = excluded.order_id,
@@ -290,7 +290,7 @@ INSERT INTO order_items_v2 (
   2,
   14900,
   29800,
-  '{"fixture":"PREVIEW_REALISTIC_ORDERS","sku":"double-bacon","name":"Double Bacon","priceCents":14900,"category":"burgers","tags":"[]","itemKind":"burger","removedIngredients":[],"extras":[{"sku":"extra-bacon","name":"Tocino","price":0}],"garnish":{"sku":"loaded-fries","name":"Papas","upcharge":0},"includedDrink":null,"sideQuestExtras":[],"comboBurgers":[]}',
+  '{"fixture":"PREVIEW_REALISTIC_ORDERS","sku":"double-bacon","name":"Double Bacon","priceCents":14900,"category":"burgers","tags":"[]","lineKey":"pvw-1003-line-1","itemDisplayIndex":1,"itemKind":"burger","removedIngredients":[],"extras":[{"sku":"extra-bacon","name":"Tocino","price":0}],"garnish":{"sku":"loaded-fries","name":"Papas","upcharge":0},"includedDrink":null,"sideQuestExtras":[],"comboBurgers":[]}',
   strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-8 minutes')
 ) ON CONFLICT(id) DO UPDATE SET
   order_id = excluded.order_id,
@@ -320,7 +320,7 @@ INSERT INTO order_items_v2 (
   1,
   4800,
   4800,
-  '{"fixture":"PREVIEW_REALISTIC_ORDERS","sku":"onion-rings","name":"Onion Rings","priceCents":4800,"category":"guarniciones","tags":"[]","itemKind":"garnish","removedIngredients":[],"extras":[],"garnish":null,"includedDrink":null,"sideQuestExtras":[],"comboBurgers":[]}',
+  '{"fixture":"PREVIEW_REALISTIC_ORDERS","sku":"onion-rings","name":"Onion Rings","priceCents":4800,"category":"guarniciones","tags":"[]","lineKey":"pvw-1003-line-2","itemDisplayIndex":2,"itemKind":"garnish","removedIngredients":[],"extras":[],"garnish":null,"includedDrink":null,"sideQuestExtras":[],"comboBurgers":[]}',
   strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-8 minutes')
 ) ON CONFLICT(id) DO UPDATE SET
   order_id = excluded.order_id,
