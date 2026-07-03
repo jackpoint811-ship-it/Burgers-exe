@@ -197,11 +197,14 @@ El script no ejecuta deploys, migrations, seeds, writes R2, secrets, creates ni 
 - El bloqueo anterior de Wrangler `7403` fue resuelto manualmente por el usuario y D1 preview respondio consultas read-only.
 - D1 preview ya fue sembrado con `0008_preview_realistic_orders_seed.sql` despues de remover transacciones explicitas no soportadas por D1 remoto.
 - Pages preview public/internal ya fueron desplegados, incluyendo alias `preview-mirror-7b2`.
-- Bloqueador actual: las Functions Pages preview no reciben bindings/secrets efectivos. Evidencia: `/api/menu-v2` responde `source=fallback` y `/api/internal-v2-auth/status` responde `503`.
+- El bloqueo de bindings/secrets efectivos quedo resuelto al redeployar sin `--branch` y validar las URLs base del Production environment de los proyectos preview.
+- Causa probable del bloqueo anterior: los aliases branch/preview no heredaban los bindings/secrets confirmados en Dashboard para `Choose Environment: Production`.
+- Evidencia de cierre: `https://burgers-exe-public-v2-preview.pages.dev/api/menu-v2` responde `source=d1`; `https://burgers-exe-internal-v2-preview.pages.dev/api/internal-v2-auth/status` responde `200` con `authenticated=false`.
 - No se deben modificar bindings/secrets desde CLI sin autorizacion adicional explicita.
 - Bitacora: `docs/operations/2026-07-03-preview-mirror-7b2-attempt.md`.
 - Bitacora reintento: `docs/operations/2026-07-03-preview-mirror-7b2-retry.md`.
+- Bitacora cierre: `docs/operations/2026-07-03-preview-mirror-7b2-production-env-validation.md`.
 
 ## Siguiente fase sugerida
 
-Resolver bindings/secrets efectivos en Pages preview. Reanudar QA funcional solo cuando `/api/menu-v2` responda `source=d1` y `/api/internal-v2-auth/status` deje de responder `503`.
+Fase 8 - Estandarizar rutina diaria, modelos, prompts y QA. Para futuros deploys de estos proyectos preview, usar URLs base cuando se quiera validar el Production environment interno del proyecto preview y no usar `--branch` salvo que se quiera validar un branch/preview environment especifico.
