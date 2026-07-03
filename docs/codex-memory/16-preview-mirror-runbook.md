@@ -194,11 +194,14 @@ El script no ejecuta deploys, migrations, seeds, writes R2, secrets, creates ni 
 
 - Dashboard fue confirmado por el usuario para preview/prod antes de Fase 7B.2.
 - Fase 7B.2 fue autorizada literalmente con `Autorizo Fase 7B.2 preview`.
-- Bloqueador actual: Wrangler no pudo consultar `burgers-exe-menu-v2-preview` con `wrangler d1 execute --remote --command`; Cloudflare respondio `7403` por cuenta no valida o sin autorizacion para el servicio.
-- El seed `0008_preview_realistic_orders_seed.sql` existe y fue validado localmente, pero no se ejecuto contra D1 preview.
-- No se ejecutaron deploy Pages preview ni Playwright contra URLs preview porque D1 preview no quedo confirmado por consulta read-only.
+- El bloqueo anterior de Wrangler `7403` fue resuelto manualmente por el usuario y D1 preview respondio consultas read-only.
+- D1 preview ya fue sembrado con `0008_preview_realistic_orders_seed.sql` despues de remover transacciones explicitas no soportadas por D1 remoto.
+- Pages preview public/internal ya fueron desplegados, incluyendo alias `preview-mirror-7b2`.
+- Bloqueador actual: las Functions Pages preview no reciben bindings/secrets efectivos. Evidencia: `/api/menu-v2` responde `source=fallback` y `/api/internal-v2-auth/status` responde `503`.
+- No se deben modificar bindings/secrets desde CLI sin autorizacion adicional explicita.
 - Bitacora: `docs/operations/2026-07-03-preview-mirror-7b2-attempt.md`.
+- Bitacora reintento: `docs/operations/2026-07-03-preview-mirror-7b2-retry.md`.
 
 ## Siguiente fase sugerida
 
-Reintentar Fase 7B.2 solo despues de resolver acceso Wrangler a `burgers-exe-menu-v2-preview` y confirmar una consulta read-only exitosa.
+Resolver bindings/secrets efectivos en Pages preview. Reanudar QA funcional solo cuando `/api/menu-v2` responda `source=d1` y `/api/internal-v2-auth/status` deje de responder `503`.

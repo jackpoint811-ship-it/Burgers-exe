@@ -81,7 +81,7 @@
 - Ninguno bloquea Fase 5. Se aplico cuarentena con `git mv`, sin borrar archivos ni tocar runtime.
 - Ninguno bloquea Fase 6. La limpieza es de scripts/docs y no toca runtime, legacy, Cloudflare real, D1/R2, migrations, seeds ni secrets.
 - Ninguno bloquea Fase 7A. La auditoria es read-only y no ejecuta mutaciones remotas.
-- Fase 7B.2 bloqueada: Wrangler no pudo consultar `burgers-exe-menu-v2-preview` por error Cloudflare `7403` de cuenta no valida o sin autorizacion para el servicio.
+- Fase 7B.2 parcialmente ejecutada y bloqueada en runtime Pages preview: D1 preview ya fue sembrado y Pages preview ya fue desplegado, pero las Functions no reciben bindings/secrets efectivos (`/api/menu-v2` cae a `source=fallback` y `/api/internal-v2-auth/status` responde `503`).
 
 ## Riesgos
 
@@ -359,6 +359,21 @@
 - Se detuvo la fase antes de ejecutar migrations remotas, seed remoto, deploy Pages preview, writes D1/R2, cambios de bindings, cambios de secrets o Playwright contra URLs preview.
 - Bitacora operacional: `docs/operations/2026-07-03-preview-mirror-7b2-attempt.md`.
 
+## Hallazgos Fase 7B.2 reintento - 2026-07-03
+
+### Ejecucion preview parcial con bloqueo en runtime Pages
+
+- PR #343 ya estaba mergeado en `main`; el acceso Wrangler a `burgers-exe-menu-v2-preview` fue corregido manualmente por el usuario.
+- Se confirmo D1 preview por consultas read-only y se ejecuto `0008_preview_realistic_orders_seed.sql` contra `burgers-exe-menu-v2-preview`.
+- Primer intento del seed fallo por transacciones explicitas no soportadas por D1 remoto; no escribio datos (`changed_db=false`).
+- Se corrigio el seed removiendo solo `BEGIN TRANSACTION;` y `COMMIT;`.
+- Segundo intento del seed fue exitoso: quedaron `3` ordenes fixture preview, `6` items y `3` eventos con folios `PVW-*`.
+- Se desplegaron Pages preview en `burgers-exe-public-v2-preview` y `burgers-exe-internal-v2-preview`, primero con alias `main` y luego con alias `preview-mirror-7b2`.
+- QA HTTP preview: public page `200`, internal page `200`, public `/api/menu-v2` `200` con `source=fallback`, internal `/api/internal-v2-auth/status` `503`.
+- Se verifico que el esquema D1 preview contiene las columnas esperadas; el bloqueo actual apunta a bindings/secrets no efectivos en Pages Functions preview, no a falta de tablas D1.
+- No se tocaron produccion, R2, bindings, secrets, runtime V2 ni legacy.
+- Bitacora operacional: `docs/operations/2026-07-03-preview-mirror-7b2-retry.md`.
+
 ## Checklist para aprobar la siguiente fase
 
 - [x] Existe este tracker oficial.
@@ -393,16 +408,17 @@
 - [x] Preparar scripts `db:v2:preview:*` sin ejecutarlos.
 - [x] Crear seed preview/test-only `0008_preview_realistic_orders_seed.sql` sin ejecutarlo.
 - [x] Documentar checklist Dashboard antes de preview mirror autorizado.
-- [ ] Resolver acceso Wrangler a `burgers-exe-menu-v2-preview` y repetir consulta read-only antes de reintentar Fase 7B.2.
+- [x] Resolver acceso Wrangler a `burgers-exe-menu-v2-preview` y repetir consulta read-only antes de reintentar Fase 7B.2.
+- [ ] Resolver bindings/secrets efectivos en Pages preview antes de QA funcional: `/api/menu-v2` debe responder `source=d1` y `/api/internal-v2-auth/status` debe dejar de responder `503`.
 
 ## Ultima actualizacion
 
-- 2026-07-02
+- 2026-07-03
 - Responsable: Codex
 
 ## Siguiente fase sugerida
 
-- Reintentar Fase 7B.2 solo despues de resolver acceso Wrangler a D1 preview.
+- Resolver bindings/secrets efectivos en Pages preview antes de continuar QA funcional de Fase 7B.2.
 
 ## Regla permanente
 
