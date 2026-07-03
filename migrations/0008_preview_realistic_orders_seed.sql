@@ -6,8 +6,6 @@
 
 PRAGMA foreign_keys = ON;
 
-BEGIN TRANSACTION;
-
 INSERT INTO orders_v2 (
   id,
   folio,
@@ -412,5 +410,3 @@ INSERT INTO order_events_v2 (
   detail_json = excluded.detail_json,
   actor = excluded.actor,
   created_at = excluded.created_at;
-
-COMMIT;
