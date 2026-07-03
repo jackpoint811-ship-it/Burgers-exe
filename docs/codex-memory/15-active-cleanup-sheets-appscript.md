@@ -80,4 +80,4 @@ No autoriza cambios de runtime, Cloudflare real, D1/R2, migrations, seeds, secre
 
 ## Siguiente fase sugerida
 
-Fase 7 - Preview 1:1 con DB/R2 espejo.
+Fase 7A - Preview 1:1 con DB/R2 espejo, auditoria y runbook seguro.

@@ -21,20 +21,21 @@ Esta carpeta funciona como memoria viva del proyecto.
 6. Si la fase requiere ambientes Cloudflare, leer `docs/codex-memory/13-cloudflare-environments-audit.md`.
 7. Si la fase requiere separar activo vs legacy, leer `docs/codex-memory/14-active-surface-map.md`.
 8. Si la fase requiere limpiar Sheets/App Script del proyecto activo, leer `docs/codex-memory/15-active-cleanup-sheets-appscript.md`.
-9. Leer esta memoria base:
+9. Si la fase requiere preview 1:1 con D1/R2 espejo, leer `docs/codex-memory/16-preview-mirror-runbook.md`.
+10. Leer esta memoria base:
    - `01-estado-actual.md`
    - `02-reglas-del-proyecto.md`
    - `07-decisiones.md`
-10. Leer workflow y checklists:
+11. Leer workflow y checklists:
    - `08-agent-workflow.md`
    - `09-checklists.md`
-11. Leer el archivo especifico segun el area:
+12. Leer el archivo especifico segun el area:
    - Chekeo: `03-flujos-chekeo.md`
    - Public order: `04-flujo-public-order.md`
    - Backlog: `05-backlog.md`
    - Prompts reutilizables: `06-prompts-buenos.md`
-12. Usar Graphify antes de cambios grandes, de arquitectura o de varios archivos, si esta disponible.
-13. Terminar cambios en rama, commit, push y PR cuando el usuario apruebe el cierre o cuando el prompt lo pida explicitamente.
+13. Usar Graphify antes de cambios grandes, de arquitectura o de varios archivos, si esta disponible.
+14. Terminar cambios en rama, commit, push y PR cuando el usuario apruebe el cierre o cuando el prompt lo pida explicitamente.
 
 ## Mapa rapido
 
@@ -55,6 +56,7 @@ Esta carpeta funciona como memoria viva del proyecto.
 | `13-cloudflare-environments-audit.md` | Auditoria Fase 3 de ambientes Cloudflare, recursos Pages/D1/R2, scripts seguros y riesgos preview/prod. |
 | `14-active-surface-map.md` | Mapa oficial Fase 4 de superficie activa V2 y candidatos legacy para Fase 5. |
 | `15-active-cleanup-sheets-appscript.md` | Cierre Fase 6: scripts `public-order:*` removidos y referencias Sheets/App Script reclasificadas. |
+| `16-preview-mirror-runbook.md` | Fase 7A: auditoria read-only y runbook preview 1:1 con D1/R2 espejo. |
 
 ## Nota
 

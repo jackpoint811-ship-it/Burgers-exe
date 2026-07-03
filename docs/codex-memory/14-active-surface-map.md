@@ -155,4 +155,4 @@ Fase 5 movio docs historicas claras a `legacy/docs/`. Algunas docs de auditoria/
 
 ## Siguiente fase sugerida
 
-Fase 6 - Remover Sheets/App Script del proyecto activo.
+Fase 7A - Preview 1:1 con DB/R2 espejo, auditoria y runbook seguro.

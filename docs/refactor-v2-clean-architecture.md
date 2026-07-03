@@ -46,6 +46,8 @@ Nota Fase 5: la cuarentena legacy clara vive ahora bajo `legacy/`: `legacy/cloud
 
 Nota Fase 6: se removieron del `package.json` activo los scripts legacy `public-order:*`. Las referencias restantes a Sheets/App Script o Cloudflare public-order anterior deben estar bajo `legacy/` o marcadas como historia/no runtime.
 
+Nota Fase 7A: `docs/codex-memory/16-preview-mirror-runbook.md` documenta el preview 1:1 seguro con D1/R2 espejo. Fase 7A es read-only: no deploy, no migrations, no seeds, no resets, no cambios de bindings/secrets y no writes D1/R2.
+
 ### Legacy
 
 - Google Sheets
@@ -117,8 +119,9 @@ legacy/
 5. Fase 4 - Separar carpetas activas.
 6. Fase 5 - Mover legacy a cuarentena.
 7. Fase 6 - Remover Sheets y Apps Script del proyecto activo.
-8. Fase 7 - Preview 1:1 con DB y R2 espejo.
-9. Fase 8 - Estandarizar rutina diaria, modelos, prompts y QA.
+8. Fase 7A - Auditoria/runbook preview mirror read-only.
+9. Fase 7B - Ejecucion preview mirror solo con autorizacion explicita.
+10. Fase 8 - Estandarizar rutina diaria, modelos, prompts y QA.
 
 ## Reglas de preview vs produccion
 

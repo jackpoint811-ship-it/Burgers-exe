@@ -91,6 +91,8 @@ Propuestas futuras para Fase 7, no implementadas en Fase 3:
 - `preview:public:cloudflare`
 - `preview:internal:cloudflare`
 
+Nota Fase 7A: los scripts actuales `db:v2:*:remote` apuntan a `burgers-exe-menu-v2-preview`, pero siguen usando `--remote` y mutan D1. No ejecutarlos en Fase 7A. Antes de Fase 7B, preferir nombres `db:v2:preview:*` o guardas explicitas de ambiente.
+
 ## Comandos
 
 ### Permitidos como read-only
@@ -146,6 +148,22 @@ Impacto: cualquier QA que dependa de ese seed puede fallar o no representar prev
 - Definir estrategia de reset de pedidos preview sin tocar produccion.
 - Validar que Chekeo preview abre/usa URLs de Public preview y que Chekeo prod abre/usa Public prod.
 - `legacy/cloudflare/public-order/wrangler.toml` queda como legacy/riesgo; no usarlo para nuevos flujos ni comandos live sin aprobacion explicita.
+
+## Auditoria Fase 7A - 2026-07-02
+
+Auditoria ejecutada solo con comandos read-only. Recursos confirmados:
+
+| Recurso | Tipo | Ambiente | Existe | Riesgo | Accion futura |
+| --- | --- | --- | --- | --- | --- |
+| `burgers-exe` | Pages | produccion public | si | no usar para QA preview | confirmar bindings solo read-only/manual |
+| `chekeo2-0` | Pages | produccion internal | si | no operar preview desde prod | confirmar bindings solo read-only/manual |
+| `burgers-exe-public-v2-preview` | Pages | preview public | si | binding equivocado podria escribir live | confirmar Dashboard antes de deploy |
+| `burgers-exe-internal-v2-preview` | Pages | preview internal | si | binding/secret equivocado podria operar live | confirmar Dashboard antes de deploy |
+| `burgers-exe-menu-live` | D1 | produccion | si | critico | no usar para seed/reset preview |
+| `burgers-exe-menu-v2-preview` | D1 | preview | si | medio | usar solo con autorizacion en Fase 7B |
+| `burgers-exe-menu-assets` | R2 | produccion | si | critico | no usar para assets preview |
+| `burgers-exe-assets-v2-preview` | R2 | preview | si | medio | usar solo con autorizacion en Fase 7B |
+| `nutrimoney` | Pages | fuera de Burgers.exe | si | fuera de alcance | no tocar |
 
 ## Bloqueadores abiertos
 

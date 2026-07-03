@@ -6,13 +6,13 @@
 ## Estado
 
 - Vivo
-- Fase actual: Fase 6
+- Fase actual: Fase 7A
 
 ## Kanban
 
 ### Backlog
 
-- [ ] Fase 7 - Preview 1:1 con DB/R2 espejo
+- [ ] Fase 7B - Ejecutar preview mirror autorizado
 - [ ] Fase 8 - Estandarizar rutina diaria, modelos, prompts y QA
 
 ### En progreso
@@ -21,7 +21,7 @@
 
 ### En revision
 
-- [ ] Fase 6 - Remover Sheets/App Script del proyecto activo
+- [ ] Fase 7A - Preview 1:1 con DB/R2 espejo, auditoria y runbook seguro
 
 ### Bloqueado
 
@@ -36,6 +36,7 @@
 - [x] Fase 3 - Estandarizar ambientes Cloudflare
 - [x] Fase 4 - Separar carpetas activas
 - [x] Fase 5 - Mover legacy a cuarentena
+- [x] Fase 6 - Remover Sheets/App Script del proyecto activo
 
 ## Fases de la migracion
 
@@ -47,7 +48,8 @@
 - Fase 4 - Separar carpetas activas.
 - Fase 5 - Mover legacy a cuarentena.
 - Fase 6 - Remover Sheets y Apps Script del proyecto activo.
-- Fase 7 - Preview 1:1 con DB y R2 espejo.
+- Fase 7A - Preview 1:1 con DB/R2 espejo, auditoria y runbook seguro.
+- Fase 7B - Ejecutar preview mirror autorizado.
 - Fase 8 - Estandarizar rutina diaria, modelos, prompts y QA.
 
 ## Principios activos
@@ -65,6 +67,8 @@
 - Confirmar el valor efectivo de `ORDERS_V2_WRITE_ENABLED` por ambiente sin imprimir secrets.
 - Definir en Fase 7 la estrategia exacta de seed/reset preview 1:1.
 - Definir en Fase 7 la estrategia exacta de comandos preview 1:1, seeds/reset y validacion de bindings sin tocar produccion.
+- Confirmar en Fase 7B bindings/secrets reales por Pages project sin imprimir valores.
+- Decidir si los scripts `db:v2:*:remote` se renombran a `db:v2:preview:*` antes de cualquier ejecucion autorizada.
 
 ## Bloqueadores
 
@@ -75,6 +79,7 @@
 - Ninguno bloquea Fase 4. La fase es documental y no mueve legacy.
 - Ninguno bloquea Fase 5. Se aplico cuarentena con `git mv`, sin borrar archivos ni tocar runtime.
 - Ninguno bloquea Fase 6. La limpieza es de scripts/docs y no toca runtime, legacy, Cloudflare real, D1/R2, migrations, seeds ni secrets.
+- Ninguno bloquea Fase 7A. La auditoria es read-only y no ejecuta mutaciones remotas.
 
 ## Riesgos
 
@@ -92,6 +97,7 @@
 - `legacy/cloudflare/public-order/wrangler.toml` sigue como config legacy/riesgo porque apunta a recursos live.
 - Los scripts `public-order:*` de `package.json` fueron removidos en Fase 6; si se requiere un flujo legacy futuro, debe definirse de nuevo con ambiente explicito y aprobacion.
 - `functions/api/referral-tickets.ts` existe como endpoint D1, pero no se encontro consumo directo desde apps V2; requiere revision antes de mover o borrar.
+- `db:v2:*:remote` apunta a `burgers-exe-menu-v2-preview`, pero el nombre `remote` es ambiguo y debe renombrarse o envolver con guardas antes de Fase 7B.
 
 ## Hallazgos Fase 1 - 2026-07-02
 
@@ -299,6 +305,36 @@
 - No se movieron `docs/assets/chekeo-phase-*`.
 - No se ejecutaron deploys, migrations, seeds, comandos remotos de Cloudflare, cambios de bindings ni cambios de secrets.
 
+## Hallazgos Fase 7A - 2026-07-02
+
+### Auditoria Cloudflare read-only
+
+- Se creo `docs/codex-memory/16-preview-mirror-runbook.md`.
+- Wrangler read-only confirmo Pages projects: `burgers-exe`, `chekeo2-0`, `burgers-exe-public-v2-preview`, `burgers-exe-internal-v2-preview` y `nutrimoney` fuera de alcance.
+- Wrangler read-only confirmo D1: `burgers-exe-menu-live` y `burgers-exe-menu-v2-preview`.
+- Wrangler read-only confirmo R2: `burgers-exe-menu-assets` y `burgers-exe-assets-v2-preview`.
+- `whoami` confirmo sesion activa; no se registran account id, tokens ni secretos en memoria.
+- El token local tiene permisos amplios; no ejecutar comandos de mutacion sin autorizacion explicita.
+
+### Scripts y bindings
+
+- Los scripts `db:v2:*:remote` apuntan a `burgers-exe-menu-v2-preview`, pero ejecutan `wrangler d1 execute --remote`; quedan prohibidos en Fase 7A.
+- Recomendacion Fase 7B: renombrar o agregar scripts `db:v2:preview:*` con ambiente explicito antes de ejecutar.
+- Bindings esperados siguen siendo `BOG_MENU_DB`, `BOG_MENU_ASSETS`, `BOG_INTERNAL_PIN` y `ORDERS_V2_WRITE_ENABLED`.
+- La lista read-only no confirma bindings/secrets por Pages project; requiere Dashboard o auditoria read-only mas profunda.
+
+### Seed faltante
+
+- `tests/internal-chekeo/kitchen-production-board.spec.ts` lee `migrations/0008_preview_realistic_orders_seed.sql`.
+- El archivo sigue faltante en Fase 7A.
+- No se crea en Fase 7A porque seria un seed bajo `migrations/` y podria ejecutarse por error contra remoto.
+- Fase 7B debe crear un seed preview/test-only con marcador unico, datos ficticios y comandos separados por ambiente.
+
+### Tooling read-only
+
+- Se agrego `tools/codex/verify-preview-readiness.ps1`.
+- El script no ejecuta deploy, migrations, seeds, creates, puts, deletes ni cambios de secrets.
+
 ## Checklist para aprobar la siguiente fase
 
 - [x] Existe este tracker oficial.
@@ -327,6 +363,9 @@
 - [x] Remover scripts legacy `public-order:*` del `package.json` activo.
 - [x] Crear memoria Fase 6 para Sheets/App Script cleanup.
 - [x] Reclasificar referencias Sheets/App Script como historicas o legacy-only.
+- [x] Auditar Cloudflare read-only para Fase 7A.
+- [x] Crear runbook preview mirror Fase 7A.
+- [x] Clasificar scripts remotos preview y seed faltante sin ejecutarlos.
 
 ## Ultima actualizacion
 
@@ -335,7 +374,7 @@
 
 ## Siguiente fase sugerida
 
-- Fase 7 - Preview 1:1 con DB/R2 espejo.
+- Fase 7B - Ejecutar preview mirror autorizado.
 
 ## Regla permanente
 
