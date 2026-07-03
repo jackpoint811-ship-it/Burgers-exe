@@ -87,11 +87,11 @@ npm run db:v2:migrate:local
 npm run db:v2:seed:local
 ```
 
-Aplicar remoto (preview):
+Aplicar remoto preview (requiere autorizacion explicita):
 
 ```bash
-npm run db:v2:migrate:remote
-npm run db:v2:seed:remote
+npm run db:v2:preview:migrate
+npm run db:v2:preview:seed
 ```
 
 ## Configurar binding en Cloudflare Pages
@@ -298,10 +298,10 @@ Local:
 npm run db:v2:orders:migrate:local
 ```
 
-Remota preview:
+Remota preview (requiere autorizacion explicita):
 
 ```bash
-npm run db:v2:orders:migrate:remote
+npm run db:v2:preview:orders:migrate
 ```
 
 Ambos scripts ejecutan `migrations/0003_v2_orders_schema.sql` sobre `burgers-exe-menu-v2-preview`, el D1 usado por `BOG_MENU_DB`.

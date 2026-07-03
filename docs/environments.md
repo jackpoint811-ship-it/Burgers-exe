@@ -8,6 +8,8 @@ Nota Fase 6: los scripts npm legacy `public-order:*` fueron removidos del `packa
 
 Nota Fase 7A: la preparacion preview 1:1 vive en `docs/codex-memory/16-preview-mirror-runbook.md`. Los recursos preview existen por auditoria read-only, pero bindings/secrets reales por Pages project siguen pendientes de confirmacion en Dashboard o auditoria read-only mas profunda antes de cualquier deploy, migration, seed o QA remoto.
 
+Nota Fase 7B.1: los scripts ambiguos `db:v2:*:remote` fueron reemplazados por `db:v2:preview:*` y el seed `migrations/0008_preview_realistic_orders_seed.sql` fue creado como PREVIEW/TEST ONLY. Nada de esto autoriza ejecucion remota; cualquier script preview usa `--remote` y requiere autorizacion explicita futura.
+
 ## Reglas globales
 
 - Preview y produccion nunca comparten escritura.

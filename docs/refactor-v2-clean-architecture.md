@@ -120,8 +120,9 @@ legacy/
 6. Fase 5 - Mover legacy a cuarentena.
 7. Fase 6 - Remover Sheets y Apps Script del proyecto activo.
 8. Fase 7A - Auditoria/runbook preview mirror read-only.
-9. Fase 7B - Ejecucion preview mirror solo con autorizacion explicita.
-10. Fase 8 - Estandarizar rutina diaria, modelos, prompts y QA.
+9. Fase 7B.1 - Preparar preview mirror autorizado sin ejecutar remoto.
+10. Fase 7B.2 - Ejecucion preview mirror solo con autorizacion explicita.
+11. Fase 8 - Estandarizar rutina diaria, modelos, prompts y QA.
 
 ## Reglas de preview vs produccion
 

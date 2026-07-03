@@ -101,6 +101,19 @@ Aplicar cuando una fase prepare preview 1:1 con D1/R2 espejo sin mutar Cloudflar
 - [ ] Revisar el seed `0008_preview_realistic_orders_seed.sql` sin ejecutarlo.
 - [ ] Actualizar `16-preview-mirror-runbook.md`, tracker, ambientes y audit Cloudflare.
 
+## Checklist Fase 7B.1 - Preparar preview mirror autorizado
+
+Aplicar cuando una fase prepare comandos/seed/docs para preview 1:1, sin ejecutar remoto.
+
+- [ ] No ejecutar comandos con `--remote`.
+- [ ] No ejecutar deploys, migrations remotas, seeds remotos, resets, creates, R2 puts/deletes ni cambios de secrets.
+- [ ] Reemplazar scripts ambiguos `db:v2:*:remote` por nombres `db:v2:preview:*`.
+- [ ] Confirmar que los scripts `db:v2:preview:*` quedan documentados como mutacion remota preview y requieren autorizacion.
+- [ ] Crear o revisar `migrations/0008_preview_realistic_orders_seed.sql` como PREVIEW/TEST ONLY.
+- [ ] Confirmar que el seed usa datos ficticios, marcador unico y no contiene `DELETE`.
+- [ ] Confirmar que el checklist Dashboard cubre bindings D1/R2 y secrets/vars sin imprimir valores.
+- [ ] Actualizar `16-preview-mirror-runbook.md`, tracker, ambientes, audit Cloudflare y mapa de superficie activa.
+
 ## Checklist Skills oficiales
 
 - [ ] Valide `graphify`.
