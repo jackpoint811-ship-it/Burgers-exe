@@ -38,8 +38,8 @@ INSERT INTO orders_v2 (
   27900,
   'new',
   'public-v2-preview',
-  '2026-07-02T18:10:00.000Z',
-  '2026-07-02T18:10:00.000Z'
+  strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-24 minutes'),
+  strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-24 minutes')
 ) ON CONFLICT(id) DO UPDATE SET
   folio = excluded.folio,
   idempotency_key = excluded.idempotency_key,
@@ -86,8 +86,8 @@ INSERT INTO orders_v2 (
   19800,
   'preparing',
   'public-v2-preview',
-  '2026-07-02T18:18:00.000Z',
-  '2026-07-02T18:18:00.000Z'
+  strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-16 minutes'),
+  strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-16 minutes')
 ) ON CONFLICT(id) DO UPDATE SET
   folio = excluded.folio,
   idempotency_key = excluded.idempotency_key,
@@ -134,8 +134,8 @@ INSERT INTO orders_v2 (
   34600,
   'ready',
   'public-v2-preview',
-  '2026-07-02T18:26:00.000Z',
-  '2026-07-02T18:26:00.000Z'
+  strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-8 minutes'),
+  strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-8 minutes')
 ) ON CONFLICT(id) DO UPDATE SET
   folio = excluded.folio,
   idempotency_key = excluded.idempotency_key,
@@ -170,8 +170,8 @@ INSERT INTO order_items_v2 (
   2,
   10900,
   21800,
-  '{"fixture":"PREVIEW_REALISTIC_ORDERS","side":"Papas","extras":["Queso"]}',
-  '2026-07-02T18:10:00.000Z'
+  '{"fixture":"PREVIEW_REALISTIC_ORDERS","sku":"classic-burger","name":"Classic Burger","priceCents":10900,"category":"burgers","tags":"[]","itemKind":"burger","removedIngredients":[],"extras":[{"sku":"extra-cheese","name":"Queso","price":0}],"garnish":null,"includedDrink":null,"sideQuestExtras":[],"comboBurgers":[]}',
+  strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-24 minutes')
 ) ON CONFLICT(id) DO UPDATE SET
   order_id = excluded.order_id,
   sku = excluded.sku,
@@ -200,8 +200,8 @@ INSERT INTO order_items_v2 (
   1,
   6100,
   6100,
-  '{"fixture":"PREVIEW_REALISTIC_ORDERS","station":"kitchen"}',
-  '2026-07-02T18:10:00.000Z'
+  '{"fixture":"PREVIEW_REALISTIC_ORDERS","sku":"loaded-fries","name":"Loaded Fries","priceCents":6100,"category":"guarniciones","tags":"[]","itemKind":"garnish","removedIngredients":[],"extras":[],"garnish":null,"includedDrink":null,"sideQuestExtras":[],"comboBurgers":[]}',
+  strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-24 minutes')
 ) ON CONFLICT(id) DO UPDATE SET
   order_id = excluded.order_id,
   sku = excluded.sku,
@@ -230,8 +230,8 @@ INSERT INTO order_items_v2 (
   1,
   12900,
   12900,
-  '{"fixture":"PREVIEW_REALISTIC_ORDERS","side":"Aros"}',
-  '2026-07-02T18:18:00.000Z'
+  '{"fixture":"PREVIEW_REALISTIC_ORDERS","sku":"smash-burger","name":"Smash Burger","priceCents":12900,"category":"burgers","tags":"[]","itemKind":"burger","removedIngredients":[],"extras":[],"garnish":null,"includedDrink":null,"sideQuestExtras":[{"sku":"onion-rings","name":"Aros","price":0,"itemKind":"garnish"}],"comboBurgers":[]}',
+  strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-16 minutes')
 ) ON CONFLICT(id) DO UPDATE SET
   order_id = excluded.order_id,
   sku = excluded.sku,
@@ -260,8 +260,8 @@ INSERT INTO order_items_v2 (
   1,
   6900,
   6900,
-  '{"fixture":"PREVIEW_REALISTIC_ORDERS","station":"drinks"}',
-  '2026-07-02T18:18:00.000Z'
+  '{"fixture":"PREVIEW_REALISTIC_ORDERS","sku":"house-drink","name":"House Drink","priceCents":6900,"category":"drinks","tags":"[]","itemKind":"drink","removedIngredients":[],"extras":[],"garnish":null,"includedDrink":null,"sideQuestExtras":[],"comboBurgers":[]}',
+  strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-16 minutes')
 ) ON CONFLICT(id) DO UPDATE SET
   order_id = excluded.order_id,
   sku = excluded.sku,
@@ -290,8 +290,8 @@ INSERT INTO order_items_v2 (
   2,
   14900,
   29800,
-  '{"fixture":"PREVIEW_REALISTIC_ORDERS","side":"Papas","extras":["Tocino"]}',
-  '2026-07-02T18:26:00.000Z'
+  '{"fixture":"PREVIEW_REALISTIC_ORDERS","sku":"double-bacon","name":"Double Bacon","priceCents":14900,"category":"burgers","tags":"[]","itemKind":"burger","removedIngredients":[],"extras":[{"sku":"extra-bacon","name":"Tocino","price":0}],"garnish":{"sku":"loaded-fries","name":"Papas","upcharge":0},"includedDrink":null,"sideQuestExtras":[],"comboBurgers":[]}',
+  strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-8 minutes')
 ) ON CONFLICT(id) DO UPDATE SET
   order_id = excluded.order_id,
   sku = excluded.sku,
@@ -320,8 +320,8 @@ INSERT INTO order_items_v2 (
   1,
   4800,
   4800,
-  '{"fixture":"PREVIEW_REALISTIC_ORDERS","side":"Aros"}',
-  '2026-07-02T18:26:00.000Z'
+  '{"fixture":"PREVIEW_REALISTIC_ORDERS","sku":"onion-rings","name":"Onion Rings","priceCents":4800,"category":"guarniciones","tags":"[]","itemKind":"garnish","removedIngredients":[],"extras":[],"garnish":null,"includedDrink":null,"sideQuestExtras":[],"comboBurgers":[]}',
+  strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-8 minutes')
 ) ON CONFLICT(id) DO UPDATE SET
   order_id = excluded.order_id,
   sku = excluded.sku,
@@ -349,7 +349,7 @@ INSERT INTO order_events_v2 (
   'new',
   '{"fixture":"PREVIEW_REALISTIC_ORDERS","source":"public-v2-preview"}',
   'preview-seed',
-  '2026-07-02T18:10:00.000Z'
+  strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-24 minutes')
 ) ON CONFLICT(id) DO UPDATE SET
   order_id = excluded.order_id,
   type = excluded.type,
@@ -376,7 +376,7 @@ INSERT INTO order_events_v2 (
   'preparing',
   '{"fixture":"PREVIEW_REALISTIC_ORDERS","source":"public-v2-preview"}',
   'preview-seed',
-  '2026-07-02T18:19:00.000Z'
+  strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-15 minutes')
 ) ON CONFLICT(id) DO UPDATE SET
   order_id = excluded.order_id,
   type = excluded.type,
@@ -403,7 +403,7 @@ INSERT INTO order_events_v2 (
   'ready',
   '{"fixture":"PREVIEW_REALISTIC_ORDERS","source":"public-v2-preview"}',
   'preview-seed',
-  '2026-07-02T18:34:00.000Z'
+  strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-7 minutes')
 ) ON CONFLICT(id) DO UPDATE SET
   order_id = excluded.order_id,
   type = excluded.type,
