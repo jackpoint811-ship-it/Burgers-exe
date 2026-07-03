@@ -6,7 +6,7 @@
 ## Estado
 
 - Vivo
-- Fase actual: Fase 7B.2
+- Fase actual: Fase 8
 
 ## Kanban
 
@@ -24,7 +24,7 @@
 
 ### Bloqueado
 
-- [ ] Fase 7B.2 - Ejecutar preview mirror autorizado
+- Ninguna
 
 ### Terminado
 
@@ -38,6 +38,7 @@
 - [x] Fase 6 - Remover Sheets/App Script del proyecto activo
 - [x] Fase 7A - Preview 1:1 con DB/R2 espejo, auditoria y runbook seguro
 - [x] Fase 7B.1 - Preparar preview mirror autorizado sin ejecutar remoto
+- [x] Fase 7B.2 - Ejecutar preview mirror autorizado
 
 ## Fases de la migracion
 
@@ -65,11 +66,10 @@
 
 ## Decisiones abiertas
 
-- Confirmar bindings efectivos de los cuatro proyectos Pages en Cloudflare Dashboard o via auditoria read-only mas profunda.
+- Confirmar bindings efectivos de los proyectos Pages de produccion real antes de cualquier cambio productivo.
 - Confirmar el valor efectivo de `ORDERS_V2_WRITE_ENABLED` por ambiente sin imprimir secrets.
 - Definir estrategia de reset preview 1:1 sin tocar produccion.
-- Confirmar en Fase 7B bindings/secrets reales por Pages project sin imprimir valores.
-- Decidir ejecucion autorizada de los scripts `db:v2:preview:*` y seed preview despues de validar Dashboard.
+- Definir rutina Fase 8 para QA diaria, prompts y validacion post-merge.
 
 ## Bloqueadores
 
@@ -81,7 +81,7 @@
 - Ninguno bloquea Fase 5. Se aplico cuarentena con `git mv`, sin borrar archivos ni tocar runtime.
 - Ninguno bloquea Fase 6. La limpieza es de scripts/docs y no toca runtime, legacy, Cloudflare real, D1/R2, migrations, seeds ni secrets.
 - Ninguno bloquea Fase 7A. La auditoria es read-only y no ejecuta mutaciones remotas.
-- Fase 7B.2 parcialmente ejecutada y bloqueada en runtime Pages preview: D1 preview ya fue sembrado y Pages preview ya fue desplegado, pero las Functions no reciben bindings/secrets efectivos (`/api/menu-v2` cae a `source=fallback` y `/api/internal-v2-auth/status` responde `503`).
+- Ninguno bloquea Fase 7B.2. El cierre contra URLs base preview confirmo Public `/api/menu-v2` con `source=d1` e Internal auth status sin `503`.
 
 ## Riesgos
 
@@ -374,6 +374,21 @@
 - No se tocaron produccion, R2, bindings, secrets, runtime V2 ni legacy.
 - Bitacora operacional: `docs/operations/2026-07-03-preview-mirror-7b2-retry.md`.
 
+## Hallazgos Fase 7B.2 cierre Production environment preview - 2026-07-03
+
+### Preview mirror validado en URLs base
+
+- PR #344 ya estaba mergeado en `main`.
+- Dashboard fue confirmado por el usuario en `Choose Environment: Production` de los proyectos preview separados.
+- Causa probable del bloqueo anterior: los deploys con `--branch preview-mirror-7b2` usaron branch/preview environment sin bindings/secrets efectivos.
+- Se redeployo sin `--branch` a `burgers-exe-public-v2-preview` y `burgers-exe-internal-v2-preview`.
+- Public base URL `https://burgers-exe-public-v2-preview.pages.dev`: page `200` y `/api/menu-v2` `200` con `source=d1`, `items=15`, `categories=4`.
+- Internal base URL `https://burgers-exe-internal-v2-preview.pages.dev`: page `200` y `/api/internal-v2-auth/status` `200` con `authenticated=false`.
+- `authenticated=false` es smoke esperado sin PIN; confirma que `BOG_INTERNAL_PIN` ya no falta en runtime.
+- D1 preview se verifico solo read-only: `fixture_orders=30`, `fixture_items=6`, `changed_db=false`.
+- No se tocaron produccion, D1 live, R2 live, secrets, bindings, Pages settings, runtime V2, legacy, migrations ni seeds.
+- Bitacora operacional: `docs/operations/2026-07-03-preview-mirror-7b2-production-env-validation.md`.
+
 ## Checklist para aprobar la siguiente fase
 
 - [x] Existe este tracker oficial.
@@ -409,7 +424,7 @@
 - [x] Crear seed preview/test-only `0008_preview_realistic_orders_seed.sql` sin ejecutarlo.
 - [x] Documentar checklist Dashboard antes de preview mirror autorizado.
 - [x] Resolver acceso Wrangler a `burgers-exe-menu-v2-preview` y repetir consulta read-only antes de reintentar Fase 7B.2.
-- [ ] Resolver bindings/secrets efectivos en Pages preview antes de QA funcional: `/api/menu-v2` debe responder `source=d1` y `/api/internal-v2-auth/status` debe dejar de responder `503`.
+- [x] Resolver bindings/secrets efectivos en Pages preview antes de QA funcional: `/api/menu-v2` debe responder `source=d1` y `/api/internal-v2-auth/status` debe dejar de responder `503`.
 
 ## Ultima actualizacion
 
@@ -418,7 +433,7 @@
 
 ## Siguiente fase sugerida
 
-- Resolver bindings/secrets efectivos en Pages preview antes de continuar QA funcional de Fase 7B.2.
+- Fase 8 - Estandarizar rutina diaria, modelos, prompts y QA.
 
 ## Regla permanente
 

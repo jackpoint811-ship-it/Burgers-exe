@@ -10,6 +10,8 @@ Nota Fase 7A: la preparacion preview 1:1 vive en `docs/codex-memory/16-preview-m
 
 Nota Fase 7B.1: los scripts ambiguos `db:v2:*:remote` fueron reemplazados por `db:v2:preview:*` y el seed `migrations/0008_preview_realistic_orders_seed.sql` fue creado como PREVIEW/TEST ONLY. Nada de esto autoriza ejecucion remota; cualquier script preview usa `--remote` y requiere autorizacion explicita futura.
 
+Nota Fase 7B.2: el preview mirror quedo validado contra el `Production` environment interno de los proyectos preview separados. Los deploys sin `--branch` a `burgers-exe-public-v2-preview` y `burgers-exe-internal-v2-preview` fueron validados en las URLs base; Public `/api/menu-v2` respondio `source=d1` e Internal `/api/internal-v2-auth/status` respondio `200` con `authenticated=false`. Los aliases branch/preview pueden no heredar los bindings/secrets confirmados en Dashboard para `Choose Environment: Production`.
+
 ## Reglas globales
 
 - Preview y produccion nunca comparten escritura.
@@ -74,9 +76,10 @@ Nota Fase 1: el runtime local con Pages Functions puede generar `.wrangler/`; es
 - Que NO debe tener: PIN interno, D1 produccion, R2 produccion, mezcla con pedidos reales
 - Riesgos: si comparte bindings con produccion, contaminar pedidos y catalogo real
 - Checklist de validacion:
-  - [ ] Confirmar proyecto Pages correcto.
-  - [ ] Confirmar D1 preview separado.
-  - [ ] Confirmar R2 preview separado.
+  - [x] Confirmar proyecto Pages correcto.
+  - [x] Confirmar D1 preview separado.
+  - [x] Confirmar R2 preview separado.
+  - [x] Confirmar que `/api/menu-v2` responde `source=d1` en URL base preview.
   - [ ] Confirmar que los pedidos de prueba no llegan a produccion.
 
 ## Preview internal
@@ -95,8 +98,9 @@ Nota Fase 1: el runtime local con Pages Functions puede generar `.wrangler/`; es
 - Riesgos: operar pedidos reales desde un host preview o confundir visualmente el ambiente
 - Checklist de validacion:
   - [ ] El ambiente se muestra claramente como PREVIEW.
-  - [ ] Usa D1 preview separado.
-  - [ ] Usa R2 preview separado.
+  - [x] Usa D1 preview separado.
+  - [x] Usa R2 preview separado.
+  - [x] Auth status no falla por missing secret en URL base preview.
   - [ ] No opera pedidos de produccion.
 
 ## Production public
