@@ -192,12 +192,13 @@ El script no ejecuta deploys, migrations, seeds, writes R2, secrets, creates ni 
 
 ## Bloqueadores para ejecutar preview mirror
 
-- No se confirmaron bindings reales por Pages project desde Dashboard.
-- No se confirmo valor de `ORDERS_V2_WRITE_ENABLED`.
-- No se confirmo presencia de `BOG_INTERNAL_PIN` preview/prod sin imprimir valor.
-- El seed `0008_preview_realistic_orders_seed.sql` existe, pero no se ha ejecutado ni validado contra D1 preview.
-- Los scripts remotos ambiguos `db:v2:*:remote` fueron reemplazados por `db:v2:preview:*`; siguen requiriendo autorizacion explicita porque usan `--remote`.
+- Dashboard fue confirmado por el usuario para preview/prod antes de Fase 7B.2.
+- Fase 7B.2 fue autorizada literalmente con `Autorizo Fase 7B.2 preview`.
+- Bloqueador actual: Wrangler no pudo consultar `burgers-exe-menu-v2-preview` con `wrangler d1 execute --remote --command`; Cloudflare respondio `7403` por cuenta no valida o sin autorizacion para el servicio.
+- El seed `0008_preview_realistic_orders_seed.sql` existe y fue validado localmente, pero no se ejecuto contra D1 preview.
+- No se ejecutaron deploy Pages preview ni Playwright contra URLs preview porque D1 preview no quedo confirmado por consulta read-only.
+- Bitacora: `docs/operations/2026-07-03-preview-mirror-7b2-attempt.md`.
 
 ## Siguiente fase sugerida
 
-Fase 7B.2 - Ejecutar preview mirror autorizado, solo despues de confirmar Dashboard y autorizacion explicita.
+Reintentar Fase 7B.2 solo despues de resolver acceso Wrangler a `burgers-exe-menu-v2-preview` y confirmar una consulta read-only exitosa.

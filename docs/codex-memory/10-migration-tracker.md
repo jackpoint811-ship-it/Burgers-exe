@@ -6,13 +6,12 @@
 ## Estado
 
 - Vivo
-- Fase actual: Fase 7B.1
+- Fase actual: Fase 7B.2
 
 ## Kanban
 
 ### Backlog
 
-- [ ] Fase 7B.2 - Ejecutar preview mirror autorizado
 - [ ] Fase 8 - Estandarizar rutina diaria, modelos, prompts y QA
 
 ### En progreso
@@ -21,11 +20,11 @@
 
 ### En revision
 
-- [ ] Fase 7B.1 - Preparar preview mirror autorizado sin ejecutar remoto
+- Ninguna
 
 ### Bloqueado
 
-- Ninguna
+- [ ] Fase 7B.2 - Ejecutar preview mirror autorizado
 
 ### Terminado
 
@@ -37,6 +36,8 @@
 - [x] Fase 4 - Separar carpetas activas
 - [x] Fase 5 - Mover legacy a cuarentena
 - [x] Fase 6 - Remover Sheets/App Script del proyecto activo
+- [x] Fase 7A - Preview 1:1 con DB/R2 espejo, auditoria y runbook seguro
+- [x] Fase 7B.1 - Preparar preview mirror autorizado sin ejecutar remoto
 
 ## Fases de la migracion
 
@@ -80,6 +81,7 @@
 - Ninguno bloquea Fase 5. Se aplico cuarentena con `git mv`, sin borrar archivos ni tocar runtime.
 - Ninguno bloquea Fase 6. La limpieza es de scripts/docs y no toca runtime, legacy, Cloudflare real, D1/R2, migrations, seeds ni secrets.
 - Ninguno bloquea Fase 7A. La auditoria es read-only y no ejecuta mutaciones remotas.
+- Fase 7B.2 bloqueada: Wrangler no pudo consultar `burgers-exe-menu-v2-preview` por error Cloudflare `7403` de cuenta no valida o sin autorizacion para el servicio.
 
 ## Riesgos
 
@@ -345,6 +347,18 @@
 - Se actualizo `docs/codex-memory/16-preview-mirror-runbook.md` con checklist Dashboard para bindings/secrets y comandos futuros marcados como `REQUIEREN AUTORIZACION`.
 - No se ejecutaron comandos con `--remote`, deploys, migrations remotas, seeds remotos, cambios D1/R2, cambios de bindings ni cambios de secrets.
 
+## Hallazgos Fase 7B.2 - 2026-07-03
+
+### Ejecucion autorizada bloqueada por acceso D1 preview
+
+- Autorizacion literal recibida: `Autorizo Fase 7B.2 preview`.
+- Recursos autorizados: `burgers-exe-public-v2-preview`, `burgers-exe-internal-v2-preview`, `burgers-exe-menu-v2-preview` y `burgers-exe-assets-v2-preview`.
+- Dashboard confirmado por el usuario: preview Pages apunta a D1/R2 preview y secrets/vars preview existen; produccion confirmada como no tocar.
+- Checks locales antes de remoto: `npm run typecheck`, `npm run build:public`, `npm run build:internal` y validacion local del seed pasaron.
+- Las consultas read-only a `burgers-exe-menu-v2-preview` con `wrangler d1 execute --remote --command` fallaron con Cloudflare `7403`.
+- Se detuvo la fase antes de ejecutar migrations remotas, seed remoto, deploy Pages preview, writes D1/R2, cambios de bindings, cambios de secrets o Playwright contra URLs preview.
+- Bitacora operacional: `docs/operations/2026-07-03-preview-mirror-7b2-attempt.md`.
+
 ## Checklist para aprobar la siguiente fase
 
 - [x] Existe este tracker oficial.
@@ -379,6 +393,7 @@
 - [x] Preparar scripts `db:v2:preview:*` sin ejecutarlos.
 - [x] Crear seed preview/test-only `0008_preview_realistic_orders_seed.sql` sin ejecutarlo.
 - [x] Documentar checklist Dashboard antes de preview mirror autorizado.
+- [ ] Resolver acceso Wrangler a `burgers-exe-menu-v2-preview` y repetir consulta read-only antes de reintentar Fase 7B.2.
 
 ## Ultima actualizacion
 
@@ -387,7 +402,7 @@
 
 ## Siguiente fase sugerida
 
-- Fase 7B.2 - Ejecutar preview mirror autorizado.
+- Reintentar Fase 7B.2 solo despues de resolver acceso Wrangler a D1 preview.
 
 ## Regla permanente
 
