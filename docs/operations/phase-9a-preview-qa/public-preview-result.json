@@ -1,0 +1,50 @@
+{
+  "target": "https://burgers-exe-public-v2-preview.pages.dev",
+  "menu": {
+    "status": 200,
+    "source": "d1",
+    "items": 15,
+    "categories": 4
+  },
+  "blockedWrites": [],
+  "pageErrors": [],
+  "consoleErrors": [
+    "Failed to load resource: the server responded with a status of 404 ()",
+    "Failed to load resource: the server responded with a status of 404 ()",
+    "Failed to load resource: the server responded with a status of 404 ()",
+    "Failed to load resource: the server responded with a status of 404 ()",
+    "Failed to load resource: the server responded with a status of 404 ()",
+    "Failed to load resource: the server responded with a status of 404 ()"
+  ],
+  "responseIssues": [
+    {
+      "status": 404,
+      "url": "https://burgers-exe-public-v2-preview.pages.dev/api/assets-v2/raffles/banners/raffle-peimer-gran-sorte-202606-20260603T071818Z.png"
+    },
+    {
+      "status": 404,
+      "url": "https://burgers-exe-public-v2-preview.pages.dev/api/assets-v2/raffles/details/raffle-peimer-gran-sorte-202606-20260603T153634Z.png"
+    },
+    {
+      "status": 404,
+      "url": "https://burgers-exe-public-v2-preview.pages.dev/api/assets-v2/menu/combo-bbq-20260611T214022Z.png"
+    },
+    {
+      "status": 404,
+      "url": "https://burgers-exe-public-v2-preview.pages.dev/api/assets-v2/raffles/details/raffle-peimer-gran-sorte-202606-20260603T153634Z.png"
+    },
+    {
+      "status": 404,
+      "url": "https://burgers-exe-public-v2-preview.pages.dev/api/assets-v2/raffles/banners/raffle-peimer-gran-sorte-202606-20260603T071818Z.png"
+    },
+    {
+      "status": 404,
+      "url": "https://burgers-exe-public-v2-preview.pages.dev/api/assets-v2/menu/combo-bbq-20260611T214022Z.png"
+    }
+  ],
+  "nonAssetFailures": [],
+  "screenshots": [
+    "docs/operations/phase-9a-preview-qa/public-preview-desktop-1440.png",
+    "docs/operations/phase-9a-preview-qa/public-preview-mobile-390.png"
+  ]
+}
