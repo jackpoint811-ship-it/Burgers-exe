@@ -25,6 +25,8 @@ Authorized:
 - Production read-only smoke.
 - Documentation, commit, push and PR.
 
+This authorization was consumed only for the production launch documented here. It must not be reused for future production deploys, failed deploy retries, or any later production operation.
+
 Not authorized and not executed:
 
 - D1 writes.
@@ -147,6 +149,7 @@ Recommended rollback if a later issue appears:
 - PIN: not used.
 - Real orders: none created.
 - Forms: none submitted.
+- The 2026-07-06 production deploy authorization was consumed by this launch and cannot be reused.
 
 ## Required next action
 
@@ -156,3 +159,4 @@ Remaining follow-up:
 
 1. Decide whether to clean the preview-only asset 404s from Fase 9A.
 2. Keep production D1/R2 writes, secrets, bindings, migrations and seeds gated behind new explicit authorization.
+3. Keep all future production Pages deploys to `burgers-exe` or `chekeo2-0`, including retries after preflight/auth failures, gated behind new explicit authorization.
