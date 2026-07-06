@@ -61,7 +61,9 @@ Esta rutina es el flujo estandar para trabajar en Burgers.exe con Codex sin perd
     git add path\to\file.md path\to\other-file.md
     git diff --cached --check
     ```
-12. Commit, push y PR:
+12. Commit, push y PR solo con aprobacion explicita:
+    - Hacer commit, push y abrir PR solo cuando el usuario haya aprobado cerrar el trabajo o haya pedido explicitamente crear PR.
+    - Si la tarea fue diagnostico, revision, auditoria, exploracion o follow-up sin autorizacion de cierre, entregar hallazgos y esperar autorizacion antes de modificar, cerrar o publicar.
     ```powershell
     git commit -m "tipo: resumen claro"
     git push -u origin nombre-de-rama
@@ -69,6 +71,14 @@ Esta rutina es el flujo estandar para trabajar en Burgers.exe con Codex sin perd
     ```
 13. Esperar revision antes de merge.
 14. Despues del merge, volver a `main`, hacer pull y preparar la siguiente fase solo si esta autorizada.
+
+## Gate de publicacion
+
+- Diagnostico, review, auditoria o investigacion no implican commit, push ni PR automatico.
+- Cambios locales no deben publicarse hasta que el usuario apruebe cierre o pida explicitamente PR.
+- Si el usuario solo pidio diagnostico, auditoria, revision o investigacion, Codex debe entregar hallazgos, riesgos y siguiente accion sugerida, y esperar autorizacion antes de modificar/cerrar/publicar.
+- Si el usuario pidio explicitamente PR o aprobo cierre, entonces aplica rama, checks, staging explicito, commit, push y PR.
+- Comentarios de bot en PR: si requieren cambiar archivos, hacer commit en la rama del PR; si solo piden ajustar PR body, checklist, replies o metadata, corregir como metadata sin tocar archivos.
 
 ## 2. Matriz de modelos
 
@@ -172,7 +182,8 @@ Checks:
 - verify-local-tooling.ps1 si toca rutina/tooling
 - verify-skills.ps1 si toca skills
 
-PR requerido: si.
+PR requerido: si, solo despues de aprobacion explicita de cierre o si el usuario pidio PR.
+Si la tarea es diagnostico/revision, no hacer commit/push/PR; entregar hallazgos.
 ```
 
 ### Bugfix localizado
@@ -197,7 +208,8 @@ Checks:
 - git diff --check
 - git diff --cached --check
 
-PR requerido: si.
+PR requerido: si, solo despues de aprobacion explicita de cierre o si el usuario pidio PR.
+Si la tarea es diagnostico/revision, no hacer commit/push/PR; entregar hallazgos.
 ```
 
 ### UI/UX polish
@@ -223,7 +235,8 @@ Checks:
 - git diff --check
 - git diff --cached --check
 
-PR requerido: si.
+PR requerido: si, solo despues de aprobacion explicita de cierre o si el usuario pidio PR.
+Si la tarea es diagnostico/revision, no hacer commit/push/PR; entregar hallazgos.
 ```
 
 ### QA Playwright
@@ -248,7 +261,8 @@ Checks:
 - capturas/evidencia si aplica
 - git diff --check si se generan docs
 
-PR requerido: solo si se documentan hallazgos o se cambian archivos.
+PR requerido: solo si se documentan hallazgos o se cambian archivos, y solo despues de aprobacion explicita de cierre o si el usuario pidio PR.
+Si la tarea es diagnostico/revision, no hacer commit/push/PR; entregar hallazgos.
 ```
 
 ### Cloudflare preview read-only
@@ -273,7 +287,8 @@ Checks:
 - git diff --check si se documenta
 - git diff --cached --check
 
-PR requerido: si se actualiza memoria/bitacora.
+PR requerido: si se actualiza memoria/bitacora, y solo despues de aprobacion explicita de cierre o si el usuario pidio PR.
+Si la tarea es diagnostico/revision, no hacer commit/push/PR; entregar hallazgos.
 ```
 
 ### Cloudflare preview autorizado
@@ -300,7 +315,8 @@ Checks:
 - git diff --check
 - git diff --cached --check
 
-PR requerido: si, con bitacora operacional.
+PR requerido: si, con bitacora operacional, solo despues de aprobacion explicita de cierre o si el usuario pidio PR.
+Si la tarea es diagnostico/revision, no hacer commit/push/PR; entregar hallazgos.
 ```
 
 ### Review follow-up de PR
@@ -325,7 +341,8 @@ Checks:
 - git diff --check
 - git diff --cached --check
 
-PR requerido: usar la misma rama del PR salvo instruccion distinta.
+PR requerido: usar la misma rama del PR salvo instruccion distinta, solo si el comentario requiere cambios de archivo o el usuario pidio actualizar la rama.
+Si la tarea es diagnostico/revision, no hacer commit/push/PR; entregar hallazgos.
 ```
 
 ### Fix de bot comments
@@ -349,5 +366,6 @@ Checks:
 - git diff --check
 - git diff --cached --check
 
-PR requerido: actualizar la rama existente del PR.
+PR requerido: actualizar la rama existente del PR solo si el bot requiere cambios de archivo. Si el fix es PR body, checklist, replies o metadata, corregir metadata sin commit.
+Si la tarea es diagnostico/revision, no hacer commit/push/PR; entregar hallazgos.
 ```
