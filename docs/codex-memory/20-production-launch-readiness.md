@@ -9,6 +9,8 @@ Lanzamiento controlado completado despues de reintento de preflight.
 
 El primer intento quedo bloqueado porque Wrangler D1 live read-only fallo con Cloudflare `Authentication error [code: 10000]`. El reintento del mismo gate read-only paso, se verifico D1 live y se ejecuto deploy production autorizado solo a `burgers-exe` y `chekeo2-0`.
 
+La autorizacion literal del 2026-07-06 quedo consumida unicamente para este lanzamiento documentado. Ningun agente debe reutilizar esa autorizacion para futuros deploys production o reintentos de deploy production.
+
 ## Que se lanzo
 
 - Public V2 a Pages production project `burgers-exe`.
@@ -86,9 +88,13 @@ Para un lanzamiento futuro exitoso:
 - No hay rollback inmediato requerido por esta evidencia.
 - Decidir si se corrigen los assets 404 de preview para mantener paridad visual.
 - Mantener cualquier cambio futuro de datos/config production bajo nueva autorizacion explicita.
+- Mantener cualquier futuro deploy production bloqueado hasta nueva autorizacion literal del usuario.
 
 ## Requiere nueva autorizacion explicita
 
+- Futuros deploys production a `burgers-exe`.
+- Futuros deploys production a `chekeo2-0`.
+- Cualquier reintento de deploy production, incluso si el intento anterior fallo por preflight, auth o error de Cloudflare.
 - D1 writes.
 - R2 writes.
 - Migrations.
@@ -99,3 +105,5 @@ Para un lanzamiento futuro exitoso:
 - PIN usage.
 - Crear pedidos reales.
 - Modificar datos live.
+
+La autorizacion del 2026-07-06 no es reutilizable. Todo nuevo deploy production requiere una nueva autorizacion literal, especifica y posterior del usuario.
