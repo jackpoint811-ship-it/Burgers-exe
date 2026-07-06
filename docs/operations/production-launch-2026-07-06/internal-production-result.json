@@ -1,0 +1,16 @@
+{
+  "target": "https://chekeo2-0.pages.dev",
+  "authStatus": {
+    "status": 200,
+    "ok": true,
+    "authenticated": false
+  },
+  "blockedWrites": [],
+  "pageErrors": [],
+  "consoleErrors": [],
+  "responseIssues": [],
+  "screenshots": [
+    "docs/operations/production-launch-2026-07-06/internal-production-desktop-1440.png",
+    "docs/operations/production-launch-2026-07-06/internal-production-mobile-390.png"
+  ]
+}

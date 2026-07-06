@@ -6,7 +6,7 @@
 ## Estado
 
 - Vivo
-- Fase actual: Fase 9A
+- Fase actual: lanzamiento controlado a produccion completado
 
 ## Kanban
 
@@ -20,7 +20,7 @@
 
 ### En revision
 
-- [ ] Fase 9A - Preview QA funcional/visual read-only
+- [ ] Documentacion de lanzamiento controlado completado
 
 ### Bloqueado
 
@@ -41,6 +41,8 @@
 - [x] Fase 7B.2 - Ejecutar preview mirror autorizado
 - [x] Fase 8 - Estandarizar rutina diaria, modelos, prompts y QA
 - [x] Fase 9 - Auditoria de riesgos pendientes y plan de hardening antes de produccion
+- [x] Fase 9A - Preview QA funcional/visual read-only
+- [x] Lanzamiento controlado a produccion - deploy Pages a `burgers-exe` y `chekeo2-0`
 
 ## Fases de la migracion
 
@@ -58,6 +60,7 @@
 - Fase 8 - Estandarizar rutina diaria, modelos, prompts y QA.
 - Fase 9 - Auditoria de riesgos pendientes y plan de hardening antes de produccion.
 - Fase 9A - Preview QA funcional/visual read-only.
+- Lanzamiento controlado a produccion - completado con preflight, deploy y smoke read-only.
 
 ## Principios activos
 
@@ -106,6 +109,7 @@
 - Los scripts `db:v2:preview:*` apuntan a `burgers-exe-menu-v2-preview`, pero usan `--remote`; requieren autorizacion explicita antes de ejecutarse.
 - Produccion real queda bloqueada hasta completar hardening/go-no-go y autorizacion explicita.
 - Fase 9A detecto assets preview en 404 bajo `/api/assets-v2/`; no bloquearon render/menu D1, pero requieren decision antes de produccion.
+- El primer intento de preflight D1 live del lanzamiento controlado fallo con Cloudflare `Authentication error [code: 10000]`, pero el reintento paso y el deploy production se completo.
 
 ## Hallazgos Fase 1 - 2026-07-02
 
@@ -431,6 +435,24 @@
 - Hallazgo: Public preview registra 404 para assets de rifa y `combo-bbq`; queda como riesgo visual/asset antes de produccion.
 - No se tocaron produccion, deploys, seeds, migrations, D1/R2 writes, secrets, bindings, Pages settings ni runtime productivo.
 
+## Hallazgos lanzamiento controlado a produccion - 2026-07-06
+
+### Deploy completado despues de reintento de gate
+
+- PR #348 ya estaba mergeado en `main`; se creo rama `ops/controlled-production-launch`.
+- Autorizacion recibida cubria deploy production solo a `burgers-exe` y `chekeo2-0`, sin D1/R2 writes, secrets, bindings, migrations ni seeds.
+- Preflight local paso: tooling, skills, typecheck, build public y build internal.
+- Primer intento de Wrangler D1 read-only fallo con Cloudflare `Authentication error [code: 10000]`; el reintento paso.
+- D1 live `burgers-exe-menu-live` se verifico read-only: schema OK, `menu_items=15`, `menu_categories=4`, `promo_cards=0`, `raffle_campaigns=2`, `changed_db=false`, `rows_written=0`.
+- Production HTTP smoke read-only antes y despues de deploy paso:
+  - `https://burgers-exe.pages.dev` `200`.
+  - `https://burgers-exe.pages.dev/api/menu-v2` `200`, `source=d1`, `items=15`, `categories=4`.
+  - `https://chekeo2-0.pages.dev` `200`.
+  - `https://chekeo2-0.pages.dev/api/internal-v2-auth/status` `200`, `authenticated=false`.
+- Se ejecuto deploy production autorizado sin `--branch` a `burgers-exe` y `chekeo2-0`.
+- Playwright production read-only paso `2/2` y no detecto writes, page errors ni response issues.
+- No hubo D1/R2 writes, secrets, bindings, migrations, seeds, PIN ni pedidos reales.
+
 ## Checklist para aprobar la siguiente fase
 
 - [x] Existe este tracker oficial.
@@ -469,7 +491,8 @@
 - [x] Resolver bindings/secrets efectivos en Pages preview antes de QA funcional: `/api/menu-v2` debe responder `source=d1` y `/api/internal-v2-auth/status` debe dejar de responder `503`.
 - [x] Cerrar Fase 8 con rutina diaria, matriz de modelos/skills, plantillas de prompt y checks docs-only.
 - [x] Cerrar Fase 9 con plan de hardening, matriz de autorizacion y criterios no-go antes de produccion.
-- [ ] Cerrar Fase 9A con QA preview funcional/visual read-only, evidencia y decision sobre assets 404.
+- [x] Cerrar Fase 9A con QA preview funcional/visual read-only y evidencia.
+- [ ] Resolver si assets 404 preview requieren limpieza para paridad visual.
 
 ## Ultima actualizacion
 
@@ -478,7 +501,7 @@
 
 ## Siguiente fase sugerida
 
-- Fase 9A follow-up - decidir si corregir assets 404 de preview antes de avanzar a Fase 9B.
+- Ninguna fase abierta sin nueva autorizacion; sugerido decidir follow-up de assets preview o cerrar release.
 
 ## Regla permanente
 

@@ -1,0 +1,18 @@
+{
+  "target": "https://burgers-exe.pages.dev",
+  "menu": {
+    "status": 200,
+    "source": "d1",
+    "items": 15,
+    "categories": 4
+  },
+  "blockedWrites": [],
+  "pageErrors": [],
+  "consoleErrors": [],
+  "responseIssues": [],
+  "nonAssetFailures": [],
+  "screenshots": [
+    "docs/operations/production-launch-2026-07-06/public-production-desktop-1440.png",
+    "docs/operations/production-launch-2026-07-06/public-production-mobile-390.png"
+  ]
+}
