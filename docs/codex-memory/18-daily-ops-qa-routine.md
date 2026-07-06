@@ -157,6 +157,7 @@ Reglas:
 - No usar `--branch` salvo que se quiera validar un branch/preview environment especifico de Cloudflare Pages.
 - No hacer QA contra `https://burgers-exe.pages.dev`, `https://chekeo2-0.pages.dev` o dominios custom productivos salvo autorizacion explicita de produccion.
 - No imprimir ni guardar valores de secrets; validar solo presencia cuando aplique.
+- Antes de cualquier fase orientada a produccion, leer `docs/codex-memory/19-risk-hardening-plan.md` y aplicar sus criterios no-go.
 
 ## 7. Plantillas de prompt
 
