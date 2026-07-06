@@ -23,20 +23,21 @@ Esta carpeta funciona como memoria viva del proyecto.
 8. Si la fase requiere limpiar Sheets/App Script del proyecto activo, leer `docs/codex-memory/15-active-cleanup-sheets-appscript.md`.
 9. Si la fase requiere preview 1:1 con D1/R2 espejo, leer `docs/codex-memory/16-preview-mirror-runbook.md`.
 10. Si la fase requiere rutina diaria, modelos, skills, QA o prompts reutilizables, leer `docs/codex-memory/18-daily-ops-qa-routine.md`.
-11. Leer esta memoria base:
+11. Si la fase prepara produccion, hardening o go/no-go, leer `docs/codex-memory/19-risk-hardening-plan.md`.
+12. Leer esta memoria base:
    - `01-estado-actual.md`
    - `02-reglas-del-proyecto.md`
    - `07-decisiones.md`
-12. Leer workflow y checklists:
+13. Leer workflow y checklists:
    - `08-agent-workflow.md`
    - `09-checklists.md`
-13. Leer el archivo especifico segun el area:
+14. Leer el archivo especifico segun el area:
    - Chekeo: `03-flujos-chekeo.md`
    - Public order: `04-flujo-public-order.md`
    - Backlog: `05-backlog.md`
    - Prompts reutilizables: `06-prompts-buenos.md`
-14. Usar Graphify antes de cambios grandes, de arquitectura o de varios archivos, si esta disponible.
-15. Terminar cambios en rama, commit, push y PR cuando el usuario apruebe el cierre o cuando el prompt lo pida explicitamente.
+15. Usar Graphify antes de cambios grandes, de arquitectura o de varios archivos, si esta disponible.
+16. Terminar cambios en rama, commit, push y PR cuando el usuario apruebe el cierre o cuando el prompt lo pida explicitamente.
 
 ## Mapa rapido
 
@@ -59,6 +60,7 @@ Esta carpeta funciona como memoria viva del proyecto.
 | `15-active-cleanup-sheets-appscript.md` | Cierre Fase 6: scripts `public-order:*` removidos y referencias Sheets/App Script reclasificadas. |
 | `16-preview-mirror-runbook.md` | Fase 7A: auditoria read-only y runbook preview 1:1 con D1/R2 espejo. |
 | `18-daily-ops-qa-routine.md` | Fase 8: rutina diaria para Codex, modelos, skills, QA, prompts y PRs. |
+| `19-risk-hardening-plan.md` | Fase 9: auditoria de riesgos pendientes, hardening y criterios go/no-go antes de produccion. |
 
 ## Nota
 

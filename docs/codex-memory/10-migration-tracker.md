@@ -6,7 +6,7 @@
 ## Estado
 
 - Vivo
-- Fase actual: Fase 8
+- Fase actual: Fase 9
 
 ## Kanban
 
@@ -20,7 +20,7 @@
 
 ### En revision
 
-- [ ] Fase 8 - Estandarizar rutina diaria, modelos, prompts y QA
+- [ ] Fase 9 - Auditoria de riesgos pendientes y plan de hardening antes de produccion
 
 ### Bloqueado
 
@@ -39,6 +39,7 @@
 - [x] Fase 7A - Preview 1:1 con DB/R2 espejo, auditoria y runbook seguro
 - [x] Fase 7B.1 - Preparar preview mirror autorizado sin ejecutar remoto
 - [x] Fase 7B.2 - Ejecutar preview mirror autorizado
+- [x] Fase 8 - Estandarizar rutina diaria, modelos, prompts y QA
 
 ## Fases de la migracion
 
@@ -54,6 +55,7 @@
 - Fase 7B.1 - Preparar preview mirror autorizado sin ejecutar remoto.
 - Fase 7B.2 - Ejecutar preview mirror autorizado.
 - Fase 8 - Estandarizar rutina diaria, modelos, prompts y QA.
+- Fase 9 - Auditoria de riesgos pendientes y plan de hardening antes de produccion.
 
 ## Principios activos
 
@@ -69,7 +71,7 @@
 - Confirmar bindings efectivos de los proyectos Pages de produccion real antes de cualquier cambio productivo.
 - Confirmar el valor efectivo de `ORDERS_V2_WRITE_ENABLED` por ambiente sin imprimir secrets.
 - Definir estrategia de reset preview 1:1 sin tocar produccion.
-- Definir la siguiente fase solo despues de cerrar Fase 8 y revisar riesgos pendientes.
+- Definir autorizacion y alcance exacto para Fase 9A antes de iniciar QA preview funcional/visual.
 
 ## Bloqueadores
 
@@ -100,6 +102,7 @@
 - Los scripts `public-order:*` de `package.json` fueron removidos en Fase 6; si se requiere un flujo legacy futuro, debe definirse de nuevo con ambiente explicito y aprobacion.
 - `functions/api/referral-tickets.ts` existe como endpoint D1, pero no se encontro consumo directo desde apps V2; requiere revision antes de mover o borrar.
 - Los scripts `db:v2:preview:*` apuntan a `burgers-exe-menu-v2-preview`, pero usan `--remote`; requieren autorizacion explicita antes de ejecutarse.
+- Produccion real queda bloqueada hasta completar hardening/go-no-go y autorizacion explicita.
 
 ## Hallazgos Fase 1 - 2026-07-02
 
@@ -400,6 +403,16 @@
 - Se preservo la regla aprendida de Fase 7B.2: validar proyectos preview separados con URLs base y no usar `--branch` salvo branch/preview environment explicito.
 - No se tocaron runtime V2, Cloudflare, D1/R2, migrations, seeds, secrets, bindings ni legacy.
 
+## Hallazgos Fase 9 - 2026-07-06
+
+### Auditoria docs-only de riesgos pendientes
+
+- PR #346 ya estaba mergeado en `main`; Fase 8 queda cerrada en memoria viva.
+- Se creo `docs/codex-memory/19-risk-hardening-plan.md` como gate operativo antes de produccion.
+- Se documento hardening recomendado en Fase 9A, 9B, 9C, 9D y 9E.
+- Se dejaron criterios no-go explicitos: `source=fallback`, auth `503`, fixtures filtrados a live, bindings no confirmados, secrets ausentes, checks fallidos, target Cloudflare ambiguo, PR sin review o cambios sin rollback.
+- No se ejecuto Cloudflare remoto, Playwright, deploys, seeds, migrations, D1/R2 writes, cambios de secrets/bindings ni produccion.
+
 ## Checklist para aprobar la siguiente fase
 
 - [x] Existe este tracker oficial.
@@ -436,7 +449,8 @@
 - [x] Documentar checklist Dashboard antes de preview mirror autorizado.
 - [x] Resolver acceso Wrangler a `burgers-exe-menu-v2-preview` y repetir consulta read-only antes de reintentar Fase 7B.2.
 - [x] Resolver bindings/secrets efectivos en Pages preview antes de QA funcional: `/api/menu-v2` debe responder `source=d1` y `/api/internal-v2-auth/status` debe dejar de responder `503`.
-- [ ] Cerrar Fase 8 con rutina diaria, matriz de modelos/skills, plantillas de prompt y checks docs-only.
+- [x] Cerrar Fase 8 con rutina diaria, matriz de modelos/skills, plantillas de prompt y checks docs-only.
+- [ ] Cerrar Fase 9 con plan de hardening, matriz de autorizacion y criterios no-go antes de produccion.
 
 ## Ultima actualizacion
 
@@ -445,7 +459,7 @@
 
 ## Siguiente fase sugerida
 
-- No definida todavia; decidir despues de cerrar Fase 8 y revisar riesgos pendientes.
+- Fase 9A - Preview QA funcional/visual read-only o con fixtures controlados, solo con autorizacion explicita de QA preview.
 
 ## Regla permanente
 
