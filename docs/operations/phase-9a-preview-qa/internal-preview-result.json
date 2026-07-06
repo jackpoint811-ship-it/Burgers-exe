@@ -1,0 +1,16 @@
+{
+  "target": "https://burgers-exe-internal-v2-preview.pages.dev",
+  "authStatus": {
+    "status": 200,
+    "ok": true,
+    "authenticated": false
+  },
+  "blockedWrites": [],
+  "pageErrors": [],
+  "consoleErrors": [],
+  "responseIssues": [],
+  "screenshots": [
+    "docs/operations/phase-9a-preview-qa/internal-preview-desktop-1440.png",
+    "docs/operations/phase-9a-preview-qa/internal-preview-mobile-390.png"
+  ]
+}

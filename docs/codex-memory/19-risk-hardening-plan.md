@@ -38,6 +38,8 @@ Esta fase documenta riesgos y criterios de no-go antes de cualquier cambio produ
 - Alcance sugerido: read-only cuando sea posible; escritura solo con fixtures controlados y autorizacion explicita.
 - Evidencia minima: screenshots o logs de smoke, targets exactos, resultado esperado vs real y riesgos.
 - No tocar produccion.
+- Estado 2026-07-06: ejecutada en modo read-only y en revision. Public e Internal preview cargan en mobile/desktop; Public `/api/menu-v2` responde `source=d1`; Internal auth status responde `authenticated=false`.
+- Hallazgo 2026-07-06: Public preview tiene assets 404 bajo `/api/assets-v2/` para imagenes de rifa y `combo-bbq`; requiere decision antes de produccion.
 
 ### Fase 9B - Estrategia de reset/seed preview
 
@@ -71,6 +73,7 @@ Esta fase documenta riesgos y criterios de no-go antes de cualquier cambio produ
 - Bindings efectivos no estan confirmados.
 - Secrets requeridos estan ausentes o no verificables de forma segura.
 - Tests, builds o checks aplicables fallan.
+- Assets criticos de preview fallan y el equipo los clasifica como bloqueantes visuales.
 - Target Cloudflare ambiguo o comando remoto sin recurso preview/live explicitamente nombrado.
 - PR sin review suficiente para el riesgo de la fase.
 - Cambios productivos sin rollback documentado.

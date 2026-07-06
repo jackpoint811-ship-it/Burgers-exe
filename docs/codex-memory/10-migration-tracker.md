@@ -6,7 +6,7 @@
 ## Estado
 
 - Vivo
-- Fase actual: Fase 9
+- Fase actual: Fase 9A
 
 ## Kanban
 
@@ -20,7 +20,7 @@
 
 ### En revision
 
-- [ ] Fase 9 - Auditoria de riesgos pendientes y plan de hardening antes de produccion
+- [ ] Fase 9A - Preview QA funcional/visual read-only
 
 ### Bloqueado
 
@@ -40,6 +40,7 @@
 - [x] Fase 7B.1 - Preparar preview mirror autorizado sin ejecutar remoto
 - [x] Fase 7B.2 - Ejecutar preview mirror autorizado
 - [x] Fase 8 - Estandarizar rutina diaria, modelos, prompts y QA
+- [x] Fase 9 - Auditoria de riesgos pendientes y plan de hardening antes de produccion
 
 ## Fases de la migracion
 
@@ -56,6 +57,7 @@
 - Fase 7B.2 - Ejecutar preview mirror autorizado.
 - Fase 8 - Estandarizar rutina diaria, modelos, prompts y QA.
 - Fase 9 - Auditoria de riesgos pendientes y plan de hardening antes de produccion.
+- Fase 9A - Preview QA funcional/visual read-only.
 
 ## Principios activos
 
@@ -71,7 +73,7 @@
 - Confirmar bindings efectivos de los proyectos Pages de produccion real antes de cualquier cambio productivo.
 - Confirmar el valor efectivo de `ORDERS_V2_WRITE_ENABLED` por ambiente sin imprimir secrets.
 - Definir estrategia de reset preview 1:1 sin tocar produccion.
-- Definir autorizacion y alcance exacto para Fase 9A antes de iniciar QA preview funcional/visual.
+- Definir si los assets 404 detectados en Public preview son no-go visual o follow-up antes de produccion.
 
 ## Bloqueadores
 
@@ -103,6 +105,7 @@
 - `functions/api/referral-tickets.ts` existe como endpoint D1, pero no se encontro consumo directo desde apps V2; requiere revision antes de mover o borrar.
 - Los scripts `db:v2:preview:*` apuntan a `burgers-exe-menu-v2-preview`, pero usan `--remote`; requieren autorizacion explicita antes de ejecutarse.
 - Produccion real queda bloqueada hasta completar hardening/go-no-go y autorizacion explicita.
+- Fase 9A detecto assets preview en 404 bajo `/api/assets-v2/`; no bloquearon render/menu D1, pero requieren decision antes de produccion.
 
 ## Hallazgos Fase 1 - 2026-07-02
 
@@ -413,6 +416,21 @@
 - Se dejaron criterios no-go explicitos: `source=fallback`, auth `503`, fixtures filtrados a live, bindings no confirmados, secrets ausentes, checks fallidos, target Cloudflare ambiguo, PR sin review o cambios sin rollback.
 - No se ejecuto Cloudflare remoto, Playwright, deploys, seeds, migrations, D1/R2 writes, cambios de secrets/bindings ni produccion.
 
+## Hallazgos Fase 9A - 2026-07-06
+
+### Preview QA funcional/visual read-only
+
+- PR #347 ya estaba mergeado en `main`; se creo rama `qa/phase-9a-preview-functional-visual`.
+- Se ejecuto QA HTTP y Playwright solo contra URLs base preview:
+  - `https://burgers-exe-public-v2-preview.pages.dev`
+  - `https://burgers-exe-internal-v2-preview.pages.dev`
+- Public preview: pagina `200`, `/api/menu-v2` `200`, `source=d1`, `items=15`, `categories=4`.
+- Internal preview: pagina `200`, `/api/internal-v2-auth/status` `200`, `authenticated=false`.
+- Playwright read-only paso `2/2`; no se enviaron formularios, no se uso PIN y no hubo requests write desde la pagina.
+- Evidencia versionada en `docs/operations/phase-9a-preview-qa/`.
+- Hallazgo: Public preview registra 404 para assets de rifa y `combo-bbq`; queda como riesgo visual/asset antes de produccion.
+- No se tocaron produccion, deploys, seeds, migrations, D1/R2 writes, secrets, bindings, Pages settings ni runtime productivo.
+
 ## Checklist para aprobar la siguiente fase
 
 - [x] Existe este tracker oficial.
@@ -450,7 +468,8 @@
 - [x] Resolver acceso Wrangler a `burgers-exe-menu-v2-preview` y repetir consulta read-only antes de reintentar Fase 7B.2.
 - [x] Resolver bindings/secrets efectivos en Pages preview antes de QA funcional: `/api/menu-v2` debe responder `source=d1` y `/api/internal-v2-auth/status` debe dejar de responder `503`.
 - [x] Cerrar Fase 8 con rutina diaria, matriz de modelos/skills, plantillas de prompt y checks docs-only.
-- [ ] Cerrar Fase 9 con plan de hardening, matriz de autorizacion y criterios no-go antes de produccion.
+- [x] Cerrar Fase 9 con plan de hardening, matriz de autorizacion y criterios no-go antes de produccion.
+- [ ] Cerrar Fase 9A con QA preview funcional/visual read-only, evidencia y decision sobre assets 404.
 
 ## Ultima actualizacion
 
@@ -459,7 +478,7 @@
 
 ## Siguiente fase sugerida
 
-- Fase 9A - Preview QA funcional/visual read-only o con fixtures controlados, solo con autorizacion explicita de QA preview.
+- Fase 9A follow-up - decidir si corregir assets 404 de preview antes de avanzar a Fase 9B.
 
 ## Regla permanente
 
