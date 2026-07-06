@@ -21,6 +21,7 @@ Burgers.exe V2 is the official project and production architecture for this repo
 - Cloudflare environments audit: `docs/codex-memory/13-cloudflare-environments-audit.md`
 - Active surface map: `docs/codex-memory/14-active-surface-map.md`
 - Active Sheets/App Script cleanup: `docs/codex-memory/15-active-cleanup-sheets-appscript.md`
+- Daily ops and QA routine: `docs/codex-memory/18-daily-ops-qa-routine.md`
 - Clean architecture migration spec: `docs/refactor-v2-clean-architecture.md`
 - Environment matrix: `docs/environments.md`
 - Current Cloudflare architecture notes: `docs/burgers-v2-architecture.md`

@@ -13,6 +13,19 @@ Evitar que Codex falle por llamar skills no instaladas, usar herramientas incorr
 - `docs/codex-memory/` es la memoria viva real para Codex.
 - Obsidian no reemplaza Codex ni reemplaza la lectura directa de Markdown en el repo.
 - Si una skill o herramienta falta, primero se reporta el faltante y luego se sigue el mejor flujo manual permitido por la fase.
+- La rutina diaria oficial de modelos, skills, QA y prompts vive en `docs/codex-memory/18-daily-ops-qa-routine.md`.
+
+## Matriz rapida modelo/skills
+
+| Caso | Modelo recomendado | Skills recomendadas | Checks minimos |
+| --- | --- | --- | --- |
+| Docs-only o copy simple | Mini o GPT-5.4 segun riesgo | `burgers-pr-workflow`, `obsidian-markdown` si toca memoria | `git diff --check`, `git diff --cached --check` |
+| Bug localizado | GPT-5.4 | `burgers-pr-workflow`; `graphify` si cruza archivos | `npm run typecheck`, build correspondiente, diff checks |
+| UI/QA | GPT-5.4 | `playwright-qa`, `burgers-pr-workflow`, `burgers-brand` si toca copy | build correspondiente, QA autorizado, diff checks |
+| Arquitectura o multiarchivo | GPT-5.5 Thinking | `graphify`, `burgers-pr-workflow`, `obsidian-markdown` | typecheck/builds segun alcance, diff checks |
+| Cloudflare/D1/R2/preview/prod | GPT-5.5 Thinking | `burgers-pr-workflow`, `obsidian-markdown`, `playwright-qa` solo contra preview autorizado | preflight, read-only gates, QA autorizado, diff checks |
+
+Ver `docs/codex-memory/18-daily-ops-qa-routine.md` para la matriz completa y plantillas reutilizables de prompt.
 
 ## Decision de estrategia
 

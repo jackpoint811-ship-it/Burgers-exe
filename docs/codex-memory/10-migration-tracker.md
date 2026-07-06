@@ -12,7 +12,7 @@
 
 ### Backlog
 
-- [ ] Fase 8 - Estandarizar rutina diaria, modelos, prompts y QA
+- Ninguna
 
 ### En progreso
 
@@ -20,7 +20,7 @@
 
 ### En revision
 
-- Ninguna
+- [ ] Fase 8 - Estandarizar rutina diaria, modelos, prompts y QA
 
 ### Bloqueado
 
@@ -69,7 +69,7 @@
 - Confirmar bindings efectivos de los proyectos Pages de produccion real antes de cualquier cambio productivo.
 - Confirmar el valor efectivo de `ORDERS_V2_WRITE_ENABLED` por ambiente sin imprimir secrets.
 - Definir estrategia de reset preview 1:1 sin tocar produccion.
-- Definir rutina Fase 8 para QA diaria, prompts y validacion post-merge.
+- Definir la siguiente fase solo despues de cerrar Fase 8 y revisar riesgos pendientes.
 
 ## Bloqueadores
 
@@ -389,6 +389,17 @@
 - No se tocaron produccion, D1 live, R2 live, secrets, bindings, Pages settings, runtime V2, legacy, migrations ni seeds.
 - Bitacora operacional: `docs/operations/2026-07-03-preview-mirror-7b2-production-env-validation.md`.
 
+## Hallazgos Fase 8 - 2026-07-06
+
+### Rutina diaria y QA estandarizados
+
+- PR #345 ya estaba mergeado en `main`.
+- Se creo `docs/codex-memory/18-daily-ops-qa-routine.md` como guia oficial de rutina diaria, modelos, skills, checks, preview/prod y plantillas de prompt.
+- Se documento la matriz de modelos: Mini para bajo riesgo, GPT-5.4 para bugs/QA/docs tecnicas y GPT-5.5 Thinking para arquitectura, Cloudflare, D1/R2, migraciones y preview/prod.
+- Se documento la matriz de skills para `burgers-pr-workflow`, `graphify`, `playwright-qa`, `burgers-brand`, `obsidian-markdown` y `ui-ux-pro-max`.
+- Se preservo la regla aprendida de Fase 7B.2: validar proyectos preview separados con URLs base y no usar `--branch` salvo branch/preview environment explicito.
+- No se tocaron runtime V2, Cloudflare, D1/R2, migrations, seeds, secrets, bindings ni legacy.
+
 ## Checklist para aprobar la siguiente fase
 
 - [x] Existe este tracker oficial.
@@ -425,15 +436,16 @@
 - [x] Documentar checklist Dashboard antes de preview mirror autorizado.
 - [x] Resolver acceso Wrangler a `burgers-exe-menu-v2-preview` y repetir consulta read-only antes de reintentar Fase 7B.2.
 - [x] Resolver bindings/secrets efectivos en Pages preview antes de QA funcional: `/api/menu-v2` debe responder `source=d1` y `/api/internal-v2-auth/status` debe dejar de responder `503`.
+- [ ] Cerrar Fase 8 con rutina diaria, matriz de modelos/skills, plantillas de prompt y checks docs-only.
 
 ## Ultima actualizacion
 
-- 2026-07-03
+- 2026-07-06
 - Responsable: Codex
 
 ## Siguiente fase sugerida
 
-- Fase 8 - Estandarizar rutina diaria, modelos, prompts y QA.
+- No definida todavia; decidir despues de cerrar Fase 8 y revisar riesgos pendientes.
 
 ## Regla permanente
 
