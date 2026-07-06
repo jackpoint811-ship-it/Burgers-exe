@@ -6,7 +6,7 @@
 ## Estado
 
 - Vivo
-- Fase actual: lanzamiento controlado a produccion bloqueado en preflight D1 read-only
+- Fase actual: lanzamiento controlado a produccion completado
 
 ## Kanban
 
@@ -20,11 +20,11 @@
 
 ### En revision
 
-- [ ] Documentacion de lanzamiento controlado bloqueado antes de deploy
+- [ ] Documentacion de lanzamiento controlado completado
 
 ### Bloqueado
 
-- [ ] Deploy production controlado a `burgers-exe` y `chekeo2-0`: Wrangler D1 live read-only falla con Cloudflare `Authentication error [code: 10000]`.
+- Ninguna
 
 ### Terminado
 
@@ -42,6 +42,7 @@
 - [x] Fase 8 - Estandarizar rutina diaria, modelos, prompts y QA
 - [x] Fase 9 - Auditoria de riesgos pendientes y plan de hardening antes de produccion
 - [x] Fase 9A - Preview QA funcional/visual read-only
+- [x] Lanzamiento controlado a produccion - deploy Pages a `burgers-exe` y `chekeo2-0`
 
 ## Fases de la migracion
 
@@ -59,7 +60,7 @@
 - Fase 8 - Estandarizar rutina diaria, modelos, prompts y QA.
 - Fase 9 - Auditoria de riesgos pendientes y plan de hardening antes de produccion.
 - Fase 9A - Preview QA funcional/visual read-only.
-- Lanzamiento controlado a produccion - bloqueado en preflight D1 read-only.
+- Lanzamiento controlado a produccion - completado con preflight, deploy y smoke read-only.
 
 ## Principios activos
 
@@ -75,7 +76,6 @@
 - Confirmar bindings efectivos de los proyectos Pages de produccion real antes de cualquier cambio productivo.
 - Confirmar el valor efectivo de `ORDERS_V2_WRITE_ENABLED` por ambiente sin imprimir secrets.
 - Definir estrategia de reset preview 1:1 sin tocar produccion.
-- Resolver autenticacion Wrangler D1 read-only contra `burgers-exe-menu-live` antes de reintentar deploy production.
 - Definir si los assets 404 detectados en Public preview son no-go visual o follow-up antes de produccion.
 
 ## Bloqueadores
@@ -109,7 +109,7 @@
 - Los scripts `db:v2:preview:*` apuntan a `burgers-exe-menu-v2-preview`, pero usan `--remote`; requieren autorizacion explicita antes de ejecutarse.
 - Produccion real queda bloqueada hasta completar hardening/go-no-go y autorizacion explicita.
 - Fase 9A detecto assets preview en 404 bajo `/api/assets-v2/`; no bloquearon render/menu D1, pero requieren decision antes de produccion.
-- El intento de lanzamiento controlado a produccion del 2026-07-06 quedo bloqueado antes de deploy porque Wrangler D1 live read-only fallo con Cloudflare `Authentication error [code: 10000]`.
+- El primer intento de preflight D1 live del lanzamiento controlado fallo con Cloudflare `Authentication error [code: 10000]`, pero el reintento paso y el deploy production se completo.
 
 ## Hallazgos Fase 1 - 2026-07-02
 
@@ -437,18 +437,20 @@
 
 ## Hallazgos lanzamiento controlado a produccion - 2026-07-06
 
-### Bloqueado antes de deploy
+### Deploy completado despues de reintento de gate
 
 - PR #348 ya estaba mergeado en `main`; se creo rama `ops/controlled-production-launch`.
 - Autorizacion recibida cubria deploy production solo a `burgers-exe` y `chekeo2-0`, sin D1/R2 writes, secrets, bindings, migrations ni seeds.
 - Preflight local paso: tooling, skills, typecheck, build public y build internal.
-- Production HTTP smoke read-only antes de deploy paso:
+- Primer intento de Wrangler D1 read-only fallo con Cloudflare `Authentication error [code: 10000]`; el reintento paso.
+- D1 live `burgers-exe-menu-live` se verifico read-only: schema OK, `menu_items=15`, `menu_categories=4`, `promo_cards=0`, `raffle_campaigns=2`, `changed_db=false`, `rows_written=0`.
+- Production HTTP smoke read-only antes y despues de deploy paso:
   - `https://burgers-exe.pages.dev` `200`.
   - `https://burgers-exe.pages.dev/api/menu-v2` `200`, `source=d1`, `items=15`, `categories=4`.
   - `https://chekeo2-0.pages.dev` `200`.
   - `https://chekeo2-0.pages.dev/api/internal-v2-auth/status` `200`, `authenticated=false`.
-- Wrangler `whoami` respondio OK, pero `npx wrangler d1 list` y la consulta read-only de schema a `burgers-exe-menu-live` fallaron con Cloudflare `Authentication error [code: 10000]`.
-- Por gate de seguridad, no se ejecuto `wrangler pages deploy`.
+- Se ejecuto deploy production autorizado sin `--branch` a `burgers-exe` y `chekeo2-0`.
+- Playwright production read-only paso `2/2` y no detecto writes, page errors ni response issues.
 - No hubo D1/R2 writes, secrets, bindings, migrations, seeds, PIN ni pedidos reales.
 
 ## Checklist para aprobar la siguiente fase
@@ -490,8 +492,7 @@
 - [x] Cerrar Fase 8 con rutina diaria, matriz de modelos/skills, plantillas de prompt y checks docs-only.
 - [x] Cerrar Fase 9 con plan de hardening, matriz de autorizacion y criterios no-go antes de produccion.
 - [x] Cerrar Fase 9A con QA preview funcional/visual read-only y evidencia.
-- [ ] Resolver si assets 404 preview son bloqueantes visuales antes de produccion.
-- [ ] Resolver Wrangler D1 live read-only y reintentar lanzamiento solo con nuevo preflight completo.
+- [ ] Resolver si assets 404 preview requieren limpieza para paridad visual.
 
 ## Ultima actualizacion
 
@@ -500,7 +501,7 @@
 
 ## Siguiente fase sugerida
 
-- Resolver Wrangler D1 live read-only (`Authentication error [code: 10000]`) antes de cualquier reintento de deploy production.
+- Ninguna fase abierta sin nueva autorizacion; sugerido decidir follow-up de assets preview o cerrar release.
 
 ## Regla permanente
 

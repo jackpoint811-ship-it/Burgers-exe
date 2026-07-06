@@ -5,15 +5,21 @@
 
 ## Estado final - 2026-07-06
 
-Lanzamiento controlado bloqueado antes de deploy.
+Lanzamiento controlado completado despues de reintento de preflight.
 
-No se ejecuto deploy production porque el preflight read-only directo a D1 live fallo con Cloudflare `Authentication error [code: 10000]` al usar Wrangler contra `burgers-exe-menu-live`.
+El primer intento quedo bloqueado porque Wrangler D1 live read-only fallo con Cloudflare `Authentication error [code: 10000]`. El reintento del mismo gate read-only paso, se verifico D1 live y se ejecuto deploy production autorizado solo a `burgers-exe` y `chekeo2-0`.
 
 ## Que se lanzo
 
-Nada.
+- Public V2 a Pages production project `burgers-exe`.
+- Internal Chekeo V2 a Pages production project `chekeo2-0`.
 
-Los deploys autorizados a `burgers-exe` y `chekeo2-0` quedaron bloqueados por gate de preflight.
+No se uso `--branch`.
+
+Deployments:
+
+- `burgers-exe`: `https://92ebc252.burgers-exe.pages.dev`, alias `https://ops-controlled-production-la.burgers-exe.pages.dev`.
+- `chekeo2-0`: `https://05f5003a.chekeo2-0.pages.dev`, alias `https://ops-controlled-production-la.chekeo2-0.pages.dev`.
 
 ## Que no se toco
 
@@ -39,12 +45,16 @@ Los deploys autorizados a `burgers-exe` y `chekeo2-0` quedaron bloqueados por ga
 ## Preflight production read-only
 
 - `npx wrangler whoami`: OK.
-- `npx wrangler d1 list`: fallo con Cloudflare `Authentication error [code: 10000]`.
-- `npx wrangler d1 execute burgers-exe-menu-live --remote --command "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;"`: fallo con Cloudflare `Authentication error [code: 10000]`.
+- `npx wrangler d1 list`: primer intento fallo con Cloudflare `Authentication error [code: 10000]`; reintento OK.
+- `npx wrangler d1 execute burgers-exe-menu-live --remote --command "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;"`: primer intento fallo con Cloudflare `Authentication error [code: 10000]`; reintento OK.
+- `menu_items=15`, `changed_db=false`, `rows_written=0`.
+- `menu_categories=4`, `changed_db=false`, `rows_written=0`.
+- `promo_cards=0`, `changed_db=false`, `rows_written=0`.
+- `raffle_campaigns=2`, `changed_db=false`, `rows_written=0`.
 
-Este fallo bloquea deploy porque no se pudo verificar schema/conteos live por D1 directo.
+El gate D1 live paso antes de deploy.
 
-## Smoke production actual antes de deploy
+## Smoke production antes y despues de deploy
 
 | Target | Resultado |
 | --- | --- |
@@ -53,18 +63,17 @@ Este fallo bloquea deploy porque no se pudo verificar schema/conteos live por D1
 | `https://chekeo2-0.pages.dev` | `200 OK` |
 | `https://chekeo2-0.pages.dev/api/internal-v2-auth/status` | `200 OK`, `authenticated=false` |
 
-Estos smokes son utiles, pero no sustituyen la verificacion D1 live directa requerida por el gate.
+Playwright production read-only tambien paso `2/2` y no detecto writes, page errors ni response issues.
 
 ## Riesgos pendientes
 
-- Wrangler D1 API no permite completar preflight read-only contra `burgers-exe-menu-live`.
 - Assets 404 detectados en preview Fase 9A siguen pendientes de clasificacion/fix si se consideran bloqueantes visuales.
 - Bindings efectivos de production siguen requiriendo confirmacion segura antes de cualquier cambio productivo de mayor alcance.
 - `ORDERS_V2_WRITE_ENABLED` production no fue verificado por Dashboard en esta fase; no imprimir ni guardar valores.
 
 ## Rollback
 
-No hubo rollback porque no hubo deploy.
+No hubo rollback porque el post-deploy smoke paso.
 
 Para un lanzamiento futuro exitoso:
 
@@ -72,12 +81,11 @@ Para un lanzamiento futuro exitoso:
 - Usar rollback de Cloudflare Pages si el smoke post-deploy falla.
 - No tocar D1/R2 live para rollback salvo autorizacion nueva, literal y especifica.
 
-## Requiere nueva accion antes de reintento
+## Siguiente accion sugerida
 
-- Resolver autenticacion Wrangler D1 read-only.
-- Repetir `npx wrangler d1 list`.
-- Repetir schema y conteos read-only de `burgers-exe-menu-live`.
-- Repetir gate antes de deploy.
+- No hay rollback inmediato requerido por esta evidencia.
+- Decidir si se corrigen los assets 404 de preview para mantener paridad visual.
+- Mantener cualquier cambio futuro de datos/config production bajo nueva autorizacion explicita.
 
 ## Requiere nueva autorizacion explicita
 
