@@ -1,4 +1,4 @@
-import { menuCategories, menuItems, promoCards, siteConfig, type MenuCategory, type MenuItem, type MenuV2Response, type PromoCard, type SiteConfig } from '../../packages/config/src';
+import { menuCategories, menuItems, promoCards, publicConfig, siteConfig, type MenuCategory, type MenuItem, type MenuV2Response, type PromoCard, type SiteConfig } from '../../packages/config/src';
 import { mapD1CategoryBanner, mapD1ItemToMenuItem, mapD1PromoToPromoCard, parseJsonArray } from './_menu-v2-utils';
 
 type Env = { BOG_MENU_DB?: D1Database };
@@ -19,6 +19,7 @@ const fallbackPayload = (source: MenuV2Response['source']): MenuV2Response => ({
   promos: [...promoCards].sort((a, b) => a.sortOrder - b.sortOrder),
   categoryBanners: [],
   siteConfig,
+  publicConfig,
   updatedAt: new Date().toISOString(),
   source
 });
@@ -138,7 +139,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
       resolvedSiteConfig.updatedAt ?? ''
     ].filter(Boolean).sort().at(-1) ?? new Date().toISOString();
 
-    return json({ categories, items, promos, categoryBanners, siteConfig: resolvedSiteConfig, updatedAt, source: 'd1' });
+    return json({ categories, items, promos, categoryBanners, siteConfig: resolvedSiteConfig, publicConfig, updatedAt, source: 'd1' });
   } catch {
     return json(fallbackPayload('fallback'), 'no-store');
   }
