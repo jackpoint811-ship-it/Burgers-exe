@@ -310,6 +310,7 @@ type CatalogOrder = {
 type CatalogOrderItem = {
   productId: string;
   type: ProductType;
+  itemKind: OrderV2ItemKind;
   name: string;
   quantity: number;
   unitPrice: number;
@@ -320,9 +321,23 @@ type CatalogOrderItem = {
 Compatibilidad sugerida con `orders_v2`:
 
 - Crear pedidos catálogo en `orders_v2` con `source = "public-v2"` y `public_mode = "catalog"` cuando exista el campo.
-- Guardar line items en `order_items_v2` como hoy, pero snapshot debe incluir `type`, `productId`, `scheduledDate`, `deliveryWindow` y versión de contrato.
+- Guardar line items en `order_items_v2` como hoy, pero snapshot debe incluir `type`, `itemKind`, `productId`, `scheduledDate`, `deliveryWindow` y versión de contrato.
 - Mantener `payment_status = "pending"` hasta pago completo validado para no romper dashboards existentes; el estado fino vive en campos nuevos o snapshot mientras se migran vistas.
 - No usar `advance_pending`, `paid_full` ni estados de pago como valores de `orders_v2.status`, porque Chekeo/cocina dependen del flujo operativo actual (`new`, `preparing`, `ready`, `delivered`, `cancelled`). Los estados de anticipo, validación manual, pago completo o rechazo deben vivir en `payment.status`, campos aditivos de pago o eventos de auditoría.
+
+Compatibilidad `ProductType` vs `OrderV2ItemKind`:
+
+- `ProductType` representa la semántica del catálogo público: cómo se agrupa, filtra y presenta un producto al cliente.
+- `itemKind` representa la compatibilidad operativa con `orders_v2`, Chekeo y cocina; debe conservar el `OrderV2ItemKind` que esperan los tableros, tickets, eventos de cocina y conteos operativos.
+- No confiar solo en `snapshot.type` para cocina. Si un pedido catálogo se persiste en `orders_v2`, el snapshot de cada item debe conservar `itemKind` compatible. De lo contrario, Chekeo/kitchen puede tratar guarniciones, toppings o bebidas como burgers.
+
+Mapping recomendado inicial:
+
+- `ProductType: "burger"` -> `itemKind: "burger"`.
+- `ProductType: "combo"` -> `itemKind: "combo"`.
+- `ProductType: "side"` -> `itemKind: "garnish"`.
+- `ProductType: "drink"` -> `itemKind: "drink"`.
+- `ProductType: "topping"` -> no existe un `OrderV2ItemKind` exacto para topping en el contrato actual (`burger | combo | garnish | drink | other`). Antes de habilitar pedidos catálogo con toppings como productos independientes, se debe agregar soporte aditivo explícito o definir una estrategia operativa segura; no usar `other` como sustituto silencioso si cocina necesita distinguir toppings.
 
 ## 6. Impacto backend/config por requisito
 
