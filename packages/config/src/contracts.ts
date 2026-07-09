@@ -81,6 +81,96 @@ export type SiteConfig = {
   updatedAt?: string;
 };
 
+export type PublicMode = "flow" | "catalog";
+
+export type PublicConfig = {
+  publicMode: PublicMode;
+  catalogEnabled: boolean;
+  updatedAt?: string;
+  updatedBy?: string;
+};
+
+export type CatalogSettings = {
+  orderWindow: {
+    enabled: boolean;
+    startTime: string;
+    endTime: string;
+    timezone: string;
+  };
+  deliveryWindow: {
+    startTime: string;
+    endTime: string;
+    label: string;
+  };
+  sameDayOrders: {
+    enabled: boolean;
+    paymentPercentRequired: 100;
+  };
+  scheduledOrders: {
+    enabled: boolean;
+    paymentPercentRequired: 50;
+    requiresManualValidation: true;
+  };
+  theme: {
+    defaultMode: "system" | "light" | "dark";
+    allowCustomerOverride: boolean;
+  };
+  catalogLayout: {
+    defaultView: "carousel" | "grid";
+    allowedViews: Array<"carousel" | "grid">;
+  };
+};
+
+export const DEFAULT_PUBLIC_CONFIG: PublicConfig = {
+  publicMode: "flow",
+  catalogEnabled: false
+};
+
+export const DEFAULT_CATALOG_SETTINGS: CatalogSettings = {
+  orderWindow: {
+    enabled: true,
+    startTime: "09:03",
+    endTime: "11:33",
+    timezone: "America/Mexico_City"
+  },
+  deliveryWindow: {
+    startTime: "13:30",
+    endTime: "14:00",
+    label: "1:30 PM a 2:00 PM"
+  },
+  sameDayOrders: {
+    enabled: true,
+    paymentPercentRequired: 100
+  },
+  scheduledOrders: {
+    enabled: true,
+    paymentPercentRequired: 50,
+    requiresManualValidation: true
+  },
+  theme: {
+    defaultMode: "system",
+    allowCustomerOverride: true
+  },
+  catalogLayout: {
+    defaultView: "carousel",
+    allowedViews: ["carousel", "grid"]
+  }
+};
+
+export function resolvePublicConfig(config?: Partial<PublicConfig>): PublicConfig {
+  return {
+    ...DEFAULT_PUBLIC_CONFIG,
+    ...config,
+    publicMode: config?.publicMode === "catalog" ? "catalog" : DEFAULT_PUBLIC_CONFIG.publicMode,
+    catalogEnabled: config?.catalogEnabled === true
+  };
+}
+
+export function shouldUseCatalogMode(config?: Partial<PublicConfig>): boolean {
+  const resolved = resolvePublicConfig(config);
+  return resolved.publicMode === "catalog" && resolved.catalogEnabled;
+}
+
 export type BankPaymentConfig = {
   bankName: string;
   accountHolder: string;
@@ -100,6 +190,7 @@ export type MenuV2Response = {
   promos: PromoCard[];
   categoryBanners?: MenuCategoryBanner[];
   siteConfig: SiteConfig;
+  publicConfig: PublicConfig;
   updatedAt: string;
   source: DataSource;
 };
