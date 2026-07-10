@@ -1,8 +1,10 @@
 import type { MenuCategory, MenuItem, SiteConfig } from "@config/index";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { CatalogProductDrawer } from "./CatalogProductDrawer";
 import {
   type CatalogProduct,
-  mapMenuItemsToCatalogProducts
+  mapMenuItemsToCatalogProducts,
+  resolveCatalogAssetUrl
 } from "../lib/catalog-mode";
 import { formatCurrency } from "../lib/order";
 
@@ -10,40 +12,6 @@ type CatalogModeAppProps = {
   items: MenuItem[];
   categories: MenuCategory[];
   siteConfig: SiteConfig;
-};
-
-const SAFE_IMAGE_KEY_PATTERN = /^[a-zA-Z0-9/_.,@-]+$/;
-
-const isSafeSameOriginPath = (value: string) => {
-  if (!value.startsWith("/")) return false;
-  if (value.startsWith("//") || value.includes("\\") || value.includes("..")) return false;
-  return true;
-};
-
-const isSafeHttpsImageUrl = (value: string) => {
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:";
-  } catch {
-    return false;
-  }
-};
-
-const isSafeAssetKey = (value: string) => {
-  const key = value.trim().replace(/^\/+/, "");
-  if (!key || !SAFE_IMAGE_KEY_PATTERN.test(key) || key.includes("..") || key.includes("\\") || key.includes("//")) return false;
-  return key.split("/").every((segment) => segment && segment !== "." && segment !== "..");
-};
-
-const resolveCatalogAssetUrl = (imageUrl?: string, imageKey?: string): string | undefined => {
-  const trimmedKey = imageKey?.trim().replace(/^\/+/, "");
-  if (trimmedKey && isSafeAssetKey(trimmedKey)) {
-    return `/api/assets-v2/${trimmedKey.split("/").map((segment) => encodeURIComponent(segment)).join("/")}`;
-  }
-
-  const trimmedUrl = imageUrl?.trim();
-  if (trimmedUrl && (isSafeSameOriginPath(trimmedUrl) || isSafeHttpsImageUrl(trimmedUrl))) return trimmedUrl;
-  return undefined;
 };
 
 const PRODUCT_TYPE_LABELS: Record<CatalogProduct["type"], string> = {
@@ -54,28 +22,34 @@ const PRODUCT_TYPE_LABELS: Record<CatalogProduct["type"], string> = {
   drink: "Bebida"
 };
 
-const CatalogProductCard = ({ product }: { product: CatalogProduct }) => {
+const CatalogProductCard = ({ product, onOpen }: { product: CatalogProduct; onOpen: (product: CatalogProduct) => void }) => {
   const src = resolveCatalogAssetUrl(product.imageUrl, product.imageKey);
 
   return (
     <article className={product.isAvailable ? "catalog-card" : "catalog-card catalog-card--disabled"}>
-      <div className="catalog-card__image" aria-hidden={!src}>
-        {src ? <img src={src} alt={product.name} loading="lazy" /> : <span>{product.type}</span>}
-      </div>
-      <div className="catalog-card__meta">
-        <div className="catalog-card__eyebrow">
-          <span>{PRODUCT_TYPE_LABELS[product.type]}</span>
-          {product.badge ? <em>{product.badge}</em> : null}
+      <button
+        type="button"
+        className="catalog-card__detail-trigger"
+        onClick={() => onOpen(product)}
+        aria-haspopup="dialog"
+        aria-label={`Ver detalle de ${product.name}${product.isAvailable ? "" : ", no disponible"}`}
+      >
+        <div className="catalog-card__image" aria-hidden="true">
+          {src ? <img src={src} alt="" loading="lazy" decoding="async" /> : <span>{product.type}</span>}
         </div>
-        <h3>{product.name}</h3>
-        {product.description ? <p>{product.description}</p> : null}
-        {product.type === "burger" ? <small>Ingredientes informativos. Esta burger no se modifica en Modo Catálogo.</small> : null}
-        {product.type === "topping" ? <small>Se agrega como producto separado y no se integra directamente a la burger.</small> : null}
-        <div className="catalog-card__footer">
-          <strong>{formatCurrency(product.price)}</strong>
-          <button type="button" disabled>{product.isAvailable ? "Agregar pronto" : "No disponible"}</button>
+        <div className="catalog-card__meta">
+          <div className="catalog-card__eyebrow">
+            <span>{PRODUCT_TYPE_LABELS[product.type]}</span>
+            {product.badge ? <em>{product.badge}</em> : null}
+          </div>
+          <h3>{product.name}</h3>
+          {product.description ? <p>{product.description}</p> : null}
+          <div className="catalog-card__footer">
+            <strong>{formatCurrency(product.price)}</strong>
+            <span className="catalog-card__detail-action">Ver detalle</span>
+          </div>
         </div>
-      </div>
+      </button>
     </article>
   );
 };
@@ -89,55 +63,61 @@ export function CatalogModeApp({ items, categories, siteConfig }: CatalogModeApp
       .sort((a, b) => a.sortOrder - b.sortOrder);
   }, [categories, products]);
   const [activeCategory, setActiveCategory] = useState<MenuCategory["key"] | "all">("all");
+  const [selectedProduct, setSelectedProduct] = useState<CatalogProduct | null>(null);
+  const closeDrawer = useCallback(() => setSelectedProduct(null), []);
 
   const filteredProducts = activeCategory === "all"
     ? products
     : products.filter((product) => product.categoryKey === activeCategory);
 
   return (
-    <main className="catalog-shell" aria-labelledby="catalogTitle">
-      <section className="catalog-hero">
-        <div>
-          <span>Modo Catálogo</span>
-          <h1 id="catalogTitle">{siteConfig.brandName}</h1>
-          <p>Primer vistazo del catálogo visual. El flujo completo de pedido sigue protegido en Modo Flujo.</p>
-        </div>
-        <aside aria-label="Estado del catálogo">
-          <strong>Catálogo en preparación</strong>
-          <small>Checkout y carrito operativo quedan para siguientes PRs.</small>
-        </aside>
-      </section>
+    <>
+      <main className="catalog-shell" aria-labelledby="catalogTitle">
+        <section className="catalog-hero">
+          <div>
+            <span>Modo Catálogo</span>
+            <h1 id="catalogTitle">{siteConfig.brandName}</h1>
+            <p>Primer vistazo del catálogo visual. El flujo completo de pedido sigue protegido en Modo Flujo.</p>
+          </div>
+          <aside aria-label="Estado del catálogo">
+            <strong>Catálogo en preparación</strong>
+            <small>Checkout y carrito operativo quedan para siguientes PRs.</small>
+          </aside>
+        </section>
 
-      <nav className="catalog-category-nav" aria-label="Categorías de catálogo">
-        <button type="button" className={activeCategory === "all" ? "active" : ""} onClick={() => setActiveCategory("all")}>
-          Todos
-        </button>
-        {visibleCategories.map((category) => (
-          <button
-            type="button"
-            className={activeCategory === category.key ? "active" : ""}
-            key={category.key}
-            onClick={() => setActiveCategory(category.key)}
-          >
-            {category.name}
+        <nav className="catalog-category-nav" aria-label="Categorías de catálogo">
+          <button type="button" className={activeCategory === "all" ? "active" : ""} onClick={() => setActiveCategory("all")}>
+            Todos
           </button>
-        ))}
-      </nav>
+          {visibleCategories.map((category) => (
+            <button
+              type="button"
+              className={activeCategory === category.key ? "active" : ""}
+              key={category.key}
+              onClick={() => setActiveCategory(category.key)}
+            >
+              {category.name}
+            </button>
+          ))}
+        </nav>
 
-      {filteredProducts.length ? (
-        <section className="catalog-grid" aria-label="Productos del catálogo">
-          {filteredProducts.map((product) => <CatalogProductCard product={product} key={product.id} />)}
-        </section>
-      ) : (
-        <section className="catalog-empty" role="status">
-          <h2>Catálogo sin productos visibles</h2>
-          <p>Cuando el menú publique productos disponibles, aparecerán aquí sin afectar el Modo Flujo.</p>
-        </section>
-      )}
+        {filteredProducts.length ? (
+          <section className="catalog-grid" aria-label="Productos del catálogo">
+            {filteredProducts.map((product) => <CatalogProductCard product={product} onOpen={setSelectedProduct} key={product.id} />)}
+          </section>
+        ) : (
+          <section className="catalog-empty" role="status">
+            <h2>Catálogo sin productos visibles</h2>
+            <p>Cuando el menú publique productos disponibles, aparecerán aquí sin afectar el Modo Flujo.</p>
+          </section>
+        )}
 
-      <footer className="catalog-note">
-        Catálogo en preparación. El flujo de pedido completo sigue disponible en Modo Flujo.
-      </footer>
-    </main>
+        <footer className="catalog-note">
+          Catálogo en preparación. El flujo de pedido completo sigue disponible en Modo Flujo.
+        </footer>
+      </main>
+
+      <CatalogProductDrawer product={selectedProduct} onClose={closeDrawer} />
+    </>
   );
 }
