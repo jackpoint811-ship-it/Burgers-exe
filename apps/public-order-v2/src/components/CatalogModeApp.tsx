@@ -1,10 +1,14 @@
 import type { MenuCategory, MenuItem, SiteConfig } from "@config/index";
 import { useCallback, useMemo, useState } from "react";
 import { CatalogProductDrawer } from "./CatalogProductDrawer";
+import { CatalogCartDrawer } from "./CatalogCartDrawer";
+import { CatalogCartBar } from "./CatalogCartBar";
+import { CatalogCartProvider } from "./CatalogCartContext";
 import {
   type CatalogProduct,
+  PRODUCT_TYPE_LABELS,
   mapMenuItemsToCatalogProducts,
-  resolveCatalogAssetUrl
+  resolveCatalogAssetUrl,
 } from "../lib/catalog-mode";
 import { formatCurrency } from "../lib/order";
 
@@ -12,14 +16,6 @@ type CatalogModeAppProps = {
   items: MenuItem[];
   categories: MenuCategory[];
   siteConfig: SiteConfig;
-};
-
-const PRODUCT_TYPE_LABELS: Record<CatalogProduct["type"], string> = {
-  burger: "Burger fija",
-  combo: "Combo",
-  side: "Guarnición",
-  topping: "Topping separado",
-  drink: "Bebida"
 };
 
 const CatalogProductCard = ({ product, onOpen }: { product: CatalogProduct; onOpen: (product: CatalogProduct) => void }) => {
@@ -54,7 +50,7 @@ const CatalogProductCard = ({ product, onOpen }: { product: CatalogProduct; onOp
   );
 };
 
-export function CatalogModeApp({ items, categories, siteConfig }: CatalogModeAppProps) {
+function CatalogModeAppInner({ items, categories, siteConfig }: CatalogModeAppProps) {
   const products = useMemo(() => mapMenuItemsToCatalogProducts(items, categories), [items, categories]);
   const visibleCategories = useMemo(() => {
     const categoryKeys = new Set(products.map((product) => product.categoryKey));
@@ -64,7 +60,10 @@ export function CatalogModeApp({ items, categories, siteConfig }: CatalogModeApp
   }, [categories, products]);
   const [activeCategory, setActiveCategory] = useState<MenuCategory["key"] | "all">("all");
   const [selectedProduct, setSelectedProduct] = useState<CatalogProduct | null>(null);
-  const closeDrawer = useCallback(() => setSelectedProduct(null), []);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const closeProductDrawer = useCallback(() => setSelectedProduct(null), []);
+  const openCart = useCallback(() => setIsCartOpen(true), []);
+  const closeCart = useCallback(() => setIsCartOpen(false), []);
 
   const filteredProducts = activeCategory === "all"
     ? products
@@ -77,11 +76,11 @@ export function CatalogModeApp({ items, categories, siteConfig }: CatalogModeApp
           <div>
             <span>Modo Catálogo</span>
             <h1 id="catalogTitle">{siteConfig.brandName}</h1>
-            <p>Primer vistazo del catálogo visual. El flujo completo de pedido sigue protegido en Modo Flujo.</p>
+            <p>Explora el catálogo y arma tu pedido. El flujo completo de compra estará disponible pronto.</p>
           </div>
           <aside aria-label="Estado del catálogo">
             <strong>Catálogo en preparación</strong>
-            <small>Checkout y carrito operativo quedan para siguientes PRs.</small>
+            <small>Checkout queda para el siguiente PR.</small>
           </aside>
         </section>
 
@@ -117,7 +116,17 @@ export function CatalogModeApp({ items, categories, siteConfig }: CatalogModeApp
         </footer>
       </main>
 
-      <CatalogProductDrawer product={selectedProduct} onClose={closeDrawer} />
+      <CatalogCartBar onOpenCart={openCart} />
+      <CatalogProductDrawer product={selectedProduct} onClose={closeProductDrawer} />
+      <CatalogCartDrawer isOpen={isCartOpen} onClose={closeCart} />
     </>
+  );
+}
+
+export function CatalogModeApp(props: CatalogModeAppProps) {
+  return (
+    <CatalogCartProvider>
+      <CatalogModeAppInner {...props} />
+    </CatalogCartProvider>
   );
 }

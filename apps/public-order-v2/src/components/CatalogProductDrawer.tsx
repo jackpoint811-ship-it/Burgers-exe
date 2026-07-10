@@ -1,19 +1,14 @@
-import { useEffect, useId, useRef, type MouseEvent } from "react";
-import { type CatalogProduct, resolveCatalogAssetUrl } from "../lib/catalog-mode";
+import { useEffect, useId, useRef, useState, type MouseEvent } from "react";
+import { type CatalogProduct, PRODUCT_TYPE_LABELS, resolveCatalogAssetUrl } from "../lib/catalog-mode";
 import { formatCurrency } from "../lib/order";
+import { useCatalogCart } from "./CatalogCartContext";
 
 type CatalogProductDrawerProps = {
   product: CatalogProduct | null;
   onClose: () => void;
 };
 
-const PRODUCT_TYPE_LABELS: Record<CatalogProduct["type"], string> = {
-  burger: "Burger fija",
-  combo: "Combo",
-  side: "Guarnición",
-  topping: "Topping separado",
-  drink: "Bebida"
-};
+const ADDED_FEEDBACK_MS = 1400;
 
 const focusableSelector = [
   "a[href]",
@@ -21,15 +16,28 @@ const focusableSelector = [
   "input:not([disabled])",
   "select:not([disabled])",
   "textarea:not([disabled])",
-  "[tabindex]:not([tabindex='-1'])"
+  "[tabindex]:not([tabindex='-1'])",
 ].join(",");
 
 export function CatalogProductDrawer({ product, onClose }: CatalogProductDrawerProps) {
+  const { addItem } = useCatalogCart();
+  const [justAdded, setJustAdded] = useState(false);
   const closeRef = useRef<HTMLButtonElement | null>(null);
   const dialogRef = useRef<HTMLElement | null>(null);
+  const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleId = useId();
   const descriptionId = useId();
   const src = product ? resolveCatalogAssetUrl(product.imageUrl, product.imageKey) : undefined;
+
+  // Reset feedback when a different product opens
+  useEffect(() => {
+    setJustAdded(false);
+    if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
+  }, [product?.id]);
+
+  useEffect(() => {
+    return () => { if (feedbackTimer.current) clearTimeout(feedbackTimer.current); };
+  }, []);
 
   useEffect(() => {
     if (!product) return;
@@ -82,6 +90,13 @@ export function CatalogProductDrawer({ product, onClose }: CatalogProductDrawerP
     if (event.target === event.currentTarget) onClose();
   };
 
+  const handleAddToCart = () => {
+    addItem(product);
+    setJustAdded(true);
+    if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
+    feedbackTimer.current = setTimeout(() => setJustAdded(false), ADDED_FEEDBACK_MS);
+  };
+
   return (
     <div className="catalog-drawer-backdrop" role="presentation" onClick={handleBackdropClick}>
       <section
@@ -123,7 +138,20 @@ export function CatalogProductDrawer({ product, onClose }: CatalogProductDrawerP
           {product.type === "topping" ? <p className="catalog-drawer__notice">Los toppings se entregan por separado.</p> : null}
 
           <div className="catalog-drawer__footer">
-            <button type="button" disabled>Agregar próximamente</button>
+            {product.isAvailable ? (
+              <button
+                type="button"
+                className={`catalog-drawer__add-btn${justAdded ? " catalog-drawer__add-btn--added" : ""}`}
+                onClick={handleAddToCart}
+                aria-live="polite"
+              >
+                {justAdded ? "¡Agregado!" : "Agregar al carrito"}
+              </button>
+            ) : (
+              <button type="button" className="catalog-drawer__add-btn catalog-drawer__add-btn--unavailable" disabled>
+                No disponible
+              </button>
+            )}
           </div>
         </div>
       </section>
