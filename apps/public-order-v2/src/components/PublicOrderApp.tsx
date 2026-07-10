@@ -18,6 +18,7 @@ import {
 import { EmptyState } from "@ui/index";
 import { motion, useReducedMotion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CatalogModeApp } from "./CatalogModeApp";
 import { loadMenuV2, toFallbackMenuResponse } from "../lib/menu-v2";
 import { loadActiveRaffleV2 } from "../lib/raffles-v2";
 import {
@@ -1845,16 +1846,6 @@ const PersistentCta = ({ section, count, total, disabled, submitting, onClick, b
   return <aside className="persistent-cta"><div><span>{title}</span><strong>{summary}</strong></div><QuestButton disabled={disabled || submitting} onClick={onClick}>{label}</QuestButton></aside>;
 };
 
-const CatalogModePlaceholder = () => (
-  <main className="app-shell public-section-menu">
-    <section className="hero-card">
-      <span className="eyebrow">Modo Catálogo</span>
-      <h1>Catálogo en preparación</h1>
-      <p>Esta experiencia está protegida por configuración y todavía no reemplaza el flujo actual.</p>
-    </section>
-  </main>
-);
-
 export function PublicOrderApp() {
   const reduce = useReducedMotion() ?? false;
   const submittingRef = useRef(false);
@@ -2211,7 +2202,13 @@ export function PublicOrderApp() {
   };
 
   if (shouldRenderCatalogMode) {
-    return <CatalogModePlaceholder />;
+    return (
+      <CatalogModeApp
+        items={menuData.items}
+        categories={menuData.categories}
+        siteConfig={menuData.siteConfig}
+      />
+    );
   }
 
   return (
