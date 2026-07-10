@@ -1,11 +1,12 @@
-import type {
-  KitchenEvent,
-  MenuCategory,
-  MenuItem,
-  MockOrder,
-  OperatorStats,
-  PromoCard,
-  SiteConfig
+import {
+  DEFAULT_PUBLIC_CONFIG,
+  type KitchenEvent,
+  type MenuCategory,
+  type MenuItem,
+  type MockOrder,
+  type OperatorStats,
+  type PromoCard,
+  type SiteConfig
 } from './contracts';
 
 export const menuCategories: MenuCategory[] = [
@@ -28,6 +29,8 @@ export const promoCards: PromoCard[] = [
 export const siteConfig: SiteConfig = {
   brandName: 'Burgers.exe', currency: 'MXN', orderModes: ['pickup', 'delivery'], supportPhone: '+52 55 0000 0000', heroCta: 'Pedir ahora', notice: 'V2 mock mode: catálogo local sin conexión a backend.'
 };
+
+export const publicConfig = DEFAULT_PUBLIC_CONFIG;
 
 export const orderStatuses = [
   { key: 'new', label: 'Nuevo' },
