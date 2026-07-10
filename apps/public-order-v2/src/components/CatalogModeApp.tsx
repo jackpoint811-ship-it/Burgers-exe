@@ -49,7 +49,7 @@ const resolveCatalogAssetUrl = (imageUrl?: string, imageKey?: string): string | 
 const PRODUCT_TYPE_LABELS: Record<CatalogProduct["type"], string> = {
   burger: "Burger fija",
   combo: "Combo",
-  side: "Guarnicion",
+  side: "Guarnición",
   topping: "Topping separado",
   drink: "Bebida"
 };
@@ -69,7 +69,7 @@ const CatalogProductCard = ({ product }: { product: CatalogProduct }) => {
         </div>
         <h3>{product.name}</h3>
         {product.description ? <p>{product.description}</p> : null}
-        {product.type === "burger" ? <small>Ingredientes informativos. Esta burger no se modifica en Modo Catalogo.</small> : null}
+        {product.type === "burger" ? <small>Ingredientes informativos. Esta burger no se modifica en Modo Catálogo.</small> : null}
         {product.type === "topping" ? <small>Se agrega como producto separado y no se integra directamente a la burger.</small> : null}
         <div className="catalog-card__footer">
           <strong>{formatCurrency(product.price)}</strong>
@@ -98,17 +98,17 @@ export function CatalogModeApp({ items, categories, siteConfig }: CatalogModeApp
     <main className="catalog-shell" aria-labelledby="catalogTitle">
       <section className="catalog-hero">
         <div>
-          <span>Modo Catalogo</span>
+          <span>Modo Catálogo</span>
           <h1 id="catalogTitle">{siteConfig.brandName}</h1>
-          <p>Primer vistazo del catalogo visual. El flujo completo de pedido sigue protegido en Modo Flujo.</p>
+          <p>Primer vistazo del catálogo visual. El flujo completo de pedido sigue protegido en Modo Flujo.</p>
         </div>
-        <aside aria-label="Estado del catalogo">
-          <strong>Catalogo en preparacion</strong>
+        <aside aria-label="Estado del catálogo">
+          <strong>Catálogo en preparación</strong>
           <small>Checkout y carrito operativo quedan para siguientes PRs.</small>
         </aside>
       </section>
 
-      <nav className="catalog-category-nav" aria-label="Categorias de catalogo">
+      <nav className="catalog-category-nav" aria-label="Categorías de catálogo">
         <button type="button" className={activeCategory === "all" ? "active" : ""} onClick={() => setActiveCategory("all")}>
           Todos
         </button>
@@ -125,18 +125,18 @@ export function CatalogModeApp({ items, categories, siteConfig }: CatalogModeApp
       </nav>
 
       {filteredProducts.length ? (
-        <section className="catalog-grid" aria-label="Productos del catalogo">
+        <section className="catalog-grid" aria-label="Productos del catálogo">
           {filteredProducts.map((product) => <CatalogProductCard product={product} key={product.id} />)}
         </section>
       ) : (
         <section className="catalog-empty" role="status">
-          <h2>Catalogo sin productos visibles</h2>
-          <p>Cuando el menu publique productos disponibles, apareceran aqui sin afectar el Modo Flujo.</p>
+          <h2>Catálogo sin productos visibles</h2>
+          <p>Cuando el menú publique productos disponibles, aparecerán aquí sin afectar el Modo Flujo.</p>
         </section>
       )}
 
       <footer className="catalog-note">
-        Catalogo en preparacion. El flujo de pedido completo sigue disponible en Modo Flujo.
+        Catálogo en preparación. El flujo de pedido completo sigue disponible en Modo Flujo.
       </footer>
     </main>
   );
