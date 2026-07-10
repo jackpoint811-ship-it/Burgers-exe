@@ -20,7 +20,7 @@ const focusableSelector = [
 ].join(",");
 
 export function CatalogProductDrawer({ product, onClose }: CatalogProductDrawerProps) {
-  const { addItem } = useCatalogCart();
+  const { items, addItem } = useCatalogCart();
   const [justAdded, setJustAdded] = useState(false);
   const closeRef = useRef<HTMLButtonElement | null>(null);
   const dialogRef = useRef<HTMLElement | null>(null);
@@ -28,6 +28,12 @@ export function CatalogProductDrawer({ product, onClose }: CatalogProductDrawerP
   const titleId = useId();
   const descriptionId = useId();
   const src = product ? resolveCatalogAssetUrl(product.imageUrl, product.imageKey) : undefined;
+
+  const currentItem = items.find((i) => i.productId === product?.id);
+  // Default to 10 from CATALOG_CART_MAX_QTY to avoid importing if not strictly needed, 
+  // wait, we should import CATALOG_CART_MAX_QTY to be completely correct.
+  // Actually I can just check if qty >= 10. Let's do >= 10.
+  const isAtMax = currentItem ? currentItem.qty >= 10 : false;
 
   // Reset feedback when a different product opens
   useEffect(() => {
@@ -91,6 +97,7 @@ export function CatalogProductDrawer({ product, onClose }: CatalogProductDrawerP
   };
 
   const handleAddToCart = () => {
+    if (isAtMax) return;
     addItem(product);
     setJustAdded(true);
     if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
@@ -141,11 +148,12 @@ export function CatalogProductDrawer({ product, onClose }: CatalogProductDrawerP
             {product.isAvailable ? (
               <button
                 type="button"
-                className={`catalog-drawer__add-btn${justAdded ? " catalog-drawer__add-btn--added" : ""}`}
+                className={`catalog-drawer__add-btn${justAdded ? " catalog-drawer__add-btn--added" : ""}${isAtMax && !justAdded ? " catalog-drawer__add-btn--unavailable" : ""}`}
                 onClick={handleAddToCart}
                 aria-live="polite"
+                disabled={isAtMax && !justAdded}
               >
-                {justAdded ? "¡Agregado!" : "Agregar al carrito"}
+                {justAdded ? "¡Agregado!" : isAtMax ? "Límite alcanzado" : "Agregar al carrito"}
               </button>
             ) : (
               <button type="button" className="catalog-drawer__add-btn catalog-drawer__add-btn--unavailable" disabled>

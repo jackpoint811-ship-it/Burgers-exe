@@ -85,6 +85,49 @@ select {
 button {
   min-height: 44px;
 }
+.catalog-cart-item__qty-btn {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid rgba(234, 255, 240, 0.22);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #eafff0;
+  cursor: pointer;
+  font-size: 1.1rem;
+  font-weight: 900;
+  line-height: 1;
+  padding: 0;
+}
+
+.catalog-cart-item__qty-btn:hover,
+.catalog-cart-item__qty-btn:focus-visible {
+  border-color: rgba(57, 255, 136, 0.7);
+  background: rgba(57, 255, 136, 0.12);
+}
+
+.catalog-cart-item__qty-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.catalog-cart-item__qty {
+  min-width: 28px;
+  color: #eafff0;
+  font-size: 0.9rem;
+  font-weight: 900;
+  text-align: center;
+}
+
+.catalog-cart-item__remove {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  color: var(--danger);
+  cursor: pointer;
+}
 input,
 textarea,
 select {
