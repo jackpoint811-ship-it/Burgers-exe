@@ -18,6 +18,16 @@ export type CatalogProduct = {
   sortOrder: number;
 };
 
+export const PRODUCT_TYPE_LABELS: Record<CatalogProductType, string> = {
+  burger: "Burger fija",
+  combo: "Combo",
+  side: "Guarnición",
+  topping: "Topping separado",
+  drink: "Bebida",
+};
+
+
+
 const SAFE_IMAGE_KEY_PATTERN = /^[a-zA-Z0-9/_.,@-]+$/;
 
 const isSafeSameOriginPath = (value: string) => {

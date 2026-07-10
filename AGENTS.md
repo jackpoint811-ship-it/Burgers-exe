@@ -43,6 +43,21 @@ Estas reglas aplican a todo el repositorio salvo que un `AGENTS.md` más especí
 - No ocultar errores de validación ni reemplazar labels persistentes por placeholders.
 - No dejar cambios sin test/check reportado ni riesgos sin mencionar.
 
+## Metodología de trabajo (PRs 350–355+)
+- Dividir features grandes en roadmap secuencial de PRs antes de implementar (PR1 → contrato, PR2 → flag, PR3 → shell, PR4 → drawer, etc.). Cada PR tiene un único objetivo; nunca mezclar responsabilidades.
+- Funcionalidad primero, polish después. Animaciones, micro-interacciones, responsive fino y UX visual van en PRs separados posteriores.
+- Reutilizar componentes, helpers, tipos, hooks y contratos existentes antes de crear código nuevo.
+- Follow-ups pequeños: si el bot comenta algo, se corrige en el mismo PR o en un follow-up mínimo. No se abre un PR enorme para atender feedback.
+- Verificar siempre el estado real del PR en GitHub antes de darlo por terminado: comentarios del bot, code review, conflictos, merge status y checks.
+- Resumen estándar al cerrar PR:
+  1. Resumen ejecutivo.
+  2. Archivos modificados.
+  3. Qué se implementó.
+  4. Qué NO se implementó.
+  5. Riesgos.
+  6. Testing ejecutado.
+  7. Estado del PR (número, URL, estado, merge status, comentarios pendientes, checks).
+
 ## Memoria del proyecto
 
 Antes de cambios grandes, lee:
