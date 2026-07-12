@@ -81,14 +81,10 @@ function CatalogModeAppInner({ items, categories, siteConfig }: CatalogModeAppPr
       <main className="catalog-shell" aria-labelledby="catalogTitle">
         <section className="catalog-hero">
           <div>
-            <span>Modo Catálogo</span>
+            <span>Menú</span>
             <h1 id="catalogTitle">{siteConfig.brandName}</h1>
-            <p>Explora el catálogo y arma tu pedido. El flujo completo de compra estará disponible pronto.</p>
+            <p>Explora el menú, arma tu pedido y paga en minutos.</p>
           </div>
-          <aside aria-label="Estado del catálogo">
-            <strong>Catálogo en preparación</strong>
-            <small>Checkout queda para el siguiente PR.</small>
-          </aside>
         </section>
 
         <nav className="catalog-category-nav" aria-label="Categorías de catálogo">
@@ -113,14 +109,12 @@ function CatalogModeAppInner({ items, categories, siteConfig }: CatalogModeAppPr
           </section>
         ) : (
           <section className="catalog-empty" role="status">
-            <h2>Catálogo sin productos visibles</h2>
-            <p>Cuando el menú publique productos disponibles, aparecerán aquí sin afectar el Modo Flujo.</p>
+            <h2>Sin productos disponibles</h2>
+            <p>Por el momento no hay productos publicados. Vuelve pronto.</p>
           </section>
         )}
 
-        <footer className="catalog-note">
-          Catálogo en preparación. El flujo de pedido completo sigue disponible en Modo Flujo.
-        </footer>
+
       </main>
 
       <CatalogCartBar onOpenCart={openCart} />
