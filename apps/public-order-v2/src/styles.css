@@ -6927,3 +6927,92 @@ html {
   font-size: 0.9rem;
   margin: 0 0 2rem;
 }
+
+/* ── Catalog: Banner Rail ───────────────────────────────── */
+
+.catalog-banner-rail {
+  padding: 0 0 0.5rem;
+}
+
+.catalog-banner-rail__list {
+  display: flex;
+  gap: 0.875rem;
+  list-style: none;
+  margin: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding: 0.75rem 1rem 0.75rem;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.catalog-banner-rail__list::-webkit-scrollbar {
+  display: none;
+}
+
+.catalog-banner-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(57, 255, 136, 0.14);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+  scroll-snap-align: start;
+  width: min(76vw, 320px);
+}
+
+.catalog-banner-card__image {
+  aspect-ratio: 16 / 7;
+  overflow: hidden;
+  width: 100%;
+}
+
+.catalog-banner-card__image img {
+  display: block;
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.catalog-banner-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem 1rem 0.875rem;
+}
+
+.catalog-banner-card__title {
+  color: #f3fff6;
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.catalog-banner-card__subtitle {
+  color: rgba(243, 255, 246, 0.65);
+  font-size: 0.82rem;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.catalog-banner-card__cta {
+  color: var(--neon, #39ff88);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  margin-top: 0.25rem;
+  text-transform: uppercase;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .catalog-banner-card {
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .catalog-banner-card:hover {
+    background: rgba(57, 255, 136, 0.06);
+    border-color: rgba(57, 255, 136, 0.28);
+  }
+}

@@ -2207,6 +2207,7 @@ export function PublicOrderApp() {
         items={menuData.items}
         categories={menuData.categories}
         siteConfig={menuData.siteConfig}
+        catalogBanners={menuData.catalogBanners}
       />
     );
   }
