@@ -1,10 +1,11 @@
-import type { MenuCategory, MenuItem, SiteConfig } from "@config/index";
+import type { MenuCategory, MenuItem, SiteConfig, CatalogBanner } from "@config/index";
 import { useCallback, useMemo, useState } from "react";
 import { CatalogProductDrawer } from "./CatalogProductDrawer";
 import { CatalogCartDrawer } from "./CatalogCartDrawer";
 import { CatalogCheckoutDrawer } from "./CatalogCheckoutDrawer";
 import { CatalogCartBar } from "./CatalogCartBar";
 import { CatalogCartProvider } from "./CatalogCartContext";
+import { CatalogBannerRail } from "./CatalogBannerRail";
 import {
   type CatalogProduct,
   PRODUCT_TYPE_LABELS,
@@ -17,6 +18,7 @@ type CatalogModeAppProps = {
   items: MenuItem[];
   categories: MenuCategory[];
   siteConfig: SiteConfig;
+  catalogBanners?: CatalogBanner[];
 };
 
 const CatalogProductCard = ({ product, onOpen }: { product: CatalogProduct; onOpen: (product: CatalogProduct) => void }) => {
@@ -51,7 +53,7 @@ const CatalogProductCard = ({ product, onOpen }: { product: CatalogProduct; onOp
   );
 };
 
-function CatalogModeAppInner({ items, categories, siteConfig }: CatalogModeAppProps) {
+function CatalogModeAppInner({ items, categories, siteConfig, catalogBanners = [] }: CatalogModeAppProps) {
   const products = useMemo(() => mapMenuItemsToCatalogProducts(items, categories), [items, categories]);
   const visibleCategories = useMemo(() => {
     const categoryKeys = new Set(products.map((product) => product.categoryKey));
@@ -86,6 +88,8 @@ function CatalogModeAppInner({ items, categories, siteConfig }: CatalogModeAppPr
             <p>Explora el menú, arma tu pedido y paga en minutos.</p>
           </div>
         </section>
+
+        <CatalogBannerRail banners={catalogBanners} />
 
         <nav className="catalog-category-nav" aria-label="Categorías de catálogo">
           <button type="button" className={activeCategory === "all" ? "active" : ""} onClick={() => setActiveCategory("all")}>
