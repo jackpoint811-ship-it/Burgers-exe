@@ -1,8 +1,19 @@
-import { useEffect, useId, useRef, useState, type MouseEvent, type FormEvent } from "react";
-import type { OrderV2PaymentMethod } from "@config/index";
+import { useEffect, useId, useMemo, useRef, useState, type MouseEvent, type FormEvent } from "react";
+import type { OrderV2PaymentMethod, OrderV2ItemKind } from "@config/index";
+import { getPublicOrderEnvironment } from "@config/index";
 import { formatCurrency } from "../lib/order";
 import { useCatalogCart } from "./CatalogCartContext";
 import { createOrderV2 } from "../lib/orders-v2";
+import type { CatalogProductType } from "../lib/catalog-mode";
+
+/** Map catalog product types to backend OrderV2ItemKind values. */
+const catalogTypeToItemKind: Record<CatalogProductType, OrderV2ItemKind> = {
+  burger: "burger",
+  combo: "combo",
+  side: "garnish",
+  topping: "other",
+  drink: "drink",
+};
 
 type CatalogCheckoutDrawerProps = {
   isOpen: boolean;
@@ -26,16 +37,36 @@ type CheckoutState = {
   folio?: string;
 };
 
+/** Generate a fresh idempotency key. */
+const generateIdempotencyKey = () =>
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `catalog-${Date.now()}-${Math.random()}`;
+
 export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawerProps) {
   const { items, total, clear } = useCatalogCart();
   const closeRef = useRef<HTMLButtonElement | null>(null);
   const dialogRef = useRef<HTMLElement | null>(null);
   const titleId = useId();
 
+  const orderEnvironment = useMemo(getPublicOrderEnvironment, []);
+  const isPreviewMode = orderEnvironment === "preview";
+
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<OrderV2PaymentMethod>("unknown");
   const [checkoutState, setCheckoutState] = useState<CheckoutState>({ status: "idle" });
+
+  // Stable idempotency key: regenerated only when cart or customer data changes.
+  const idempotencyKeyRef = useRef(generateIdempotencyKey());
+  const prevSnapshotRef = useRef("");
+
+  // Regenerate key when cart contents or customer info changes.
+  const currentSnapshot = JSON.stringify({ items: items.map(i => `${i.productId}:${i.qty}`), name, phone });
+  if (currentSnapshot !== prevSnapshotRef.current) {
+    prevSnapshotRef.current = currentSnapshot;
+    idempotencyKeyRef.current = generateIdempotencyKey();
+  }
 
   useEffect(() => {
     if (!isOpen) {
@@ -115,18 +146,16 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
       const payloadItems = items.map((item) => ({
         sku: item.productId,
         qty: item.qty,
+        itemKind: catalogTypeToItemKind[item.type] ?? ("other" as OrderV2ItemKind),
       }));
-
-      const idempotencyKey = typeof crypto !== "undefined" && "randomUUID" in crypto 
-        ? crypto.randomUUID() 
-        : `catalog-${Date.now()}-${Math.random()}`;
 
       const response = await createOrderV2({
         customer: { name: name.trim(), phone: normalizedPhone },
         orderMode: "pickup",
         paymentMethod,
         items: payloadItems,
-      }, idempotencyKey);
+        ...(isPreviewMode ? { environment: orderEnvironment } : {}),
+      }, idempotencyKeyRef.current);
 
       const order = response.data?.order;
       if (!order) {
@@ -134,6 +163,8 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
       }
 
       setCheckoutState({ status: "success", folio: order.folio });
+      // Regenerate key so next order gets a fresh one.
+      idempotencyKeyRef.current = generateIdempotencyKey();
       clear();
     } catch (error) {
       setCheckoutState({ 
