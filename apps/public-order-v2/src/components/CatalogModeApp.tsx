@@ -2,6 +2,7 @@ import type { MenuCategory, MenuItem, SiteConfig } from "@config/index";
 import { useCallback, useMemo, useState } from "react";
 import { CatalogProductDrawer } from "./CatalogProductDrawer";
 import { CatalogCartDrawer } from "./CatalogCartDrawer";
+import { CatalogCheckoutDrawer } from "./CatalogCheckoutDrawer";
 import { CatalogCartBar } from "./CatalogCartBar";
 import { CatalogCartProvider } from "./CatalogCartContext";
 import {
@@ -61,9 +62,15 @@ function CatalogModeAppInner({ items, categories, siteConfig }: CatalogModeAppPr
   const [activeCategory, setActiveCategory] = useState<MenuCategory["key"] | "all">("all");
   const [selectedProduct, setSelectedProduct] = useState<CatalogProduct | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const closeProductDrawer = useCallback(() => setSelectedProduct(null), []);
   const openCart = useCallback(() => setIsCartOpen(true), []);
   const closeCart = useCallback(() => setIsCartOpen(false), []);
+  const openCheckout = useCallback(() => {
+    setIsCartOpen(false);
+    setIsCheckoutOpen(true);
+  }, []);
+  const closeCheckout = useCallback(() => setIsCheckoutOpen(false), []);
 
   const filteredProducts = activeCategory === "all"
     ? products
@@ -118,7 +125,8 @@ function CatalogModeAppInner({ items, categories, siteConfig }: CatalogModeAppPr
 
       <CatalogCartBar onOpenCart={openCart} />
       <CatalogProductDrawer product={selectedProduct} onClose={closeProductDrawer} />
-      <CatalogCartDrawer isOpen={isCartOpen} onClose={closeCart} />
+      <CatalogCartDrawer isOpen={isCartOpen} onClose={closeCart} onCheckout={openCheckout} />
+      <CatalogCheckoutDrawer isOpen={isCheckoutOpen} onClose={closeCheckout} />
     </>
   );
 }

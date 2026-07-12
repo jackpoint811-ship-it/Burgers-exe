@@ -7,6 +7,7 @@ import { useCatalogCart } from "./CatalogCartContext";
 type CatalogCartDrawerProps = {
   isOpen: boolean;
   onClose: () => void;
+  onCheckout: () => void;
 };
 
 const focusableSelector = [
@@ -18,7 +19,7 @@ const focusableSelector = [
   "[tabindex]:not([tabindex='-1'])",
 ].join(",");
 
-export function CatalogCartDrawer({ isOpen, onClose }: CatalogCartDrawerProps) {
+export function CatalogCartDrawer({ isOpen, onClose, onCheckout }: CatalogCartDrawerProps) {
   const { items, total, setQty, removeItem } = useCatalogCart();
   const closeRef = useRef<HTMLButtonElement | null>(null);
   const dialogRef = useRef<HTMLElement | null>(null);
@@ -160,8 +161,8 @@ export function CatalogCartDrawer({ isOpen, onClose }: CatalogCartDrawerProps) {
                 <span>Total</span>
                 <strong>{formatCurrency(total)}</strong>
               </div>
-              <button type="button" className="catalog-cart-drawer__checkout" disabled>
-                Checkout próximamente
+              <button type="button" className="catalog-cart-drawer__checkout" onClick={onCheckout}>
+                Ir a Checkout
               </button>
             </div>
           </>
