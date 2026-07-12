@@ -184,11 +184,24 @@ export type BankPaymentConfig = {
   updatedAt?: string;
 };
 
+export type CatalogBanner = {
+  id: string;
+  title: string;
+  subtitle?: string;
+  ctaLabel?: string;
+  imageKey?: string;
+  imageUrl?: string;
+  isActive: boolean;
+  sortOrder: number;
+  updatedAt?: string;
+};
+
 export type MenuV2Response = {
   categories: MenuCategory[];
   items: MenuItem[];
   promos: PromoCard[];
   categoryBanners?: MenuCategoryBanner[];
+  catalogBanners?: CatalogBanner[];
   siteConfig: SiteConfig;
   publicConfig: PublicConfig;
   updatedAt: string;
