@@ -1,4 +1,4 @@
-import type { MenuCategoryBanner, MenuItem, PromoCard } from '../../packages/config/src';
+import type { CatalogBanner, MenuCategoryBanner, MenuItem, PromoCard } from '../../packages/config/src';
 
 export const parseJsonArray = (value: unknown): string[] => {
   if (typeof value !== 'string') return [];
@@ -61,4 +61,16 @@ export const mapD1CategoryBanner = (row: any): MenuCategoryBanner => ({
   imageKey: row.imageKey ?? row.image_key ?? undefined,
   imageUrl: row.imageUrl ?? row.image_url ?? undefined,
   updatedAt: row.updatedAt ?? row.updated_at
+});
+
+export const mapD1CatalogBanner = (row: any): CatalogBanner => ({
+  id: row.id,
+  title: row.title,
+  subtitle: row.subtitle ?? undefined,
+  ctaLabel: row.cta_label ?? row.ctaLabel ?? undefined,
+  imageKey: row.image_key ?? row.imageKey ?? undefined,
+  imageUrl: row.image_url ?? row.imageUrl ?? undefined,
+  isActive: Boolean(row.is_active ?? row.isActive ?? true),
+  sortOrder: Number(row.sort_order ?? row.sortOrder ?? 0),
+  updatedAt: row.updated_at ?? row.updatedAt ?? undefined,
 });
