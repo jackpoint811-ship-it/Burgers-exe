@@ -148,6 +148,7 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
         sku: item.productId,
         qty: item.qty,
         itemKind: catalogTypeToItemKind[item.type] ?? ("other" as OrderV2ItemKind),
+        name: item.name,
       }));
 
       const response = await createOrderV2({
