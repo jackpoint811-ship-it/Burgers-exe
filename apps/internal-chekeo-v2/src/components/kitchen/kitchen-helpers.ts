@@ -1,4 +1,4 @@
-import type { OrderV2ItemKind } from "@config/index";
+import { menuItems, type OrderV2ItemKind } from "@config/index";
 import type {
   KitchenItemKind,
   KitchenLocalBreakdownItem,
@@ -57,6 +57,34 @@ export const getKitchenItemLabel = (item: KitchenOrderItem) => {
   if (kind === "garnish") return "Side Quest";
   if (kind === "drink") return "Bebida";
   return "Burger";
+};
+
+export const getKitchenItemImage = (itemName: string): string | undefined => {
+  // Try exact match
+  let matched = menuItems.find(
+    (m) => m.name.toLowerCase() === itemName.toLowerCase()
+  );
+  
+  // Try partial match if no exact match
+  if (!matched) {
+    const cleanName = itemName.toLowerCase()
+      .replace("burger", "")
+      .replace("combo", "")
+      .trim();
+      
+    matched = menuItems.find((m) => 
+      m.name.toLowerCase().includes(cleanName)
+    );
+  }
+
+  // Fallbacks based on category/name if not found in menuItems
+  if (!matched) {
+    if (itemName.toLowerCase().includes("papas") || itemName.toLowerCase().includes("fries")) return "/placeholders/fries-classic.jpg";
+    if (itemName.toLowerCase().includes("aros")) return "/placeholders/onion-rings.jpg";
+    if (itemName.toLowerCase().includes("burger")) return "/placeholders/burger-og.jpg";
+  }
+
+  return matched?.imageUrl;
 };
 
 export const getKitchenItemNotes = (item: KitchenOrderItem) => {
@@ -355,45 +383,53 @@ const getShortName = (name: string): string => {
 };
 
 /**
- * Builds a compact queue summary for the entire kitchen order.
- * e.g. "x1 BBQ · x3 OG · x1 Combo BBQ · x2 Papas"
+ * Builds a compact queue summary for the entire kitchen order with emojis.
+ * e.g. "🍔 3 Burgers · 🍟 2 Sides"
  */
 export const buildKitchenOrderQueueSummary = (
   order: KitchenOrder,
 ): string => {
-  const counts = new Map<string, number>();
-
-  const addCount = (name: string, qty: number) => {
-    const short = getShortName(name);
-    counts.set(short, (counts.get(short) ?? 0) + qty);
-  };
+  let burgers = 0;
+  let sides = 0;
+  let drinks = 0;
 
   for (const item of order.items) {
     const kind = getKitchenItemKind(item);
 
-    if (kind === "burger" || kind === "combo" || kind === "garnish") {
-      addCount(item.name, item.qty);
-
+    if (kind === "burger" || kind === "combo") {
+      burgers += item.qty;
       if (kind === "combo") {
         if (item.comboBurgers && item.comboBurgers.length > 0) {
-          for (const cb of item.comboBurgers) {
-            addCount(cb.name, item.qty);
-          }
+          // If combo has explicitly defined burgers, count them instead of just 1 per combo
+          // Note: Usually 1 combo = 1 burger, but we add up just in case
+          const extraBurgers = item.comboBurgers.length - 1;
+          if (extraBurgers > 0) burgers += extraBurgers * item.qty;
         }
         if (item.garnish) {
-          addCount(item.garnish.name, item.qty);
+          sides += item.qty;
+        }
+        if (item.includedDrink) {
+          drinks += item.qty;
         }
       }
+    } else if (kind === "garnish") {
+      sides += item.qty;
+    } else if (kind === "drink") {
+      drinks += item.qty;
+    }
 
-      if (item.sideQuestExtras && item.sideQuestExtras.length > 0) {
-        for (const extra of item.sideQuestExtras) {
-          addCount(extra.name, item.qty);
-        }
+    if (item.sideQuestExtras && item.sideQuestExtras.length > 0) {
+      for (const extra of item.sideQuestExtras) {
+        if (extra.itemKind === "garnish") sides += item.qty;
+        else if (extra.itemKind === "drink") drinks += item.qty;
       }
     }
   }
 
-  return [...counts.entries()]
-    .map(([name, qty]) => `x${qty} ${name}`)
-    .join(" · ");
+  const parts: string[] = [];
+  if (burgers > 0) parts.push(`🍔 ${burgers} Burger${burgers !== 1 ? 's' : ''}`);
+  if (sides > 0) parts.push(`🍟 ${sides} Side${sides !== 1 ? 's' : ''}`);
+  if (drinks > 0) parts.push(`🥤 ${drinks} Bebida${drinks !== 1 ? 's' : ''}`);
+
+  return parts.join(" · ");
 };
