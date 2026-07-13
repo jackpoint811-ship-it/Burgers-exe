@@ -1,5 +1,6 @@
 import { formatCurrency } from "../lib/order";
 import { useCatalogCart } from "./CatalogCartContext";
+import { motion, useReducedMotion } from "framer-motion";
 
 type CatalogCartBarProps = {
   onOpenCart: () => void;
@@ -7,11 +8,19 @@ type CatalogCartBarProps = {
 
 export function CatalogCartBar({ onOpenCart }: CatalogCartBarProps) {
   const { count, total } = useCatalogCart();
+  const shouldReduceMotion = useReducedMotion();
 
   if (count === 0) return null;
 
   return (
-    <aside className="catalog-cart-bar" aria-label="Resumen del carrito">
+    <motion.aside
+      className="catalog-cart-bar"
+      aria-label="Resumen del carrito"
+      initial={shouldReduceMotion ? { opacity: 0 } : { y: 100, opacity: 0 }}
+      animate={shouldReduceMotion ? { opacity: 1 } : { y: 0, opacity: 1 }}
+      exit={shouldReduceMotion ? { opacity: 0 } : { y: 100, opacity: 0 }}
+      transition={{ type: "spring", damping: 25, stiffness: 200 }}
+    >
       <div className="catalog-cart-bar__summary">
         <span className="catalog-cart-bar__count" aria-label={`${count} ${count === 1 ? "producto" : "productos"} en el carrito`}>
           {count}
@@ -31,6 +40,6 @@ export function CatalogCartBar({ onOpenCart }: CatalogCartBarProps) {
       >
         Ver carrito
       </button>
-    </aside>
+    </motion.aside>
   );
 }
