@@ -1,4 +1,4 @@
-import { normalizeAssetKey, validateImageUrl } from '../../_asset-utils';
+import { normalizeAssetKey, validateAssetKey, validateImageUrl } from '../../_asset-utils';
 import { mapD1CatalogBanner } from '../../_menu-v2-utils';
 import { requireAdminToken, type AdminEnv } from '../../_orders-v2-utils';
 
@@ -7,8 +7,8 @@ type Env = AdminEnv & { BOG_MENU_ASSETS?: R2Bucket };
 const json = (status: number, payload: unknown) =>
   new Response(JSON.stringify(payload), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
 
-const normalizeOptionalString = (value: unknown): string | null => {
-  if (value === undefined) return undefined as any; // Keep undefined to signify 'no change'
+const normalizeOptionalString = (value: unknown): string | null | undefined => {
+  if (value === undefined) return undefined;
   if (value === null) return null;
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
@@ -23,8 +23,10 @@ export const onRequestPatch: PagesFunction<Env, 'id'> = async ({ env, request, p
   const id = params.id as string;
   if (!id) return json(400, { ok: false, error: 'ID is required' });
 
-  let body: Record<string, unknown>;
-  try { body = await request.json(); } catch { return json(400, { ok: false, error: 'Invalid payload' }); }
+  let raw: unknown;
+  try { raw = await request.json(); } catch { return json(400, { ok: false, error: 'Invalid payload' }); }
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return json(400, { ok: false, error: 'Invalid payload' });
+  const body = raw as Record<string, unknown>;
 
   const updates: string[] = [];
   const bindings: any[] = [];
@@ -46,11 +48,28 @@ export const onRequestPatch: PagesFunction<Env, 'id'> = async ({ env, request, p
     bindings.push(ctaLabel);
   }
 
+  if ('imageUrl' in body) {
+    const imageUrl = validateImageUrl(body.imageUrl);
+    if (imageUrl === undefined) return json(400, { ok: false, error: 'Invalid image URL' });
+    updates.push('image_url = ?');
+    bindings.push(imageUrl);
+  }
+
+  if ('imageKey' in body) {
+    const imageKey = validateAssetKey(body.imageKey);
+    if (imageKey === undefined) return json(400, { ok: false, error: 'Invalid image key' });
+    updates.push('image_key = ?');
+    bindings.push(imageKey);
+  }
+
   if (typeof body.isActive === 'boolean') {
     updates.push('is_active = ?');
     bindings.push(body.isActive ? 1 : 0);
   }
 
+  if (body.sortOrder !== undefined && (typeof body.sortOrder !== 'number' || !Number.isInteger(body.sortOrder))) {
+    return json(400, { ok: false, error: 'sortOrder must be an integer' });
+  }
   if (typeof body.sortOrder === 'number') {
     updates.push('sort_order = ?');
     bindings.push(body.sortOrder);
@@ -81,19 +100,23 @@ export const onRequestDelete: PagesFunction<Env, 'id'> = async ({ env, request, 
   const id = params.id as string;
   if (!id) return json(400, { ok: false, error: 'ID is required' });
 
-  // Delete image from R2 if it exists
   const row = await env.BOG_MENU_DB.prepare('SELECT image_key FROM catalog_banners WHERE id = ?').bind(id).first();
-  if (row?.image_key && env.BOG_MENU_ASSETS) {
-    const key = normalizeAssetKey(row.image_key as string);
-    if (key && key.startsWith('catalog-banners/')) {
-      await env.BOG_MENU_ASSETS.delete(key).catch(() => {});
-    }
-  }
-
   const result = await env.BOG_MENU_DB.prepare('DELETE FROM catalog_banners WHERE id = ?').bind(id).run();
   if (!result.success || result.meta.changes === 0) {
     return json(404, { ok: false, error: 'Banner not found' });
   }
 
-  return json(200, { ok: true, deleted: true });
+  let warning: string | undefined;
+  if (row?.image_key && env.BOG_MENU_ASSETS) {
+    const key = normalizeAssetKey(row.image_key as string);
+    if (key && key.startsWith('catalog-banners/')) {
+      try {
+        await env.BOG_MENU_ASSETS.delete(key);
+      } catch {
+        warning = 'El banner se eliminó, pero no se pudo borrar su imagen anterior.';
+      }
+    }
+  }
+
+  return json(200, { ok: true, deleted: true, ...(warning ? { warning } : {}) });
 };

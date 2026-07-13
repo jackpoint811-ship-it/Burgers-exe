@@ -1,4 +1,4 @@
-import { normalizeAssetKey, validateImageUrl } from '../_asset-utils';
+import { validateAssetKey, validateImageUrl } from '../_asset-utils';
 import { mapD1CatalogBanner } from '../_menu-v2-utils';
 import { requireAdminToken, type AdminEnv } from '../_orders-v2-utils';
 
@@ -18,16 +18,19 @@ const parseBody = (input: unknown) => {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
   const body = input as Record<string, unknown>;
   const title = typeof body.title === 'string' ? body.title.trim() : '';
-  if (!title) return null;
+  const imageUrl = validateImageUrl(body.imageUrl);
+  const imageKey = validateAssetKey(body.imageKey);
+  if (!title || imageUrl === undefined || imageKey === undefined) return null;
+  if (body.sortOrder !== undefined && (typeof body.sortOrder !== 'number' || !Number.isInteger(body.sortOrder))) return null;
 
   return {
     title,
     subtitle: normalizeOptionalString(body.subtitle),
     ctaLabel: normalizeOptionalString(body.ctaLabel),
-    imageUrl: validateImageUrl(body.imageUrl) ?? null,
-    imageKey: normalizeOptionalString(body.imageKey) ?? null,
+    imageUrl,
+    imageKey,
     isActive: typeof body.isActive === 'boolean' ? body.isActive : true,
-    sortOrder: typeof body.sortOrder === 'number' ? body.sortOrder : 0,
+    sortOrder: body.sortOrder ?? 0,
   };
 };
 

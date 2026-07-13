@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type MouseEvent } from "react";
 import { type CatalogProduct, PRODUCT_TYPE_LABELS, resolveCatalogAssetUrl } from "../lib/catalog-mode";
+import { CATALOG_CART_MAX_QTY } from "../lib/catalog-cart";
 import { formatCurrency } from "../lib/order";
 import { useCatalogCart } from "./CatalogCartContext";
 import { motion, useReducedMotion } from "framer-motion";
@@ -32,7 +33,7 @@ export function CatalogProductDrawer({ product, onClose }: CatalogProductDrawerP
   const src = product ? resolveCatalogAssetUrl(product.imageUrl, product.imageKey) : undefined;
 
   const currentItem = items.find((i) => i.productId === product?.id);
-  const isAtMax = currentItem ? currentItem.qty >= 10 : false;
+  const isAtMax = currentItem ? currentItem.qty >= CATALOG_CART_MAX_QTY : false;
 
   useEffect(() => {
     setJustAdded(false);

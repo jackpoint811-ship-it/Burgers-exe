@@ -30,7 +30,7 @@ export const siteConfig: SiteConfig = {
   brandName: 'Burgers.exe', currency: 'MXN', orderModes: ['pickup', 'delivery'], supportPhone: '+52 55 0000 0000', heroCta: 'Pedir ahora', notice: 'V2 mock mode: catálogo local sin conexión a backend.'
 };
 
-export const publicConfig = DEFAULT_PUBLIC_CONFIG;
+export const publicConfig = { ...DEFAULT_PUBLIC_CONFIG, publicMode: 'catalog' as const, catalogEnabled: true };
 
 export const orderStatuses = [
   { key: 'new', label: 'Nuevo' },

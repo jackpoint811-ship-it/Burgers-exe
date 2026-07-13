@@ -65,7 +65,7 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
   const prevSnapshotRef = useRef("");
 
   // Regenerate key when cart contents or customer info changes.
-  const currentSnapshot = JSON.stringify({ items: items.map(i => `${i.productId}:${i.qty}`), name, phone });
+  const currentSnapshot = JSON.stringify({ items: items.map(i => `${i.productId}:${i.qty}`), name, phone, paymentMethod });
   if (currentSnapshot !== prevSnapshotRef.current) {
     prevSnapshotRef.current = currentSnapshot;
     idempotencyKeyRef.current = generateIdempotencyKey();

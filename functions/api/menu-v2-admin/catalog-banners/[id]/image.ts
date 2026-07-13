@@ -142,13 +142,13 @@ export const onRequestDelete: PagesFunction<Env, 'id'> = async ({ env, params, r
   const currentBanner = await db.prepare('SELECT image_key FROM catalog_banners WHERE id = ?').bind(id).first();
   if (!currentBanner) return json(404, { ok: false, error: 'Banner no encontrado' });
 
-  const deleteWarning = await deletePreviousBannerAsset(env.BOG_MENU_ASSETS, currentBanner.image_key);
   const result = await db.prepare(
     `UPDATE catalog_banners SET image_key = NULL, image_url = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
   ).bind(id).run();
 
   if (!result.success || result.meta.changes === 0) return json(500, { ok: false, error: 'No se pudo quitar la imagen de DB' });
 
+  const deleteWarning = await deletePreviousBannerAsset(env.BOG_MENU_ASSETS, currentBanner.image_key);
   const updatedBanner = await db.prepare('SELECT id, title, subtitle, cta_label, image_key, image_url, is_active, sort_order, updated_at FROM catalog_banners WHERE id = ? LIMIT 1').bind(id).first();
 
   return json(200, {
