@@ -3,6 +3,7 @@ import { formatCurrency } from "../lib/order";
 import { resolveCatalogAssetUrl } from "../lib/catalog-mode";
 import { CATALOG_CART_MAX_QTY } from "../lib/catalog-cart";
 import { useCatalogCart } from "./CatalogCartContext";
+import { motion, useReducedMotion } from "framer-motion";
 
 type CatalogCartDrawerProps = {
   isOpen: boolean;
@@ -24,6 +25,7 @@ export function CatalogCartDrawer({ isOpen, onClose, onCheckout }: CatalogCartDr
   const closeRef = useRef<HTMLButtonElement | null>(null);
   const dialogRef = useRef<HTMLElement | null>(null);
   const titleId = useId();
+  const shouldReduceMotion = useReducedMotion();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -69,20 +71,30 @@ export function CatalogCartDrawer({ isOpen, onClose, onCheckout }: CatalogCartDr
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
-
   const handleBackdropClick = (event: MouseEvent<HTMLDivElement>) => {
     if (event.target === event.currentTarget) onClose();
   };
 
   return (
-    <div className="catalog-drawer-backdrop" role="presentation" onClick={handleBackdropClick}>
-      <section
-        ref={dialogRef}
+    <motion.div
+      className="catalog-drawer-backdrop"
+      role="presentation"
+      onClick={handleBackdropClick}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+    >
+      <motion.section
+        ref={dialogRef as any}
         className="catalog-drawer catalog-cart-drawer"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        initial={shouldReduceMotion ? { opacity: 0 } : { y: "100%" }}
+        animate={shouldReduceMotion ? { opacity: 1 } : { y: 0 }}
+        exit={shouldReduceMotion ? { opacity: 0 } : { y: "100%" }}
+        transition={{ type: "spring", damping: 25, stiffness: 200 }}
       >
         <header className="catalog-drawer__header catalog-cart-drawer__header">
           <h2 id={titleId} className="catalog-cart-drawer__title">Tu carrito</h2>
@@ -167,7 +179,7 @@ export function CatalogCartDrawer({ isOpen, onClose, onCheckout }: CatalogCartDr
             </div>
           </>
         )}
-      </section>
-    </div>
+      </motion.section>
+    </motion.div>
   );
 }

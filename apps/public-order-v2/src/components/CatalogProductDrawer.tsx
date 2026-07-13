@@ -2,9 +2,10 @@ import { useEffect, useId, useRef, useState, type MouseEvent } from "react";
 import { type CatalogProduct, PRODUCT_TYPE_LABELS, resolveCatalogAssetUrl } from "../lib/catalog-mode";
 import { formatCurrency } from "../lib/order";
 import { useCatalogCart } from "./CatalogCartContext";
+import { motion, useReducedMotion } from "framer-motion";
 
 type CatalogProductDrawerProps = {
-  product: CatalogProduct | null;
+  product: CatalogProduct;
   onClose: () => void;
 };
 
@@ -27,15 +28,12 @@ export function CatalogProductDrawer({ product, onClose }: CatalogProductDrawerP
   const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleId = useId();
   const descriptionId = useId();
+  const shouldReduceMotion = useReducedMotion();
   const src = product ? resolveCatalogAssetUrl(product.imageUrl, product.imageKey) : undefined;
 
   const currentItem = items.find((i) => i.productId === product?.id);
-  // Default to 10 from CATALOG_CART_MAX_QTY to avoid importing if not strictly needed, 
-  // wait, we should import CATALOG_CART_MAX_QTY to be completely correct.
-  // Actually I can just check if qty >= 10. Let's do >= 10.
   const isAtMax = currentItem ? currentItem.qty >= 10 : false;
 
-  // Reset feedback when a different product opens
   useEffect(() => {
     setJustAdded(false);
     if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
@@ -105,14 +103,26 @@ export function CatalogProductDrawer({ product, onClose }: CatalogProductDrawerP
   };
 
   return (
-    <div className="catalog-drawer-backdrop" role="presentation" onClick={handleBackdropClick}>
-      <section
-        ref={dialogRef}
+    <motion.div
+      className="catalog-drawer-backdrop"
+      role="presentation"
+      onClick={handleBackdropClick}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+    >
+      <motion.section
+        ref={dialogRef as any}
         className="catalog-drawer"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={product.description ? descriptionId : undefined}
+        initial={shouldReduceMotion ? { opacity: 0 } : { y: "100%" }}
+        animate={shouldReduceMotion ? { opacity: 1 } : { y: 0 }}
+        exit={shouldReduceMotion ? { opacity: 0 } : { y: "100%" }}
+        transition={{ type: "spring", damping: 25, stiffness: 200 }}
       >
         <div className="catalog-drawer__media" aria-hidden="true">
           {src ? <img src={src} alt="" decoding="async" /> : <span>{PRODUCT_TYPE_LABELS[product.type]}</span>}
@@ -162,7 +172,7 @@ export function CatalogProductDrawer({ product, onClose }: CatalogProductDrawerP
             )}
           </div>
         </div>
-      </section>
-    </div>
+      </motion.section>
+    </motion.div>
   );
 }

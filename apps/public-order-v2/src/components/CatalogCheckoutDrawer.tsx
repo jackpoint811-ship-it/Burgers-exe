@@ -4,6 +4,7 @@ import { getPublicOrderEnvironment } from "@config/index";
 import { formatCurrency } from "../lib/order";
 import { useCatalogCart } from "./CatalogCartContext";
 import { createOrderV2 } from "../lib/orders-v2";
+import { motion, useReducedMotion } from "framer-motion";
 import type { CatalogProductType } from "../lib/catalog-mode";
 
 /** Map catalog product types to backend OrderV2ItemKind values. */
@@ -56,6 +57,8 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
   const [phone, setPhone] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<OrderV2PaymentMethod>("unknown");
   const [checkoutState, setCheckoutState] = useState<CheckoutState>({ status: "idle" });
+
+  const shouldReduceMotion = useReducedMotion();
 
   // Stable idempotency key: regenerated only when cart or customer data changes.
   const idempotencyKeyRef = useRef(generateIdempotencyKey());
@@ -119,8 +122,6 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
-
   const handleBackdropClick = (event: MouseEvent<HTMLDivElement>) => {
     if (event.target === event.currentTarget) onClose();
   };
@@ -175,13 +176,25 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
   };
 
   return (
-    <div className="catalog-drawer-backdrop" role="presentation" onClick={handleBackdropClick}>
-      <section
-        ref={dialogRef}
+    <motion.div
+      className="catalog-drawer-backdrop"
+      role="presentation"
+      onClick={handleBackdropClick}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+    >
+      <motion.section
+        ref={dialogRef as any}
         className="catalog-drawer catalog-checkout-drawer"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        initial={shouldReduceMotion ? { opacity: 0 } : { y: "100%" }}
+        animate={shouldReduceMotion ? { opacity: 1 } : { y: 0 }}
+        exit={shouldReduceMotion ? { opacity: 0 } : { y: "100%" }}
+        transition={{ type: "spring", damping: 25, stiffness: 200 }}
       >
         <header className="catalog-drawer__header catalog-cart-drawer__header">
           <h2 id={titleId} className="catalog-cart-drawer__title">
@@ -297,7 +310,7 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
             </div>
           </form>
         )}
-      </section>
-    </div>
+      </motion.section>
+    </motion.div>
   );
 }

@@ -5,6 +5,7 @@ import { CatalogCartDrawer } from "./CatalogCartDrawer";
 import { CatalogCheckoutDrawer } from "./CatalogCheckoutDrawer";
 import { CatalogCartBar } from "./CatalogCartBar";
 import { CatalogCartProvider } from "./CatalogCartContext";
+import { AnimatePresence } from "framer-motion";
 import { CatalogBannerRail } from "./CatalogBannerRail";
 import {
   type CatalogProduct,
@@ -121,10 +122,18 @@ function CatalogModeAppInner({ items, categories, siteConfig, catalogBanners = [
 
       </main>
 
-      <CatalogCartBar onOpenCart={openCart} />
-      <CatalogProductDrawer product={selectedProduct} onClose={closeProductDrawer} />
-      <CatalogCartDrawer isOpen={isCartOpen} onClose={closeCart} onCheckout={openCheckout} />
-      <CatalogCheckoutDrawer isOpen={isCheckoutOpen} onClose={closeCheckout} />
+      <AnimatePresence>
+        <CatalogCartBar key="cart-bar" onOpenCart={openCart} />
+      </AnimatePresence>
+      <AnimatePresence>
+        {selectedProduct && <CatalogProductDrawer key="product-drawer" product={selectedProduct} onClose={closeProductDrawer} />}
+      </AnimatePresence>
+      <AnimatePresence>
+        {isCartOpen && <CatalogCartDrawer key="cart-drawer" isOpen={isCartOpen} onClose={closeCart} onCheckout={openCheckout} />}
+      </AnimatePresence>
+      <AnimatePresence>
+        {isCheckoutOpen && <CatalogCheckoutDrawer key="checkout-drawer" isOpen={isCheckoutOpen} onClose={closeCheckout} />}
+      </AnimatePresence>
     </>
   );
 }
