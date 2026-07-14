@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, type MouseEvent } from "react";
 import { formatCurrency } from "../lib/order";
-import { resolveCatalogAssetUrl } from "../lib/catalog-mode";
+import { resolveCatalogAssetUrl, type CatalogProduct } from "../lib/catalog-mode";
 import { CATALOG_CART_MAX_QTY } from "../lib/catalog-cart";
 import { useCatalogCart } from "./CatalogCartContext";
 import { motion, useReducedMotion } from "framer-motion";
@@ -9,6 +9,7 @@ type CatalogCartDrawerProps = {
   isOpen: boolean;
   onClose: () => void;
   onCheckout: () => void;
+  sides?: CatalogProduct[];
 };
 
 const focusableSelector = [
@@ -20,12 +21,16 @@ const focusableSelector = [
   "[tabindex]:not([tabindex='-1'])",
 ].join(",");
 
-export function CatalogCartDrawer({ isOpen, onClose, onCheckout }: CatalogCartDrawerProps) {
-  const { items, total, setQty, removeItem } = useCatalogCart();
+export function CatalogCartDrawer({ isOpen, onClose, onCheckout, sides = [] }: CatalogCartDrawerProps) {
+  const { items, total, setQty, removeItem, addItem } = useCatalogCart();
   const closeRef = useRef<HTMLButtonElement | null>(null);
   const dialogRef = useRef<HTMLElement | null>(null);
   const titleId = useId();
   const shouldReduceMotion = useReducedMotion();
+
+  const hasBurger = items.some((item) => item.type === "burger");
+  const hasSide = items.some((item) => item.type === "side");
+  const showUpsell = hasBurger && !hasSide && sides.length > 0;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -167,6 +172,39 @@ export function CatalogCartDrawer({ isOpen, onClose, onCheckout }: CatalogCartDr
                 );
               })}
             </ul>
+
+            {showUpsell && (
+              <div className="catalog-cart-upsell">
+                <h4 className="catalog-cart-upsell__title">¿Te gustaría acompañar tu hamburguesa?</h4>
+                <div className="catalog-cart-upsell__carousel">
+                  {sides.map((side) => {
+                    const sideSrc = resolveCatalogAssetUrl(side.imageUrl, side.imageKey);
+                    return (
+                      <div key={side.id} className="catalog-cart-upsell-item">
+                        <div className="catalog-cart-upsell-item__image">
+                          {sideSrc ? (
+                            <img src={sideSrc} alt="" decoding="async" loading="lazy" />
+                          ) : (
+                            <span className="catalog-cart-upsell-item__image-placeholder" />
+                          )}
+                        </div>
+                        <div className="catalog-cart-upsell-item__info">
+                          <p className="catalog-cart-upsell-item__name">{side.name}</p>
+                          <p className="catalog-cart-upsell-item__price">{formatCurrency(side.price)}</p>
+                        </div>
+                        <button
+                          type="button"
+                          className="catalog-cart-upsell-item__add"
+                          onClick={() => addItem(side)}
+                        >
+                          + Agregar
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             <div className="catalog-cart-drawer__footer">
               <div className="catalog-cart-drawer__total">
