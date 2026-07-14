@@ -146,4 +146,112 @@ test.describe("Catalog Drawers Accessibility & Focus Trap", () => {
     await closeBtn.click();
     await expect(drawer).toBeHidden();
   });
+
+  test("Checkout Drawer - inline validation, aria properties, first invalid focus, success focus redirection", async ({ page }) => {
+    let createOrderPayload: any = null;
+    await page.route("**/api/orders-v2", async (route) => {
+      createOrderPayload = route.request().postDataJSON();
+      await route.fulfill({
+        status: 200,
+        json: {
+          ok: true,
+          data: {
+            order: {
+              id: "test-order-id-a11y",
+              folio: "QA-FOLIO-123",
+              status: "preparing",
+              createdAt: new Date().toISOString(),
+              subtotal: 100,
+              total: 100,
+              currency: "MXN",
+              idempotencyKey: "test-key"
+            }
+          }
+        }
+      });
+    });
+
+    await page.goto(`${publicUrl}/`, { waitUntil: "domcontentloaded" });
+
+    // Add item to cart
+    await page.click(".catalog-card__detail-trigger");
+    await page.click("button.catalog-drawer__add-btn");
+    await page.click("button.catalog-drawer__close");
+
+    // Open Cart Drawer
+    await page.click("button.catalog-cart-bar__cta");
+
+    // Click checkout button to open Checkout Drawer
+    await page.click("button.catalog-cart-drawer__checkout");
+
+    const checkoutDrawer = page.locator(".catalog-checkout-drawer");
+    await expect(checkoutDrawer).toBeVisible();
+
+    const nameInput = page.locator("#checkout-name");
+    const phoneInput = page.locator("#checkout-phone");
+    const submitBtn = page.locator("button.catalog-checkout__submit[type='submit']");
+
+    // 1. Attempt submit with empty fields. Should trigger validation errors.
+    await submitBtn.click();
+
+    // Verify name has error
+    const nameError = page.locator("#name-error");
+    await expect(nameError).toBeVisible();
+    await expect(nameError).toContainText("Por favor, ingresa tu nombre.");
+    await expect(nameInput).toHaveAttribute("aria-invalid", "true");
+    await expect(nameInput).toHaveAttribute("aria-describedby", "name-error");
+
+    // Verify first invalid input is focused (name)
+    await expect(nameInput).toBeFocused();
+
+    // 2. Fill name but leave phone empty. Submit again.
+    await nameInput.fill("John Doe");
+    await submitBtn.click();
+
+    // Name error should be gone, phone error should be visible
+    await expect(nameError).toBeHidden();
+    const phoneError = page.locator("#phone-error");
+    await expect(phoneError).toBeVisible();
+    await expect(phoneError).toContainText("Por favor, ingresa tu teléfono.");
+    await expect(phoneInput).toHaveAttribute("aria-invalid", "true");
+    await expect(phoneInput).toHaveAttribute("aria-describedby", "phone-error");
+    await expect(phoneInput).toBeFocused();
+
+    // 3. Fill invalid phone (e.g. 5 digits). Submit again.
+    await phoneInput.fill("12345");
+    await submitBtn.click();
+    await expect(phoneError).toContainText("El teléfono debe tener exactamente 10 dígitos.");
+    await expect(phoneInput).toBeFocused();
+
+    // 4. Fill valid phone, but leave deliveryDate and location empty.
+    await phoneInput.fill("55 1234 5678");
+
+    // Wait, by default, deliveryDate is initialized to 'Hoy' (same day ordering is open/closed).
+    // Let's verify delivery date and location errors.
+    // If we click submit, location error should trigger because location is not selected yet.
+    await submitBtn.click();
+    const locationError = page.locator("#location-error");
+    await expect(locationError).toBeVisible();
+    await expect(locationError).toContainText("Por favor, elige tu ubicación de entrega.");
+    
+    // The first location chip button should receive focus
+    const firstLocationChip = page.locator("#location-label + .catalog-checkout-chips button").first();
+    await expect(firstLocationChip).toBeFocused();
+
+    // Select location
+    await firstLocationChip.click();
+    await expect(locationError).toBeHidden();
+
+    // Now submit successfully
+    await submitBtn.click();
+
+    // success screen should render
+    const successScreen = page.locator(".catalog-checkout-success");
+    await expect(successScreen).toBeVisible();
+
+    // keyboard focus should shift to success heading to prevent focus loss
+    const successHeading = page.locator("h2.catalog-cart-drawer__title");
+    await expect(successHeading).toBeFocused();
+    await expect(successHeading).toContainText("Pedido recibido");
+  });
 });
