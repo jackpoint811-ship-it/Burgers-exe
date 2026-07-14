@@ -7902,3 +7902,64 @@ html {
     transform: translateY(1px);
   }
 }
+
+/* Date selection and payment summary tweaks */
+.catalog-checkout-chips--dates {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.catalog-checkout-chips--dates .catalog-checkout-chip {
+  text-align: left;
+  padding: 0.75rem 1rem;
+}
+
+.catalog-checkout-closed-notice {
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  border-radius: 8px;
+  padding: 0.75rem;
+  color: #fca5a5;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  margin-bottom: 0.25rem;
+}
+
+.catalog-checkout-payment-summary {
+  width: 100%;
+  background: rgba(243, 255, 246, 0.03);
+  border: 1px solid rgba(243, 255, 246, 0.08);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.catalog-checkout-payment-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  color: rgba(243, 255, 246, 0.7);
+}
+
+.catalog-checkout-payment-row strong {
+  font-size: 1.15rem;
+  font-weight: 900;
+  font-family: monospace;
+}
+
+.catalog-checkout-payment-row--highlight {
+  color: #fff;
+  border-top: 1px solid rgba(243, 255, 246, 0.08);
+  padding-top: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.catalog-checkout-payment-row--highlight strong {
+  color: var(--neon, #39ff88);
+  text-shadow: 0 0 6px rgba(57, 255, 136, 0.25);
+}

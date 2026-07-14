@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState, type MouseEvent, type FormEvent } from "react";
 import type { OrderV2PaymentMethod, OrderV2ItemKind } from "@config/index";
-import { getPublicOrderEnvironment } from "@config/index";
+import { getPublicOrderEnvironment, DEFAULT_CATALOG_SETTINGS } from "@config/index";
 import { formatCurrency } from "../lib/order";
 import { useCatalogCart } from "./CatalogCartContext";
 import { createOrderV2 } from "../lib/orders-v2";
@@ -19,6 +19,19 @@ const catalogTypeToItemKind: Record<CatalogProductType, OrderV2ItemKind> = {
 type CatalogCheckoutDrawerProps = {
   isOpen: boolean;
   onClose: () => void;
+};
+
+const getMexicoCityTime = () => {
+  const options = { timeZone: "America/Mexico_City", hour: "2-digit", minute: "2-digit", hour12: false } as const;
+  const timeString = new Intl.DateTimeFormat("es-MX", options).format(new Date());
+  return timeString; // e.g. "10:30"
+};
+
+const isSameDayOrderingOpen = () => {
+  const current = getMexicoCityTime();
+  const start = DEFAULT_CATALOG_SETTINGS.orderWindow.startTime;
+  const end = DEFAULT_CATALOG_SETTINGS.orderWindow.endTime;
+  return current >= start && current <= end;
 };
 
 const focusableSelector = [
@@ -67,6 +80,29 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
   const [notes, setNotes] = useState("");
   const [checkoutState, setCheckoutState] = useState<CheckoutState>({ status: "idle" });
 
+  const isSameDayOpen = isSameDayOrderingOpen();
+  const futureDates = useMemo(() => {
+    const dates = [];
+    const now = new Date();
+    for (let i = 1; i <= 3; i++) {
+      const future = new Date(now.getTime() + i * 24 * 60 * 60 * 1000);
+      const yyyy = future.getFullYear();
+      const mm = String(future.getMonth() + 1).padStart(2, "0");
+      const dd = String(future.getDate()).padStart(2, "0");
+
+      const labelOptions = { timeZone: "America/Mexico_City", weekday: "long", day: "numeric", month: "long" } as const;
+      const label = new Intl.DateTimeFormat("es-MX", labelOptions).format(future);
+
+      dates.push({
+        value: `${yyyy}-${mm}-${dd}`,
+        label: label.charAt(0).toUpperCase() + label.slice(1),
+      });
+    }
+    return dates;
+  }, []);
+
+  const [deliveryDate, setDeliveryDate] = useState<string>(isSameDayOpen ? "Hoy" : (futureDates[0]?.value || ""));
+
   const shouldReduceMotion = useReducedMotion();
 
   // Stable idempotency key: regenerated only when cart or customer data changes.
@@ -74,7 +110,7 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
   const prevSnapshotRef = useRef("");
 
   // Regenerate key when cart contents or customer info changes.
-  const currentSnapshot = JSON.stringify({ items: items.map(i => `${i.productId}:${i.qty}`), name, phone, paymentMethod, location, wantsWhatsappGroup, notes });
+  const currentSnapshot = JSON.stringify({ items: items.map(i => `${i.productId}:${i.qty}`), name, phone, paymentMethod, location, wantsWhatsappGroup, notes, deliveryDate });
   if (currentSnapshot !== prevSnapshotRef.current) {
     prevSnapshotRef.current = currentSnapshot;
     idempotencyKeyRef.current = generateIdempotencyKey();
@@ -90,6 +126,7 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
       setLocation("");
       setWantsWhatsappGroup(true);
       setNotes("");
+      setDeliveryDate(isSameDayOpen ? "Hoy" : (futureDates[0]?.value || ""));
       return;
     }
 
@@ -158,6 +195,11 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
       return;
     }
 
+    if (!deliveryDate) {
+      setCheckoutState({ status: "error", error: "Por favor, elige una fecha de entrega." });
+      return;
+    }
+
     setCheckoutState({ status: "submitting" });
 
     try {
@@ -168,7 +210,7 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
         name: item.name,
       }));
 
-      const formattedNotes = `Ubicación: ${location}${notes.trim() ? ` | ${notes.trim()}` : ""}`;
+      const formattedNotes = `Ubicación: ${location} | Fecha: ${deliveryDate}${notes.trim() ? ` | Notas: ${notes.trim()}` : ""}`;
 
       const response = await createOrderV2({
         customer: { name: name.trim(), phone: normalizedPhone },
@@ -287,6 +329,41 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
               </label>
 
               <div className="catalog-checkout-field">
+                <span id="date-label">Fecha de entrega</span>
+                <div className="catalog-checkout-chips catalog-checkout-chips--dates" role="radiogroup" aria-labelledby="date-label">
+                  {isSameDayOpen ? (
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={deliveryDate === "Hoy"}
+                      className={deliveryDate === "Hoy" ? "catalog-checkout-chip active" : "catalog-checkout-chip"}
+                      onClick={() => setDeliveryDate("Hoy")}
+                      disabled={checkoutState.status === "submitting"}
+                    >
+                      Hoy (Llega: 1:30 PM a 2:00 PM)
+                    </button>
+                  ) : (
+                    <div className="catalog-checkout-closed-notice">
+                      <span>Pedidos para el mismo día cerrados (Cierre: 11:33 AM). ¡Ordena para mañana!</span>
+                    </div>
+                  )}
+                  {futureDates.map((date) => (
+                    <button
+                      type="button"
+                      key={date.value}
+                      role="radio"
+                      aria-checked={deliveryDate === date.value}
+                      className={deliveryDate === date.value ? "catalog-checkout-chip active" : "catalog-checkout-chip"}
+                      onClick={() => setDeliveryDate(date.value)}
+                      disabled={checkoutState.status === "submitting"}
+                    >
+                      {date.label} (1:30 PM)
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="catalog-checkout-field">
                 <span id="location-label">Ubicación (Entrega)</span>
                 <div className="catalog-checkout-chips" role="radiogroup" aria-labelledby="location-label">
                   <button
@@ -378,9 +455,28 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
             </div>
 
             <div className="catalog-cart-drawer__footer">
-              <div className="catalog-cart-drawer__total">
-                <span>Total a pagar</span>
-                <strong>{formatCurrency(total)}</strong>
+              <div className="catalog-checkout-payment-summary">
+                <div className="catalog-checkout-payment-row">
+                  <span>Total del pedido</span>
+                  <span>{formatCurrency(total)}</span>
+                </div>
+                {deliveryDate !== "Hoy" && deliveryDate !== "" ? (
+                  <>
+                    <div className="catalog-checkout-payment-row catalog-checkout-payment-row--highlight">
+                      <span>Anticipo requerido (50%)</span>
+                      <strong>{formatCurrency(total / 2)}</strong>
+                    </div>
+                    <div className="catalog-checkout-payment-row">
+                      <span>Restante a la entrega</span>
+                      <span>{formatCurrency(total / 2)}</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="catalog-checkout-payment-row catalog-checkout-payment-row--highlight">
+                    <span>Pago requerido (100%)</span>
+                    <strong>{formatCurrency(total)}</strong>
+                  </div>
+                )}
               </div>
               <button 
                 type="submit" 
