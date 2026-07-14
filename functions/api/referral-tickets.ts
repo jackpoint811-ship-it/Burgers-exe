@@ -26,7 +26,13 @@ const json = (status: number, body: unknown) => new Response(JSON.stringify(body
   headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }
 });
 
-const onlyDigits = (value: unknown) => String(value ?? '').replace(/\D/g, '');
+const onlyDigits = (value: unknown) => {
+  const digits = String(value ?? '').replace(/\D/g, '');
+  if (digits.length === 12 && digits.startsWith('52')) {
+    return digits.slice(2);
+  }
+  return digits;
+};
 const normalizePhoneSql = (column: string) => `REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(${column}, ' ', ''), '-', ''), '(', ''), ')', ''), '+', '')`;
 const maskPhone = (value: unknown) => {
   const digits = onlyDigits(value);

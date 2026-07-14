@@ -24,7 +24,47 @@ export const getKitchenItemKind = (
   item: Pick<KitchenOrderItem, "itemKind" | "name">,
 ): OrderV2ItemKind => {
   if (item.itemKind) return item.itemKind;
-  return item.name.toLowerCase().includes("fries") ? "garnish" : "burger";
+
+  const nameLower = item.name.toLowerCase();
+
+  if (nameLower.includes("combo")) {
+    return "combo";
+  }
+
+  if (
+    nameLower.includes("fries") ||
+    nameLower.includes("papas") ||
+    nameLower.includes("aros") ||
+    nameLower.includes("onion") ||
+    nameLower.includes("dedos")
+  ) {
+    return "garnish";
+  }
+
+  if (
+    nameLower.includes("bebida") ||
+    nameLower.includes("refresco") ||
+    nameLower.includes("agua") ||
+    nameLower.includes("cola") ||
+    nameLower.includes("soda") ||
+    nameLower.includes("drink") ||
+    nameLower.includes("coca") ||
+    nameLower.includes("jugo")
+  ) {
+    return "drink";
+  }
+
+  if (
+    nameLower.includes("extra") ||
+    nameLower.includes("queso") ||
+    nameLower.includes("tocino") ||
+    nameLower.includes("aderezo") ||
+    nameLower.includes("topping")
+  ) {
+    return "other";
+  }
+
+  return "burger";
 };
 
 export const isKitchenActionKind = (
@@ -146,21 +186,23 @@ export const getComboBurgerNotes = (item: KitchenOrderItem) =>
 
 const isProductionItem = (item: KitchenOrderItem) => {
   const kind = getKitchenItemKind(item);
-  return kind === "burger" || kind === "combo" || kind === "garnish";
+  return kind !== "other";
 };
 
 const hasComboBurgerWork = (item: KitchenOrderItem) => {
   const kind = getKitchenItemKind(item);
-  return kind === "combo" || kind === "burger";
+  return kind === "burger" || kind === "combo";
 };
 
 const hasSideQuestWork = (item: KitchenOrderItem) => {
-  return getKitchenItemKind(item) === "garnish";
+  const kind = getKitchenItemKind(item);
+  return kind === "garnish" || kind === "drink";
 };
 
 const getSideQuestLabel = (item: KitchenOrderItem) => {
   const labels: string[] = [];
-  if (getKitchenItemKind(item) === "garnish") labels.push(item.name);
+  const kind = getKitchenItemKind(item);
+  if (kind === "garnish" || kind === "drink") labels.push(item.name);
   if (item.garnish?.name) labels.push(item.garnish.name);
   if (item.sideQuestExtras.length) {
     labels.push(...item.sideQuestExtras.map((extra) => extra.name));
@@ -400,17 +442,13 @@ export const buildKitchenOrderQueueSummary = (
       burgers += item.qty;
       if (kind === "combo") {
         if (item.comboBurgers && item.comboBurgers.length > 0) {
-          // If combo has explicitly defined burgers, count them instead of just 1 per combo
-          // Note: Usually 1 combo = 1 burger, but we add up just in case
           const extraBurgers = item.comboBurgers.length - 1;
           if (extraBurgers > 0) burgers += extraBurgers * item.qty;
         }
-        if (item.garnish) {
-          sides += item.qty;
-        }
-        if (item.includedDrink) {
-          drinks += item.qty;
-        }
+        // Combo has 1 side by default
+        sides += item.qty;
+        // Combo has 1 drink by default
+        drinks += item.qty;
       }
     } else if (kind === "garnish") {
       sides += item.qty;

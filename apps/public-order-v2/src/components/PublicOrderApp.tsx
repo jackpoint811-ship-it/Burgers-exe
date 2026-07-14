@@ -113,7 +113,13 @@ const createEmptyCustomer = (): CustomerDraft => ({
   paymentMethod: "unknown",
   paymentTiming: "",
 });
-const normalizePhoneDigits = (phone: string) => phone.replace(/\D/g, "");
+const normalizePhoneDigits = (phone: string) => {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 12 && digits.startsWith("52")) {
+    return digits.slice(2);
+  }
+  return digits;
+};
 const formatPhoneForDisplay = (phone: string) => {
   const digits = normalizePhoneDigits(phone);
   const parts = [digits.slice(0, 3), digits.slice(3, 6), digits.slice(6)].filter(Boolean);
@@ -2208,6 +2214,7 @@ export function PublicOrderApp() {
         categories={menuData.categories}
         siteConfig={menuData.siteConfig}
         catalogBanners={menuData.catalogBanners}
+        source={menuData.source}
       />
     );
   }

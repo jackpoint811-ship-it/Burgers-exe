@@ -452,7 +452,9 @@ const PendingOrdersQueue = ({
       {expanded ? (
         <div className="kitchen-following-orders__list border-t border-zinc-800/40 p-3 space-y-3">
           {groups.map((group) => {
-            const shortSummary = buildKitchenOrderQueueSummary(group.order);
+            const shortSummary = isSideQuest
+              ? buildKitchenOrderQueueSummary(group.order)
+              : null;
             return (
               <div key={group.orderId} className="kitchen-production-card bg-zinc-950/60 border border-zinc-800/80 p-3 rounded-xl text-left">
                 <div className="flex justify-between items-start">
@@ -495,7 +497,9 @@ const PendingOrdersQueue = ({
           {visible.map((group, idx) => {
             const isFirst = idx === 0;
             const opacityValue = isFirst ? 1 : idx === 1 ? 0.75 : idx === 2 ? 0.55 : 0.4;
-            const shortSummary = buildKitchenOrderQueueSummary(group.order);
+            const shortSummary = isSideQuest
+              ? buildKitchenOrderQueueSummary(group.order)
+              : null;
             return (
               <div
                 key={group.orderId}
