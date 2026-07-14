@@ -111,6 +111,26 @@ export function CatalogAdminPanel() {
   const [selectedCatalogBannerFile, setSelectedCatalogBannerFile] = useState<File | null>(null);
   const [catalogBannerError, setCatalogBannerError] = useState<string | null>(null);
   const catalogBannerFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [catalogBannersLoading, setCatalogBannersLoading] = useState(false);
+  const [catalogBannersError, setCatalogBannersError] = useState<string | null>(null);
+
+  const loadCatalogBanners = async () => {
+    setCatalogBannersLoading(true);
+    setCatalogBannersError(null);
+    try {
+      const res = await fetch('/api/menu-v2-admin/catalog-banners', { credentials: 'include' });
+      const data = (await res.json()) as { ok: boolean; banners?: CatalogBanner[]; error?: string };
+      if (!res.ok || !data.ok || !data.banners) throw new Error(data.error ?? 'Error al cargar banners del catálogo');
+      setMenu((current) => {
+        if (!current) return current;
+        return { ...current, catalogBanners: data.banners };
+      });
+    } catch (e) {
+      setCatalogBannersError(e instanceof Error ? e.message : 'No se pudieron cargar los banners de catálogo');
+    } finally {
+      setCatalogBannersLoading(false);
+    }
+  };
 
   const [notice, setNotice] = useState<string | null>(null);
   const [ingredients, setIngredients] = useState<IngredientV2[]>([]);
@@ -693,6 +713,7 @@ export function CatalogAdminPanel() {
 
   const loadIngredients = async () => { setIngredientsLoading(true); setIngredientError(null); try { setIngredients(await fetchIngredientsV2Admin()); } catch (err) { setIngredientError(err instanceof Error ? err.message : 'No se pudieron cargar ingredientes cuantificables'); } finally { setIngredientsLoading(false); } };
   useEffect(() => { if (catalogTab === 'ingredients') void loadIngredients(); }, [catalogTab]);
+  useEffect(() => { if (catalogTab === 'catalog-banners') void loadCatalogBanners(); }, [catalogTab]);
   const productOptions = useMemo(() => (menu?.items ?? []).filter((item) => ['burgers', 'combos', 'guarniciones'].includes(item.category)).sort((a, b) => a.category.localeCompare(b.category) || a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)), [menu]);
   useEffect(() => { if (catalogTab !== 'ingredients' || selectedRecipeSku || !productOptions.length) return; setSelectedRecipeSku(productOptions[0].sku); }, [catalogTab, productOptions, selectedRecipeSku]);
   useEffect(() => { if (catalogTab !== 'ingredients' || !selectedRecipeSku) return; setRecipeLoading(true); setRecipeError(null); fetchProductRecipeV2Admin(selectedRecipeSku).then((recipes) => setRecipeRows(recipes.map(recipeToFormRow))).catch((err) => setRecipeError(err instanceof Error ? err.message : 'No se pudo cargar la receta aproximada')).finally(() => setRecipeLoading(false)); }, [catalogTab, selectedRecipeSku]);
@@ -721,32 +742,38 @@ export function CatalogAdminPanel() {
         </div>
 
         <div className='grid gap-3'>
-          {(menu?.catalogBanners ?? []).map((banner) => (
-            <div key={banner.id} className={`rounded-xl border p-3 flex gap-4 items-start ${banner.isActive ? 'border-zinc-800 bg-zinc-900/70' : 'border-zinc-800/50 bg-zinc-900/40 opacity-75'}`}>
-              <div className='image-preview w-24 shrink-0 sm:w-32'>
-                {banner.imageUrl || banner.imageKey ? (
-                  <img src={getAssetUrl(banner.imageUrl, banner.imageKey)} alt={`Banner ${banner.title}`} loading='lazy' decoding='async' />
-                ) : (
-                  <span>Sin imagen</span>
-                )}
-              </div>
-              <div className='flex-1 min-w-0'>
-                <div className='flex flex-wrap gap-2 items-center'>
-                  <h5 className='font-bold text-zinc-100 truncate'>{banner.title}</h5>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${banner.isActive ? 'bg-emerald-500/15 text-emerald-200' : 'bg-rose-500/15 text-rose-200'}`}>{banner.isActive ? 'Activo' : 'Inactivo'}</span>
+          {catalogBannersLoading ? (
+            <p className='text-sm text-zinc-400'>Cargando banners del catálogo...</p>
+          ) : catalogBannersError ? (
+            <p className='rounded-lg border border-rose-400/20 bg-rose-400/10 px-3 py-2 text-xs text-rose-100'>{catalogBannersError}</p>
+          ) : (
+            (menu?.catalogBanners ?? []).map((banner) => (
+              <div key={banner.id} className={`rounded-xl border p-3 flex gap-4 items-start ${banner.isActive ? 'border-zinc-800 bg-zinc-900/70' : 'border-zinc-800/50 bg-zinc-900/40 opacity-75'}`}>
+                <div className='image-preview w-24 shrink-0 sm:w-32'>
+                  {banner.imageUrl || banner.imageKey ? (
+                    <img src={getAssetUrl(banner.imageUrl, banner.imageKey)} alt={`Banner ${banner.title}`} loading='lazy' decoding='async' />
+                  ) : (
+                    <span>Sin imagen</span>
+                  )}
                 </div>
-                {banner.subtitle && <p className='text-sm text-zinc-400 line-clamp-2'>{banner.subtitle}</p>}
-                <div className='text-xs text-zinc-500 mt-2 flex gap-3'>
-                  <span>Orden: {banner.sortOrder}</span>
-                  {banner.ctaLabel && <span>CTA: {banner.ctaLabel}</span>}
+                <div className='flex-1 min-w-0'>
+                  <div className='flex flex-wrap gap-2 items-center'>
+                    <h5 className='font-bold text-zinc-100 truncate'>{banner.title}</h5>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${banner.isActive ? 'bg-emerald-500/15 text-emerald-200' : 'bg-rose-500/15 text-rose-200'}`}>{banner.isActive ? 'Activo' : 'Inactivo'}</span>
+                  </div>
+                  {banner.subtitle && <p className='text-sm text-zinc-400 line-clamp-2'>{banner.subtitle}</p>}
+                  <div className='text-xs text-zinc-500 mt-2 flex gap-3'>
+                    <span>Orden: {banner.sortOrder}</span>
+                    {banner.ctaLabel && <span>CTA: {banner.ctaLabel}</span>}
+                  </div>
+                </div>
+                <div className='flex flex-col gap-2 shrink-0'>
+                  <Button disabled={!canEdit} className='border border-zinc-700 bg-zinc-950 px-3' onClick={() => beginEditCatalogBanner(banner)}>Editar</Button>
                 </div>
               </div>
-              <div className='flex flex-col gap-2 shrink-0'>
-                <Button disabled={!canEdit} className='border border-zinc-700 bg-zinc-950 px-3' onClick={() => beginEditCatalogBanner(banner)}>Editar</Button>
-              </div>
-            </div>
-          ))}
-          {!(menu?.catalogBanners?.length) && (
+            ))
+          )}
+          {!catalogBannersLoading && !catalogBannersError && !(menu?.catalogBanners?.length) && (
             <div className='rounded-xl border border-dashed border-zinc-700 p-6 text-center text-zinc-500'>
               No hay banners de catálogo registrados.
             </div>

@@ -65,3 +65,32 @@ export const onRequestPost: PagesFunction<Env> = async ({ env, request }) => {
   const row = await env.BOG_MENU_DB.prepare('SELECT id, title, subtitle, cta_label, image_key, image_url, is_active, sort_order, updated_at FROM catalog_banners WHERE id = ? LIMIT 1').bind(id).first();
   return row ? json(201, { ok: true, banner: mapD1CatalogBanner(row) }) : json(500, { ok: false, error: 'No se pudo recuperar el banner creado' });
 };
+
+export const onRequestGet: PagesFunction<Env> = async ({ env, request }) => {
+  if (!env.BOG_MENU_DB) return json(503, { ok: false, error: 'Database disabled' });
+  const authError = await requireAdminToken(request, env);
+  if (authError) return authError;
+
+  try {
+    const { results } = await env.BOG_MENU_DB.prepare(
+      'SELECT id, title, subtitle, cta_label, image_key, image_url, is_active, sort_order, updated_at FROM catalog_banners ORDER BY sort_order ASC'
+    ).all();
+
+    const banners = (results ?? []).map((row: any) => {
+      const mapped = mapD1CatalogBanner(row);
+      return {
+        ...mapped,
+        cta_label: row.cta_label ?? null,
+        image_key: row.image_key ?? null,
+        image_url: row.image_url ?? null,
+        is_active: row.is_active ?? 0,
+        sort_order: row.sort_order ?? 0,
+        updated_at: row.updated_at ?? null,
+      };
+    });
+
+    return json(200, { ok: true, banners });
+  } catch (error) {
+    return json(500, { ok: false, error: 'Database query failed' });
+  }
+};

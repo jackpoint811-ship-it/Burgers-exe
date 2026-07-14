@@ -1214,9 +1214,9 @@ test.describe("internal chekeo kitchen production board", () => {
     await expect(page.getByRole("heading", { name: "Pagos" })).toBeVisible();
     await expect(paymentCardByFolio(page, "RDY-401")).toHaveCount(1);
     await expect(paymentCardByFolio(page, "TRF-701")).toHaveCount(1);
-    await expect(paymentCardByFolio(page, "TRF-701").getByText("Ubicacion: GGA")).toBeVisible();
+    await expect(paymentCardByFolio(page, "TRF-701").getByText("Entrega: GGA")).toBeVisible();
     await expect(page.getByRole("button", { name: /^Entregado$/i })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: /Cancelar pedido/i })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Cancelar pedido/i })).toHaveCount(0);
 
     await paymentFilterButton(page, "Pendiente").click();
     await expect(paymentCardByFolio(page, "RDY-402")).toHaveCount(0);
@@ -1224,15 +1224,19 @@ test.describe("internal chekeo kitchen production board", () => {
     await expect(paymentCardByFolio(page, "TRF-701")).toHaveCount(1);
 
     await paymentCardByFolio(page, "RDY-401")
+      .getByRole("button", { name: /Abrir pago/i })
+      .click();
+    await page.locator(".modal--wide")
       .getByRole("button", { name: /Marcar pagado/i })
       .click();
+    await page.keyboard.press("Escape");
     await expect(paymentCardByFolio(page, "RDY-401")).toHaveCount(0);
 
     await paymentFilterButton(page, "Pagado").click();
     await expect(paymentCardByFolio(page, "RDY-401")).toHaveCount(1);
     await expect(paymentCardByFolio(page, "RDY-401").getByText("Pago confirmado", { exact: true }).first()).toBeVisible();
     await paymentCardByFolio(page, "RDY-401")
-      .getByRole("button", { name: /^Más$/i })
+      .getByRole("button", { name: /Abrir pago/i })
       .click();
     await page.locator(".modal--wide")
       .getByRole("button", { name: /Regresar a pendiente/i })
@@ -1243,7 +1247,7 @@ test.describe("internal chekeo kitchen production board", () => {
     await expect(paymentCardByFolio(page, "RDY-401")).toHaveCount(1);
 
     await paymentCardByFolio(page, "TRF-701")
-      .getByRole("button", { name: /^Más$/i })
+      .getByRole("button", { name: /Abrir pago/i })
       .click();
     const paymentModal = page.locator(".modal--wide");
     await expect(page.locator("#payment-detail-title")).toHaveText("TRF-701");
@@ -1253,7 +1257,7 @@ test.describe("internal chekeo kitchen production board", () => {
     await paymentModal.getByRole("button", { name: /Copiar WhatsApp/i }).scrollIntoViewIfNeeded();
     await paymentModal.getByRole("button", { name: /Copiar WhatsApp/i }).click({ force: true });
     await expect.poll(() => page.evaluate(() => (window as any).__copiedPaymentText))
-      .toContain("Datos bancarios:");
+      .toContain("Datos para transferir:");
     await expect.poll(() => page.evaluate(() => (window as any).__copiedPaymentText))
       .toContain("BBVA");
     await paymentModal.getByRole("button", { name: /Abrir WhatsApp/i }).click({ force: true });
@@ -1263,7 +1267,7 @@ test.describe("internal chekeo kitchen production board", () => {
     await expect(page.locator("#payment-detail-title")).toHaveCount(0);
 
     await paymentCardByFolio(page, "RDY-401")
-      .getByRole("button", { name: /^Más$/i })
+      .getByRole("button", { name: /Abrir pago/i })
       .click();
     await expect(page.locator("#payment-detail-title")).toHaveText("RDY-401");
     await expect(page.getByText("Datos bancarios", { exact: true })).toHaveCount(0);
@@ -1724,12 +1728,12 @@ test.describe("internal chekeo kitchen production board", () => {
       await page.waitForTimeout(200);
     }
 
-    // After expanding, check for x-quantity format (e.g. "x1 Papas")
+    // After expanding, check for x-quantity format (e.g. "🍔 1 Burger")
     const queueList = page.locator(".kitchen-following-orders__list");
     if (await queueList.isVisible()) {
       const summaryText = await queueList.textContent();
-      // Should contain x-quantity pattern
-      expect(summaryText).toMatch(/x\d+\s+\w/);
+      // Should contain emoji summary pattern
+      expect(summaryText).toMatch(/[🍔🍟🥤]\s+\d+/);
     }
   });
 
@@ -1949,7 +1953,7 @@ test.describe("internal chekeo kitchen production board", () => {
     // Validate customer name is shown
     expect(summaryText).toContain("SQ Queue Customer");
     // Validate that it shows the full order summary, respecting qty
-    expect(summaryText).toContain("x1 BBQ · x3 OG · x1 Combo BBQ · x2 Papas");
+    expect(summaryText).toContain("🍔 5 Burgers · 🍟 3 Sides · 🥤 1 Bebida");
     // Validate folio is NOT shown in the Side Quest queue
     expect(summaryText).not.toContain("SQ-QUE");
   });

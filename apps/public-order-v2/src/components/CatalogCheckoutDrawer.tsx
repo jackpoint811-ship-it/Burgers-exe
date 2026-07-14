@@ -30,7 +30,13 @@ const focusableSelector = [
   "[tabindex]:not([tabindex='-1'])",
 ].join(",");
 
-const normalizePhoneDigits = (phone: string) => phone.replace(/\D/g, "");
+const normalizePhoneDigits = (phone: string) => {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 12 && digits.startsWith("52")) {
+    return digits.slice(2);
+  }
+  return digits;
+};
 
 type CheckoutState = {
   status: "idle" | "submitting" | "success" | "error";

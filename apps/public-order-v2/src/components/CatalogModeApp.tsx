@@ -20,6 +20,7 @@ type CatalogModeAppProps = {
   categories: MenuCategory[];
   siteConfig: SiteConfig;
   catalogBanners?: CatalogBanner[];
+  source?: string;
 };
 
 const CatalogProductCard = ({ product, onOpen }: { product: CatalogProduct; onOpen: (product: CatalogProduct) => void }) => {
@@ -54,7 +55,7 @@ const CatalogProductCard = ({ product, onOpen }: { product: CatalogProduct; onOp
   );
 };
 
-function CatalogModeAppInner({ items, categories, siteConfig, catalogBanners = [] }: CatalogModeAppProps) {
+function CatalogModeAppInner({ items, categories, siteConfig, catalogBanners = [], source }: CatalogModeAppProps) {
   const products = useMemo(() => mapMenuItemsToCatalogProducts(items, categories), [items, categories]);
   const visibleCategories = useMemo(() => {
     const categoryKeys = new Set(products.map((product) => product.categoryKey));
@@ -89,6 +90,14 @@ function CatalogModeAppInner({ items, categories, siteConfig, catalogBanners = [
             <p>Explora el menú, arma tu pedido y paga en minutos.</p>
           </div>
         </section>
+
+        {source === "fallback" ? (
+          <section className="menu-sync-notice" role="status" aria-live="polite">
+            <strong>Menú de respaldo activo</strong>
+            <p>No pudimos confirmar el menú actualizado. Revisa tu conexión o recarga la página antes de ordenar.</p>
+            <button type="button" className="quest-button ghost" onClick={() => window.location.reload()}>Reintentar carga</button>
+          </section>
+        ) : null}
 
         <CatalogBannerRail banners={catalogBanners} />
 

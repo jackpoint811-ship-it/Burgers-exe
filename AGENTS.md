@@ -58,6 +58,11 @@ Estas reglas aplican a todo el repositorio salvo que un `AGENTS.md` más especí
   6. Testing ejecutado.
   7. Estado del PR (número, URL, estado, merge status, comentarios pendientes, checks).
 
+## Uso de Modelos y Subagentes (Playbook)
+- **Gemini Pro (Razonamiento)**: Usar para planificar, diseñar el `implementation_plan.md`, resolver problemas complejos de accesibilidad y definir contratos de datos.
+- **Gemini Flash (Ejecución)**: Usar para codificación rápida, ejecutar comandos de testing/typecheck en background y correr validaciones visuales con `browser_subagent`.
+- **Delegación**: Usar `invoke_subagent` para paralelizar tareas del roadmap de PRs (ej. un subagente para el PR de contratos, otro para la UI) manteniendo las responsabilidades aisladas.
+
 ## Memoria del proyecto
 
 Antes de cambios grandes, lee:
