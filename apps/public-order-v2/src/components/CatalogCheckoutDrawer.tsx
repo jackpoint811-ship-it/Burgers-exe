@@ -190,7 +190,7 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
+      transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.2 }}
     >
       <motion.section
         ref={dialogRef as any}
@@ -201,7 +201,7 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
         initial={shouldReduceMotion ? { opacity: 0 } : { y: "100%" }}
         animate={shouldReduceMotion ? { opacity: 1 } : { y: 0 }}
         exit={shouldReduceMotion ? { opacity: 0 } : { y: "100%" }}
-        transition={{ type: "spring", damping: 25, stiffness: 200 }}
+        transition={shouldReduceMotion ? { duration: 0 } : { type: "spring", damping: 25, stiffness: 200 }}
       >
         <header className="catalog-drawer__header catalog-cart-drawer__header">
           <h2 id={titleId} className="catalog-cart-drawer__title glow-neon-text">

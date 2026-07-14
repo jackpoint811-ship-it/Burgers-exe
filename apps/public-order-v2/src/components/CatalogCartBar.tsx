@@ -19,7 +19,7 @@ export function CatalogCartBar({ onOpenCart }: CatalogCartBarProps) {
       initial={shouldReduceMotion ? { opacity: 0 } : { y: 100, opacity: 0 }}
       animate={shouldReduceMotion ? { opacity: 1 } : { y: 0, opacity: 1 }}
       exit={shouldReduceMotion ? { opacity: 0 } : { y: 100, opacity: 0 }}
-      transition={{ type: "spring", damping: 25, stiffness: 200 }}
+      transition={shouldReduceMotion ? { duration: 0 } : { type: "spring", damping: 25, stiffness: 200 }}
     >
       <div className="catalog-cart-bar__summary">
         <span className="catalog-cart-bar__count" aria-label={`${count} ${count === 1 ? "producto" : "productos"} en el carrito`}>
