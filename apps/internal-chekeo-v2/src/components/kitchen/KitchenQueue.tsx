@@ -20,6 +20,7 @@ import {
   extractKitchenLocation,
   getComboBurgerNotes,
   getKitchenItemActionKind,
+  getKitchenItemImage,
   getKitchenItemLabel,
   getKitchenItemNotes,
   stripLocationFromNotes,
@@ -243,21 +244,28 @@ const AccordionItemRow = ({
   glowing: boolean;
   onExpand: () => void;
   onToggle: (entry: KitchenProductionItem, done: boolean) => void;
-}) => (
+}) => {
+  const itemImage = getKitchenItemImage(entry.item.parentItemName || entry.item.name);
+  return (
   <div
     className={`kitchen-accordion-item ${entry.done ? "kitchen-accordion-item--done" : ""} ${expanded ? "kitchen-accordion-item--open" : ""} ${glowing ? "kitchen-accordion-item--glow" : ""}`}
   >
     <button
       type="button"
-      className="kitchen-accordion-item__header kitchen-production-card__item"
+      className="kitchen-accordion-item__header kitchen-production-card__item flex items-center gap-3"
       aria-expanded={expanded}
       onClick={onExpand}
     >
-      <span className="kitchen-item-kind">
-        {entry.itemLabel || getKitchenItemLabel(entry.item)}
-      </span>
-      <div className="min-w-0 flex-1">
-        <h3 className="break-words text-base font-black text-zinc-50">
+      {itemImage ? (
+        <div className="flex-shrink-0 w-12 h-12 rounded-md overflow-hidden bg-zinc-900 border border-zinc-800">
+          <img src={itemImage} alt={entry.detailLabel || entry.item.name} className="w-full h-full object-cover opacity-90" loading="lazy" />
+        </div>
+      ) : null}
+      <div className="flex-1 min-w-0 flex flex-col items-start">
+        <span className="kitchen-item-kind">
+          {entry.itemLabel || getKitchenItemLabel(entry.item)}
+        </span>
+        <h3 className="break-words text-base font-black text-zinc-50 text-left">
           {entry.detailLabel || entry.item.name}
         </h3>
       </div>
@@ -304,7 +312,8 @@ const AccordionItemRow = ({
       </>
     ) : null}
   </div>
-);
+  );
+};
 
 /* ------------------------------------------------------------------ */
 /*  Active order container                                            */
@@ -344,6 +353,8 @@ const ActiveOrderContainer = ({
   const hasCombo = group.items.some(
     (entry) => entry.kind === "combo" || entry.item.parentItemName,
   );
+  
+  const quickSummary = buildKitchenOrderQueueSummary(group.order);
 
   return (
     <section className="kitchen-active-order kitchen-production-card" aria-label="Orden activa">
@@ -358,6 +369,11 @@ const ActiveOrderContainer = ({
           <h3 className="kitchen-active-order__customer">
             {group.order.customer}
           </h3>
+          {quickSummary ? (
+            <p className="mt-1 mb-2 text-sm font-bold text-cyan-300 bg-cyan-950/30 border border-cyan-800/50 inline-block px-2 py-1 rounded-md">
+              {quickSummary}
+            </p>
+          ) : null}
           <p className="kitchen-active-order__folio kitchen-production-card__folio">{group.order.folio}</p>
         </div>
         <div className="flex flex-wrap md:justify-end gap-1.5 self-start w-full md:w-auto mt-2 md:mt-0">
@@ -579,7 +595,7 @@ const DoneOrdersList = ({
                       <span className="kitchen-dot kitchen-dot--done">Hecha</span>
                     </div>
                     <p className="mt-0.5 text-sm text-zinc-500">{group.order.folio}</p>
-                    <p className="mt-0.5 text-sm text-zinc-400">{group.summaryLabel}</p>
+                    <p className="mt-1 text-xs text-zinc-400 font-bold">{buildKitchenOrderQueueSummary(group.order)}</p>
                   </div>
                   {isGroupExpanded ? (
                     <ChevronUp size={16} className="text-zinc-500 flex-shrink-0" />

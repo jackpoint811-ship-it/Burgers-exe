@@ -1,5 +1,5 @@
-import { menuCategories, menuItems, promoCards, siteConfig, type MenuCategory, type MenuItem, type MenuV2Response, type PromoCard, type SiteConfig } from '../../packages/config/src';
-import { mapD1CategoryBanner, mapD1ItemToMenuItem, mapD1PromoToPromoCard, parseJsonArray } from './_menu-v2-utils';
+import { menuCategories, menuItems, promoCards, publicConfig, siteConfig, type MenuCategory, type MenuItem, type MenuV2Response, type PromoCard, type SiteConfig } from '../../packages/config/src';
+import { mapD1CatalogBanner, mapD1CategoryBanner, mapD1ItemToMenuItem, mapD1PromoToPromoCard, parseJsonArray } from './_menu-v2-utils';
 
 type Env = { BOG_MENU_DB?: D1Database };
 
@@ -19,6 +19,7 @@ const fallbackPayload = (source: MenuV2Response['source']): MenuV2Response => ({
   promos: [...promoCards].sort((a, b) => a.sortOrder - b.sortOrder),
   categoryBanners: [],
   siteConfig,
+  publicConfig,
   updatedAt: new Date().toISOString(),
   source
 });
@@ -119,26 +120,29 @@ export const onRequestGet: PagesFunction<Env> = async ({ env }) => {
       .map((row: any) => mapD1ItemToMenuItem(row))
       .sort((a, b) => a.sortOrder - b.sortOrder);
 
-    const [categoryRows, promoRows, bannerRows, configRow] = await Promise.all([
+    const [categoryRows, promoRows, bannerRows, catalogBannerRows, configRow] = await Promise.all([
       optionalAll<any>(env.BOG_MENU_DB.prepare('SELECT id, key, name, sort_order AS sortOrder, updated_at AS updatedAt FROM menu_categories ORDER BY sort_order ASC')),
       optionalAll<any>(env.BOG_MENU_DB.prepare('SELECT id, title, description, badge, promo_label AS promoLabel, is_featured AS isFeatured, is_available AS isAvailable, sort_order AS sortOrder, tags_json, combo_links_json, asset_alt, asset_placeholder, asset_image_url, asset_image_key, updated_at AS updatedAt FROM promo_cards ORDER BY sort_order ASC')),
       optionalAll<any>(env.BOG_MENU_DB.prepare('SELECT category_key AS categoryKey, title, subtitle, image_key AS imageKey, image_url AS imageUrl, updated_at AS updatedAt FROM menu_category_banners ORDER BY category_key ASC')),
+      optionalAll<any>(env.BOG_MENU_DB.prepare('SELECT id, title, subtitle, cta_label, image_key, image_url, is_active, sort_order, updated_at FROM catalog_banners WHERE is_active = 1 ORDER BY sort_order ASC')),
       optionalFirst<any>(env.BOG_MENU_DB.prepare('SELECT brand_name, currency, order_modes_json, support_phone, hero_cta, notice, updated_at AS updatedAt FROM site_config ORDER BY updated_at DESC LIMIT 1'))
     ]);
 
     const categories = resolveCategories(categoryRows, items);
     const promos: PromoCard[] = promoRows.map((row: any) => mapD1PromoToPromoCard(row));
     const categoryBanners = bannerRows.map((row: any) => mapD1CategoryBanner(row)).filter((banner) => isMenuCategoryKey(banner.categoryKey));
+    const catalogBanners = catalogBannerRows.map((row: any) => mapD1CatalogBanner(row));
     const resolvedSiteConfig = resolveSiteConfig(configRow);
 
     const updatedAt = [
       ...items.map((item) => item.updatedAt ?? ''),
       ...promos.map((promo) => promo.updatedAt ?? ''),
       ...categoryBanners.map((banner) => banner.updatedAt ?? ''),
+      ...catalogBanners.map((banner) => banner.updatedAt ?? ''),
       resolvedSiteConfig.updatedAt ?? ''
     ].filter(Boolean).sort().at(-1) ?? new Date().toISOString();
 
-    return json({ categories, items, promos, categoryBanners, siteConfig: resolvedSiteConfig, updatedAt, source: 'd1' });
+    return json({ categories, items, promos, categoryBanners, catalogBanners, siteConfig: resolvedSiteConfig, publicConfig, updatedAt, source: 'd1' });
   } catch {
     return json(fallbackPayload('fallback'), 'no-store');
   }

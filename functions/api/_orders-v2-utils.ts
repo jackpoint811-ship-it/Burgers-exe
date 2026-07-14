@@ -116,7 +116,13 @@ export const generateFolio = (now = new Date()) => {
 
 export const generatePreviewFolio = (now = new Date()) => `PVW-${generateFolio(now).replace(/^BX-/, '')}`;
 
-export const normalizePhone = (value: unknown) => String(value ?? '').replace(/\D/g, '');
+export const normalizePhone = (value: unknown) => {
+  const digits = String(value ?? '').replace(/\D/g, '');
+  if (digits.length === 12 && digits.startsWith('52')) {
+    return digits.slice(2);
+  }
+  return digits;
+};
 
 export const parseJsonDetail = (value: unknown): Record<string, unknown> | undefined => {
   if (typeof value !== 'string' || !value.trim()) return undefined;

@@ -4399,7 +4399,13 @@ const TicketPreviewItems = ({ order }: { order: InternalOrder }) => (
   </div>
 );
 
-const OrderTicketPreview = ({ order }: { order: InternalOrder }) => {
+const OrderTicketPreview = ({
+  order,
+  hidePaymentDetails = false,
+}: {
+  order: InternalOrder;
+  hidePaymentDetails?: boolean;
+}) => {
   const itemCount = getOrderItemCount(order);
   const location = getOrderLocationLabel(order);
   const deliveryDetail = getPaymentDeliveryDetail(order);
@@ -4422,7 +4428,7 @@ const OrderTicketPreview = ({ order }: { order: InternalOrder }) => {
         </div>
         <div className="orders-ticket-preview__badges">
           <OrdersStatusBadge status={order.status} />
-          <PaymentStatusBadge status={order.paymentState} />
+          {!hidePaymentDetails ? <PaymentStatusBadge status={order.paymentState} /> : null}
           <span className="orders-location-chip">Ubicación: {location}</span>
         </div>
       </div>
@@ -4436,14 +4442,18 @@ const OrderTicketPreview = ({ order }: { order: InternalOrder }) => {
           <span>Items</span>
           <strong>{itemCount}</strong>
         </div>
-        <div className="orders-ticket-stat">
-          <span>Pago</span>
-          <strong>{getPaymentMethodLabel(order.paymentMethod)}</strong>
-        </div>
-        <div className="orders-ticket-stat">
-          <span>Estado pago</span>
-          <strong>{getPaymentStatusLabel(order.paymentState)}</strong>
-        </div>
+        {!hidePaymentDetails ? (
+          <>
+            <div className="orders-ticket-stat">
+              <span>Pago</span>
+              <strong>{getPaymentMethodLabel(order.paymentMethod)}</strong>
+            </div>
+            <div className="orders-ticket-stat">
+              <span>Estado pago</span>
+              <strong>{getPaymentStatusLabel(order.paymentState)}</strong>
+            </div>
+          </>
+        ) : null}
       </div>
       <div className="orders-ticket-preview__meta">
         <span className="info-pill">Entrega: {deliveryDetail}</span>
@@ -4591,7 +4601,7 @@ const OrderDetailModal = ({
             </Button>
           ) : null}
         </div>
-        <OrderTicketPreview order={selected} />
+        <OrderTicketPreview order={selected} hidePaymentDetails={true} />
         <details className="order-detail__panel order-detail__panel--message">
           <summary className="order-detail__summary-trigger">Ticket y WhatsApp</summary>
           <WhatsappOrderActions order={selected} />

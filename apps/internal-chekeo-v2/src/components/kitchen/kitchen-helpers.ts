@@ -1,4 +1,4 @@
-import type { OrderV2ItemKind } from "@config/index";
+import { menuItems, type OrderV2ItemKind } from "@config/index";
 import type {
   KitchenItemKind,
   KitchenLocalBreakdownItem,
@@ -24,7 +24,47 @@ export const getKitchenItemKind = (
   item: Pick<KitchenOrderItem, "itemKind" | "name">,
 ): OrderV2ItemKind => {
   if (item.itemKind) return item.itemKind;
-  return item.name.toLowerCase().includes("fries") ? "garnish" : "burger";
+
+  const nameLower = item.name.toLowerCase();
+
+  if (nameLower.includes("combo")) {
+    return "combo";
+  }
+
+  if (
+    nameLower.includes("fries") ||
+    nameLower.includes("papas") ||
+    nameLower.includes("aros") ||
+    nameLower.includes("onion") ||
+    nameLower.includes("dedos")
+  ) {
+    return "garnish";
+  }
+
+  if (
+    nameLower.includes("bebida") ||
+    nameLower.includes("refresco") ||
+    nameLower.includes("agua") ||
+    nameLower.includes("cola") ||
+    nameLower.includes("soda") ||
+    nameLower.includes("drink") ||
+    nameLower.includes("coca") ||
+    nameLower.includes("jugo")
+  ) {
+    return "drink";
+  }
+
+  if (
+    nameLower.includes("extra") ||
+    nameLower.includes("queso") ||
+    nameLower.includes("tocino") ||
+    nameLower.includes("aderezo") ||
+    nameLower.includes("topping")
+  ) {
+    return "other";
+  }
+
+  return "burger";
 };
 
 export const isKitchenActionKind = (
@@ -57,6 +97,34 @@ export const getKitchenItemLabel = (item: KitchenOrderItem) => {
   if (kind === "garnish") return "Side Quest";
   if (kind === "drink") return "Bebida";
   return "Burger";
+};
+
+export const getKitchenItemImage = (itemName: string): string | undefined => {
+  // Try exact match
+  let matched = menuItems.find(
+    (m) => m.name.toLowerCase() === itemName.toLowerCase()
+  );
+  
+  // Try partial match if no exact match
+  if (!matched) {
+    const cleanName = itemName.toLowerCase()
+      .replace("burger", "")
+      .replace("combo", "")
+      .trim();
+      
+    matched = menuItems.find((m) => 
+      m.name.toLowerCase().includes(cleanName)
+    );
+  }
+
+  // Fallbacks based on category/name if not found in menuItems
+  if (!matched) {
+    if (itemName.toLowerCase().includes("papas") || itemName.toLowerCase().includes("fries")) return "/placeholders/fries-classic.jpg";
+    if (itemName.toLowerCase().includes("aros")) return "/placeholders/onion-rings.jpg";
+    if (itemName.toLowerCase().includes("burger")) return "/placeholders/burger-og.jpg";
+  }
+
+  return matched?.imageUrl;
 };
 
 export const getKitchenItemNotes = (item: KitchenOrderItem) => {
@@ -118,21 +186,23 @@ export const getComboBurgerNotes = (item: KitchenOrderItem) =>
 
 const isProductionItem = (item: KitchenOrderItem) => {
   const kind = getKitchenItemKind(item);
-  return kind === "burger" || kind === "combo" || kind === "garnish";
+  return kind !== "other";
 };
 
 const hasComboBurgerWork = (item: KitchenOrderItem) => {
   const kind = getKitchenItemKind(item);
-  return kind === "combo" || kind === "burger";
+  return kind === "burger" || kind === "combo";
 };
 
 const hasSideQuestWork = (item: KitchenOrderItem) => {
-  return getKitchenItemKind(item) === "garnish";
+  const kind = getKitchenItemKind(item);
+  return kind === "garnish" || kind === "drink";
 };
 
 const getSideQuestLabel = (item: KitchenOrderItem) => {
   const labels: string[] = [];
-  if (getKitchenItemKind(item) === "garnish") labels.push(item.name);
+  const kind = getKitchenItemKind(item);
+  if (kind === "garnish" || kind === "drink") labels.push(item.name);
   if (item.garnish?.name) labels.push(item.garnish.name);
   if (item.sideQuestExtras.length) {
     labels.push(...item.sideQuestExtras.map((extra) => extra.name));
@@ -355,45 +425,49 @@ const getShortName = (name: string): string => {
 };
 
 /**
- * Builds a compact queue summary for the entire kitchen order.
- * e.g. "x1 BBQ · x3 OG · x1 Combo BBQ · x2 Papas"
+ * Builds a compact queue summary for the entire kitchen order with emojis.
+ * e.g. "🍔 3 Burgers · 🍟 2 Sides"
  */
 export const buildKitchenOrderQueueSummary = (
   order: KitchenOrder,
 ): string => {
-  const counts = new Map<string, number>();
-
-  const addCount = (name: string, qty: number) => {
-    const short = getShortName(name);
-    counts.set(short, (counts.get(short) ?? 0) + qty);
-  };
+  let burgers = 0;
+  let sides = 0;
+  let drinks = 0;
 
   for (const item of order.items) {
     const kind = getKitchenItemKind(item);
 
-    if (kind === "burger" || kind === "combo" || kind === "garnish") {
-      addCount(item.name, item.qty);
-
+    if (kind === "burger" || kind === "combo") {
+      burgers += item.qty;
       if (kind === "combo") {
         if (item.comboBurgers && item.comboBurgers.length > 0) {
-          for (const cb of item.comboBurgers) {
-            addCount(cb.name, item.qty);
-          }
+          const extraBurgers = item.comboBurgers.length - 1;
+          if (extraBurgers > 0) burgers += extraBurgers * item.qty;
         }
-        if (item.garnish) {
-          addCount(item.garnish.name, item.qty);
-        }
+        // Combo has 1 side by default
+        sides += item.qty;
+        // Combo has 1 drink by default
+        drinks += item.qty;
       }
+    } else if (kind === "garnish") {
+      sides += item.qty;
+    } else if (kind === "drink") {
+      drinks += item.qty;
+    }
 
-      if (item.sideQuestExtras && item.sideQuestExtras.length > 0) {
-        for (const extra of item.sideQuestExtras) {
-          addCount(extra.name, item.qty);
-        }
+    if (item.sideQuestExtras && item.sideQuestExtras.length > 0) {
+      for (const extra of item.sideQuestExtras) {
+        if (extra.itemKind === "garnish") sides += item.qty;
+        else if (extra.itemKind === "drink") drinks += item.qty;
       }
     }
   }
 
-  return [...counts.entries()]
-    .map(([name, qty]) => `x${qty} ${name}`)
-    .join(" · ");
+  const parts: string[] = [];
+  if (burgers > 0) parts.push(`🍔 ${burgers} Burger${burgers !== 1 ? 's' : ''}`);
+  if (sides > 0) parts.push(`🍟 ${sides} Side${sides !== 1 ? 's' : ''}`);
+  if (drinks > 0) parts.push(`🥤 ${drinks} Bebida${drinks !== 1 ? 's' : ''}`);
+
+  return parts.join(" · ");
 };

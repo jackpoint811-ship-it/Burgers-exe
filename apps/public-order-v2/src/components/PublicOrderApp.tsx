@@ -12,10 +12,13 @@ import {
   type PromoCard,
   type RaffleCampaignPublicV2,
   getPublicOrderEnvironment,
+  resolvePublicConfig,
+  shouldUseCatalogMode,
 } from "@config/index";
 import { EmptyState } from "@ui/index";
 import { motion, useReducedMotion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CatalogModeApp } from "./CatalogModeApp";
 import { loadMenuV2, toFallbackMenuResponse } from "../lib/menu-v2";
 import { loadActiveRaffleV2 } from "../lib/raffles-v2";
 import {
@@ -109,7 +112,13 @@ const createEmptyCustomer = (): CustomerDraft => ({
   paymentTiming: "",
   wantsWhatsappGroup: true,
 });
-const normalizePhoneDigits = (phone: string) => phone.replace(/\D/g, "");
+const normalizePhoneDigits = (phone: string) => {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 12 && digits.startsWith("52")) {
+    return digits.slice(2);
+  }
+  return digits;
+};
 const formatPhoneForDisplay = (phone: string) => {
   const digits = normalizePhoneDigits(phone);
   const parts = [digits.slice(0, 3), digits.slice(3, 6), digits.slice(6)].filter(Boolean);
@@ -1936,6 +1945,8 @@ export function PublicOrderApp() {
   const [orderConfirmation, setOrderConfirmation] = useState<OrderConfirmation | null>(null);
   const [burgerSelectionError, setBurgerSelectionError] = useState<string | null>(null);
   const [cartCustomizationError, setCartCustomizationError] = useState<string | null>(null);
+  const publicConfig = useMemo(() => resolvePublicConfig(menuData.publicConfig), [menuData.publicConfig]);
+  const shouldRenderCatalogMode = shouldUseCatalogMode(publicConfig);
   const total = useMemo(() => getCartTotal(cart, menuData.items), [cart, menuData.items]);
   const count = useMemo(() => getCartCount(cart), [cart]);
   const availableBurgerItems = useMemo(() => menuData.items.filter((item) => inferItemKind(item) === "burger" && item.isAvailable), [menuData.items]);
@@ -2260,6 +2271,18 @@ export function PublicOrderApp() {
     else if (section === "checkout") handleCheckout();
     else if (section === "success") handleCreateAnother();
   };
+
+  if (shouldRenderCatalogMode) {
+    return (
+      <CatalogModeApp
+        items={menuData.items}
+        categories={menuData.categories}
+        siteConfig={menuData.siteConfig}
+        catalogBanners={menuData.catalogBanners}
+        source={menuData.source}
+      />
+    );
+  }
 
   return (
     <main className={`app-shell public-section-${section} ${showPersistentCta ? "has-persistent-cta" : ""}`}>
