@@ -5,37 +5,59 @@
 :root {
   color-scheme: dark;
 
+  /* Premium Public V2 HSL Bases for dynamic opacity/glow overrides */
+  --brand-primary-hsl: 139 100% 61.2%; /* #39ff88 neon green */
+  --accent-warning-hsl: 42 100% 70%; /* #ffd166 amber */
+  --accent-danger-hsl: 11 100% 64.5%; /* #ff6b4a */
+  --accent-success-hsl: 158 64.4% 51.6%; /* #34d399 */
+  --brand-secondary-cyan-hsl: 185 100% 62.7%; /* #41f0ff */
+  --brand-secondary-magenta-hsl: 313 100% 65.5%; /* #ff4fd8 */
+
+  --bg-base-hsl: 150 25% 1.6%; /* #030504 */
+  --bg-base-deep-hsl: 120 33% 0.6%; /* #010201 */
+  --bg-base-raised-hsl: 156 20% 4.9%; /* #0a0f0d */
+  --bg-surface-hsl: 150 25% 4.7%; /* rgba(9, 15, 13) */
+  --bg-surface-strong-hsl: 158 25% 6.3%; /* rgba(12, 20, 17) */
+  --bg-surface-card-hsl: 153 36% 4.9%; /* rgba(8, 17, 13) */
+  --bg-surface-card-strong-hsl: 155 38% 6.3%; /* rgba(10, 22, 17) */
+  --bg-surface-input-hsl: 160 43% 1.4%; /* rgba(2, 5, 4) */
+
+  --fg-primary-hsl: 139 44.4% 98.2%; /* #f3fff6 */
+  --fg-heading-hsl: 0 0% 100%; /* #ffffff */
+  --fg-muted-hsl: 147 13.5% 75.5%; /* #b7c9bf */
+  --fg-muted-strong-hsl: 147 25.6% 87.8%; /* #d7eadf */
+
   /* Premium Public V2 visual tokens: dark terminal, neon controls, mobile-first surfaces. */
-  --bg-base: #030504;
-  --bg-base-deep: #010201;
-  --bg-base-raised: #0a0f0d;
-  --bg-surface: rgba(9, 15, 13, 0.88);
-  --bg-surface-strong: rgba(12, 20, 17, 0.96);
-  --bg-surface-card: rgba(8, 17, 13, 0.9);
-  --bg-surface-card-strong: rgba(10, 22, 17, 0.94);
-  --bg-surface-input: rgba(2, 5, 4, 0.74);
-  --fg-primary: #f3fff6;
-  --fg-heading: #ffffff;
-  --fg-muted: #b7c9bf;
-  --fg-muted-strong: #d7eadf;
+  --bg-base: hsl(var(--bg-base-hsl));
+  --bg-base-deep: hsl(var(--bg-base-deep-hsl));
+  --bg-base-raised: hsl(var(--bg-base-raised-hsl));
+  --bg-surface: hsla(var(--bg-surface-hsl) / 0.88);
+  --bg-surface-strong: hsla(var(--bg-surface-strong-hsl) / 0.96);
+  --bg-surface-card: hsla(var(--bg-surface-card-hsl) / 0.9);
+  --bg-surface-card-strong: hsla(var(--bg-surface-card-strong-hsl) / 0.94);
+  --bg-surface-input: hsla(var(--bg-surface-input-hsl) / 0.74);
+  --fg-primary: hsl(var(--fg-primary-hsl));
+  --fg-heading: hsl(var(--fg-heading-hsl));
+  --fg-muted: hsl(var(--fg-muted-hsl));
+  --fg-muted-strong: hsl(var(--fg-muted-strong-hsl));
   --fg-on-neon: #021207;
   --fg-on-amber: #201300;
-  --brand-primary: #39ff88;
-  --brand-primary-soft: rgba(57, 255, 136, 0.13);
-  --brand-primary-glow: rgba(57, 255, 136, 0.22);
-  --brand-primary-line: rgba(57, 255, 136, 0.34);
-  --brand-primary-line-strong: rgba(57, 255, 136, 0.54);
-  --brand-secondary-cyan: #41f0ff;
-  --brand-secondary-magenta: #ff4fd8;
-  --accent-warning: #ffd166;
-  --accent-warning-soft: rgba(255, 209, 102, 0.1);
-  --accent-danger: #ff6b4a;
-  --accent-danger-soft: rgba(255, 107, 74, 0.14);
-  --accent-success: #34d399;
-  --line-soft: rgba(234, 255, 240, 0.08);
-  --line-default: rgba(234, 255, 240, 0.12);
-  --line-strong: rgba(234, 255, 240, 0.18);
-  --line-card: rgba(216, 255, 230, 0.13);
+  --brand-primary: hsl(var(--brand-primary-hsl));
+  --brand-primary-soft: hsla(var(--brand-primary-hsl) / 0.13);
+  --brand-primary-glow: hsla(var(--brand-primary-hsl) / 0.22);
+  --brand-primary-line: hsla(var(--brand-primary-hsl) / 0.34);
+  --brand-primary-line-strong: hsla(var(--brand-primary-hsl) / 0.54);
+  --brand-secondary-cyan: hsl(var(--brand-secondary-cyan-hsl));
+  --brand-secondary-magenta: hsl(var(--brand-secondary-magenta-hsl));
+  --accent-warning: hsl(var(--accent-warning-hsl));
+  --accent-warning-soft: hsla(var(--accent-warning-hsl) / 0.1);
+  --accent-danger: hsl(var(--accent-danger-hsl));
+  --accent-danger-soft: hsla(var(--accent-danger-hsl) / 0.14);
+  --accent-success: hsl(var(--accent-success-hsl));
+  --line-soft: hsla(139 100% 95.9% / 0.08);
+  --line-default: hsla(139 100% 95.9% / 0.12);
+  --line-strong: hsla(139 100% 95.9% / 0.18);
+  --line-card: hsla(139 100% 92.4% / 0.13);
   --radius-sm: 12px;
   --radius-md: 16px;
   --radius-lg: 20px;
@@ -58,10 +80,10 @@
   --shadow-panel: 0 22px 70px rgba(0, 0, 0, 0.5);
   --shadow-card: 0 16px 42px rgba(0, 0, 0, 0.32);
   --shadow-floating: 0 18px 60px rgba(0, 0, 0, 0.5);
-  --shadow-cta: 0 10px 30px rgba(57, 255, 136, 0.18);
-  --glow-brand-soft: 0 0 18px rgba(57, 255, 136, 0.18);
-  --glow-brand: 0 0 28px rgba(57, 255, 136, 0.24);
-  --focus-ring: rgba(65, 240, 255, 0.78);
+  --shadow-cta: 0 10px 30px hsla(var(--brand-primary-hsl) / 0.18);
+  --glow-brand-soft: 0 0 18px hsla(var(--brand-primary-hsl) / 0.18);
+  --glow-brand: 0 0 28px hsla(var(--brand-primary-hsl) / 0.24);
+  --focus-ring: hsla(var(--brand-secondary-cyan-hsl) / 0.78);
 
   --neon: var(--brand-primary);
   --neon-soft: var(--brand-primary-soft);
@@ -7713,3 +7735,101 @@ html {
     border-color: rgba(57, 255, 136, 0.28);
   }
 }
+
+/* ── Cyberpunk Glassmorphic Utilities ────────────────────── */
+
+.glass-panel {
+  background: hsla(var(--bg-surface-hsl) / 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid hsla(var(--brand-primary-hsl) / 0.2);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.4), var(--glow-brand-soft);
+}
+
+.glass-panel-strong {
+  background: hsla(var(--bg-surface-strong-hsl) / 0.9);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid hsla(var(--brand-primary-hsl) / 0.28);
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.5), var(--glow-brand);
+}
+
+.glass-card {
+  background: hsla(var(--bg-surface-card-hsl) / 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid hsla(var(--brand-primary-hsl) / 0.15);
+  box-shadow: var(--shadow-card);
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+
+.glass-card:hover:not(:disabled) {
+  background: hsla(var(--bg-surface-card-strong-hsl) / 0.88);
+  border-color: hsla(var(--brand-primary-hsl) / 0.35);
+  box-shadow: 0 0 15px hsla(var(--brand-primary-hsl) / 0.12), var(--shadow-card);
+}
+
+.glass-card-active {
+  background: hsla(var(--brand-primary-hsl) / 0.08);
+  border-color: hsla(var(--brand-primary-hsl) / 0.54) !important;
+  box-shadow: 0 0 20px hsla(var(--brand-primary-hsl) / 0.18), var(--shadow-card);
+}
+
+.glass-input {
+  background: hsla(var(--bg-surface-input-hsl) / 0.74);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--line-default);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.glass-input:focus {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 10px hsla(var(--brand-primary-hsl) / 0.25);
+  outline: none;
+}
+
+/* ── Cyberpunk Glow drop-shadows & text-shadows ────────── */
+
+.glow-neon {
+  box-shadow: 0 0 20px hsla(var(--brand-primary-hsl) / 0.35);
+}
+
+.glow-neon-text {
+  text-shadow: 0 0 12px hsla(var(--brand-primary-hsl) / 0.6), 0 0 2px hsla(var(--brand-primary-hsl) / 0.3);
+}
+
+.glow-amber {
+  box-shadow: 0 0 20px hsla(var(--accent-warning-hsl) / 0.3);
+}
+
+.glow-amber-text {
+  text-shadow: 0 0 12px hsla(var(--accent-warning-hsl) / 0.6), 0 0 2px hsla(var(--accent-warning-hsl) / 0.3);
+}
+
+.glow-cyan {
+  box-shadow: 0 0 20px hsla(var(--brand-secondary-cyan-hsl) / 0.3);
+}
+
+.glow-cyan-text {
+  text-shadow: 0 0 12px hsla(var(--brand-secondary-cyan-hsl) / 0.6);
+}
+
+.glow-magenta {
+  box-shadow: 0 0 20px hsla(var(--brand-secondary-magenta-hsl) / 0.3);
+}
+
+.glow-magenta-text {
+  text-shadow: 0 0 12px hsla(var(--brand-secondary-magenta-hsl) / 0.6);
+}
+
+.cyber-glow-border {
+  border: 1px solid hsla(var(--brand-primary-hsl) / 0.2);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.cyber-glow-border:hover:not(:disabled) {
+  border-color: hsla(var(--brand-primary-hsl) / 0.6);
+  box-shadow: 0 0 15px hsla(var(--brand-primary-hsl) / 0.2);
+}
+
