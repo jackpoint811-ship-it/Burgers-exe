@@ -87,7 +87,7 @@ export function CatalogCartDrawer({ isOpen, onClose, onCheckout }: CatalogCartDr
     >
       <motion.section
         ref={dialogRef as any}
-        className="catalog-drawer catalog-cart-drawer"
+        className="catalog-drawer catalog-cart-drawer glass-panel"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -97,11 +97,11 @@ export function CatalogCartDrawer({ isOpen, onClose, onCheckout }: CatalogCartDr
         transition={{ type: "spring", damping: 25, stiffness: 200 }}
       >
         <header className="catalog-drawer__header catalog-cart-drawer__header">
-          <h2 id={titleId} className="catalog-cart-drawer__title">Tu carrito</h2>
+          <h2 id={titleId} className="catalog-cart-drawer__title glow-neon-text">Tu carrito</h2>
           <button
             ref={closeRef}
             type="button"
-            className="catalog-drawer__close"
+            className="catalog-drawer__close min-w-[44px] min-h-[44px]"
             onClick={onClose}
             aria-label="Cerrar carrito"
           >
@@ -112,7 +112,7 @@ export function CatalogCartDrawer({ isOpen, onClose, onCheckout }: CatalogCartDr
         {items.length === 0 ? (
           <div className="catalog-cart-drawer__empty">
             <p>Tu carrito está vacío.</p>
-            <button type="button" className="catalog-cart-drawer__empty-cta" onClick={onClose}>
+            <button type="button" className="catalog-cart-drawer__empty-cta cyber-glow-border min-w-[44px] min-h-[44px]" onClick={onClose}>
               Seguir explorando
             </button>
           </div>
@@ -131,12 +131,12 @@ export function CatalogCartDrawer({ isOpen, onClose, onCheckout }: CatalogCartDr
                     </div>
                     <div className="catalog-cart-item__info">
                       <p className="catalog-cart-item__name">{item.name}</p>
-                      <p className="catalog-cart-item__price">{formatCurrency(item.price)}</p>
+                      <p className="catalog-cart-item__price glow-amber-text">{formatCurrency(item.price)}</p>
                     </div>
                     <div className="catalog-cart-item__controls">
                       <button
                         type="button"
-                        className="catalog-cart-item__qty-btn"
+                        className="catalog-cart-item__qty-btn min-w-[44px] min-h-[44px]"
                         aria-label={`Reducir cantidad de ${item.name}`}
                         onClick={() => setQty(item.productId, item.qty - 1)}
                       >
@@ -147,7 +147,7 @@ export function CatalogCartDrawer({ isOpen, onClose, onCheckout }: CatalogCartDr
                       </span>
                       <button
                         type="button"
-                        className="catalog-cart-item__qty-btn"
+                        className="catalog-cart-item__qty-btn min-w-[44px] min-h-[44px]"
                         aria-label={`Aumentar cantidad de ${item.name}`}
                         disabled={item.qty >= CATALOG_CART_MAX_QTY}
                         onClick={() => setQty(item.productId, item.qty + 1)}
@@ -157,7 +157,7 @@ export function CatalogCartDrawer({ isOpen, onClose, onCheckout }: CatalogCartDr
                     </div>
                     <button
                       type="button"
-                      className="catalog-cart-item__remove"
+                      className="catalog-cart-item__remove min-w-[44px] min-h-[44px]"
                       aria-label={`Eliminar ${item.name} del carrito`}
                       onClick={() => removeItem(item.productId)}
                     >
@@ -171,9 +171,9 @@ export function CatalogCartDrawer({ isOpen, onClose, onCheckout }: CatalogCartDr
             <div className="catalog-cart-drawer__footer">
               <div className="catalog-cart-drawer__total">
                 <span>Total</span>
-                <strong>{formatCurrency(total)}</strong>
+                <strong className="glow-amber-text">{formatCurrency(total)}</strong>
               </div>
-              <button type="button" className="catalog-cart-drawer__checkout" onClick={onCheckout}>
+              <button type="button" className="catalog-cart-drawer__checkout catalog-checkout__submit min-w-[44px] min-h-[44px]" onClick={onCheckout}>
                 Ir a Checkout
               </button>
             </div>

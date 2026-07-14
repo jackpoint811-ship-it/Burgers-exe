@@ -14,7 +14,7 @@ export function CatalogCartBar({ onOpenCart }: CatalogCartBarProps) {
 
   return (
     <motion.aside
-      className="catalog-cart-bar"
+      className="catalog-cart-bar glass-panel-strong"
       aria-label="Resumen del carrito"
       initial={shouldReduceMotion ? { opacity: 0 } : { y: 100, opacity: 0 }}
       animate={shouldReduceMotion ? { opacity: 1 } : { y: 0, opacity: 1 }}
@@ -29,12 +29,12 @@ export function CatalogCartBar({ onOpenCart }: CatalogCartBarProps) {
           {count === 1 ? "producto" : "productos"}
         </span>
       </div>
-      <div className="catalog-cart-bar__total">
+      <div className="catalog-cart-bar__total glow-amber-text">
         {formatCurrency(total)}
       </div>
       <button
         type="button"
-        className="catalog-cart-bar__cta"
+        className="catalog-cart-bar__cta min-w-[44px] min-h-[44px]"
         onClick={onOpenCart}
         aria-haspopup="dialog"
       >

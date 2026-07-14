@@ -27,10 +27,10 @@ const CatalogProductCard = ({ product, onOpen }: { product: CatalogProduct; onOp
   const src = resolveCatalogAssetUrl(product.imageUrl, product.imageKey);
 
   return (
-    <article className={product.isAvailable ? "catalog-card" : "catalog-card catalog-card--disabled"}>
+    <article className={product.isAvailable ? "catalog-card glass-card" : "catalog-card glass-card catalog-card--disabled"}>
       <button
         type="button"
-        className="catalog-card__detail-trigger"
+        className="catalog-card__detail-trigger min-w-[44px] min-h-[44px]"
         onClick={() => onOpen(product)}
         aria-haspopup="dialog"
         aria-label={`Ver detalle de ${product.name}${product.isAvailable ? "" : ", no disponible"}`}
@@ -40,14 +40,14 @@ const CatalogProductCard = ({ product, onOpen }: { product: CatalogProduct; onOp
         </div>
         <div className="catalog-card__meta">
           <div className="catalog-card__eyebrow">
-            <span>{PRODUCT_TYPE_LABELS[product.type]}</span>
-            {product.badge ? <em>{product.badge}</em> : null}
+            <span className="glow-neon-text">{PRODUCT_TYPE_LABELS[product.type]}</span>
+            {product.badge ? <em className="glow-amber-text">{product.badge}</em> : null}
           </div>
-          <h3>{product.name}</h3>
+          <h3 className="glow-neon-text">{product.name}</h3>
           {product.description ? <p>{product.description}</p> : null}
           <div className="catalog-card__footer">
-            <strong>{formatCurrency(product.price)}</strong>
-            <span className="catalog-card__detail-action">Ver detalle</span>
+            <strong className="glow-amber-text">{formatCurrency(product.price)}</strong>
+            <span className="catalog-card__detail-action cyber-glow-border min-w-[44px] min-h-[44px] flex items-center justify-center">Ver detalle</span>
           </div>
         </div>
       </button>
@@ -83,32 +83,36 @@ function CatalogModeAppInner({ items, categories, siteConfig, catalogBanners = [
   return (
     <>
       <main className="catalog-shell" aria-labelledby="catalogTitle">
-        <section className="catalog-hero">
+        <section className="catalog-hero glass-panel">
           <div>
-            <span>Menú</span>
-            <h1 id="catalogTitle">{siteConfig.brandName}</h1>
+            <span className="glow-neon-text">Menú</span>
+            <h1 id="catalogTitle" className="glow-neon-text">{siteConfig.brandName}</h1>
             <p>Explora el menú, arma tu pedido y paga en minutos.</p>
           </div>
         </section>
 
         {source === "fallback" ? (
-          <section className="menu-sync-notice" role="status" aria-live="polite">
-            <strong>Menú de respaldo activo</strong>
+          <section className="menu-sync-notice glass-panel border-[#ffd166]/30" role="status" aria-live="polite">
+            <strong className="glow-amber-text">Menú de respaldo activo</strong>
             <p>No pudimos confirmar el menú actualizado. Revisa tu conexión o recarga la página antes de ordenar.</p>
-            <button type="button" className="quest-button ghost" onClick={() => window.location.reload()}>Reintentar carga</button>
+            <button type="button" className="quest-button ghost min-w-[44px] min-h-[44px]" onClick={() => window.location.reload()}>Reintentar carga</button>
           </section>
         ) : null}
 
         <CatalogBannerRail banners={catalogBanners} />
 
         <nav className="catalog-category-nav" aria-label="Categorías de catálogo">
-          <button type="button" className={activeCategory === "all" ? "active" : ""} onClick={() => setActiveCategory("all")}>
+          <button
+            type="button"
+            className={`glass-card min-w-[44px] min-h-[44px] ${activeCategory === "all" ? "active glass-card-active glow-neon" : ""}`}
+            onClick={() => setActiveCategory("all")}
+          >
             Todos
           </button>
           {visibleCategories.map((category) => (
             <button
               type="button"
-              className={activeCategory === category.key ? "active" : ""}
+              className={`glass-card min-w-[44px] min-h-[44px] ${activeCategory === category.key ? "active glass-card-active glow-neon" : ""}`}
               key={category.key}
               onClick={() => setActiveCategory(category.key)}
             >
@@ -122,7 +126,7 @@ function CatalogModeAppInner({ items, categories, siteConfig, catalogBanners = [
             {filteredProducts.map((product) => <CatalogProductCard product={product} onOpen={setSelectedProduct} key={product.id} />)}
           </section>
         ) : (
-          <section className="catalog-empty" role="status">
+          <section className="catalog-empty glass-panel" role="status">
             <h2>Sin productos disponibles</h2>
             <p>Por el momento no hay productos publicados. Vuelve pronto.</p>
           </section>

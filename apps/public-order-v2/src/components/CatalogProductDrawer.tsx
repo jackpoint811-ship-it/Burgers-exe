@@ -115,7 +115,7 @@ export function CatalogProductDrawer({ product, onClose }: CatalogProductDrawerP
     >
       <motion.section
         ref={dialogRef as any}
-        className="catalog-drawer"
+        className="catalog-drawer glass-panel"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -133,12 +133,12 @@ export function CatalogProductDrawer({ product, onClose }: CatalogProductDrawerP
           <header className="catalog-drawer__header">
             <div>
               <div className="catalog-drawer__eyebrow">
-                <span>{PRODUCT_TYPE_LABELS[product.type]}</span>
-                {product.badge ? <em>{product.badge}</em> : null}
+                <span className="glow-neon-text">{PRODUCT_TYPE_LABELS[product.type]}</span>
+                {product.badge ? <em className="glow-amber-text">{product.badge}</em> : null}
               </div>
-              <h2 id={titleId}>{product.name}</h2>
+              <h2 id={titleId} className="glow-neon-text">{product.name}</h2>
             </div>
-            <button ref={closeRef} type="button" className="catalog-drawer__close" onClick={onClose} aria-label={`Cerrar detalle de ${product.name}`}>
+            <button ref={closeRef} type="button" className="catalog-drawer__close min-w-[44px] min-h-[44px]" onClick={onClose} aria-label={`Cerrar detalle de ${product.name}`}>
               <span aria-hidden="true">×</span>
             </button>
           </header>
@@ -146,8 +146,8 @@ export function CatalogProductDrawer({ product, onClose }: CatalogProductDrawerP
           {product.description ? <p id={descriptionId} className="catalog-drawer__description">{product.description}</p> : null}
 
           <div className="catalog-drawer__details">
-            <strong>{formatCurrency(product.price)}</strong>
-            <span className={product.isAvailable ? "catalog-drawer__availability" : "catalog-drawer__availability catalog-drawer__availability--unavailable"}>
+            <strong className="glow-amber-text">{formatCurrency(product.price)}</strong>
+            <span className={product.isAvailable ? "catalog-drawer__availability cyber-glow-border" : "catalog-drawer__availability catalog-drawer__availability--unavailable cyber-glow-border"}>
               {product.isAvailable ? "Disponible" : "No disponible"}
             </span>
           </div>
@@ -159,7 +159,7 @@ export function CatalogProductDrawer({ product, onClose }: CatalogProductDrawerP
             {product.isAvailable ? (
               <button
                 type="button"
-                className={`catalog-drawer__add-btn${justAdded ? " catalog-drawer__add-btn--added" : ""}${isAtMax && !justAdded ? " catalog-drawer__add-btn--unavailable" : ""}`}
+                className={`catalog-drawer__add-btn${justAdded ? " catalog-drawer__add-btn--added" : ""}${isAtMax && !justAdded ? " catalog-drawer__add-btn--unavailable" : ""} min-w-[44px] min-h-[44px]`}
                 onClick={handleAddToCart}
                 aria-live="polite"
                 disabled={isAtMax && !justAdded}
@@ -167,7 +167,7 @@ export function CatalogProductDrawer({ product, onClose }: CatalogProductDrawerP
                 {justAdded ? "¡Agregado!" : isAtMax ? "Límite alcanzado" : "Agregar al carrito"}
               </button>
             ) : (
-              <button type="button" className="catalog-drawer__add-btn catalog-drawer__add-btn--unavailable" disabled>
+              <button type="button" className="catalog-drawer__add-btn catalog-drawer__add-btn--unavailable min-w-[44px] min-h-[44px]" disabled>
                 No disponible
               </button>
             )}

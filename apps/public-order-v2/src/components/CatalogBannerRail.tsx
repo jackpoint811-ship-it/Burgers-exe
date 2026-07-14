@@ -18,19 +18,19 @@ export function CatalogBannerRail({ banners }: CatalogBannerRailProps) {
         {active.map((banner) => {
           const src = resolveCatalogAssetUrl(banner.imageUrl, banner.imageKey);
           return (
-            <li key={banner.id} className="catalog-banner-card">
+            <li key={banner.id} className="catalog-banner-card glass-card">
               {src ? (
                 <div className="catalog-banner-card__image" aria-hidden="true">
                   <img src={src} alt="" loading="lazy" decoding="async" />
                 </div>
               ) : null}
               <div className="catalog-banner-card__body">
-                <p className="catalog-banner-card__title">{banner.title}</p>
+                <p className="catalog-banner-card__title glow-neon-text">{banner.title}</p>
                 {banner.subtitle ? (
                   <p className="catalog-banner-card__subtitle">{banner.subtitle}</p>
                 ) : null}
                 {banner.ctaLabel ? (
-                  <span className="catalog-banner-card__cta" aria-hidden="true">
+                  <span className="catalog-banner-card__cta glow-neon-text" aria-hidden="true">
                     {banner.ctaLabel}
                   </span>
                 ) : null}

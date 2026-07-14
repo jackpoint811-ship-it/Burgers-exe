@@ -194,7 +194,7 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
     >
       <motion.section
         ref={dialogRef as any}
-        className="catalog-drawer catalog-checkout-drawer"
+        className="catalog-drawer catalog-checkout-drawer glass-panel"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -204,13 +204,13 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
         transition={{ type: "spring", damping: 25, stiffness: 200 }}
       >
         <header className="catalog-drawer__header catalog-cart-drawer__header">
-          <h2 id={titleId} className="catalog-cart-drawer__title">
+          <h2 id={titleId} className="catalog-cart-drawer__title glow-neon-text">
             {checkoutState.status === "success" ? "Pedido recibido" : "Checkout"}
           </h2>
           <button
             ref={closeRef}
             type="button"
-            className="catalog-drawer__close"
+            className="catalog-drawer__close min-w-[44px] min-h-[44px]"
             onClick={onClose}
             aria-label="Cerrar checkout"
           >
@@ -221,14 +221,14 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
         {checkoutState.status === "success" ? (
           <div className="catalog-checkout-success">
             <p className="catalog-checkout-success__subcopy">Tu orden ha entrado a preparación.</p>
-            <div className="catalog-checkout-success__folio-card">
+            <div className="catalog-checkout-success__folio-card glass-card glow-neon">
               <span>Folio</span>
-              <strong>{checkoutState.folio}</strong>
+              <strong className="glow-neon-text">{checkoutState.folio}</strong>
             </div>
             <p className="catalog-checkout-success__whatsapp-note">
               Te contactaremos por WhatsApp cualquier cosa.
             </p>
-            <button type="button" className="catalog-checkout__submit" onClick={onClose}>
+            <button type="button" className="catalog-checkout__submit min-w-[44px] min-h-[44px]" onClick={onClose}>
               Cerrar y explorar menú
             </button>
           </div>
@@ -242,6 +242,7 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Tu nombre"
+                  className="glass-input"
                   required
                   disabled={checkoutState.status === "submitting"}
                 />
@@ -254,6 +255,7 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="10 dígitos"
+                  className="glass-input"
                   required
                   disabled={checkoutState.status === "submitting"}
                 />
@@ -266,7 +268,7 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
                     type="button"
                     role="radio"
                     aria-checked={paymentMethod === "cash"}
-                    className={paymentMethod === "cash" ? "catalog-checkout-chip active" : "catalog-checkout-chip"}
+                    className={paymentMethod === "cash" ? "catalog-checkout-chip active glass-card glass-card-active min-w-[44px] min-h-[44px]" : "catalog-checkout-chip glass-card min-w-[44px] min-h-[44px]"}
                     onClick={() => setPaymentMethod("cash")}
                     disabled={checkoutState.status === "submitting"}
                   >
@@ -276,7 +278,7 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
                     type="button"
                     role="radio"
                     aria-checked={paymentMethod === "transfer"}
-                    className={paymentMethod === "transfer" ? "catalog-checkout-chip active" : "catalog-checkout-chip"}
+                    className={paymentMethod === "transfer" ? "catalog-checkout-chip active glass-card glass-card-active min-w-[44px] min-h-[44px]" : "catalog-checkout-chip glass-card min-w-[44px] min-h-[44px]"}
                     onClick={() => setPaymentMethod("transfer")}
                     disabled={checkoutState.status === "submitting"}
                   >
@@ -286,7 +288,7 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
                     type="button"
                     role="radio"
                     aria-checked={paymentMethod === "unknown"}
-                    className={paymentMethod === "unknown" ? "catalog-checkout-chip active" : "catalog-checkout-chip"}
+                    className={paymentMethod === "unknown" ? "catalog-checkout-chip active glass-card glass-card-active min-w-[44px] min-h-[44px]" : "catalog-checkout-chip glass-card min-w-[44px] min-h-[44px]"}
                     onClick={() => setPaymentMethod("unknown")}
                     disabled={checkoutState.status === "submitting"}
                   >
@@ -305,11 +307,11 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
             <div className="catalog-cart-drawer__footer">
               <div className="catalog-cart-drawer__total">
                 <span>Total a pagar</span>
-                <strong>{formatCurrency(total)}</strong>
+                <strong className="glow-amber-text">{formatCurrency(total)}</strong>
               </div>
-              <button 
-                type="submit" 
-                className="catalog-checkout__submit" 
+              <button
+                type="submit"
+                className="catalog-checkout__submit min-w-[44px] min-h-[44px]"
                 disabled={checkoutState.status === "submitting" || items.length === 0}
               >
                 {checkoutState.status === "submitting" ? "Procesando..." : "Enviar pedido"}
