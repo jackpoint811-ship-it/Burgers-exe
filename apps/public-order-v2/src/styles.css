@@ -7713,3 +7713,192 @@ html {
     border-color: rgba(57, 255, 136, 0.28);
   }
 }
+
+/* ── Catalog: Custom Additions (Upsell & Checkout Improvements) ── */
+
+/* Sides Upsell inside Cart Drawer */
+.catalog-cart-upsell {
+  margin: 1rem 1.5rem;
+  padding: 1rem;
+  border-top: 1px dashed rgba(243, 255, 246, 0.15);
+  border-bottom: 1px dashed rgba(243, 255, 246, 0.15);
+}
+
+.catalog-cart-upsell__title {
+  color: var(--neon, #39ff88);
+  font-size: 0.95rem;
+  font-weight: 750;
+  margin: 0 0 0.75rem;
+  text-shadow: 0 0 6px rgba(57, 255, 136, 0.35);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.catalog-cart-upsell__carousel {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  scrollbar-width: thin;
+}
+
+.catalog-cart-upsell__carousel::-webkit-scrollbar {
+  height: 4px;
+}
+
+.catalog-cart-upsell__carousel::-webkit-scrollbar-thumb {
+  background: rgba(57, 255, 136, 0.25);
+  border-radius: 99px;
+}
+
+.catalog-cart-upsell-item {
+  background: rgba(23, 26, 32, 0.6);
+  border: 1px solid rgba(243, 255, 246, 0.1);
+  border-radius: 12px;
+  flex: 0 0 160px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.75rem;
+  text-align: center;
+}
+
+.catalog-cart-upsell-item__image {
+  width: 70px;
+  height: 60px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(243, 255, 246, 0.05);
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.catalog-cart-upsell-item__image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.catalog-cart-upsell-item__image-placeholder {
+  font-size: 1.25rem;
+}
+
+.catalog-cart-upsell-item__info {
+  margin-bottom: 0.5rem;
+  min-height: 2.2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.catalog-cart-upsell-item__name {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.catalog-cart-upsell-item__price {
+  font-size: 0.75rem;
+  color: rgba(243, 255, 246, 0.65);
+  margin: 0.15rem 0 0;
+  font-family: monospace;
+}
+
+.catalog-cart-upsell-item__add {
+  background: rgba(57, 255, 136, 0.1);
+  border: 1px solid rgba(57, 255, 136, 0.4);
+  border-radius: 8px;
+  color: var(--neon, #39ff88);
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 0.35rem 0.75rem;
+  cursor: pointer;
+  width: 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .catalog-cart-upsell-item__add {
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  }
+  .catalog-cart-upsell-item__add:hover {
+    background: rgba(57, 255, 136, 0.2);
+    border-color: var(--neon, #39ff88);
+  }
+  .catalog-cart-upsell-item__add:active {
+    transform: scale(0.95);
+  }
+}
+
+/* WhatsApp Opt-in in Checkout Form */
+.catalog-checkout-whatsapp-optin {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1.25rem 0 0.5rem;
+  padding: 0.5rem 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.catalog-checkout-whatsapp-optin input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--neon, #39ff88);
+  cursor: pointer;
+}
+
+.catalog-checkout-whatsapp-optin span {
+  font-size: 0.88rem;
+  color: rgba(243, 255, 246, 0.85);
+  font-weight: 600;
+}
+
+/* WhatsApp Join Panel in Checkout Success screen */
+.catalog-checkout-success__whatsapp-group {
+  background: rgba(37, 211, 102, 0.08);
+  border: 1px solid rgba(37, 211, 102, 0.35);
+  border-radius: 16px;
+  padding: 1.25rem;
+  margin-bottom: 1.75rem;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 0 15px rgba(37, 211, 102, 0.1);
+}
+
+.catalog-checkout-success__group-desc {
+  font-size: 0.85rem;
+  color: rgba(243, 255, 246, 0.85);
+  margin: 0 0 0.85rem;
+  line-height: 1.4;
+}
+
+.catalog-checkout-success__whatsapp-btn {
+  display: inline-block;
+  background: #25d366;
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-decoration: none;
+  padding: 0.75rem 1.25rem;
+  width: 100%;
+  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .catalog-checkout-success__whatsapp-btn {
+    transition: background 0.15s, transform 0.15s;
+  }
+  .catalog-checkout-success__whatsapp-btn:hover {
+    background: #20ba56;
+    transform: translateY(-1px);
+  }
+  .catalog-checkout-success__whatsapp-btn:active {
+    transform: translateY(1px);
+  }
+}

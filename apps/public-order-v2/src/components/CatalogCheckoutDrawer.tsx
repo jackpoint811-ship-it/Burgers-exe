@@ -62,6 +62,9 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<OrderV2PaymentMethod>("unknown");
+  const [location, setLocation] = useState<"" | "Torre GGA" | "Torre Valcob">("");
+  const [wantsWhatsappGroup, setWantsWhatsappGroup] = useState(true);
+  const [notes, setNotes] = useState("");
   const [checkoutState, setCheckoutState] = useState<CheckoutState>({ status: "idle" });
 
   const shouldReduceMotion = useReducedMotion();
@@ -71,7 +74,7 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
   const prevSnapshotRef = useRef("");
 
   // Regenerate key when cart contents or customer info changes.
-  const currentSnapshot = JSON.stringify({ items: items.map(i => `${i.productId}:${i.qty}`), name, phone, paymentMethod });
+  const currentSnapshot = JSON.stringify({ items: items.map(i => `${i.productId}:${i.qty}`), name, phone, paymentMethod, location, wantsWhatsappGroup, notes });
   if (currentSnapshot !== prevSnapshotRef.current) {
     prevSnapshotRef.current = currentSnapshot;
     idempotencyKeyRef.current = generateIdempotencyKey();
@@ -84,6 +87,9 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
       setName("");
       setPhone("");
       setPaymentMethod("unknown");
+      setLocation("");
+      setWantsWhatsappGroup(true);
+      setNotes("");
       return;
     }
 
@@ -147,6 +153,11 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
       return;
     }
 
+    if (!location) {
+      setCheckoutState({ status: "error", error: "Por favor, elige tu ubicación de entrega." });
+      return;
+    }
+
     setCheckoutState({ status: "submitting" });
 
     try {
@@ -157,10 +168,13 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
         name: item.name,
       }));
 
+      const formattedNotes = `Ubicación: ${location}${notes.trim() ? ` | ${notes.trim()}` : ""}`;
+
       const response = await createOrderV2({
         customer: { name: name.trim(), phone: normalizedPhone },
         orderMode: "pickup",
         paymentMethod,
+        notes: formattedNotes,
         items: payloadItems,
         ...(isPreviewMode ? { environment: orderEnvironment } : {}),
       }, idempotencyKeyRef.current);
@@ -226,8 +240,21 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
               <strong>{checkoutState.folio}</strong>
             </div>
             <p className="catalog-checkout-success__whatsapp-note">
-              Te contactaremos por WhatsApp cualquier cosa.
+               Te contactaremos por WhatsApp cualquier cosa.
             </p>
+            {wantsWhatsappGroup && (
+              <div className="catalog-checkout-success__whatsapp-group">
+                <p className="catalog-checkout-success__group-desc">Únete a nuestro grupo oficial de WhatsApp para enterarte de dinámicas y novedades:</p>
+                <a
+                  href="https://chat.whatsapp.com/GycE5zALOypGPvJVaMfbPp"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="catalog-checkout-success__whatsapp-btn"
+                >
+                  Unirme al Grupo de WhatsApp
+                </a>
+              </div>
+            )}
             <button type="button" className="catalog-checkout__submit" onClick={onClose}>
               Cerrar y explorar menú
             </button>
@@ -250,13 +277,61 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
               <label className="catalog-checkout-field">
                 <span>Teléfono (WhatsApp)</span>
                 <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="10 dígitos"
-                  required
+                   type="tel"
+                   value={phone}
+                   onChange={(e) => setPhone(e.target.value)}
+                   placeholder="10 dígitos"
+                   required
+                   disabled={checkoutState.status === "submitting"}
+                />
+              </label>
+
+              <div className="catalog-checkout-field">
+                <span id="location-label">Ubicación (Entrega)</span>
+                <div className="catalog-checkout-chips" role="radiogroup" aria-labelledby="location-label">
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={location === "Torre GGA"}
+                    className={location === "Torre GGA" ? "catalog-checkout-chip active" : "catalog-checkout-chip"}
+                    onClick={() => setLocation("Torre GGA")}
+                    disabled={checkoutState.status === "submitting"}
+                  >
+                    Torre GGA
+                  </button>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={location === "Torre Valcob"}
+                    className={location === "Torre Valcob" ? "catalog-checkout-chip active" : "catalog-checkout-chip"}
+                    onClick={() => setLocation("Torre Valcob")}
+                    disabled={checkoutState.status === "submitting"}
+                  >
+                    Torre Valcob
+                  </button>
+                </div>
+              </div>
+
+              <label className="catalog-checkout-field">
+                <span>Nota adicional (Opcional)</span>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Ej. Sin cebolla en la burger..."
+                  maxLength={300}
+                  disabled={checkoutState.status === "submitting"}
+                  rows={2}
+                />
+              </label>
+
+              <label className="catalog-checkout-whatsapp-optin">
+                <input
+                  type="checkbox"
+                  checked={wantsWhatsappGroup}
+                  onChange={(e) => setWantsWhatsappGroup(e.target.checked)}
                   disabled={checkoutState.status === "submitting"}
                 />
+                <span>Quiero unirme al grupo oficial de WhatsApp</span>
               </label>
 
               <div className="catalog-checkout-field">

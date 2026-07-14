@@ -76,6 +76,8 @@ function CatalogModeAppInner({ items, categories, siteConfig, catalogBanners = [
   }, []);
   const closeCheckout = useCallback(() => setIsCheckoutOpen(false), []);
 
+  const sideProducts = useMemo(() => products.filter((p) => p.type === "side" && p.isAvailable), [products]);
+
   const filteredProducts = activeCategory === "all"
     ? products
     : products.filter((product) => product.categoryKey === activeCategory);
@@ -138,7 +140,7 @@ function CatalogModeAppInner({ items, categories, siteConfig, catalogBanners = [
         {selectedProduct && <CatalogProductDrawer key="product-drawer" product={selectedProduct} onClose={closeProductDrawer} />}
       </AnimatePresence>
       <AnimatePresence>
-        {isCartOpen && <CatalogCartDrawer key="cart-drawer" isOpen={isCartOpen} onClose={closeCart} onCheckout={openCheckout} />}
+        {isCartOpen && <CatalogCartDrawer key="cart-drawer" isOpen={isCartOpen} onClose={closeCart} onCheckout={openCheckout} sides={sideProducts} />}
       </AnimatePresence>
       <AnimatePresence>
         {isCheckoutOpen && <CatalogCheckoutDrawer key="checkout-drawer" isOpen={isCheckoutOpen} onClose={closeCheckout} />}
