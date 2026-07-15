@@ -79,6 +79,14 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
   const [wantsWhatsappGroup, setWantsWhatsappGroup] = useState(true);
   const [notes, setNotes] = useState("");
   const [checkoutState, setCheckoutState] = useState<CheckoutState>({ status: "idle" });
+  const [errors, setErrors] = useState<{
+    name?: string;
+    phone?: string;
+    location?: string;
+    deliveryDate?: string;
+  }>({});
+
+  const successHeadingRef = useRef<HTMLHeadingElement | null>(null);
 
   const isSameDayOpen = isSameDayOrderingOpen();
   const futureDates = useMemo(() => {
@@ -127,6 +135,7 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
       setWantsWhatsappGroup(true);
       setNotes("");
       setDeliveryDate(isSameDayOpen ? "Hoy" : (futureDates[0]?.value || ""));
+      setErrors({});
       return;
     }
 
@@ -171,38 +180,73 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
     };
   }, [isOpen, onClose]);
 
+  useEffect(() => {
+    if (checkoutState.status === "success") {
+      successHeadingRef.current?.focus();
+    }
+  }, [checkoutState.status]);
+
   const handleBackdropClick = (event: MouseEvent<HTMLDivElement>) => {
     if (event.target === event.currentTarget) onClose();
+  };
+
+  const validateForm = () => {
+    const newErrors: {
+      name?: string;
+      phone?: string;
+      location?: string;
+      deliveryDate?: string;
+    } = {};
+
+    if (!name.trim()) {
+      newErrors.name = "Por favor, ingresa tu nombre.";
+    }
+
+    const normalizedPhone = normalizePhoneDigits(phone);
+    if (!phone.trim()) {
+      newErrors.phone = "Por favor, ingresa tu teléfono.";
+    } else if (normalizedPhone.length !== 10) {
+      newErrors.phone = "El teléfono debe tener exactamente 10 dígitos.";
+    }
+
+    if (!location) {
+      newErrors.location = "Por favor, elige tu ubicación de entrega.";
+    }
+
+    if (!deliveryDate) {
+      newErrors.deliveryDate = "Por favor, elige una fecha de entrega.";
+    }
+
+    setErrors(newErrors);
+    return newErrors;
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (items.length === 0) return;
 
-    const normalizedPhone = normalizePhoneDigits(phone);
-    if (normalizedPhone.length !== 10) {
-      setCheckoutState({ status: "error", error: "El teléfono debe tener exactamente 10 dígitos." });
-      return;
-    }
-
-    if (!name.trim()) {
-      setCheckoutState({ status: "error", error: "Por favor, ingresa tu nombre." });
-      return;
-    }
-
-    if (!location) {
-      setCheckoutState({ status: "error", error: "Por favor, elige tu ubicación de entrega." });
-      return;
-    }
-
-    if (!deliveryDate) {
-      setCheckoutState({ status: "error", error: "Por favor, elige una fecha de entrega." });
+    const validationErrors = validateForm();
+    if (Object.keys(validationErrors).length > 0) {
+      const firstErrorMessage = Object.values(validationErrors)[0];
+      setCheckoutState({ status: "error", error: firstErrorMessage });
+      setTimeout(() => {
+        if (validationErrors.name) {
+          dialogRef.current?.querySelector<HTMLInputElement>("#checkout-name")?.focus();
+        } else if (validationErrors.phone) {
+          dialogRef.current?.querySelector<HTMLInputElement>("#checkout-phone")?.focus();
+        } else if (validationErrors.deliveryDate) {
+          dialogRef.current?.querySelector<HTMLButtonElement>(".catalog-checkout-chips--dates button")?.focus();
+        } else if (validationErrors.location) {
+          dialogRef.current?.querySelector<HTMLButtonElement>("#location-label + .catalog-checkout-chips button")?.focus();
+        }
+      }, 0);
       return;
     }
 
     setCheckoutState({ status: "submitting" });
 
     try {
+      const normalizedPhone = normalizePhoneDigits(phone);
       const payloadItems = items.map((item) => ({
         sku: item.productId,
         qty: item.qty,
@@ -260,7 +304,12 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
         transition={{ type: "spring", damping: 25, stiffness: 200 }}
       >
         <header className="catalog-drawer__header catalog-cart-drawer__header">
-          <h2 id={titleId} className="catalog-cart-drawer__title">
+          <h2
+            ref={successHeadingRef}
+            tabIndex={-1}
+            id={titleId}
+            className="catalog-cart-drawer__title focus:outline-none"
+          >
             {checkoutState.status === "success" ? "Pedido recibido" : "Checkout"}
           </h2>
           <button
@@ -302,42 +351,78 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
             </button>
           </div>
         ) : (
-          <form className="catalog-checkout-form" onSubmit={handleSubmit}>
+          <form className="catalog-checkout-form" onSubmit={handleSubmit} noValidate>
             <div className="catalog-checkout-form__fields">
               <label className="catalog-checkout-field">
                 <span>Nombre</span>
                 <input
+                  id="checkout-name"
                   type="text"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (errors.name) setErrors(prev => ({ ...prev, name: undefined }));
+                    if (checkoutState.status === "error") setCheckoutState({ status: "idle" });
+                  }}
                   placeholder="Tu nombre"
+                  className={`glass-input ${errors.name ? "error" : ""}`}
                   required
                   disabled={checkoutState.status === "submitting"}
+                  aria-invalid={errors.name ? "true" : "false"}
+                  aria-describedby={errors.name ? "name-error" : undefined}
                 />
+                {errors.name && (
+                  <span id="name-error" className="catalog-checkout-error-inline" role="alert">
+                    ⚠️ {errors.name}
+                  </span>
+                )}
               </label>
               
               <label className="catalog-checkout-field">
                 <span>Teléfono (WhatsApp)</span>
                 <input
-                   type="tel"
-                   value={phone}
-                   onChange={(e) => setPhone(e.target.value)}
-                   placeholder="10 dígitos"
-                   required
-                   disabled={checkoutState.status === "submitting"}
+                  id="checkout-phone"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => {
+                    setPhone(e.target.value);
+                    if (errors.phone) setErrors(prev => ({ ...prev, phone: undefined }));
+                    if (checkoutState.status === "error") setCheckoutState({ status: "idle" });
+                  }}
+                  placeholder="10 dígitos"
+                  className={`glass-input ${errors.phone ? "error" : ""}`}
+                  required
+                  disabled={checkoutState.status === "submitting"}
+                  aria-invalid={errors.phone ? "true" : "false"}
+                  aria-describedby={errors.phone ? "phone-error" : undefined}
                 />
+                {errors.phone && (
+                  <span id="phone-error" className="catalog-checkout-error-inline" role="alert">
+                    ⚠️ {errors.phone}
+                  </span>
+                )}
               </label>
 
               <div className="catalog-checkout-field">
                 <span id="date-label">Fecha de entrega</span>
-                <div className="catalog-checkout-chips catalog-checkout-chips--dates" role="radiogroup" aria-labelledby="date-label">
+                <div
+                  className="catalog-checkout-chips catalog-checkout-chips--dates"
+                  role="radiogroup"
+                  aria-labelledby="date-label"
+                  aria-invalid={errors.deliveryDate ? "true" : "false"}
+                  aria-describedby={errors.deliveryDate ? "date-error" : undefined}
+                >
                   {isSameDayOpen ? (
                     <button
                       type="button"
                       role="radio"
                       aria-checked={deliveryDate === "Hoy"}
-                      className={deliveryDate === "Hoy" ? "catalog-checkout-chip active" : "catalog-checkout-chip"}
-                      onClick={() => setDeliveryDate("Hoy")}
+                      className={`catalog-checkout-chip ${deliveryDate === "Hoy" ? "active" : ""} ${errors.deliveryDate ? "error" : ""}`}
+                      onClick={() => {
+                        setDeliveryDate("Hoy");
+                        if (errors.deliveryDate) setErrors(prev => ({ ...prev, deliveryDate: undefined }));
+                        if (checkoutState.status === "error") setCheckoutState({ status: "idle" });
+                      }}
                       disabled={checkoutState.status === "submitting"}
                     >
                       Hoy (Llega: 1:30 PM a 2:00 PM)
@@ -353,25 +438,44 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
                       key={date.value}
                       role="radio"
                       aria-checked={deliveryDate === date.value}
-                      className={deliveryDate === date.value ? "catalog-checkout-chip active" : "catalog-checkout-chip"}
-                      onClick={() => setDeliveryDate(date.value)}
+                      className={`catalog-checkout-chip ${deliveryDate === date.value ? "active" : ""} ${errors.deliveryDate ? "error" : ""}`}
+                      onClick={() => {
+                        setDeliveryDate(date.value);
+                        if (errors.deliveryDate) setErrors(prev => ({ ...prev, deliveryDate: undefined }));
+                        if (checkoutState.status === "error") setCheckoutState({ status: "idle" });
+                      }}
                       disabled={checkoutState.status === "submitting"}
                     >
                       {date.label} (1:30 PM)
                     </button>
                   ))}
                 </div>
+                {errors.deliveryDate && (
+                  <span id="date-error" className="catalog-checkout-error-inline" role="alert">
+                    ⚠️ {errors.deliveryDate}
+                  </span>
+                )}
               </div>
 
               <div className="catalog-checkout-field">
                 <span id="location-label">Ubicación (Entrega)</span>
-                <div className="catalog-checkout-chips" role="radiogroup" aria-labelledby="location-label">
+                <div
+                  className="catalog-checkout-chips"
+                  role="radiogroup"
+                  aria-labelledby="location-label"
+                  aria-invalid={errors.location ? "true" : "false"}
+                  aria-describedby={errors.location ? "location-error" : undefined}
+                >
                   <button
                     type="button"
                     role="radio"
                     aria-checked={location === "Torre GGA"}
-                    className={location === "Torre GGA" ? "catalog-checkout-chip active" : "catalog-checkout-chip"}
-                    onClick={() => setLocation("Torre GGA")}
+                    className={`catalog-checkout-chip ${location === "Torre GGA" ? "active" : ""} ${errors.location ? "error" : ""}`}
+                    onClick={() => {
+                      setLocation("Torre GGA");
+                      if (errors.location) setErrors(prev => ({ ...prev, location: undefined }));
+                      if (checkoutState.status === "error") setCheckoutState({ status: "idle" });
+                    }}
                     disabled={checkoutState.status === "submitting"}
                   >
                     Torre GGA
@@ -380,13 +484,22 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
                     type="button"
                     role="radio"
                     aria-checked={location === "Torre Valcob"}
-                    className={location === "Torre Valcob" ? "catalog-checkout-chip active" : "catalog-checkout-chip"}
-                    onClick={() => setLocation("Torre Valcob")}
+                    className={`catalog-checkout-chip ${location === "Torre Valcob" ? "active" : ""} ${errors.location ? "error" : ""}`}
+                    onClick={() => {
+                      setLocation("Torre Valcob");
+                      if (errors.location) setErrors(prev => ({ ...prev, location: undefined }));
+                      if (checkoutState.status === "error") setCheckoutState({ status: "idle" });
+                    }}
                     disabled={checkoutState.status === "submitting"}
                   >
                     Torre Valcob
                   </button>
                 </div>
+                {errors.location && (
+                  <span id="location-error" className="catalog-checkout-error-inline" role="alert">
+                    ⚠️ {errors.location}
+                  </span>
+                )}
               </div>
 
               <label className="catalog-checkout-field">
@@ -395,6 +508,7 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Ej. Sin cebolla en la burger..."
+                  className="glass-input"
                   maxLength={300}
                   disabled={checkoutState.status === "submitting"}
                   rows={2}
@@ -418,7 +532,7 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
                     type="button"
                     role="radio"
                     aria-checked={paymentMethod === "cash"}
-                    className={paymentMethod === "cash" ? "catalog-checkout-chip active" : "catalog-checkout-chip"}
+                    className={`catalog-checkout-chip ${paymentMethod === "cash" ? "active" : ""}`}
                     onClick={() => setPaymentMethod("cash")}
                     disabled={checkoutState.status === "submitting"}
                   >
@@ -428,7 +542,7 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
                     type="button"
                     role="radio"
                     aria-checked={paymentMethod === "transfer"}
-                    className={paymentMethod === "transfer" ? "catalog-checkout-chip active" : "catalog-checkout-chip"}
+                    className={`catalog-checkout-chip ${paymentMethod === "transfer" ? "active" : ""}`}
                     onClick={() => setPaymentMethod("transfer")}
                     disabled={checkoutState.status === "submitting"}
                   >
@@ -438,7 +552,7 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
                     type="button"
                     role="radio"
                     aria-checked={paymentMethod === "unknown"}
-                    className={paymentMethod === "unknown" ? "catalog-checkout-chip active" : "catalog-checkout-chip"}
+                    className={`catalog-checkout-chip ${paymentMethod === "unknown" ? "active" : ""}`}
                     onClick={() => setPaymentMethod("unknown")}
                     disabled={checkoutState.status === "submitting"}
                   >
@@ -480,7 +594,7 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
               </div>
               <button 
                 type="submit" 
-                className="catalog-checkout__submit" 
+                className={`catalog-checkout__submit ${checkoutState.status === "submitting" ? "loading" : ""}`}
                 disabled={checkoutState.status === "submitting" || items.length === 0}
               >
                 {checkoutState.status === "submitting" ? "Procesando..." : "Enviar pedido"}
