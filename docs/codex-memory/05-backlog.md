@@ -13,6 +13,7 @@
 - Reacomodar Sorteo.
 - Agregar tickets extra a participantes.
 - Mantener documentación viva por PR.
+- Implementar interruptor dinámico para activar/desactivar el Modo Catálogo directamente desde el panel de configuración de Chekeo (guardando y leyendo el estado desde D1/site_config en lugar de la config estática de mock-data).
 
 ## Ideas futuras
 

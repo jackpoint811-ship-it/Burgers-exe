@@ -152,8 +152,8 @@ export function CatalogProductDrawer({ product, onClose }: CatalogProductDrawerP
             </span>
           </div>
 
-          {product.type === "burger" ? <p className="catalog-drawer__notice">Ingredientes informativos. Esta burger no se modifica en Modo Catálogo.</p> : null}
-          {product.type === "topping" ? <p className="catalog-drawer__notice">Los toppings se entregan por separado.</p> : null}
+          {product.type === "burger" ? <p className="catalog-drawer__notice">Nuestras hamburguesas se preparan siguiendo la receta original de la casa para asegurar el balance de sabor perfecto.</p> : null}
+          {product.type === "topping" ? <p className="catalog-drawer__notice">Nuestros complementos se sirven por separado para que los disfrutes a tu gusto.</p> : null}
 
           <div className="catalog-drawer__footer">
             {product.isAvailable ? (
