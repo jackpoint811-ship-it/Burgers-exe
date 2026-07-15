@@ -233,7 +233,7 @@ test.describe("Catalog Drawers Accessibility & Focus Trap", () => {
     const locationError = page.locator("#location-error");
     await expect(locationError).toBeVisible();
     await expect(locationError).toContainText("Por favor, elige tu ubicación de entrega.");
-    
+
     // The first location chip button should receive focus
     const firstLocationChip = page.locator("#location-label + .catalog-checkout-chips button").first();
     await expect(firstLocationChip).toBeFocused();
