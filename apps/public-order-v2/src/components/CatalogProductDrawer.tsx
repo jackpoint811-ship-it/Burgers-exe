@@ -133,10 +133,10 @@ export function CatalogProductDrawer({ product, onClose }: CatalogProductDrawerP
           <header className="catalog-drawer__header">
             <div>
               <div className="catalog-drawer__eyebrow">
-                <span className="glow-neon-text">{PRODUCT_TYPE_LABELS[product.type]}</span>
-                {product.badge ? <em className="glow-amber-text">{product.badge}</em> : null}
+                <span>{PRODUCT_TYPE_LABELS[product.type]}</span>
+                {product.badge ? <em>{product.badge}</em> : null}
               </div>
-              <h2 id={titleId} className="glow-neon-text">{product.name}</h2>
+              <h2 id={titleId}>{product.name}</h2>
             </div>
             <button ref={closeRef} type="button" className="catalog-drawer__close min-w-[44px] min-h-[44px]" onClick={onClose} aria-label={`Cerrar detalle de ${product.name}`}>
               <span aria-hidden="true">×</span>
@@ -146,8 +146,8 @@ export function CatalogProductDrawer({ product, onClose }: CatalogProductDrawerP
           {product.description ? <p id={descriptionId} className="catalog-drawer__description">{product.description}</p> : null}
 
           <div className="catalog-drawer__details">
-            <strong className="glow-amber-text">{formatCurrency(product.price)}</strong>
-            <span className={product.isAvailable ? "catalog-drawer__availability cyber-glow-border" : "catalog-drawer__availability catalog-drawer__availability--unavailable cyber-glow-border"}>
+            <strong>{formatCurrency(product.price)}</strong>
+            <span className={product.isAvailable ? "catalog-drawer__availability" : "catalog-drawer__availability catalog-drawer__availability--unavailable"}>
               {product.isAvailable ? "Disponible" : "No disponible"}
             </span>
           </div>
