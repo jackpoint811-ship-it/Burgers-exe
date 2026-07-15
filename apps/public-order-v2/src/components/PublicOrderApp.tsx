@@ -2273,6 +2273,9 @@ export function PublicOrderApp() {
   };
 
   if (shouldRenderCatalogMode) {
+    if (loadingMenu || showBoot) {
+      return <LoadingOverlay loading={true} />;
+    }
     return (
       <CatalogModeApp
         items={menuData.items}

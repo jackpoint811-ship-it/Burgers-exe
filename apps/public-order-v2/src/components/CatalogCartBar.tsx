@@ -29,7 +29,7 @@ export function CatalogCartBar({ onOpenCart }: CatalogCartBarProps) {
           {count === 1 ? "producto" : "productos"}
         </span>
       </div>
-      <div className="catalog-cart-bar__total glow-amber-text">
+      <div className="catalog-cart-bar__total">
         {formatCurrency(total)}
       </div>
       <button
@@ -38,7 +38,7 @@ export function CatalogCartBar({ onOpenCart }: CatalogCartBarProps) {
         onClick={onOpenCart}
         aria-haspopup="dialog"
       >
-        Ver carrito
+        Ver carrito ({count})
       </button>
     </motion.aside>
   );

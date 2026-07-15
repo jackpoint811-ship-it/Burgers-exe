@@ -102,7 +102,7 @@ export function CatalogCartDrawer({ isOpen, onClose, onCheckout, sides = [] }: C
         transition={shouldReduceMotion ? { duration: 0 } : { type: "spring", damping: 25, stiffness: 200 }}
       >
         <header className="catalog-drawer__header catalog-cart-drawer__header">
-          <h2 id={titleId} className="catalog-cart-drawer__title glow-neon-text">Tu carrito</h2>
+          <h2 id={titleId} className="catalog-cart-drawer__title">Tu carrito</h2>
           <button
             ref={closeRef}
             type="button"
@@ -114,15 +114,15 @@ export function CatalogCartDrawer({ isOpen, onClose, onCheckout, sides = [] }: C
           </button>
         </header>
 
-        {items.length === 0 ? (
-          <div className="catalog-cart-drawer__empty">
-            <p>Tu carrito está vacío.</p>
-            <button type="button" className="catalog-cart-drawer__empty-cta cyber-glow-border min-w-[44px] min-h-[44px]" onClick={onClose}>
-              Seguir explorando
-            </button>
-          </div>
-        ) : (
-          <>
+        <div className="catalog-cart-drawer__body" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
+          {items.length === 0 ? (
+            <div className="catalog-cart-drawer__empty" style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+              <p>Tu carrito está vacío.</p>
+              <button type="button" className="catalog-cart-drawer__empty-cta min-w-[44px] min-h-[44px]" onClick={onClose}>
+                Seguir explorando
+              </button>
+            </div>
+          ) : (
             <ul className="catalog-cart-drawer__list" aria-label="Productos en el carrito">
               {items.map((item) => {
                 const src = resolveCatalogAssetUrl(item.imageUrl, item.imageKey);
@@ -136,12 +136,12 @@ export function CatalogCartDrawer({ isOpen, onClose, onCheckout, sides = [] }: C
                     </div>
                     <div className="catalog-cart-item__info">
                       <p className="catalog-cart-item__name">{item.name}</p>
-                      <p className="catalog-cart-item__price glow-amber-text">{formatCurrency(item.price)}</p>
+                      <p className="catalog-cart-item__price">{formatCurrency(item.price)}</p>
                     </div>
                     <div className="catalog-cart-item__controls">
                       <button
                         type="button"
-                        className="catalog-cart-item__qty-btn min-w-[44px] min-h-[44px]"
+                        className="catalog-cart-item__qty-btn catalog-cart-drawer__quantity-btn min-w-[44px] min-h-[44px]"
                         aria-label={`Reducir cantidad de ${item.name}`}
                         onClick={() => setQty(item.productId, item.qty - 1)}
                       >
@@ -152,7 +152,7 @@ export function CatalogCartDrawer({ isOpen, onClose, onCheckout, sides = [] }: C
                       </span>
                       <button
                         type="button"
-                        className="catalog-cart-item__qty-btn min-w-[44px] min-h-[44px]"
+                        className="catalog-cart-item__qty-btn catalog-cart-drawer__quantity-btn min-w-[44px] min-h-[44px]"
                         aria-label={`Aumentar cantidad de ${item.name}`}
                         disabled={item.qty >= CATALOG_CART_MAX_QTY}
                         onClick={() => setQty(item.productId, item.qty + 1)}
@@ -172,51 +172,56 @@ export function CatalogCartDrawer({ isOpen, onClose, onCheckout, sides = [] }: C
                 );
               })}
             </ul>
+          )}
 
-            {showUpsell && (
-              <div className="catalog-cart-upsell">
-                <h4 className="catalog-cart-upsell__title">¿Te gustaría acompañar tu hamburguesa?</h4>
-                <div className="catalog-cart-upsell__carousel">
-                  {sides.map((side) => {
-                    const sideSrc = resolveCatalogAssetUrl(side.imageUrl, side.imageKey);
-                    return (
-                      <div key={side.id} className="catalog-cart-upsell-item">
-                        <div className="catalog-cart-upsell-item__image">
-                          {sideSrc ? (
-                            <img src={sideSrc} alt="" decoding="async" loading="lazy" />
-                          ) : (
-                            <span className="catalog-cart-upsell-item__image-placeholder" />
-                          )}
-                        </div>
-                        <div className="catalog-cart-upsell-item__info">
-                          <p className="catalog-cart-upsell-item__name">{side.name}</p>
-                          <p className="catalog-cart-upsell-item__price">{formatCurrency(side.price)}</p>
-                        </div>
-                        <button
-                          type="button"
-                          className="catalog-cart-upsell-item__add"
-                          onClick={() => addItem(side)}
-                        >
-                          + Agregar
-                        </button>
+          {showUpsell && (
+            <div className="catalog-cart-upsell">
+              <h4 className="catalog-cart-upsell__title">¿Te gustaría acompañar tu hamburguesa?</h4>
+              <div className="catalog-cart-upsell__carousel">
+                {sides.map((side) => {
+                  const sideSrc = resolveCatalogAssetUrl(side.imageUrl, side.imageKey);
+                  return (
+                    <div key={side.id} className="catalog-cart-upsell-item">
+                      <div className="catalog-cart-upsell-item__image">
+                        {sideSrc ? (
+                          <img src={sideSrc} alt="" decoding="async" loading="lazy" />
+                        ) : (
+                          <span className="catalog-cart-upsell-item__image-placeholder" />
+                        )}
                       </div>
-                    );
-                  })}
-                </div>
+                      <div className="catalog-cart-upsell-item__info">
+                        <p className="catalog-cart-upsell-item__name">{side.name}</p>
+                        <p className="catalog-cart-upsell-item__price">{formatCurrency(side.price)}</p>
+                      </div>
+                      <button
+                        type="button"
+                        className="catalog-cart-upsell-item__add"
+                        onClick={() => addItem(side)}
+                      >
+                        + Agregar
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
-            )}
-
-            <div className="catalog-cart-drawer__footer">
-              <div className="catalog-cart-drawer__total">
-                <span>Total</span>
-                <strong className="glow-amber-text">{formatCurrency(total)}</strong>
-              </div>
-              <button type="button" className="catalog-cart-drawer__checkout catalog-checkout__submit min-w-[44px] min-h-[44px]" onClick={onCheckout}>
-                Ir a Checkout
-              </button>
             </div>
-          </>
-        )}
+          )}
+        </div>
+
+        <div className="catalog-cart-drawer__footer">
+          <div className="catalog-cart-drawer__total">
+            <span>Total</span>
+            <strong>{formatCurrency(total)}</strong>
+          </div>
+          <button 
+            type="button" 
+            className="catalog-cart-drawer__checkout min-w-[44px] min-h-[44px]" 
+            onClick={onCheckout}
+            disabled={items.length === 0}
+          >
+            Ir a Checkout
+          </button>
+        </div>
       </motion.section>
     </motion.div>
   );

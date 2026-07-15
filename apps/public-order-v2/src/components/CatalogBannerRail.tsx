@@ -25,12 +25,12 @@ export function CatalogBannerRail({ banners }: CatalogBannerRailProps) {
                 </div>
               ) : null}
               <div className="catalog-banner-card__body">
-                <p className="catalog-banner-card__title glow-neon-text">{banner.title}</p>
+                <p className="catalog-banner-card__title">{banner.title}</p>
                 {banner.subtitle ? (
                   <p className="catalog-banner-card__subtitle">{banner.subtitle}</p>
                 ) : null}
                 {banner.ctaLabel ? (
-                  <span className="catalog-banner-card__cta glow-neon-text" aria-hidden="true">
+                  <span className="catalog-banner-card__cta" aria-hidden="true">
                     {banner.ctaLabel}
                   </span>
                 ) : null}

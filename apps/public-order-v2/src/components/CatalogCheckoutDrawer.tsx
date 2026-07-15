@@ -327,7 +327,7 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
           <div className="catalog-checkout-success">
             <p className="catalog-checkout-success__subcopy">Tu orden ha entrado a preparación.</p>
             <div className="catalog-checkout-success__folio-card">
-              <span>Folio</span>
+              <span>Folio: </span>
               <strong>{checkoutState.folio}</strong>
             </div>
             <p className="catalog-checkout-success__whatsapp-note">
@@ -595,7 +595,7 @@ export function CatalogCheckoutDrawer({ isOpen, onClose }: CatalogCheckoutDrawer
               <button 
                 type="submit" 
                 className={`catalog-checkout__submit ${checkoutState.status === "submitting" ? "loading" : ""}`}
-                disabled={checkoutState.status === "submitting" || items.length === 0}
+                disabled={checkoutState.status === "submitting" || items.length === 0 ? ("true" as any) : undefined}
               >
                 {checkoutState.status === "submitting" ? "Procesando..." : "Enviar pedido"}
               </button>
