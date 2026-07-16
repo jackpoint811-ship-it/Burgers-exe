@@ -37,6 +37,7 @@ Estas reglas aplican a todo el repositorio salvo que un `AGENTS.md` más especí
 - Evitar cambios visuales amplios si el prompt pide una mejora puntual.
 
 ## Reglas específicas para `apps/public-order-v2`
+- Excepción de estilo visual: Esta app utilizará un diseño claro, profesional y tradicional (estilo Uber Eats), con fondo claro, tipografía sans-serif limpia y tarjetas compactas/mixtas, abandonando la estética Cyberpunk del resto del proyecto.
 - No romper el public order flow mobile-first ni los aprendizajes de PRs 237–240.
 - Mantener CTA claro para iniciar pedido, personalización comprensible, checkout con labels/helper text/errores inline y acciones táctiles cómodas.
 - No cambiar payloads enviados desde `orders-v2`, lectura de menú, tickets, promociones, precios ni ubicación sin autorización explícita.
@@ -76,6 +77,12 @@ Estas reglas aplican a todo el repositorio salvo que un `AGENTS.md` más especí
 - **Gemini Pro (Razonamiento)**: Usar para planificar, diseñar el `implementation_plan.md`, resolver problemas complejos de accesibilidad y definir contratos de datos.
 - **Gemini Flash (Ejecución)**: Usar para codificación rápida, ejecutar comandos de testing/typecheck en background y correr validaciones visuales con `browser_subagent`.
 - **Delegación**: Usar `invoke_subagent` para paralelizar tareas del roadmap de PRs (ej. un subagente para el PR de contratos, otro para la UI) manteniendo las responsabilidades aisladas.
+
+## Optimización de Tokens y Uso de Obsidian
+- **Chats Cortos por Tarea/PR**: Para evitar el consumo exponencial de tokens por historial largo, cerrar el chat actual e iniciar uno nuevo al cambiar de tarea.
+- **Persistencia de Contexto**: Antes de cerrar un chat largo, actualizar el estado del trabajo en `docs/codex-memory/01-estado-actual.md` o la nota correspondiente de Obsidian.
+- **Reinicio con Memoria**: Al iniciar un nuevo chat, el agente debe leer la memoria de Obsidian (`docs/codex-memory/`) para retomar el contexto en lugar de pedir explicaciones repetitivas.
+- **Lectura/Escritura Quirúrgica**: Evitar leer o escribir archivos completos a menos que sea estrictamente necesario. Usar rangos precisos en `view_file` y `replace_file_content`.
 
 ## Memoria del proyecto
 
