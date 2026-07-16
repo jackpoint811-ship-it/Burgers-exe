@@ -6696,6 +6696,70 @@ html {
   flex-direction: column;
 }
 
+/* ── Glassmorphism and Input utilities for food delivery catalog theme ── */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid var(--catalog-border) !important;
+  box-shadow: var(--catalog-shadow-lg) !important;
+}
+
+.glass-panel-strong {
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid var(--catalog-border) !important;
+  box-shadow: var(--catalog-shadow-lg) !important;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.8) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid var(--catalog-border) !important;
+  box-shadow: var(--catalog-shadow-sm) !important;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s !important;
+}
+
+.glass-card:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-color: var(--catalog-primary-border) !important;
+  box-shadow: var(--catalog-shadow-md) !important;
+}
+
+.glass-card-active {
+  background: var(--catalog-primary-soft) !important;
+  border-color: var(--catalog-primary) !important;
+  box-shadow: var(--catalog-shadow-md) !important;
+}
+
+.glass-input {
+  background: #ffffff !important;
+  border: 1px solid var(--catalog-border) !important;
+  border-radius: 12px !important;
+  padding: 0.75rem 1rem !important;
+  font-size: 0.95rem !important;
+  color: var(--catalog-text-main) !important;
+  transition: all 0.2s !important;
+  width: 100% !important;
+}
+
+.glass-input:hover:not(:disabled) {
+  border-color: #cbd5e1 !important;
+}
+
+.glass-input:focus {
+  border-color: var(--catalog-primary) !important;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15) !important;
+  outline: none !important;
+}
+
+.glass-input.error {
+  border-color: var(--catalog-danger) !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+}
+
 /* ── Topbar Navigation (Mobile Only) ─────────────────────────── */
 .catalog-topbar {
   display: flex;
