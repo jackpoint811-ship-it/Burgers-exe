@@ -25,30 +25,30 @@ type CatalogModeAppProps = {
 
 const CatalogProductCard = ({ product, onOpen, isFeatured }: { product: CatalogProduct; onOpen: (product: CatalogProduct) => void; isFeatured?: boolean }) => {
   const src = resolveCatalogAssetUrl(product.imageUrl, product.imageKey);
-  const cardClass = `catalog-card glass-card ${!product.isAvailable ? "catalog-card--disabled" : ""} ${isFeatured ? "catalog-card--featured" : "catalog-card--compact"}`;
+  const cardClass = `catalog-card ${!product.isAvailable ? "catalog-card--disabled" : ""} ${isFeatured ? "catalog-card--featured" : "catalog-card--compact"}`;
 
   return (
     <article className={cardClass}>
       <button
         type="button"
-        className="catalog-card__detail-trigger min-w-[44px] min-h-[44px]"
+        className="catalog-card__detail-trigger"
         onClick={() => onOpen(product)}
         aria-haspopup="dialog"
         aria-label={`Ver detalle de ${product.name}${product.isAvailable ? "" : ", no disponible"}`}
       >
-        <div className="catalog-card__meta">
-          <div className="catalog-card__eyebrow">
-            <span className="">{PRODUCT_TYPE_LABELS[product.type]}</span>
-            {product.badge ? <em className="">{product.badge}</em> : null}
-          </div>
-          <h3 className="">{product.name}</h3>
-          {product.description ? <p>{product.description}</p> : null}
-          <div className="catalog-card__footer">
-            <strong className="">{formatCurrency(product.price)}</strong>
-          </div>
-        </div>
         <div className="catalog-card__image" aria-hidden="true">
           {src ? <img src={src} alt="" loading="lazy" decoding="async" /> : <span>{product.type}</span>}
+        </div>
+        <div className="catalog-card__meta">
+          <div className="catalog-card__eyebrow">
+            <span className="catalog-card__type">{PRODUCT_TYPE_LABELS[product.type]}</span>
+            {product.badge ? <em className="catalog-card__badge">{product.badge}</em> : null}
+          </div>
+          <h3 className="catalog-card__title">{product.name}</h3>
+          {product.description ? <p className="catalog-card__desc">{product.description}</p> : null}
+          <div className="catalog-card__footer">
+            <strong className="catalog-card__price">{formatCurrency(product.price)}</strong>
+          </div>
         </div>
       </button>
     </article>
