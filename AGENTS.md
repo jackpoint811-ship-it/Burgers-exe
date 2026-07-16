@@ -93,3 +93,8 @@ Antes de cambios grandes, lee:
 - `docs/codex-memory/09-checklists.md`
 
 Estas notas son la memoria viva del proyecto para Codex/Obsidian. Si contradicen el código actual, verifica el código y reporta la diferencia.
+
+## Rigor en UI y CSS (Lecciones Aprendidas)
+- **No asumir estilos mágicos:** Si creas nuevas estructuras de layout en React (ej. sidebars, drawers, paneles estáticos), es OBLIGATORIO escribir las reglas CSS correspondientes (Flex/Grid, Media Queries, Position) en el archivo de estilos. El layout no se arreglará solo.
+- **Erradicación de temas residuales:** Al migrar a un nuevo diseño, auditar exhaustivamente los componentes en busca de colores, fondos o clases (ej. colores neón, fondos oscuros) que pertenezcan a la estética antigua y destruyan el contraste del nuevo diseño.
+- **Prohibición de "Ceguera de Compilación":** Que `npm run build` o `typecheck` pasen con éxito NO significa que la UI esté correcta. El agente no debe calificar un rediseño visual como exitoso sin haber validado meticulosamente que las clases CSS aplicadas existen y tienen coherencia visual.
