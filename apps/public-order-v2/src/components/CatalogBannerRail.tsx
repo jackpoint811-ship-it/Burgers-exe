@@ -18,7 +18,7 @@ export function CatalogBannerRail({ banners }: CatalogBannerRailProps) {
         {active.map((banner) => {
           const src = resolveCatalogAssetUrl(banner.imageUrl, banner.imageKey);
           return (
-            <li key={banner.id} className="catalog-banner-card glass-card">
+            <li key={banner.id} className="catalog-banner-card">
               {src ? (
                 <div className="catalog-banner-card__image" aria-hidden="true">
                   <img src={src} alt="" loading="lazy" decoding="async" />

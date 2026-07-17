@@ -16,24 +16,6 @@
 
 ### Fecha
 
-2026-07-15
-
-### Decision
-
-Implementar optimización estricta de tokens mediante flujo de chats cortos e independientes y sincronización con memoria local (Obsidian).
-
-### Motivo
-
-Mitigar el alto consumo de cuota de la API en interacciones sucesivas y prolongadas debido a la acumulación de historial.
-
-### Impacto
-
-- Se modifica `AGENTS.md` para incluir pautas de reducción de tokens.
-- Se actualiza `docs/codex-memory/08-agent-workflow.md` para exigir la actualización de `01-estado-actual.md` antes del cierre de cada chat y sugerir el reinicio de conversación para nuevas tareas.
-- El agente utilizará lectura y escritura de archivos estrictamente quirúrgicas (`replace_file_content` y `view_file` con rangos de líneas).
-
-### Fecha
-
 2026-07-02
 
 ### Decision

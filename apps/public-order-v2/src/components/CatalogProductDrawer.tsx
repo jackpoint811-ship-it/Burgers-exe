@@ -111,11 +111,11 @@ export function CatalogProductDrawer({ product, onClose }: CatalogProductDrawerP
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.2 }}
+      transition={{ duration: 0.2 }}
     >
       <motion.section
         ref={dialogRef as any}
-        className="catalog-drawer glass-panel"
+        className="catalog-drawer"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -123,7 +123,7 @@ export function CatalogProductDrawer({ product, onClose }: CatalogProductDrawerP
         initial={shouldReduceMotion ? { opacity: 0 } : { y: "100%" }}
         animate={shouldReduceMotion ? { opacity: 1 } : { y: 0 }}
         exit={shouldReduceMotion ? { opacity: 0 } : { y: "100%" }}
-        transition={shouldReduceMotion ? { duration: 0 } : { type: "spring", damping: 25, stiffness: 200 }}
+        transition={{ type: "spring", damping: 25, stiffness: 200 }}
       >
         <div className="catalog-drawer__media" aria-hidden="true">
           {src ? <img src={src} alt="" decoding="async" /> : <span>{PRODUCT_TYPE_LABELS[product.type]}</span>}
@@ -138,7 +138,7 @@ export function CatalogProductDrawer({ product, onClose }: CatalogProductDrawerP
               </div>
               <h2 id={titleId}>{product.name}</h2>
             </div>
-            <button ref={closeRef} type="button" className="catalog-drawer__close min-w-[44px] min-h-[44px]" onClick={onClose} aria-label={`Cerrar detalle de ${product.name}`}>
+            <button ref={closeRef} type="button" className="catalog-drawer__close" onClick={onClose} aria-label={`Cerrar detalle de ${product.name}`}>
               <span aria-hidden="true">×</span>
             </button>
           </header>
@@ -159,7 +159,7 @@ export function CatalogProductDrawer({ product, onClose }: CatalogProductDrawerP
             {product.isAvailable ? (
               <button
                 type="button"
-                className={`catalog-drawer__add-btn${justAdded ? " catalog-drawer__add-btn--added" : ""}${isAtMax && !justAdded ? " catalog-drawer__add-btn--unavailable" : ""} min-w-[44px] min-h-[44px]`}
+                className={`catalog-drawer__add-btn${justAdded ? " catalog-drawer__add-btn--added" : ""}${isAtMax && !justAdded ? " catalog-drawer__add-btn--unavailable" : ""}`}
                 onClick={handleAddToCart}
                 aria-live="polite"
                 disabled={isAtMax && !justAdded}
@@ -167,7 +167,7 @@ export function CatalogProductDrawer({ product, onClose }: CatalogProductDrawerP
                 {justAdded ? "¡Agregado!" : isAtMax ? "Límite alcanzado" : "Agregar al carrito"}
               </button>
             ) : (
-              <button type="button" className="catalog-drawer__add-btn catalog-drawer__add-btn--unavailable min-w-[44px] min-h-[44px]" disabled>
+              <button type="button" className="catalog-drawer__add-btn catalog-drawer__add-btn--unavailable" disabled>
                 No disponible
               </button>
             )}

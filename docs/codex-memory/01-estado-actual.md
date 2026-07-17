@@ -16,7 +16,6 @@ Burgers.exe tiene una app pública de pedidos y una app interna de Chekeo.
 - No meter dependencias nuevas sin autorización.
 - Mantener enfoque mobile-first.
 - Mantener UX clara, accesible y consistente con la marca.
-- Optimizar consumo de tokens: cerrar y reiniciar chats por tarea, guardando el estado aquí en la memoria de Obsidian.
 
 ## Estado funcional deseado
 
