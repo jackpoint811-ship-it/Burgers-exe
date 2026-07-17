@@ -313,7 +313,6 @@ test.describe("E2E Catalog & Kitchen Weaknesses Fixes Suite", () => {
         // Fill Form
         await page.locator('input[placeholder="Tu nombre"]').fill("Test user");
         await page.locator('input[placeholder="10 dígitos"]').fill(p.input);
-        await page.click("button.catalog-checkout-chip:has-text('Torre GGA')");
         await page.click("button.catalog-checkout-chip:has-text('Efectivo')");
 
         // Submit order
@@ -724,7 +723,6 @@ test.describe("E2E Catalog & Kitchen Weaknesses Fixes Suite", () => {
         // Fill form with invalid phone
         await page.locator('input[placeholder="Tu nombre"]').fill("Boundary Tester");
         await page.locator('input[placeholder="10 dígitos"]').fill(tc.input);
-        await page.click("button.catalog-checkout-chip:has-text('Torre GGA')");
         await page.click("button.catalog-checkout-chip:has-text('Efectivo')");
 
         // Submit
@@ -776,7 +774,6 @@ test.describe("E2E Catalog & Kitchen Weaknesses Fixes Suite", () => {
 
       await page.locator('input[placeholder="Tu nombre"]').fill("Cross User");
       await page.locator('input[placeholder="10 dígitos"]').fill("+52 55 1122 3344");
-      await page.click("button.catalog-checkout-chip:has-text('Torre GGA')");
       await page.click("button.catalog-checkout-chip:has-text('Efectivo')");
       await page.click("button.catalog-checkout__submit");
 
@@ -886,7 +883,6 @@ test.describe("E2E Catalog & Kitchen Weaknesses Fixes Suite", () => {
 
       await page.locator('input[placeholder="Tu nombre"]').fill("Scenario Customer");
       await page.locator('input[placeholder="10 dígitos"]').fill("+52 55 9876 5432");
-      await page.click("button.catalog-checkout-chip:has-text('Torre GGA')");
       await page.click("button.catalog-checkout-chip:has-text('Efectivo')");
       await page.click("button.catalog-checkout__submit");
 

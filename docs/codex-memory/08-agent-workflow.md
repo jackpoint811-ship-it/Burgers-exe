@@ -69,8 +69,6 @@ Antes de iniciar cualquier fase de la migracion V2 Clean Architecture, el agente
 3. Crear Pull Request.
 4. Reportar link del PR.
 5. No hacer merge automatico salvo instruccion explicita.
-6. **Actualización de Memoria (Obsidian)**: Actualizar `docs/codex-memory/01-estado-actual.md` con el estado en el que queda el proyecto.
-7. **Recomendación de Reinicio**: Indicar al usuario que cierre el chat actual para limpiar el contexto acumulado y reducir el consumo de tokens en la siguiente tarea.
 
 ## Regla de memoria viva
 

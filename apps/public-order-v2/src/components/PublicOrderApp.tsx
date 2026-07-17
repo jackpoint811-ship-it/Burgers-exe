@@ -1469,16 +1469,16 @@ const downloadReferralShareImage = async (params: { code: string; raffleTitle?: 
   if (!ctx) throw new Error("Canvas unavailable");
 
   const gradient = ctx.createLinearGradient(0, 0, 1080, 1350);
-  gradient.addColorStop(0, "#f8fafc");
-  gradient.addColorStop(0.52, "#f1f5f9");
-  gradient.addColorStop(1, "#e2e8f0");
+  gradient.addColorStop(0, "#05130a");
+  gradient.addColorStop(0.52, "#080b0f");
+  gradient.addColorStop(1, "#151002");
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, 1080, 1350);
 
-  ctx.strokeStyle = "rgba(79, 70, 229, 0.15)";
+  ctx.strokeStyle = "rgba(57, 255, 136, 0.35)";
   ctx.lineWidth = 6;
   ctx.strokeRect(54, 54, 972, 1242);
-  ctx.strokeStyle = "rgba(79, 70, 229, 0.05)";
+  ctx.strokeStyle = "rgba(255, 184, 77, 0.32)";
   ctx.lineWidth = 2;
   for (let y = 130; y < 1240; y += 72) {
     ctx.beginPath();
@@ -1487,36 +1487,36 @@ const downloadReferralShareImage = async (params: { code: string; raffleTitle?: 
     ctx.stroke();
   }
 
-  ctx.fillStyle = "#4f46e5";
+  ctx.fillStyle = "#39ff88";
   ctx.font = "900 74px Inter, Arial, sans-serif";
   ctx.textAlign = "center";
   ctx.fillText("Burgers.exe", 540, 190);
 
   if (params.raffleTitle) {
-    ctx.fillStyle = "#334155";
+    ctx.fillStyle = "#d1fae5";
     ctx.font = "800 42px Inter, Arial, sans-serif";
     drawWrappedCanvasText(ctx, params.raffleTitle, 540, 285, 820, 54);
   }
 
-  ctx.fillStyle = "rgba(79, 70, 229, 0.05)";
-  ctx.strokeStyle = "rgba(79, 70, 229, 0.25)";
+  ctx.fillStyle = "rgba(57, 255, 136, 0.12)";
+  ctx.strokeStyle = "rgba(57, 255, 136, 0.48)";
   ctx.lineWidth = 4;
   ctx.beginPath();
   ctx.roundRect(108, 450, 864, 305, 44);
   ctx.fill();
   ctx.stroke();
 
-  ctx.fillStyle = "#4f46e5";
+  ctx.fillStyle = "#fff7d6";
   ctx.font = "950 102px Inter, Arial, sans-serif";
   drawWrappedCanvasText(ctx, params.code, 540, 590, 780, 112);
 
-  ctx.fillStyle = "#334155";
+  ctx.fillStyle = "#d1fae5";
   ctx.font = "800 45px Inter, Arial, sans-serif";
   drawWrappedCanvasText(ctx, "Pide tu burger y usa mi código", 540, 885, 820, 62);
-  ctx.fillStyle = "#475569";
+  ctx.fillStyle = "#fbbf24";
   ctx.font = "800 34px Inter, Arial, sans-serif";
   drawWrappedCanvasText(ctx, REFERRAL_SHARE_TEXT, 540, 1015, 830, 48);
-  ctx.fillStyle = "#4f46e5";
+  ctx.fillStyle = "#8ef7b5";
   ctx.font = "700 30px Inter, Arial, sans-serif";
   drawWrappedCanvasText(ctx, params.link, 540, 1215, 850, 40);
 
@@ -2273,9 +2273,6 @@ export function PublicOrderApp() {
   };
 
   if (shouldRenderCatalogMode) {
-    if (loadingMenu || showBoot) {
-      return <LoadingOverlay loading={true} />;
-    }
     return (
       <CatalogModeApp
         items={menuData.items}

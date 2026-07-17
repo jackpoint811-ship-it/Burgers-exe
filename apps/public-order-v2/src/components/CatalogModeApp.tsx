@@ -23,12 +23,11 @@ type CatalogModeAppProps = {
   source?: string;
 };
 
-const CatalogProductCard = ({ product, onOpen, isFeatured }: { product: CatalogProduct; onOpen: (product: CatalogProduct) => void; isFeatured?: boolean }) => {
+const CatalogProductCard = ({ product, onOpen }: { product: CatalogProduct; onOpen: (product: CatalogProduct) => void }) => {
   const src = resolveCatalogAssetUrl(product.imageUrl, product.imageKey);
-  const cardClass = `catalog-card ${!product.isAvailable ? "catalog-card--disabled" : ""} ${isFeatured ? "catalog-card--featured" : "catalog-card--compact"}`;
 
   return (
-    <article className={cardClass}>
+    <article className={product.isAvailable ? "catalog-card" : "catalog-card catalog-card--disabled"}>
       <button
         type="button"
         className="catalog-card__detail-trigger"
@@ -41,13 +40,14 @@ const CatalogProductCard = ({ product, onOpen, isFeatured }: { product: CatalogP
         </div>
         <div className="catalog-card__meta">
           <div className="catalog-card__eyebrow">
-            <span className="catalog-card__type">{PRODUCT_TYPE_LABELS[product.type]}</span>
-            {product.badge ? <em className="catalog-card__badge">{product.badge}</em> : null}
+            <span>{PRODUCT_TYPE_LABELS[product.type]}</span>
+            {product.badge ? <em>{product.badge}</em> : null}
           </div>
-          <h3 className="catalog-card__title">{product.name}</h3>
-          {product.description ? <p className="catalog-card__desc">{product.description}</p> : null}
+          <h3>{product.name}</h3>
+          {product.description ? <p>{product.description}</p> : null}
           <div className="catalog-card__footer">
-            <strong className="catalog-card__price">{formatCurrency(product.price)}</strong>
+            <strong>{formatCurrency(product.price)}</strong>
+            <span className="catalog-card__detail-action">Ver detalle</span>
           </div>
         </div>
       </button>
@@ -63,13 +63,10 @@ function CatalogModeAppInner({ items, categories, siteConfig, catalogBanners = [
       .filter((category) => categoryKeys.has(category.key))
       .sort((a, b) => a.sortOrder - b.sortOrder);
   }, [categories, products]);
-  
   const [activeCategory, setActiveCategory] = useState<MenuCategory["key"] | "all">("all");
   const [selectedProduct, setSelectedProduct] = useState<CatalogProduct | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-
   const closeProductDrawer = useCallback(() => setSelectedProduct(null), []);
   const openCart = useCallback(() => setIsCartOpen(true), []);
   const closeCart = useCallback(() => setIsCartOpen(false), []);
@@ -78,7 +75,6 @@ function CatalogModeAppInner({ items, categories, siteConfig, catalogBanners = [
     setIsCheckoutOpen(true);
   }, []);
   const closeCheckout = useCallback(() => setIsCheckoutOpen(false), []);
-  const toggleMobileNav = useCallback(() => setIsMobileNavOpen((prev) => !prev), []);
 
   const sideProducts = useMemo(() => products.filter((p) => p.type === "side" && p.isAvailable), [products]);
 
@@ -87,77 +83,55 @@ function CatalogModeAppInner({ items, categories, siteConfig, catalogBanners = [
     : products.filter((product) => product.categoryKey === activeCategory);
 
   return (
-    <div className="catalog-layout-wrapper">
-      <header className="catalog-topbar">
-        <button className="catalog-topbar__menu-btn min-w-[44px] min-h-[44px]" onClick={toggleMobileNav} aria-label="Menú de categorías">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-        </button>
-        <h1 className="catalog-topbar__title">{siteConfig.brandName}</h1>
-      </header>
-
-      <div className={`catalog-sidebar-overlay ${isMobileNavOpen ? "open" : ""}`} onClick={() => setIsMobileNavOpen(false)} aria-hidden="true" />
-      
-      <aside className={`catalog-sidebar ${isMobileNavOpen ? "open" : ""}`}>
-        <nav className="catalog-category-nav" aria-label="Categorías de catálogo">
-          <div className="catalog-sidebar__header">
-            <h2>Categorías</h2>
-            <button className="catalog-sidebar__close min-w-[44px] min-h-[44px]" onClick={() => setIsMobileNavOpen(false)}>
-               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
+    <>
+      <main className="catalog-shell" aria-labelledby="catalogTitle">
+        <section className="catalog-hero">
+          <div>
+            <span>Menú</span>
+            <h1 id="catalogTitle">{siteConfig.brandName}</h1>
+            <p>Explora el menú, arma tu pedido y paga en minutos.</p>
           </div>
-          <button
-            type="button"
-            className={`catalog-category-btn min-w-[44px] min-h-[44px] ${activeCategory === "all" ? "active" : ""}`}
-            onClick={() => { setActiveCategory("all"); setIsMobileNavOpen(false); }}
-          >
-            Todos
-          </button>
-          {visibleCategories.map((category) => (
-            <button
-              type="button"
-              className={`catalog-category-btn min-w-[44px] min-h-[44px] ${activeCategory === category.key ? "active" : ""}`}
-              key={category.key}
-              onClick={() => { setActiveCategory(category.key); setIsMobileNavOpen(false); }}
-            >
-              {category.name}
-            </button>
-          ))}
-        </nav>
-      </aside>
+        </section>
 
-      <main className="catalog-main-content" aria-labelledby="catalogTitle">
         {source === "fallback" ? (
-          <section className="menu-sync-notice glass-panel" role="status" aria-live="polite">
+          <section className="menu-sync-notice" role="status" aria-live="polite">
             <strong>Menú de respaldo activo</strong>
-            <p>No pudimos confirmar el menú actualizado.</p>
-            <button type="button" className="quest-button min-w-[44px] min-h-[44px]" onClick={() => window.location.reload()}>Reintentar</button>
+            <p>No pudimos confirmar el menú actualizado. Revisa tu conexión o recarga la página antes de ordenar.</p>
+            <button type="button" className="quest-button ghost" onClick={() => window.location.reload()}>Reintentar carga</button>
           </section>
         ) : null}
 
         <CatalogBannerRail banners={catalogBanners} />
 
+        <nav className="catalog-category-nav" aria-label="Categorías de catálogo">
+          <button type="button" className={activeCategory === "all" ? "active" : ""} onClick={() => setActiveCategory("all")}>
+            Todos
+          </button>
+          {visibleCategories.map((category) => (
+            <button
+              type="button"
+              className={activeCategory === category.key ? "active" : ""}
+              key={category.key}
+              onClick={() => setActiveCategory(category.key)}
+            >
+              {category.name}
+            </button>
+          ))}
+        </nav>
+
         {filteredProducts.length ? (
           <section className="catalog-grid" aria-label="Productos del catálogo">
-            {filteredProducts.map((product) => (
-              <CatalogProductCard 
-                product={product} 
-                onOpen={setSelectedProduct} 
-                key={product.id} 
-                isFeatured={product.badge !== undefined || product.categoryKey === 'combos'} 
-              />
-            ))}
+            {filteredProducts.map((product) => <CatalogProductCard product={product} onOpen={setSelectedProduct} key={product.id} />)}
           </section>
         ) : (
-          <section className="catalog-empty glass-panel" role="status">
-            <h2>Sin productos</h2>
-            <p>Por el momento no hay productos en esta categoría.</p>
+          <section className="catalog-empty" role="status">
+            <h2>Sin productos disponibles</h2>
+            <p>Por el momento no hay productos publicados. Vuelve pronto.</p>
           </section>
         )}
-      </main>
 
-      <div className="catalog-right-panel">
-        <CatalogCartDrawer isOpen={true} onClose={closeCart} onCheckout={openCheckout} sides={sideProducts} isStaticPanel={true} />
-      </div>
+
+      </main>
 
       <AnimatePresence>
         <CatalogCartBar key="cart-bar" onOpenCart={openCart} />
@@ -166,12 +140,12 @@ function CatalogModeAppInner({ items, categories, siteConfig, catalogBanners = [
         {selectedProduct && <CatalogProductDrawer key="product-drawer" product={selectedProduct} onClose={closeProductDrawer} />}
       </AnimatePresence>
       <AnimatePresence>
-        {isCartOpen && <CatalogCartDrawer key="cart-drawer-mobile" isOpen={isCartOpen} onClose={closeCart} onCheckout={openCheckout} sides={sideProducts} />}
+        {isCartOpen && <CatalogCartDrawer key="cart-drawer" isOpen={isCartOpen} onClose={closeCart} onCheckout={openCheckout} sides={sideProducts} />}
       </AnimatePresence>
       <AnimatePresence>
         {isCheckoutOpen && <CatalogCheckoutDrawer key="checkout-drawer" isOpen={isCheckoutOpen} onClose={closeCheckout} />}
       </AnimatePresence>
-    </div>
+    </>
   );
 }
 
