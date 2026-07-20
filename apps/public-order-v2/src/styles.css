@@ -102,6 +102,165 @@
   --muted-strong: var(--color-text-secondary);
 }
 
+/*
+  ═══════════════════════════════════════════════════════
+  PR5 — Dark mode tokens
+  Selector: .theme-dark (toggle manual) +
+            @media prefers-color-scheme (fallback auto)
+  ═══════════════════════════════════════════════════════
+*/
+
+/* ── Toggle manual: clase aplicada por el hook JS ── */
+.theme-dark {
+  color-scheme: dark;
+
+  --color-bg-base:      #0F1410;
+  --color-bg-deep:      #0A0E0C;
+  --color-surface:      #141A16;
+  --color-surface-alt:  #1A2119;
+  --color-surface-input:#1A2119;
+
+  --color-text-primary:  #F0FFF4;
+  --color-text-secondary:#A8C5B5;
+  --color-text-muted:    #6B8F7E;
+  --color-text-on-accent:#FFFFFF;
+
+  --color-accent:            #4ADE80;
+  --color-accent-hover:      #22C55E;
+  --color-accent-soft:       rgba(74, 222, 128, 0.12);
+  --color-accent-line:       rgba(74, 222, 128, 0.30);
+  --color-accent-line-strong:rgba(74, 222, 128, 0.55);
+
+  --color-warning:      #FCD34D;
+  --color-warning-soft: rgba(252, 211, 77, 0.14);
+  --color-danger:       #F87171;
+  --color-danger-soft:  rgba(248, 113, 113, 0.12);
+  --color-success:      #34D399;
+  --color-success-soft: rgba(52, 211, 153, 0.12);
+
+  --color-line-soft:   rgba(255, 255, 255, 0.06);
+  --color-line:        rgba(255, 255, 255, 0.10);
+  --color-line-strong: rgba(255, 255, 255, 0.18);
+
+  --shadow-card:    0 2px 8px rgba(0,0,0,0.32), 0 1px 2px rgba(0,0,0,0.20);
+  --shadow-panel:   0 8px 32px rgba(0,0,0,0.40);
+  --shadow-floating:0 16px 48px rgba(0,0,0,0.55);
+  --shadow-cta:     0 4px 16px rgba(74,222,128,0.22);
+
+  --focus-ring: rgba(74, 222, 128, 0.65);
+
+  --neon:         var(--color-accent);
+  --neon-soft:    var(--color-accent-soft);
+  --amber:        var(--color-warning);
+  --danger:       var(--color-danger);
+  --ink:          var(--color-bg-base);
+  --panel:        var(--color-surface);
+  --panel-strong: var(--color-surface);
+  --line:         var(--color-line);
+  --text:         var(--color-text-primary);
+  --muted:        var(--color-text-muted);
+  --muted-strong: var(--color-text-secondary);
+}
+
+/* ── Fallback automático: sistema operativo en dark ── */
+@media (prefers-color-scheme: dark) {
+  :root:not(.theme-light) {
+    color-scheme: dark;
+
+    --color-bg-base:      #0F1410;
+    --color-bg-deep:      #0A0E0C;
+    --color-surface:      #141A16;
+    --color-surface-alt:  #1A2119;
+    --color-surface-input:#1A2119;
+
+    --color-text-primary:  #F0FFF4;
+    --color-text-secondary:#A8C5B5;
+    --color-text-muted:    #6B8F7E;
+    --color-text-on-accent:#FFFFFF;
+
+    --color-accent:            #4ADE80;
+    --color-accent-hover:      #22C55E;
+    --color-accent-soft:       rgba(74, 222, 128, 0.12);
+    --color-accent-line:       rgba(74, 222, 128, 0.30);
+    --color-accent-line-strong:rgba(74, 222, 128, 0.55);
+
+    --color-warning:      #FCD34D;
+    --color-warning-soft: rgba(252, 211, 77, 0.14);
+    --color-danger:       #F87171;
+    --color-danger-soft:  rgba(248, 113, 113, 0.12);
+    --color-success:      #34D399;
+    --color-success-soft: rgba(52, 211, 153, 0.12);
+
+    --color-line-soft:   rgba(255, 255, 255, 0.06);
+    --color-line:        rgba(255, 255, 255, 0.10);
+    --color-line-strong: rgba(255, 255, 255, 0.18);
+
+    --shadow-card:    0 2px 8px rgba(0,0,0,0.32), 0 1px 2px rgba(0,0,0,0.20);
+    --shadow-panel:   0 8px 32px rgba(0,0,0,0.40);
+    --shadow-floating:0 16px 48px rgba(0,0,0,0.55);
+    --shadow-cta:     0 4px 16px rgba(74,222,128,0.22);
+
+    --focus-ring: rgba(74, 222, 128, 0.65);
+
+    --neon:         var(--color-accent);
+    --neon-soft:    var(--color-accent-soft);
+    --amber:        var(--color-warning);
+    --danger:       var(--color-danger);
+    --ink:          var(--color-bg-base);
+    --panel:        var(--color-surface);
+    --panel-strong: var(--color-surface);
+    --line:         var(--color-line);
+    --text:         var(--color-text-primary);
+    --muted:        var(--color-text-muted);
+    --muted-strong: var(--color-text-secondary);
+  }
+}
+
+/* ── Botón toggle sol/luna en el header ────────────── */
+.app-header__theme-btn {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-left: auto;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-alt);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+  transition: background var(--motion-fast) var(--motion-ease),
+              border-color var(--motion-fast) var(--motion-ease),
+              color var(--motion-fast) var(--motion-ease),
+              transform var(--motion-fast) var(--motion-ease);
+}
+
+.app-header__theme-btn:hover,
+.app-header__theme-btn:focus-visible {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent-line);
+  color: var(--color-accent);
+  transform: rotate(12deg);
+  outline: none;
+}
+
+.app-header__theme-btn:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .app-header__theme-btn svg {
+    transition: transform var(--motion-base) var(--motion-ease);
+  }
+
+  .app-header__theme-btn:hover svg {
+    transform: scale(1.15);
+  }
+}
+
 * {
   box-sizing: border-box;
   scrollbar-width: thin;
@@ -5996,10 +6155,12 @@ html {
 .app-header__inner {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   height: 100%;
   max-width: 1120px;
   margin: 0 auto;
   padding: 0 var(--space-page);
+  gap: 12px;
 }
 
 .app-header__brand {
