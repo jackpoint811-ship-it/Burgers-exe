@@ -82,6 +82,32 @@ function CatalogModeAppInner({ items, categories, siteConfig, catalogBanners = [
 
   return (
     <>
+      {/* ── Header fijo de la app ─────────────────────────────────────────── */}
+      <header className="app-header" role="banner">
+        <div className="app-header__inner">
+          <a href="/" className="app-header__brand" aria-label="Burgers.exe — Inicio">
+            {/* Logotipo SVG inline — burger icon + wordmark */}
+            <svg
+              className="app-header__icon"
+              width="28"
+              height="28"
+              viewBox="0 0 28 28"
+              fill="none"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <rect width="28" height="28" rx="8" fill="var(--color-accent)" />
+              <rect x="6" y="8" width="16" height="2.5" rx="1.25" fill="white" />
+              <rect x="6" y="12.75" width="16" height="2.5" rx="1.25" fill="white" />
+              <rect x="6" y="17.5" width="16" height="2.5" rx="1.25" fill="white" />
+            </svg>
+            <span className="app-header__wordmark">
+              Burgers<span className="app-header__dot">.exe</span>
+            </span>
+          </a>
+        </div>
+      </header>
+
       <main className="catalog-shell" aria-labelledby="catalogTitle">
         <section className="catalog-hero">
           <div>
