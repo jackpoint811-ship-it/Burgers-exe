@@ -4,10 +4,10 @@
   z-index: 28;
   width: min(1120px, calc(100% - 24px));
   margin: 10px auto 0;
-  border: 1px solid rgba(57, 255, 136, 0.38);
+  border: 1px solid var(--color-accent-line);
   border-radius: 18px;
-  background: rgba(5, 10, 8, 0.96);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.42), 0 0 28px rgba(57, 255, 136, 0.12);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-panel);
   backdrop-filter: blur(16px);
   padding: 10px;
   display: grid;
@@ -25,7 +25,7 @@
 
 .home-tickets-cta strong {
   display: block;
-  color: #f3fff6;
+  color: var(--color-text-primary);
   line-height: 1.2;
 }
 
@@ -35,10 +35,10 @@
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: linear-gradient(135deg, var(--neon), #9affc4);
-  color: #021207;
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
   padding: 0.78rem 1rem;
-  font-weight: 950;
+  font-weight: 800;
   text-decoration: none;
 }
 
@@ -73,10 +73,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(57, 255, 136, 0.34);
+  border: 1px solid var(--color-accent-line);
   border-radius: 999px;
-  background: rgba(8, 15, 12, 0.78);
-  color: #eafff0;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
   padding: 0.82rem 1rem;
   font-weight: 900;
   text-decoration: none;
@@ -111,7 +111,7 @@
 .tickets-back-link:focus-visible,
 .tickets-whatsapp-button:focus-visible,
 .tickets-actions-grid button:focus-visible {
-  outline: 3px solid rgba(255, 209, 102, 0.9);
+  outline: 3px solid var(--focus-ring);
   outline-offset: 3px;
 }
 
@@ -122,7 +122,7 @@
 }
 
 .tickets-status.is-error {
-  color: #ffd6cd;
+  color: var(--color-danger);
 }
 
 .tickets-status.is-success {
@@ -130,14 +130,14 @@
 }
 
 .tickets-count-card {
-  border: 1px solid rgba(57, 255, 136, 0.34);
+  border: 1px solid var(--color-accent-line);
   border-radius: 22px;
   padding: 18px;
   display: grid;
   gap: 2px;
   place-items: center;
-  background: linear-gradient(135deg, rgba(57, 255, 136, 0.14), rgba(255, 209, 102, 0.08));
-  box-shadow: 0 0 28px rgba(57, 255, 136, 0.12);
+  background: var(--color-accent-soft);
+  box-shadow: var(--shadow-card);
 }
 
 .tickets-count-card strong {
@@ -164,7 +164,7 @@
 
 .tickets-code-owner,
 .tickets-copy {
-  color: #f7fff9;
+  color: var(--color-text-primary);
   font-weight: 900;
   text-align: center;
 }
@@ -182,10 +182,10 @@
 }
 
 .tickets-result-list div {
-  border: 1px solid var(--line);
+  border: 1px solid var(--color-line);
   border-radius: 16px;
   padding: 12px;
-  background: rgba(1, 4, 3, 0.5);
+  background: var(--color-surface);
 }
 
 .tickets-result-list dt {
@@ -198,8 +198,8 @@
 
 .tickets-result-list dd {
   margin: 4px 0 0;
-  color: #f3fff6;
-  font-weight: 850;
+  color: var(--color-text-primary);
+  font-weight: 700;
   overflow-wrap: anywhere;
 }
 
@@ -220,8 +220,8 @@
 
 .tickets-actions-grid button:first-child,
 .tickets-whatsapp-button {
-  background: linear-gradient(135deg, var(--neon), #9affc4);
-  color: #021207;
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
   border-color: transparent;
 }
 
@@ -265,13 +265,9 @@
 }
 
 .tickets-page .terminal-window {
-  border-color: rgba(234, 255, 240, 0.12);
-  background:
-    radial-gradient(circle at 0% 0%, rgba(57, 255, 136, 0.08), transparent 34%),
-    linear-gradient(180deg, rgba(10, 21, 17, 0.94), rgba(2, 6, 4, 0.92));
-  box-shadow:
-    0 18px 52px rgba(0, 0, 0, 0.34),
-    inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  border-color: var(--color-line);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-panel);
 }
 
 .tickets-hero-card {
@@ -280,11 +276,8 @@
   overflow: hidden;
   min-height: 260px;
   align-content: end;
-  border-color: rgba(57, 255, 136, 0.2) !important;
-  background:
-    radial-gradient(circle at 82% 10%, rgba(255, 209, 102, 0.15), transparent 28%),
-    radial-gradient(circle at 0% 0%, rgba(57, 255, 136, 0.16), transparent 36%),
-    linear-gradient(145deg, rgba(5, 14, 12, 0.98), rgba(2, 6, 4, 0.96)) !important;
+  border-color: var(--color-accent-line) !important;
+  background: var(--color-surface) !important;
 }
 
 .tickets-hero-card::before {
@@ -319,7 +312,7 @@
 .tickets-hero-card .hero-copy {
   max-width: 39rem;
   margin: 0;
-  color: #d7f5df;
+  color: var(--color-text-secondary);
   line-height: 1.5;
 }
 
@@ -343,7 +336,7 @@
 }
 
 .tickets-hero-signal strong {
-  color: #fff7d6;
+  color: var(--color-text-primary);
   font-size: 0.95rem;
 }
 
@@ -367,9 +360,9 @@
 }
 
 .tickets-status {
-  border: 1px solid rgba(234, 255, 240, 0.08);
+  border: 1px solid var(--color-line);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--color-surface-alt);
   padding: 0.68rem;
 }
 
@@ -380,26 +373,24 @@
 }
 
 .tickets-status.is-error {
-  border-color: rgba(255, 107, 74, 0.32);
-  background: rgba(255, 107, 74, 0.08);
+  border-color: var(--color-danger-soft);
+  background: var(--color-danger-soft);
 }
 
 .tickets-status.is-success {
-  border-color: rgba(57, 255, 136, 0.26);
-  background: rgba(57, 255, 136, 0.075);
+  border-color: var(--color-success-soft);
+  background: var(--color-success-soft);
 }
 
 .tickets-count-card {
-  border-color: rgba(255, 209, 102, 0.3);
-  background:
-    radial-gradient(circle at 50% 0%, rgba(255, 209, 102, 0.18), transparent 58%),
-    rgba(255, 209, 102, 0.055);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  border-color: var(--color-accent-line);
+  background: var(--color-accent-soft);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
 .tickets-count-card strong {
-  color: #fff7d6;
-  text-shadow: 0 0 24px rgba(255, 209, 102, 0.18);
+  color: var(--color-accent);
+  text-shadow: none;
 }
 
 .tickets-result-list {
@@ -407,8 +398,8 @@
 }
 
 .tickets-result-list div {
-  border-color: rgba(234, 255, 240, 0.1);
-  background: rgba(255, 255, 255, 0.032);
+  border-color: var(--color-line);
+  background: var(--color-surface-alt);
 }
 
 .tickets-result-list dd {

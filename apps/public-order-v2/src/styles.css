@@ -1,24 +1,111 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/*
+  ═══════════════════════════════════════════════════════
+  PR1 — Sistema de tokens semánticos — Burgers.exe POv2
+  Tema base: claro/profesional (Uber Eats / Rappi style)
+  Dual-ready: dark mode en PR5 via media query / clase
+  ═══════════════════════════════════════════════════════
+*/
 :root {
-  color-scheme: dark;
-  --neon: #39ff88;
-  --neon-soft: rgba(57, 255, 136, 0.13);
-  --amber: #ffd166;
-  --danger: #ff6b4a;
-  --ink: #060908;
-  --panel: rgba(9, 15, 13, 0.88);
-  --panel-strong: rgba(12, 20, 17, 0.96);
-  --line: rgba(234, 255, 240, 0.1);
-  --text: #f3fff6;
-  --muted: #a9bcb0;
+  color-scheme: light;
+
+  /* ── Fondos ──────────────────────────────────────── */
+  --color-bg-base:      #F7F7F7;
+  --color-bg-deep:      #EFEFEF;
+  --color-surface:      #FFFFFF;
+  --color-surface-alt:  #FAFAFA;
+  --color-surface-input:#FFFFFF;
+
+  /* ── Textos ──────────────────────────────────────── */
+  --color-text-primary: #1A1A1A;
+  --color-text-secondary:#4A4A4A;
+  --color-text-muted:   #767676;
+  --color-text-on-accent:#FFFFFF;
+
+  /* ── Acento principal ────────────────────────────── */
+  --color-accent:           #2D6A4F;
+  --color-accent-hover:     #245840;
+  --color-accent-soft:      rgba(45, 106, 79, 0.10);
+  --color-accent-line:      rgba(45, 106, 79, 0.28);
+  --color-accent-line-strong:rgba(45, 106, 79, 0.55);
+
+  /* ── Semánticos de estado ────────────────────────── */
+  --color-warning:      #F59E0B;
+  --color-warning-soft: rgba(245, 158, 11, 0.12);
+  --color-danger:       #DC2626;
+  --color-danger-soft:  rgba(220, 38, 38, 0.10);
+  --color-success:      #059669;
+  --color-success-soft: rgba(5, 150, 105, 0.10);
+
+  /* ── Bordes / separadores ────────────────────────── */
+  --color-line-soft:    rgba(0, 0, 0, 0.06);
+  --color-line:         rgba(0, 0, 0, 0.10);
+  --color-line-strong:  rgba(0, 0, 0, 0.16);
+
+  /* ── Radios ──────────────────────────────────────── */
+  --radius-xs:  8px;
+  --radius-sm:  12px;
+  --radius-md:  16px;
+  --radius-lg:  20px;
+  --radius-xl:  24px;
+  --radius-2xl: 32px;
+  --radius-pill:999px;
+
+  /* ── Espaciado ───────────────────────────────────── */
+  --space-page:      16px;
+  --space-page-wide: 24px;
+  --space-panel:     20px;
+  --touch-target-min:44px;
+
+  /* ── Sombras ─────────────────────────────────────── */
+  --shadow-card:    0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-panel:   0 8px 32px rgba(0,0,0,0.10);
+  --shadow-floating:0 16px 48px rgba(0,0,0,0.14);
+  --shadow-cta:     0 4px 16px rgba(45,106,79,0.22);
+
+  /* ── Movimiento ──────────────────────────────────── */
+  --motion-fast: 120ms;
+  --motion-base: 180ms;
+  --motion-slow: 260ms;
+  --motion-ease: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ── Z-Index ─────────────────────────────────────── */
+  --z-base:    1;
+  --z-sticky:  18;
+  --z-floating:24;
+  --z-overlay: 28;
+  --z-modal:   32;
+
+  /* ── Focus ring ──────────────────────────────────── */
+  --focus-ring: rgba(45, 106, 79, 0.65);
+
+  /* ──────────────────────────────────────────────────
+     Aliases de compatibilidad (legacy, se irán en PR3–4)
+     Evitan romper reglas CSS existentes que usen
+     --neon, --amber, --panel, etc.
+  ────────────────────────────────────────────────── */
+  --neon:         var(--color-accent);
+  --neon-soft:    var(--color-accent-soft);
+  --amber:        var(--color-warning);
+  --danger:       var(--color-danger);
+  --ink:          var(--color-bg-base);
+  --panel:        var(--color-surface);
+  --panel-strong: var(--color-surface);
+  --line:         var(--color-line);
+  --text:         var(--color-text-primary);
+  --muted:        var(--color-text-muted);
+  --muted-strong: var(--color-text-secondary);
 }
 
 * {
   box-sizing: border-box;
   scrollbar-width: thin;
+  scrollbar-color: var(--color-line-strong) var(--color-bg-deep);
 }
 
 html,
@@ -32,47 +119,27 @@ body {
   margin: 0;
   overflow-x: hidden;
   font-family:
-    Inter,
+    'Nunito',
     ui-sans-serif,
     system-ui,
     -apple-system,
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
-  background:
-    radial-gradient(
-      circle at 20% -10%,
-      rgba(57, 255, 136, 0.16),
-      transparent 34%
-    ),
-    radial-gradient(
-      circle at 100% 12%,
-      rgba(255, 209, 102, 0.1),
-      transparent 28%
-    ),
-    linear-gradient(180deg, #0a0f0d 0%, #030504 62%, #010201 100%);
-  color: var(--text);
+  background-color: var(--color-bg-base);
+  color: var(--color-text-primary);
+  accent-color: var(--color-accent);
 }
 
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background:
-    linear-gradient(
-      115deg,
-      transparent 0 42%,
-      rgba(57, 255, 136, 0.045) 46%,
-      transparent 52%
-    ),
-    radial-gradient(
-      circle at 50% 100%,
-      rgba(57, 255, 136, 0.08),
-      transparent 42%
-    );
-  opacity: 0.8;
-  z-index: 0;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 a,
