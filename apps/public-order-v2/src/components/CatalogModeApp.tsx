@@ -116,73 +116,185 @@ function CatalogModeAppInner({ items, categories, siteConfig, catalogBanners = [
 
   return (
     <>
-      {/* ── Header fijo de la app ─────────────────────────────────────────── */}
-      <header className="app-header" role="banner">
-        <div className="app-header__inner">
-          <a href="/" className="app-header__brand" aria-label="Burgers.exe — Inicio">
-            {/* Logotipo SVG inline — burger icon + wordmark */}
-            <svg
-              className="app-header__icon"
-              width="28"
-              height="28"
-              viewBox="0 0 28 28"
-              fill="none"
-              aria-hidden="true"
-              focusable="false"
-            >
-              <rect width="28" height="28" rx="8" fill="var(--color-accent)" />
-              <rect x="6" y="8" width="16" height="2.5" rx="1.25" fill="white" />
-              <rect x="6" y="12.75" width="16" height="2.5" rx="1.25" fill="white" />
-              <rect x="6" y="17.5" width="16" height="2.5" rx="1.25" fill="white" />
-            </svg>
-            <span className="app-header__wordmark">
-              Burgers<span className="app-header__dot">.exe</span>
-            </span>
-          </a>
+      {/* ── Header fijo de la app (PR 2) ─────────────────────────────────────────── */}
+      <header className="site-header" role="banner">
+        <div className="site-header__container">
+          <div className="site-header__brand">
+            <a href="/" className="site-header__logo-link" aria-label="Burgers.exe — Inicio">
+              <svg
+                className="site-header__logo-icon"
+                width="32"
+                height="32"
+                viewBox="0 0 32 32"
+                fill="none"
+                aria-hidden="true"
+              >
+                <rect width="32" height="32" rx="10" fill="var(--color-accent-soft)" stroke="var(--color-accent-line)" />
+                <path d="M 8 11 C 8 7, 24 7, 24 11 Z" fill="var(--color-accent)" />
+                <rect x="7" y="14" width="18" height="3" rx="1.5" fill="var(--color-warning)" />
+                <path d="M 8 20 H 24 C 24 23, 20 25, 16 25 C 12 25, 8 23, 8 20 Z" fill="var(--color-accent)" />
+              </svg>
+              <span className="site-header__logo-text">
+                Burgers<span className="site-header__logo-ext">.exe</span>
+              </span>
+            </a>
+          </div>
 
-          {/* ── Dark mode toggle ───────────────────────────── */}
-          <button
-            id="dark-mode-toggle"
-            type="button"
-            className="app-header__theme-btn"
-            onClick={toggleDark}
-            aria-label={isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
-            aria-pressed={isDark}
-          >
-            {isDark ? (
-              /* Sol */
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                <circle cx="10" cy="10" r="4" fill="currentColor" />
-                <g stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                  <line x1="10" y1="2" x2="10" y2="4" />
-                  <line x1="10" y1="16" x2="10" y2="18" />
-                  <line x1="2" y1="10" x2="4" y2="10" />
-                  <line x1="16" y1="10" x2="18" y2="10" />
-                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-                  <line x1="14.36" y1="14.36" x2="15.78" y2="15.78" />
-                  <line x1="4.22" y1="15.78" x2="5.64" y2="14.36" />
-                  <line x1="14.36" y1="5.64" x2="15.78" y2="4.22" />
-                </g>
-              </svg>
-            ) : (
-              /* Luna */
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                <path
-                  d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"
-                  fill="currentColor"
-                />
-              </svg>
-            )}
-          </button>
+          <div className="site-header__status">
+            <span
+              className="store-status-badge store-status-badge--open"
+              role="status"
+              aria-label="Estado del servicio: Abierto"
+            >
+              <span className="store-status-badge__dot" aria-hidden="true" />
+              <span>Abierto</span>
+            </span>
+          </div>
+
+          <div className="site-header__actions">
+            <a href="/tickets" className="site-header__tickets-btn" aria-label="Consultar tickets de rifas">
+              <span aria-hidden="true">🎟️</span>
+              <span className="site-header__tickets-label">Tickets</span>
+            </a>
+            <button
+              id="dark-mode-toggle"
+              type="button"
+              className="site-header__theme-toggle"
+              onClick={toggleDark}
+              aria-label={isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+              aria-pressed={isDark}
+            >
+              <span aria-hidden="true">{isDark ? "☀️" : "🌙"}</span>
+            </button>
+          </div>
         </div>
       </header>
 
       <main className="catalog-shell" aria-labelledby="catalogTitle">
-        <section className="catalog-hero">
-          <div>
-            <span>Menú</span>
-            <h1 id="catalogTitle">{siteConfig.brandName}</h1>
-            <p>Explora el menú, arma tu pedido y paga en minutos.</p>
+        <section className="catalog-hero" id="catalog-hero">
+          <div className="catalog-hero__content">
+            <div className="catalog-hero__badge-row">
+              <span className="catalog-hero__eyebrow">Menú Oficial</span>
+              <span className="catalog-hero__schedule-badge" aria-label="Horario de atención: 13:00 a 22:30 hrs">
+                <span aria-hidden="true">🕒</span> Horario: 13:00 - 22:30 hrs
+              </span>
+            </div>
+            <h1 id="catalogTitle" className="catalog-hero__title">
+              {siteConfig.brandName}
+            </h1>
+            <p className="catalog-hero__tagline">Hamburguesas Reales. Sabor Neón.</p>
+            <div className="catalog-hero__actions">
+              <a
+                href="#catalog-category-nav"
+                className="catalog-hero__cta-btn"
+                onClick={(e) => {
+                  e.preventDefault();
+                  document.getElementById("catalog-category-nav")?.scrollIntoView({ behavior: "smooth" });
+                }}
+              >
+                Ver Menú
+              </a>
+            </div>
+          </div>
+
+          <div className="catalog-hero__illustration" aria-hidden="true">
+            <div className="hero-burger-vector">
+              <svg
+                className="hero-burger-svg"
+                viewBox="0 0 240 220"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <defs>
+                  <filter id="neon-glow-bun" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="4" result="blur" />
+                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                  </filter>
+                  <filter id="neon-glow-cheese" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="3" result="blur" />
+                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                  </filter>
+                  <linearGradient id="bun-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#F59E0B" />
+                    <stop offset="100%" stopColor="#D97706" />
+                  </linearGradient>
+                  <linearGradient id="patty-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#4A2511" />
+                    <stop offset="100%" stopColor="#2A1207" />
+                  </linearGradient>
+                  <linearGradient id="cheese-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#FBBF24" />
+                    <stop offset="100%" stopColor="#F59E0B" />
+                  </linearGradient>
+                </defs>
+
+                <ellipse cx="120" cy="188" rx="85" ry="14" fill="var(--color-accent-soft)" className="svg-shadow-aura" />
+
+                <path
+                  d="M 35 165 C 35 155, 205 155, 205 165 C 205 182, 175 190, 120 190 C 65 190, 35 182, 35 165 Z"
+                  fill="url(#bun-gradient)"
+                  stroke="var(--color-accent)"
+                  strokeWidth="2.5"
+                  className="svg-bun-bottom"
+                />
+
+                <path
+                  d="M 28 142 C 28 134, 212 134, 212 142 C 212 156, 192 160, 120 160 C 48 160, 28 156, 28 142 Z"
+                  fill="url(#patty-gradient)"
+                  stroke="#9A3412"
+                  strokeWidth="2"
+                  className="svg-patty"
+                />
+
+                <path
+                  d="M 30 132 L 210 132 L 195 148 L 170 136 L 140 156 L 115 135 L 85 152 L 60 134 Z"
+                  fill="url(#cheese-gradient)"
+                  stroke="var(--color-warning)"
+                  strokeWidth="2.5"
+                  className="svg-cheese"
+                  filter="url(#neon-glow-cheese)"
+                />
+
+                <path
+                  d="M 32 124 Q 50 114, 70 125 Q 90 135, 110 122 Q 130 112, 150 126 Q 170 136, 190 122 Q 208 114, 208 124 Q 120 134, 32 124 Z"
+                  fill="#22C55E"
+                  stroke="var(--color-accent)"
+                  strokeWidth="2"
+                  className="svg-lettuce"
+                />
+
+                <path
+                  d="M 35 116 C 35 48, 205 48, 205 116 Z"
+                  fill="url(#bun-gradient)"
+                  stroke="var(--color-accent)"
+                  strokeWidth="3"
+                  className="svg-bun-top"
+                  filter="url(#neon-glow-bun)"
+                />
+
+                <path
+                  d="M 60 70 Q 120 52, 180 70"
+                  stroke="rgba(255, 255, 255, 0.45)"
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                />
+
+                <g className="svg-sesame-seeds" fill="#FEF3C7">
+                  <ellipse cx="85" cy="78" rx="4" ry="2" transform="rotate(-15 85 78)" />
+                  <ellipse cx="120" cy="68" rx="4" ry="2" transform="rotate(5 120 68)" />
+                  <ellipse cx="155" cy="76" rx="4" ry="2" transform="rotate(20 155 76)" />
+                  <ellipse cx="98" cy="95" rx="4" ry="2" transform="rotate(-10 98 95)" />
+                  <ellipse cx="142" cy="94" rx="4" ry="2" transform="rotate(15 142 94)" />
+                  <ellipse cx="70" cy="98" rx="4" ry="2" transform="rotate(-25 70 98)" />
+                  <ellipse cx="170" cy="96" rx="4" ry="2" transform="rotate(25 170 96)" />
+                </g>
+
+                <circle cx="22" cy="50" r="3" fill="var(--color-accent)" className="svg-sparkle-1" />
+                <circle cx="218" cy="70" r="4" fill="var(--color-warning)" className="svg-sparkle-2" />
+                <circle cx="205" cy="170" r="2.5" fill="var(--color-accent)" className="svg-sparkle-3" />
+              </svg>
+            </div>
           </div>
         </section>
 
