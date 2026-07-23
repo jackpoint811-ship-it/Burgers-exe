@@ -2,83 +2,145 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+  ═══════════════════════════════════════════════════════
+  PR1 — Sistema de tokens semánticos — Burgers.exe POv2
+  Tema: Dark Premium Modern (Linear / Spotify / Shake Shack style)
+  ═══════════════════════════════════════════════════════
+*/
 :root {
   color-scheme: dark;
 
-  /* Premium Public V2 visual tokens: dark terminal, neon controls, mobile-first surfaces. */
-  --bg-base: #030504;
-  --bg-base-deep: #010201;
-  --bg-base-raised: #0a0f0d;
-  --bg-surface: rgba(9, 15, 13, 0.88);
-  --bg-surface-strong: rgba(12, 20, 17, 0.96);
-  --bg-surface-card: rgba(8, 17, 13, 0.9);
-  --bg-surface-card-strong: rgba(10, 22, 17, 0.94);
-  --bg-surface-input: rgba(2, 5, 4, 0.74);
-  --fg-primary: #f3fff6;
-  --fg-heading: #ffffff;
-  --fg-muted: #b7c9bf;
-  --fg-muted-strong: #d7eadf;
-  --fg-on-neon: #021207;
-  --fg-on-amber: #201300;
-  --brand-primary: #39ff88;
-  --brand-primary-soft: rgba(57, 255, 136, 0.13);
-  --brand-primary-glow: rgba(57, 255, 136, 0.22);
-  --brand-primary-line: rgba(57, 255, 136, 0.34);
-  --brand-primary-line-strong: rgba(57, 255, 136, 0.54);
-  --brand-secondary-cyan: #41f0ff;
-  --brand-secondary-magenta: #ff4fd8;
-  --accent-warning: #ffd166;
-  --accent-warning-soft: rgba(255, 209, 102, 0.1);
-  --accent-danger: #ff6b4a;
-  --accent-danger-soft: rgba(255, 107, 74, 0.14);
-  --accent-success: #34d399;
-  --line-soft: rgba(234, 255, 240, 0.08);
-  --line-default: rgba(234, 255, 240, 0.12);
-  --line-strong: rgba(234, 255, 240, 0.18);
-  --line-card: rgba(216, 255, 230, 0.13);
-  --radius-sm: 12px;
-  --radius-md: 16px;
-  --radius-lg: 20px;
-  --radius-xl: 24px;
-  --radius-2xl: 28px;
-  --radius-pill: 999px;
-  --space-page: 14px;
-  --space-page-wide: 22px;
-  --space-panel: 18px;
-  --touch-target-min: 44px;
-  --motion-fast: 150ms;
+  /* ── Fondos (Dark Carbon Palette) ─────────────────── */
+  --bg-canvas:           #090A0C;
+  --color-bg-base:       #090A0C;
+  --color-bg-deep:       #050607;
+  --color-surface:       #121316;
+  --color-surface-alt:   #1A1C20;
+  --color-surface-input: #1A1C20;
+  --color-surface-overlay:#24272E;
+
+  /* Mappings para compatibilidad */
+  --bg-base:             #090A0C;
+  --bg-base-deep:        #050607;
+  --bg-base-raised:      #121316;
+  --bg-surface:          #121316;
+  --bg-surface-strong:   #1A1C20;
+  --bg-surface-card:     #1A1C20;
+  --bg-surface-card-strong:#24272E;
+  --bg-surface-input:    #1A1C20;
+
+  /* ── Textos (High Contrast Slate) ─────────────────── */
+  --color-text-primary:  #F8FAFC;
+  --color-text-secondary:#94A3B8;
+  --color-text-muted:    #64748B;
+  --color-text-on-accent:#090A0C;
+
+  /* Mappings para compatibilidad */
+  --fg-primary:          #F8FAFC;
+  --fg-heading:          #FFFFFF;
+  --fg-muted:            #94A3B8;
+  --fg-muted-strong:     #CBD5E1;
+  --fg-on-neon:          #090A0C;
+  --fg-on-amber:         #090A0C;
+
+  /* ── Acentos (Smash Green + Gourmet Red + Brioche Gold) ── */
+  --color-accent:            #22C55E;
+  --color-accent-hover:      #16A34A;
+  --color-accent-soft:       rgba(34, 197, 94, 0.12);
+  --color-accent-line:       rgba(34, 197, 94, 0.30);
+  --color-accent-line-strong:rgba(34, 197, 94, 0.55);
+
+  --brand-primary:             #22C55E;
+  --brand-primary-soft:        rgba(34, 197, 94, 0.12);
+  --brand-primary-glow:        rgba(34, 197, 94, 0.35);
+  --brand-primary-line:        rgba(34, 197, 94, 0.30);
+  --brand-primary-line-strong: rgba(34, 197, 94, 0.55);
+  --brand-secondary-cyan:      #38BDF8;
+  --brand-secondary-magenta:   #F43F5E;
+
+  --color-warning:      #F59E0B;
+  --color-warning-soft: rgba(245, 158, 11, 0.14);
+  --accent-warning:     #F59E0B;
+  --accent-warning-soft:rgba(245, 158, 11, 0.14);
+
+  --color-danger:       #C92027;
+  --color-danger-soft:  rgba(201, 32, 39, 0.14);
+  --accent-danger:      #C92027;
+  --accent-danger-soft: rgba(201, 32, 39, 0.14);
+
+  --color-success:      #22C55E;
+  --color-success-soft: rgba(34, 197, 94, 0.12);
+  --accent-success:     #22C55E;
+
+  /* ── Bordes / separadores ────────────────────────── */
+  --color-line-soft:    rgba(255, 255, 255, 0.05);
+  --color-line:         rgba(255, 255, 255, 0.08);
+  --color-line-strong:  rgba(255, 255, 255, 0.16);
+
+  --line-soft:          rgba(255, 255, 255, 0.05);
+  --line-default:       rgba(255, 255, 255, 0.08);
+  --line-strong:        rgba(255, 255, 255, 0.16);
+  --line-card:          rgba(255, 255, 255, 0.08);
+
+  /* ── Radios ──────────────────────────────────────── */
+  --radius-xs:  8px;
+  --radius-sm:  12px;
+  --radius-md:  16px;
+  --radius-lg:  20px;
+  --radius-xl:  24px;
+  --radius-2xl: 32px;
+  --radius-pill:999px;
+
+  /* ── Espaciado ───────────────────────────────────── */
+  --space-page:      16px;
+  --space-page-wide: 24px;
+  --space-panel:     20px;
+  --touch-target-min:44px;
+
+  /* ── Sombras & Glows ─────────────────────────────── */
+  --shadow-card:    0 4px 16px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.25);
+  --shadow-panel:   0 12px 40px rgba(0,0,0,0.50);
+  --shadow-floating:0 20px 60px rgba(0,0,0,0.70);
+  --shadow-cta:     0 4px 20px rgba(34,197,94,0.30);
+  --glow-brand-soft:0 0 18px rgba(34, 197, 94, 0.18);
+  --glow-brand:     0 0 28px rgba(34, 197, 94, 0.35);
+  --glow-green:     0 0 20px -4px rgba(34, 197, 94, 0.35);
+  --glow-red:       0 0 20px -4px rgba(201, 32, 39, 0.35);
+
+  /* ── Movimiento ──────────────────────────────────── */
+  --motion-fast: 120ms;
   --motion-base: 180ms;
   --motion-slow: 260ms;
-  --motion-ease: ease;
-  --z-base: 1;
-  --z-sticky: 18;
-  --z-floating: 24;
-  --z-modal: 30;
-  --z-overlay: 20;
-  --shadow-panel: 0 22px 70px rgba(0, 0, 0, 0.5);
-  --shadow-card: 0 16px 42px rgba(0, 0, 0, 0.32);
-  --shadow-floating: 0 18px 60px rgba(0, 0, 0, 0.5);
-  --shadow-cta: 0 10px 30px rgba(57, 255, 136, 0.18);
-  --glow-brand-soft: 0 0 18px rgba(57, 255, 136, 0.18);
-  --glow-brand: 0 0 28px rgba(57, 255, 136, 0.24);
-  --focus-ring: rgba(65, 240, 255, 0.78);
+  --motion-ease: cubic-bezier(0.4, 0, 0.2, 1);
 
-  --neon: var(--brand-primary);
-  --neon-soft: var(--brand-primary-soft);
-  --amber: var(--accent-warning);
-  --danger: var(--accent-danger);
-  --ink: var(--bg-base);
-  --panel: var(--bg-surface);
-  --panel-strong: var(--bg-surface-strong);
-  --line: var(--line-default);
-  --text: var(--fg-primary);
-  --muted: var(--fg-muted);
-  --muted-strong: var(--fg-muted-strong);
-  --card-surface: var(--bg-surface-card);
-  --card-surface-strong: var(--bg-surface-card-strong);
-  --card-line: var(--line-card);
-  --card-line-active: var(--brand-primary-line-strong);
-  --card-shadow: var(--shadow-card);
+  /* ── Z-Index ─────────────────────────────────────── */
+  --z-base:    1;
+  --z-sticky:  18;
+  --z-floating:24;
+  --z-overlay: 28;
+  --z-modal:   32;
+
+  /* ── Focus ring ──────────────────────────────────── */
+  --focus-ring: rgba(34, 197, 94, 0.70);
+
+  /* ── Aliases de compatibilidad (legacy) ─────────── */
+  --neon:         var(--color-accent);
+  --neon-soft:    var(--color-accent-soft);
+  --amber:        var(--color-warning);
+  --danger:       var(--color-danger);
+  --ink:          var(--color-bg-base);
+  --panel:        var(--color-surface);
+  --panel-strong: var(--color-surface);
+  --line:         var(--color-line);
+  --text:         var(--color-text-primary);
+  --muted:        var(--color-text-muted);
+  --muted-strong: var(--color-text-secondary);
+  --card-surface: var(--color-surface-alt);
+  --card-surface-strong: var(--color-surface-overlay);
+  --card-line:    var(--color-line);
+  --card-line-active: var(--color-accent-line-strong);
+  --card-shadow:  var(--shadow-card);
 }
 
 * {
